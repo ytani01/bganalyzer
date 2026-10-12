@@ -262,7 +262,7 @@ $("recognize").addEventListener("click", async () => {
     fd.append("on_roll", state.onRoll);
     const dice = currentDice();
     if (dice) fd.append("dice", dice.join(","));
-    const data = await post("/analyze-photo", fd);
+    const data = await post("analyze-photo", fd);
     const rec = data.recognized;
     state.board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
     state.selected = null;
@@ -489,7 +489,7 @@ $("analyze").addEventListener("click", async () => {
     const body = { board: { ...state.board }, on_roll: state.onRoll };
     const dice = currentDice();
     if (dice) body.dice = dice;
-    const r = await post("/analyze", JSON.stringify(body), { "content-type": "application/json" });
+    const r = await post("analyze", JSON.stringify(body), { "content-type": "application/json" });
     setResult(r, dice);
     $("result").scrollIntoView({ behavior: "smooth" });
   } catch (err) {
@@ -499,8 +499,9 @@ $("analyze").addEventListener("click", async () => {
   }
 });
 
+// path is relative ("analyze"), so the app also works under a path such as /bg/.
 async function post(path, body, headers) {
-  const res = await fetch(API + path, { method: "POST", body, headers });
+  const res = await fetch(API ? `${API}/${path}` : path, { method: "POST", body, headers });
   let data = null;
   try { data = await res.json(); } catch (_) { /* not JSON */ }
   if (!res.ok) {
