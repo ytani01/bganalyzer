@@ -215,6 +215,20 @@ def camera_from_h(H, shape, f_default=0.75):
     return K, r1, r2, r3, t
 
 
+def view_tilt_deg(corners, shape) -> float:
+    """How far from straight above the photo was taken, in degrees (0 = top-down).
+
+    From the tapped corners alone. Steep views (photo1, ~70 degrees) hide and
+    shift checkers behind the frame and each other, and read badly.
+    """
+    H = cv2.getPerspectiveTransform(np.float32([(0, 0), (1, 0), (1, 1), (0, 1)]), np.float32(corners))
+    _, _, _, r3, _ = camera_from_h(H, shape)
+    return float(np.degrees(np.arccos(min(1.0, abs(r3[2])))))
+
+
+OBLIQUE_WARN_DEG = 40   # samples: top-down shots 0-23 degrees, photo1 69
+
+
 COL_MIN_SCORE = 1.0
 
 
@@ -745,6 +759,8 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
                 layout=dict(a=float(lay.a), bar=float(lay.bar), h=float(lay.h)), pitch=float(pitch),
                 checker_lab=None if cc is None else cc.round(1).tolist(),
                 board_lab=board.round(1).tolist())
+    info["tilt_deg"] = round(view_tilt_deg(corners, img.shape), 1)
+    info["warnings"] = ["oblique"] if info["tilt_deg"] > OBLIQUE_WARN_DEG else []
     if debug_prefix:
         save_debug(debug_prefix, ground, lay, m, runs, tips, circles)
     return pos, info

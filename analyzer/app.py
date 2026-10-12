@@ -110,11 +110,19 @@ async def analyze_photo(
     if home not in ("left", "right"):
         raise HTTPException(422, "home must be left or right")
     pos, info = recognize(img, list(zip(c[0::2], c[1::2])), home=home, bottom_colour=bottom_colour)
+    warnings = [WARNINGS[w] for w in info.get("warnings", [])]
     errors = pos.validate()
     if errors:
         # Let the app show the read board for manual correction.
-        return {"recognized": pos.to_dict(), "errors": errors, "analysis": None}
-    return {"recognized": pos.to_dict(), "errors": [], "analysis": _run(pos, on_roll, plies, d)}
+        return {"recognized": pos.to_dict(), "errors": errors, "warnings": warnings, "analysis": None}
+    return {"recognized": pos.to_dict(), "errors": [], "warnings": warnings,
+            "analysis": _run(pos, on_roll, plies, d)}
+
+
+# What the recognizer's warnings mean for the person holding the phone.
+WARNINGS = {
+    "oblique": "斜めから撮った写真なので、読み間違いが多いかもしれません。盤の真上から撮り直すと正確に読めます。",
+}
 
 
 # The PWA. Mounted last so the API routes above take precedence.
