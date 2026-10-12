@@ -1,3 +1,2 @@
 __pycache__/
-out/
-samples/*.jpg
+.pytest_cache/
