@@ -120,6 +120,13 @@ docker build -t bganalyzer .
 docker run --rm -p 8000:8000 bganalyzer
 ```
 
+Docker を使わずに動かすときは [uv](https://docs.astral.sh/uv/) で依存を入れます（`pyproject.toml` と `uv.lock` で固定）。
+
+```bash
+uv sync
+uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
+```
+
 ```mermaid
 flowchart LR
     dev["PC / スマホのブラウザ<br/>curl / テスト"] -- "HTTP :8000" --> uv["uvicorn<br/>（ワーカー1つ・--reload なし）"]

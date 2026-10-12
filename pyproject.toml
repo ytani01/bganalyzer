@@ -1,0 +1,25 @@
+[project]
+name = "bganalyzer"
+version = "0.1.0"
+description = "バックギャモン盤の写真から局面を読み取り、GNU Backgammon で解析する"
+readme = "README.md"
+# gnubg の wheel は CPython 3.10〜3.13 だけ（3.14 用はまだない）
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "gnubg>=1.1.0a16",
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
+    "numpy",
+    "opencv-python-headless",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "httpx",  # fastapi.testclient が使う
+]
+
+[tool.uv]
+# パッケージとしては配布しない（analyzer/ と recognizer/ をスクリプトとして動かす）
+package = false
