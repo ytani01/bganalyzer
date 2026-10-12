@@ -63,8 +63,10 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
   GitHub Actions の `docker`（`.github/workflows/docker.yml`）が x86_64 と arm64 でビルドし、起動して解析まで確かめる。
   gnubg の PyPI パッケージには arm64 の wheel もソース配布もないので、arm64 では Dockerfile が
   StonesAndDice/gnubg-pypi の固定したコミットからビルドする。gnubg の版を上げるときはそのコミットも合わせる。
-- **サンプル写真:** `samples/` の顔と第三者の投稿は隠してある。リポジトリは public で、加工前の写真が
-  Git の履歴に残っている（TODO-003、担当 ai1）。加工前の写真を再びコミットしない。
+- **サンプル写真:** photo1（顔が写っていた）はファイルも履歴も削除した（2026-10-13）。screen2 の第三者の投稿は
+  盤の画像以外を塗りつぶしてあり、加工前の画像は履歴に残るが、そのままにすると決めた（TODO-003 完了、`archives/todo/`）。
+  GitHub 側には photo1 の古いコミットが SHA 指定で取れる形で残っている（完全に消すには Support への依頼が要る）。
+  加工前の写真を再びコミットしない。
 - **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR と main への push で `uv run pytest analyzer` を実行する。
 
 ## 6. ぶつからないための決まり
