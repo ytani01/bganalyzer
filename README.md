@@ -39,7 +39,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph analyzer["analyzer/（ステップ2・3）"]
-        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /health<br/>/ で static/ を配信"]
+        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /health, /version<br/>/ で static/ を配信"]
         analysis["analysis.py<br/>gnubg 呼び出し・確率/エクイティ整形<br/>日本語の要約"]
         worker["gnubg 子プロセス<br/>（そのメインスレッドで評価）"]
         test["test_api.py<br/>API のテスト"]
