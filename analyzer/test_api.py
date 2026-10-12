@@ -181,3 +181,18 @@ def test_api_find_corners():
     blank = cv2.imencode(".png", np.full((300, 400, 3), 200, np.uint8))[1].tobytes()
     assert client.post("/find-corners", files={"image": ("b.png", blank)}).json()["corners"] is None
     assert client.post("/find-corners", files={"image": ("x.jpg", b"not an image")}).status_code == 422
+
+
+def test_share_target():
+    # Android's share sheet posts the photo to the manifest's share_target; sw.js answers on the
+    # phone. Without it the server must not keep the photo, only send the app back to ./.
+    manifest = client.get("/manifest.webmanifest").json()
+    st = manifest["share_target"]
+    assert not st["action"].startswith("/")   # relative, so it stays under /bg/
+    assert st["method"] == "POST" and st["enctype"] == "multipart/form-data"
+    name = st["params"]["files"][0]["name"]
+    sw = client.get("/sw.js").text
+    assert f'"{st["action"]}"' in sw and f'.get("{name}")' in sw
+    res = client.post("/" + st["action"], files={name: ("b.jpg", b"\xff\xd8", "image/jpeg")},
+                      follow_redirects=False)
+    assert res.status_code == 303 and res.headers["location"] == "./?shared=none"
