@@ -4,4 +4,3 @@ samples
 **/.pytest_cache
 out
 **/.venv
-.env

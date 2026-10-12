@@ -11,12 +11,13 @@
 
 **担当:** ai1
 
-公開先は **自宅の Raspberry Pi（64bit OS）+ Cloudflare Tunnel** に決めた（2026-10-12、ai1）。
+公開先は **自宅の Raspberry Pi（64bit OS）+ Tailscale Funnel** に決めた（2026-10-12、ai1。費用とドメインが要らないため）。
+URL は `https://<Piの名前>.<tailnet名>.ts.net/bg/`。同じ Pi で別のアプリも公開できるよう、パス `/bg/` の下に置く。
 `Dockerfile` は arm64 でもビルドできるようにし（gnubg をソースからビルド）、GitHub Actions の `docker` で
-x86_64 と arm64 の両方のビルドと解析を確かめている。`compose.yaml` でアプリと cloudflared を常駐させる。
+x86_64 と arm64 の両方のビルドと解析を確かめている。`compose.yaml` でアプリを常駐させ、Pi に入れた Tailscale が HTTPS を受けて 8000 番に転送する。
 
 残り（ai1 の手が要る）: [docs/raspi.md](docs/raspi.md) の手順で Pi に Docker を入れて起動し、
-Cloudflare でドメインと Tunnel を用意して、スマホから https で使えることを確かめる。
+Tailscale で Funnel を有効にして、スマホから https で使えることを確かめる。
 確かめたら、Pi の機種とビルドにかかった時間を docs/raspi.md に書き、この項目を完了にする。
 
 ---

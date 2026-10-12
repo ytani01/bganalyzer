@@ -1,7 +1,7 @@
 # 解析サーバーと PWA を1つのコンテナで動かす。x86_64 と arm64（Raspberry Pi）の両方でビルドできる。
 #   docker build -t bganalyzer .
 #   docker run --rm -p 8000:8000 bganalyzer     # → http://localhost:8000/
-# Raspberry Pi で公開する手順は docs/raspi.md（compose.yaml を使う）。
+# Raspberry Pi で公開する手順は docs/raspi.md（compose.yaml と Tailscale Funnel）。
 
 # ---- ビルド用（依存を /app/.venv に入れる） ----
 FROM python:3.12-slim-bookworm AS build
