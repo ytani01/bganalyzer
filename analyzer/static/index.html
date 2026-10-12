@@ -43,6 +43,11 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </ul>
     </details>
     <button id="manual" class="button">写真なしで入力する（初期配置から）</button>
+    <div id="history" hidden>
+      <h2 class="history-title">最近の写真</h2>
+      <ul id="history-list" class="history-list"></ul>
+      <p class="note">選ぶと、指定した四隅や直した盤面の続きから始められます。最近の 3 枚まで、この端末の中だけに残します。</p>
+    </div>
     <p class="note">写真はサーバーで読み取るだけで、保存しません。</p>
   </section>
 
@@ -124,6 +129,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 
 <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text"></p></div>
 
+<script src="history.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

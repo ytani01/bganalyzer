@@ -23,6 +23,8 @@ const state = {
   board: null,       // {points[24], bar_white, bar_black}
   selected: null,    // point index 0..23, or "bar"
   result: null,
+  historyId: null,   // this photo's entry in PhotoHistory (history.js), null if not stored
+  historyScale: 1,   // image px -> the stored copy's px
 };
 
 // ---------------------------------------------------------------- steps
@@ -31,6 +33,7 @@ function show(step) {
   for (const s of document.querySelectorAll("#steps span")) s.classList.toggle("on", s.dataset.step === step);
   if (step === "corners") requestAnimationFrame(drawPhoto);
   if (step === "board") drawBoard();
+  if (step === "photo") renderHistory();
   window.scrollTo(0, 0);
 }
 
@@ -51,6 +54,7 @@ function initSeg(name, onChange) {
     state[name] = name === "bottomColour" ? Number(v) : v;
     sync();
     if (onChange) onChange();
+    saveHistory();
   });
   sync();
   return sync;
@@ -67,6 +71,10 @@ $("file").addEventListener("change", async (e) => {
     state.file = file;
     state.corners = [];
     state.fromPhoto = true;
+    state.board = null;
+    state.warnings = [];
+    setResult(null);
+    await addToHistory(file);
     updateCornerUi();
     show("corners");
   } catch (err) {
@@ -93,6 +101,7 @@ async function decode(file) {
 
 $("manual").addEventListener("click", () => {
   state.fromPhoto = false;
+  state.historyId = null;
   state.warnings = [];
   state.board = { points: START.slice(), bar_white: 0, bar_black: 0 };
   state.selected = null;
@@ -219,6 +228,7 @@ function endDrag(e) {
   loupeAt = null;
   updateCornerUi();   // after the finger is up: the text above may change height and move the canvas
   drawPhoto();
+  saveHistory();
 }
 canvas.addEventListener("pointerup", endDrag);
 canvas.addEventListener("pointercancel", endDrag);
@@ -236,6 +246,7 @@ $("corner-reset").addEventListener("click", () => {
   state.corners = [];
   updateCornerUi();
   drawPhoto();
+  saveHistory();
 });
 $("back-photo").addEventListener("click", () => show("photo"));
 
@@ -269,6 +280,7 @@ $("recognize").addEventListener("click", async () => {
     state.warnings = data.warnings || [];
     state.board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
     state.selected = null;
+    saveHistory();
     show("board");
     setResult(data.analysis, dice);
   } catch (err) {
@@ -444,6 +456,7 @@ $("editor-buttons").addEventListener("click", (e) => {
 function boardChanged() {
   if (state.result) $("result").classList.add("stale");
   drawBoard();
+  saveHistory();
 }
 
 $("swap-colours").addEventListener("click", () => {
@@ -477,7 +490,10 @@ $("back-corners").addEventListener("click", () => show(state.fromPhoto ? "corner
 // ---------------------------------------------------------------- analysis
 for (const id of ["die1", "die2"]) {
   for (let d = 1; d <= 6; d++) $(id).add(new Option(String(d), String(d)));
-  $(id).addEventListener("change", () => state.result && $("result").classList.add("stale"));
+  $(id).addEventListener("change", () => {
+    if (state.result) $("result").classList.add("stale");
+    saveHistory();
+  });
 }
 
 function currentDice() {
@@ -554,6 +570,104 @@ function setResult(r, dice) {
   box.innerHTML = html;
 }
 
+// ---------------------------------------------------------------- recent photos (history.js)
+// Stored on this device only. Failures (no IndexedDB, private mode, storage full) never block the app.
+async function addToHistory(file) {
+  state.historyId = null;
+  state.historyScale = 1;
+  try {
+    const [w, h] = imgSize();
+    const { id, scale } = await PhotoHistory.add(file, state.bitmap, w, h);
+    state.historyId = id;
+    state.historyScale = scale;
+  } catch (_) { /* not stored */ }
+}
+
+function saveHistory() {
+  if (!state.historyId) return;
+  const s = state.historyScale;
+  PhotoHistory.update(state.historyId, {
+    corners: state.corners.map(([x, y]) => [x * s, y * s]),
+    home: state.home,
+    bottomColour: state.bottomColour,
+    onRoll: state.onRoll,
+    dice: currentDice(),
+    board: state.board,
+    warnings: state.warnings,
+  }).catch(() => {});
+}
+
+async function openHistory(id) {
+  busy("写真を読み込んでいます…");
+  try {
+    const e = await PhotoHistory.get(id);
+    if (!e) { renderHistory(); return; }
+    state.bitmap = await decode(e.image);
+    state.file = e.image;
+    state.historyId = id;
+    state.historyScale = 1;   // the stored copy is now the image
+    state.corners = (e.corners || []).map((c) => c.slice());
+    state.home = e.home || "right";
+    state.bottomColour = e.bottomColour ?? 1;
+    state.onRoll = e.onRoll || "white";
+    state.fromPhoto = true;
+    state.warnings = e.warnings || [];
+    state.board = e.board || null;
+    state.selected = null;
+    $("die1").value = e.dice ? String(e.dice[0]) : "";
+    $("die2").value = e.dice ? String(e.dice[1]) : "";
+    syncHome();
+    syncColours();
+    syncOnRoll();
+    setResult(null);
+    updateCornerUi();
+    saveHistory();   // now the most recent
+    show(state.board ? "board" : "corners");
+  } catch (err) {
+    alert("写真を開けませんでした: " + err.message);
+  } finally {
+    busy();
+  }
+}
+
+let thumbUrls = [];
+async function renderHistory() {
+  let entries = [];
+  try { entries = await PhotoHistory.list(); } catch (_) { /* no IndexedDB */ }
+  thumbUrls.forEach((u) => URL.revokeObjectURL(u));
+  thumbUrls = [];
+  const ul = $("history-list");
+  ul.textContent = "";
+  $("history").hidden = !entries.length;
+  for (const e of entries) {
+    const li = document.createElement("li");
+    const open = document.createElement("button");
+    open.className = "open";
+    const img = document.createElement("img");
+    img.alt = "";
+    img.src = URL.createObjectURL(e.thumb);
+    thumbUrls.push(img.src);
+    const text = document.createElement("span");
+    const when = new Date(e.time).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const done = e.board ? "盤面の読み取りまで" : e.corners && e.corners.length === 4 ? "四隅の指定まで" : "写真を選んだところまで";
+    text.innerHTML = `${esc(when)}<span class="sub">${done}</span>`;
+    open.append(img, text);
+    open.addEventListener("click", () => openHistory(e.id));
+    const del = document.createElement("button");
+    del.className = "button del";
+    del.textContent = "✕";
+    del.setAttribute("aria-label", "この写真を履歴から消す");
+    del.addEventListener("click", async () => {
+      if (!confirm("この写真を履歴から消しますか？")) return;
+      if (state.historyId === e.id) state.historyId = null;
+      try { await PhotoHistory.remove(e.id); } catch (_) { /* already gone */ }
+      renderHistory();
+    });
+    li.append(open, del);
+    ul.append(li);
+  }
+}
+
 // ---------------------------------------------------------------- colours & init
 function syncColours() {
   const light = "#f3efe4", dark = "#3a2a4a";
@@ -567,7 +681,7 @@ function syncColours() {
 
 const syncHome = initSeg("home");
 const syncBottomColour = initSeg("bottomColour", syncColours);
-initSeg("onRoll", () => state.result && $("result").classList.add("stale"));
+const syncOnRoll = initSeg("onRoll", () => state.result && $("result").classList.add("stale"));
 syncColours();
 updateCornerUi();
 show("photo");
