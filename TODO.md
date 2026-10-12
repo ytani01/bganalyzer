@@ -1,24 +1,9 @@
 # TODO
 
-**残っている項目: TODO-002、TODO-003、TODO-004、TODO-005。** これまでに 1 件を決着させた。
+**残っている項目: TODO-003、TODO-004、TODO-005。** これまでに 2 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-006` から。**
 各項目の最初に **担当**（ai1 か、共同開発者のアカウント名、未定）を書き、着手する前に自分の担当にしてコミットする
 （[docs/HANDOVER.md](docs/HANDOVER.md)）。
-
----
-
-## TODO-002. PWA と API を自宅の Raspberry Pi で公開する
-
-**担当:** ai1
-
-公開先は **自宅の Raspberry Pi（64bit OS）+ Tailscale Funnel** に決めた（2026-10-12、ai1。費用とドメインが要らないため）。
-URL は `https://<Piの名前>.<tailnet名>.ts.net/bg/`。同じ Pi で別のアプリも公開できるよう、パス `/bg/` の下に置く。
-`Dockerfile` は arm64 でもビルドできるようにし（gnubg をソースからビルド）、GitHub Actions の `docker` で
-x86_64 と arm64 の両方のビルドと解析を確かめている。`compose.yaml` でアプリを常駐させ、Pi に入れた Tailscale が HTTPS を受けて 8000 番に転送する。
-
-残り（ai1 の手が要る）: [docs/raspi.md](docs/raspi.md) の手順で Pi に Docker を入れて起動し、
-Tailscale で Funnel を有効にして、スマホから https で使えることを確かめる。
-確かめたら、Pi の機種とビルドにかかった時間を docs/raspi.md に書き、この項目を完了にする。
 
 ---
 
