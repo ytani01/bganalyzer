@@ -572,6 +572,16 @@ syncColours();
 updateCornerUi();
 show("photo");
 
+// Server versions in the footer, to tell which build is running (e.g. on the Raspberry Pi).
+fetch(API ? `${API}/version` : "version")
+  .then((res) => (res.ok ? res.json() : null))
+  .then((v) => {
+    if (!v) return;
+    $("version").textContent = `analyzer ${v.analyzer} · recognizer ${v.recognizer}` +
+      (v.commit ? ` · ${v.commit}` : "");
+  })
+  .catch(() => {});
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }

@@ -33,6 +33,13 @@ uv run python recognizer/board.py <写真> --corners ... --home left|right   # �
   変えていないので、`*.truth.json` の四隅の座標はそのまま使える。元の写真は入れない。
   photo1（人の顔が写っていた斜め撮影の写真）は 2026-10-13 にファイルも Git の履歴も削除した。入れ直さない
 
+## バージョン
+
+analyzer と recognizer は別々にバージョンを持つ（`analyzer/app.py` と `recognizer/board.py` の `__version__`）。
+API の `/version` と PWA の画面の下に、両方とコミット ID が出る。
+**そのディレクトリのコードを変える PR で、その方を上げる**（直しは 0.1.0 → 0.1.1、機能の追加や変更は 0.1.0 → 0.2.0）。
+ドキュメントやテストだけの変更では上げない。`pyproject.toml` の version は使わない。
+
 ## 精度の確認
 
 認識を変えたら `recognizer/evaluate.py` で `samples/*.truth.json` と比べ、

@@ -93,6 +93,17 @@ curl -s localhost:8000/analyze -H 'content-type: application/json' \
 
 ### `GET /health`
 
+`{"ok": true}` を返す（Docker の healthcheck 用）。
+
+### `GET /version`
+
+```json
+{"analyzer": "0.1.0", "recognizer": "0.1.0", "commit": "7bd7f55"}
+```
+
+analyzer（この API と PWA）と recognizer のバージョン、動いているコードの git のコミット ID（取れなければ `null`）。
+PWA は画面のいちばん下にこれを出す。上げ方は [CLAUDE.md](../CLAUDE.md) の「バージョン」。
+
 ## テスト
 
 ```

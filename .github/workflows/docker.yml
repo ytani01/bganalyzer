@@ -33,5 +33,8 @@ jobs:
             -F corners=$corners -F home=left -F bottom_colour=1 | tee photo.json
           python3 -c "import json; r = json.load(open('photo.json')); assert r['analysis'], r"
           curl -fs localhost:8000/ | grep -q '<html'
+          # バージョンとコミット ID（.dockerignore で .git の HEAD と refs だけ入れている）
+          curl -fsS localhost:8000/version | tee version.json
+          python3 -c "import json; v = json.load(open('version.json')); assert v['analyzer'] and v['recognizer'] and v['commit'], v"
       - if: failure()
         run: docker logs bg

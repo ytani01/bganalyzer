@@ -99,3 +99,30 @@ def test_steep_photo_is_flagged():
         t = json.loads(f.read_text())
         shape = cv2.imread(str(samples / t["image"])).shape
         assert view_tilt_deg(t["corners_TL_TR_BR_BL"], shape) < OBLIQUE_WARN_DEG, f.name
+
+
+def test_version_reports_both_parts_and_commit():
+    import subprocess
+
+    import board
+    import app as app_module
+    v = client.get("/version").json()
+    assert v["analyzer"] == app_module.__version__
+    assert v["recognizer"] == board.__version__
+    head = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True,
+                          cwd=Path(__file__).parent).stdout.strip()
+    assert v["commit"] == (head or None)
+
+
+def test_git_commit_reads_packed_and_detached_refs(tmp_path):
+    from app import git_commit
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    (tmp_path / "HEAD").write_text("ref: refs/heads/main\n")
+    (tmp_path / "packed-refs").write_text(f"# pack-refs with: peeled\n{sha} refs/heads/main\n")
+    assert git_commit(tmp_path) == "0123456"
+    (tmp_path / "refs/heads").mkdir(parents=True)
+    (tmp_path / "refs/heads/main").write_text("fedcba9876543210fedcba9876543210fedcba98\n")
+    assert git_commit(tmp_path) == "fedcba9"   # a loose ref wins over packed-refs
+    (tmp_path / "HEAD").write_text(sha + "\n")  # detached, as in CI's checkout
+    assert git_commit(tmp_path) == "0123456"
+    assert git_commit(tmp_path / "missing") is None

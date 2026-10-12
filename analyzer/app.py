@@ -20,6 +20,12 @@ from pydantic import BaseModel, Field
 from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_position, shutdown,
                       summary_ja)
 
+# The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
+# changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
+__version__ = "0.1.0"
+
+REPO = Path(__file__).resolve().parent.parent
+
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -70,6 +76,33 @@ def _run(pos: Position, on_roll: str, plies: int, dice) -> dict:
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+def git_commit(git_dir: Path = REPO / ".git") -> str | None:
+    """Short id of the checked-out commit, read from the files (git itself may not be installed).
+
+    The Docker image carries only .git/HEAD and the refs for this (see .dockerignore).
+    """
+    try:
+        head = (git_dir / "HEAD").read_text().strip()
+        if head.startswith("ref: "):
+            ref = head[5:]
+            loose = git_dir / ref
+            if loose.is_file():
+                head = loose.read_text().strip()
+            else:
+                packed = (git_dir / "packed-refs").read_text().splitlines()
+                head = next(line.split()[0] for line in packed if line.endswith(" " + ref))
+        return head[:7] if len(head) >= 7 else None
+    except (OSError, StopIteration):
+        return None
+
+
+@app.get("/version")
+def version():
+    from board import __version__ as recognizer_version
+
+    return {"analyzer": __version__, "recognizer": recognizer_version, "commit": git_commit()}
 
 
 @app.post("/analyze")
