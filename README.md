@@ -146,28 +146,28 @@ flowchart LR
     end
 ```
 
-### 予定（公開後）
+### 公開（自宅の Raspberry Pi + Tailscale Funnel）
 
-ホスティング先は未定です。gnubg が子プロセスとメインスレッドを必要とするため、サーバーレス関数ではなく常駐する Python プロセス（コンテナや VPS）で動かす想定です。
-リポジトリ直下の `Dockerfile` でそのままコンテナにできます。PWA は同じサーバーから配信するのが一番簡単ですが、
-別の静的ホスティングに置く場合は `?api=https://APIのURL` を付けて開けば、その API を呼びます。
+自宅の Raspberry Pi（64bit OS）で `compose.yaml` のアプリを常駐させ、Pi に入れた Tailscale の Funnel で HTTPS を付けて
+`https://<Piの名前>.<tailnet名>.ts.net/bg/` に公開します。費用・ドメイン・ルーターのポート開放は要りません。手順は [docs/raspi.md](docs/raspi.md) にあります。
+PWA は API を相対パスで呼ぶので、`/bg/` のようなパスの下でも動きます（同じ Pi で別のアプリを別のパスに置ける）。
+gnubg が子プロセスとメインスレッドを必要とするため、サーバーレス関数ではなく常駐するプロセスで動かします。
+`Dockerfile` は x86_64 と arm64 の両方でビルドでき（arm64 では gnubg をソースからビルド）、GitHub Actions の `docker` で両方を確かめています。
+PWA を別の静的ホスティングに置く場合は `?api=https://APIのURL` を付けて開けば、その API を呼びます。
 
 ```mermaid
 flowchart LR
     phone["スマホ<br/>PWA"]
-    static["静的ファイル配信<br/>HTML / JS / manifest / Service Worker<br/>（今は API サーバーが兼ねる）"]
-    subgraph backend["API + PWA サーバー（ホスティング先は未定）"]
-        tls["HTTPS 終端<br/>（リバースプロキシ等）"]
-        uv["uvicorn + app.py<br/>（ワーカー1つ）"]
+    relay["Tailscale の中継<br/>（Funnel）"]
+    subgraph pi["自宅の Raspberry Pi"]
+        tsd["tailscaled<br/>HTTPS 終端・/bg/ → :8000"]
+        uv["uvicorn + app.py（docker compose）<br/>ワーカー1つ・PWA の配信も兼ねる"]
         child["gnubg 子プロセス"]
-        tls --> uv --> child
+        tsd --> uv --> child
     end
 
-    phone -- "HTTPS：アプリ本体の取得" --> static
-    phone -- "HTTPS：写真・盤面の送信（CORS 許可済み）" --> tls
-
-    classDef planned stroke-dasharray: 5 5;
-    class tls planned;
+    phone -- "HTTPS：アプリ本体の取得・写真と盤面の送信" --> relay
+    relay <-- "Pi から外向きの接続" --> tsd
 ```
 
 - 写真はサーバーに送って処理するだけで、保存はしません。
@@ -177,7 +177,7 @@ flowchart LR
 
 - `recognizer/`: ステップ1の盤面認識プロトタイプ（Python / OpenCV）。詳細は [recognizer/README.md](recognizer/README.md)。
 - `analyzer/`: ステップ2の局面解析 API（GNU Backgammon / FastAPI）と、ステップ3の PWA（`analyzer/static/`、`/` で配信）。詳細は [analyzer/README.md](analyzer/README.md)。
-- `Dockerfile`: API と PWA を1つのコンテナで動かす。
+- `Dockerfile`, `compose.yaml`: API と PWA を1つのコンテナで動かす。Raspberry Pi での公開手順は [docs/raspi.md](docs/raspi.md)。
 - `samples/`: 精度確認用の写真・アプリ画面と正解データ（`*.truth.json`）。
 - `docs/HANDOVER.md`: 別アカウントの Claude プロジェクトと共同で開発するための手順と、今の状況。
 

@@ -7,13 +7,18 @@
 
 ---
 
-## TODO-002. PWA と API の公開先を決める
+## TODO-002. PWA と API を自宅の Raspberry Pi で公開する
 
 **担当:** ai1
 
-PWA と API は `Dockerfile` で1つのコンテナになっている（ステップ3）。スマホからいつでも使うには、
-HTTPS で常駐できるホスト（コンテナを動かせる PaaS や VPS）に置く必要がある。gnubg の都合でサーバーレス関数は不可、
-ワーカーは1つ。どこに置くかは ai1 が決める。決まったら HTTPS 終端と `docker run` の手順を README に書く。
+公開先は **自宅の Raspberry Pi（64bit OS）+ Tailscale Funnel** に決めた（2026-10-12、ai1。費用とドメインが要らないため）。
+URL は `https://<Piの名前>.<tailnet名>.ts.net/bg/`。同じ Pi で別のアプリも公開できるよう、パス `/bg/` の下に置く。
+`Dockerfile` は arm64 でもビルドできるようにし（gnubg をソースからビルド）、GitHub Actions の `docker` で
+x86_64 と arm64 の両方のビルドと解析を確かめている。`compose.yaml` でアプリを常駐させ、Pi に入れた Tailscale が HTTPS を受けて 8000 番に転送する。
+
+残り（ai1 の手が要る）: [docs/raspi.md](docs/raspi.md) の手順で Pi に Docker を入れて起動し、
+Tailscale で Funnel を有効にして、スマホから https で使えることを確かめる。
+確かめたら、Pi の機種とビルドにかかった時間を docs/raspi.md に書き、この項目を完了にする。
 
 ---
 
@@ -36,7 +41,7 @@ GitHub 上でも履歴をたどれば見られる。選択肢は次のとおり�
 
 ## TODO-004. PWA が写真を縮めて送ると認識精度が落ちる
 
-**担当:** 未定
+**担当:** ai1
 
 PWA（`analyzer/static/app.js`）は長辺 2560px を超える写真を長辺 2048px に縮めてから送る。
 `analyzer/README.md` には「この大きさでも精度が落ちないことを確認」とあるが、実際には落ちる。
@@ -57,7 +62,7 @@ main の時点で photo1 18、photo2 23、photo3 24、photo4 19。photo4 だけ�
 
 ## TODO-005. 斜めから撮った写真（photo1）の認識を改善する
 
-**担当:** 未定
+**担当:** ai1
 
 photo1（かなり斜め・人物や小物あり）は 24 ポイント中 14 正解で、サンプルの中で一番悪い。
 撮影角度が浅く、手前の枠の縁や駒の厚みで駒が隠れたりずれたりする。

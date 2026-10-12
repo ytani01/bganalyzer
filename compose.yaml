@@ -1,0 +1,16 @@
+# Raspberry Pi など自宅のマシンで常駐させる（手順は docs/raspi.md）。
+#   docker compose up -d --build     # → LAN から http://<IP>:8000/
+# HTTPS での公開は Pi に入れた Tailscale の Funnel が受けて、ここの 8000 番に転送する
+# （例: tailscale funnel --bg --set-path /bg http://127.0.0.1:8000）。
+services:
+  app:
+    build: .
+    image: bganalyzer
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 1m
+      timeout: 5s
+      start_period: 30s
