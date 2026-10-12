@@ -39,3 +39,17 @@ uv run python recognizer/board.py <写真> --corners ... --home left|right   # �
 ## タスク管理
 
 `TODO.md` で管理する（書式は `~/.claude/CLAUDE.md` と `todo-workflow` skill）。
+各項目には **担当** を書く。担当が自分（このプロジェクトのユーザー）でない項目のファイルは触らない。
+
+## 共同開発
+
+このリポジトリは、別のアカウントの Claude プロジェクトからも同時に開発する
+（手順は [docs/HANDOVER.md](docs/HANDOVER.md)）。
+
+- **方針・進み具合・決まったことはリポジトリに書く。** Claude のプロジェクトのメモは相手から見えない。
+  ルールはこの CLAUDE.md、作業と担当は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
+- **作業の前に main を pull する。** 着手する TODO の担当を自分にして、先にコミットしておく
+- **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
+- **マージの直前に最新の main を取り込み、`uv run pytest analyzer` と GitHub Actions の `test` が
+  両方通ってからマージする。** どちらかが落ちていたらマージしない。
+  相手の担当の部分とぶつかったら、勝手に直さずユーザーに報告する
