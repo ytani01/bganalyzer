@@ -57,7 +57,7 @@ photo1 が難しい理由:
 - `board.py` 認識本体
 - `synth.py` 合成画像の生成（正解付き）
 - `evaluate.py` `*.truth.json` と比較して精度を出す
-- `../samples/photoN.truth.json` ユーザー提供の写真（photoN.jpg、リポジトリには含めない）を目視で読んだ正解と四隅
+- `../samples/photoN.truth.json` ユーザー提供の写真（photoN.jpg）を目視で読んだ正解と四隅
 - `../out/` デバッグ画像（`*_geometry.jpg` 補正後の盤と検出した三角形の先端、`*_checkers.jpg` 検出した駒）
 
 ## 次にやること

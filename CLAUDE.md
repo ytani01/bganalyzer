@@ -22,8 +22,8 @@ python3 recognizer/board.py <写真> --corners ... --home left|right   # 認識�
   `points[i]` は手前側から見たポイント i+1、正が white、負が black。
   認識と解析で揃えている
 - 写真はサーバーで処理するだけで保存しない
-- 利用者の実写真（`samples/photoN.jpg`）はリポジトリに入れない。正解の
-  `*.truth.json` だけを置く
+- `samples/` の写真と正解の `*.truth.json` はリポジトリに入れて公開している
+  （クラウドでも精度を確認できるように）
 
 ## 精度の確認
 
