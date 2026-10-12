@@ -11,6 +11,7 @@ uv sync                                                          # 依存を .ve
 uv run pytest analyzer                                           # テスト
 uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000   # API と PWA（/）の起動
 docker build -t bganalyzer . && docker run --rm -p 8000:8000 bganalyzer   # コンテナで起動
+docker compose up -d --build                                     # Raspberry Pi で常駐（docs/raspi.md）
 uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
 ```
 
