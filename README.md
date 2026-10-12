@@ -115,8 +115,9 @@ uv か Docker で起動し、PC やスマホ（同じ LAN）のブラウザで `
 http のままでも写真の撮影・解析はできますが、ホーム画面への追加（インストール）とオフライン用の Service Worker は
 HTTPS（または localhost）でしか有効になりません。
 
-手元で動かすだけなら Docker は要りません。[uv](https://docs.astral.sh/uv/) で依存を入れて起動します
-（`pyproject.toml` と `uv.lock` で版を固定）。
+開発用の PC（x86_64 の Linux・Windows、Apple Silicon の Mac）なら Docker は要りません。[uv](https://docs.astral.sh/uv/) で依存を入れて起動します
+（`pyproject.toml` と `uv.lock` で版を固定）。Raspberry Pi などの arm64 の Linux では、gnubg の Python パッケージが
+配布されていないので `uv sync` が失敗します。そちらでは Docker（`docker compose up -d --build`）で動かします。
 
 ```bash
 uv sync
@@ -127,8 +128,8 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
 
 | | 管理するもの | 使う場面 |
 |---|---|---|
-| uv | Python のパッケージ（gnubg、FastAPI、OpenCV など）と Python 本体の版 | 手元での開発・テスト・起動。これだけで足りる |
-| Docker | OS のライブラリ（gnubg が使う glib など）も含めた実行環境まるごと | サーバーに公開するとき、どのマシンでも同じ環境で動かすため（必須ではない） |
+| uv | Python のパッケージ（gnubg、FastAPI、OpenCV など）と Python 本体の版 | 開発用の PC での開発・テスト・起動。これだけで足りる |
+| Docker | OS のライブラリ（gnubg が使う glib など）も含めた実行環境まるごと | Raspberry Pi で動かすとき（arm64 用の gnubg をソースからビルドする）。サーバーに公開するとき |
 
 Docker イメージの中でも、Python のパッケージは同じ `uv.lock` から `uv sync --frozen` で入れています。
 
