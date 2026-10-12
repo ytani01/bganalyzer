@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -22,7 +23,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -152,6 +153,14 @@ async def analyze_photo(
         # Let the app show the read board for manual correction.
         return out | {"analysis": None}
     return out | {"analysis": _run(pos, on_roll, plies, d)}
+
+
+@app.post("/share-target")
+def share_target():
+    # Android's share sheet posts photos here (manifest share_target); sw.js normally answers on
+    # the phone. This only runs before the service worker is up: don't read or keep the photo,
+    # just open the app ("./" keeps the /bg/ prefix the proxy strips).
+    return RedirectResponse("./?shared=none", status_code=303)
 
 
 # What the recognizer's warnings mean for the person holding the phone.

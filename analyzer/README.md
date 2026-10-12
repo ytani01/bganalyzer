@@ -36,6 +36,10 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
 - 長辺 2560px を超える写真は、ブラウザで長辺 2048px に縮めてから送る（この大きさでのサンプルの精度は [recognizer/README.md](../recognizer/README.md) の「精度」の「アプリ経由」の列）。
 - 別のホストに PWA を置くときは `?api=https://APIのURL` を付けて開く。
 - ホーム画面への追加と Service Worker は HTTPS（または localhost）のときだけ有効。
+- **Android** でホーム画面に追加すると、写真アプリなどの「共有」の一覧に BG Analyzer が出る（manifest の `share_target`）。
+  共有した写真は Service Worker が端末の中で受け取り（`sw.js`）、選んだときと同じく四隅の指定に進む。サーバーに送るのは「盤面を読み取る」のときだけ。
+  Service Worker がまだ動いていないとき（追加した直後など）は、サーバーの `POST /share-target` が写真を読まずにアプリへ戻し、選び直すよう表示する。
+  iPhone（Safari）には PWA を共有先にする仕組みがないので、アプリ内で選ぶ。
 
 ## Docker
 
