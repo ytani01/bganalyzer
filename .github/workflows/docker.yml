@@ -1,0 +1,37 @@
+name: docker
+
+# Dockerfile が x86_64 と arm64（Raspberry Pi）の両方でビルドでき、解析まで動くことを確かめる。
+on:
+  pull_request:
+    paths: [Dockerfile, .dockerignore, compose.yaml, pyproject.toml, uv.lock, analyzer/**, recognizer/**, .github/workflows/docker.yml]
+  push:
+    branches: [main]
+    paths: [Dockerfile, .dockerignore, compose.yaml, pyproject.toml, uv.lock, analyzer/**, recognizer/**, .github/workflows/docker.yml]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t bganalyzer .
+      - name: 起動して解析・写真認識を試す
+        run: |
+          docker run -d --name bg -p 8000:8000 bganalyzer
+          for i in $(seq 30); do curl -fs localhost:8000/health && break; sleep 2; done
+          # 初期配置を 2-ply で解析
+          curl -fsS -X POST localhost:8000/analyze -H 'content-type: application/json' \
+            -d '{"position_id": "4HPwATDgc/ABMA"}' | tee analyze.json
+          python3 -c "import json; r = json.load(open('analyze.json')); assert 'summary' in r, r"
+          # サンプルの画面を認識して解析
+          corners=$(python3 -c "import json; t = json.load(open('samples/screen1.truth.json')); print(','.join(str(v) for p in t['corners_TL_TR_BR_BL'] for v in p))")
+          curl -fsS -X POST localhost:8000/analyze-photo -F image=@samples/screen1.png \
+            -F corners=$corners -F home=left -F bottom_colour=1 | tee photo.json
+          python3 -c "import json; r = json.load(open('photo.json')); assert r['analysis'], r"
+          curl -fs localhost:8000/ | grep -q '<html'
+      - if: failure()
+        run: docker logs bg
