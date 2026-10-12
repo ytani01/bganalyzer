@@ -24,6 +24,8 @@ Canonical frame (ground plane, pixels): x 0..W left->right, y 0..H top->bottom.
 from __future__ import annotations
 
 import json
+import os
+import sys
 from dataclasses import dataclass
 
 import cv2
@@ -210,30 +212,42 @@ def camera_from_h(H, shape, f_default=0.75):
     return K, r1, r2, r3, t
 
 
+COL_MIN_SCORE = 1.0
+
+
 def fit_columns(ground_bgr, lay: Layout, m: int) -> Layout:
     """Fit column centres to the triangles (near their tips, rarely covered)."""
     lab = cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab).astype(np.float32)
     plain = _plain_colour(lab, lay, m)
     dist = np.linalg.norm(lab - plain, axis=2)
     tri = (dist > 30).astype(np.float32)
-    d0, d1 = 0.55 * TRI_DEPTH, 0.85 * TRI_DEPTH
+    d0, d1 = 0.7 * TRI_DEPTH, 0.92 * TRI_DEPTH
     band = np.vstack([tri[int(m + lay.h * d0):int(m + lay.h * d1)],
                       tri[int(m + lay.h * (1 - d1)):int(m + lay.h * (1 - d0))]])
-    prof = band.mean(0)
+    mid = tri[int(m + lay.h * 0.46):int(m + lay.h * 0.54)]
+    # triangles end before mid-board; frame walls, trays and the bar do not
+    prof = np.clip(band.mean(0) - mid.mean(0), 0, None)
     xs = np.arange(len(prof))
     cols = []
     for f0 in (0.0, lay.a + lay.bar):
         best = None
         for scale in np.linspace(0.85, 1.15, 31):
             pw = lay.pw * scale
-            for off in np.linspace(-0.35, 0.35, 29) * lay.pw:
+            for off in np.linspace(-1.2, 1.2, 97) * lay.pw:
                 c = m + f0 + off + lay.a / 2 + (np.arange(6) - 2.5) * pw
-                # reward triangle colour at centres, plain field halfway between
-                on = np.interp(c, xs, prof).sum()
-                off_ = np.interp(c[:-1] + pw / 2, xs, prof).sum()
-                sc = on - off_
+                # near their tips the triangles are narrow peaks; the bar and the
+                # frame are wide plateaus, so score peaks, not just colour
+                on = np.interp(c, xs, prof)
+                side = (np.interp(c - 0.4 * pw, xs, prof) + np.interp(c + 0.4 * pw, xs, prof)) / 2
+                sc = (on - side).sum()
                 if best is None or sc > best[0]:
                     best = (sc, c - m)
+        if os.environ.get("BG_DEBUG_COLS"):
+            print("fit_columns", f0, round(float(best[0]), 3), file=sys.stderr)
+        if best[0] < COL_MIN_SCORE:
+            # no visible triangles (e.g. engraved, same colour as the field):
+            # keep the even spacing from the frame edges
+            best = (best[0], f0 + lay.a / 2 + (np.arange(6) - 2.5) * lay.pw)
         cols += list(best[1])
     return Layout(a=lay.a, bar=lay.bar, h=lay.h, cols=cols)
 
@@ -449,10 +463,19 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     """
     gray = cv2.GaussianBlur(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY), (0, 0), 2)
     r0 = pitch / 2
-    cs = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.6, param1=70, param2=HOUGH_VOTES,
-                          minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
-    if cs is None:
+    # brightness alone misses e.g. black checkers on dark green felt: also look
+    # for circles in the colour channels
+    lab8 = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2Lab)
+    found = []
+    for ch in (gray, lab8[:, :, 1], lab8[:, :, 2]):
+        ch = cv2.GaussianBlur(cv2.normalize(ch, None, 0, 255, cv2.NORM_MINMAX), (0, 0), 2)
+        c = cv2.HoughCircles(ch, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.6, param1=70, param2=HOUGH_VOTES,
+                             minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
+        if c is not None:
+            found.append(c[0])
+    if not found:
         return []
+    cs = [np.vstack(found)]
     labf = cv2.GaussianBlur(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2Lab).astype(np.float32), (0, 0), 1.5)
     gx = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 1, 0) for i in range(3))
     gy = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 0, 1) for i in range(3))
@@ -472,7 +495,11 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         ring = patch[(d2 > (0.7 * r) ** 2) & (d2 < (0.92 * r) ** 2)]
         if len(inner) < 20 or len(ring) < 20:
             continue
-        med = np.median(inner, 0)
+        # colour: brightness from the median, hue from the most saturated half
+        # (glare makes a red checker look pink; its saturated part stays red)
+        chroma = np.hypot(inner[:, 1] - 128, inner[:, 2] - 128)
+        sat = inner[chroma >= np.percentile(chroma, 50)]
+        med = np.float32([np.median(inner[:, 0]), *np.median(sat[:, 1:], 0)])
         ring_same = float((np.linalg.norm(ring - med, axis=1) < 22).mean())
         # what an empty spot here would look like: field, frame, or this column's triangle
         expected = [Wb[0]] + list(Wb[3:])
@@ -509,7 +536,7 @@ def count_from_circles(circles, lay: Layout, pitch: float):
     order = np.argsort(cc[:, 0])           # colour 0 = darker
     remap = {int(order[0]): 0, int(order[1]): 1}
     lbl = [remap[int(v)] for v in lbl.ravel()]
-    counts = {(c, r): [[], []] for c in range(12) for r in ("top", "bottom")}
+    counts = {(c, r): [] for c in range(12) for r in ("top", "bottom")}
     bar = [0, 0]
     bar_x0, bar_x1 = lay.col_x(5) + lay.pw / 2, lay.col_x(6) - lay.pw / 2
     for (x, y, r, _), k in zip(circles, lbl):
@@ -521,25 +548,32 @@ def count_from_circles(circles, lay: Layout, pitch: float):
         if abs(x - lay.col_x(c)) > 0.5 * lay.pw:
             continue
         row = "top" if y < lay.h / 2 else "bottom"
-        counts[(c, row)][k].append(y if row == "top" else lay.h - y)   # depth from the base
+        counts[(c, row)].append((y if row == "top" else lay.h - y, k))   # depth from the edge
+    # the first checker sits a little in from the canonical edge (frame lip,
+    # rough corners): measure that per row from the stacks themselves
+    lip = {}
+    for row in ("top", "bottom"):
+        firsts = [min(d for d, _ in v) for (c, r), v in counts.items() if r == row and v]
+        firsts = [f for f in firsts if f < 1.6 * pitch]
+        lip[row] = float(np.clip(np.median(firsts) - pitch / 2, -0.3 * pitch, 0.8 * pitch)) if firsts else 0.0
     runs = {}
-    for key, depths in counts.items():
-        k = 0 if len(depths[0]) >= len(depths[1]) else 1
-        d = depths[k]
-        if not d:
-            runs[key] = (None, 0)
+    for (c, row), v in counts.items():
+        if not v:
+            runs[(c, row)] = (None, 0)
             continue
+        # a point holds one colour: vote, then count the whole stack
+        k = 0 if sum(1 for _, kk in v if kk == 0) >= sum(1 for _, kk in v if kk == 1) else 1
         # checkers stack from the base without gaps, so walk out from the base and
         # let the farthest checker of that chain give the count (a checker missed
         # in the middle is still counted; a stray circle far away is not)
         last, used = None, 0
-        for depth in sorted(d):
-            limit = 2.2 * pitch if last is None else last + 3.3 * pitch
+        for depth in sorted(d - lip[row] for d, _ in v):
+            limit = 1.6 * pitch if last is None else last + 2.3 * pitch
             if depth > limit:
                 break
             last, used = depth, used + 1
         n = 0 if last is None else max(used, int(round(last / pitch + 0.5)))
-        runs[key] = (k if n else None, min(n, 15))
+        runs[(c, row)] = (k if n else None, min(n, 15))
     return runs, bar, cc[order] / LAB_W
 
 
@@ -575,6 +609,9 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
     tri_len = np.median([t[4] for t in tips]) if tips else TRI_DEPTH * lay.h
     circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
+    if len(circles) >= 4:   # checkers may be wider than a point: measure them
+        pitch = float(2 * np.median([c[2] for c in circles]))
+        circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
     runs, bar, cc = count_from_circles(circles, lay, pitch)
     pos = to_position(runs, bar, bottom_colour, home)
     info = dict(edge_quality=float(quality), tips=len(tips), circles=len(circles),
