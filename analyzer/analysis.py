@@ -50,6 +50,14 @@ def _call_engine(*args):
                 raise
 
 
+def shutdown() -> None:
+    """Stop the gnubg helper. Call on server exit, or it outlives the server."""
+    global _pool
+    if _pool is not None:
+        _pool.shutdown()
+        _pool = None
+
+
 def other(side: str) -> str:
     return "black" if side == "white" else "white"
 
