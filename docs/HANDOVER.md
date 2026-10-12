@@ -56,7 +56,7 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
   この見直しは TODO-004、photo1 の改善は TODO-005（どちらも担当未定）。
 - **ai1 の盤:** クラフト紙色の盤面、赤と紺の三角形、白い枠。駒はえんじ色と紫。えんじ色の駒と赤い三角形は
   色がほぼ同じ（Lab で差 ~8）で、色だけでは区別できない。斜めの写真が一番の弱点なので、真上から撮ってもらう。
-- **公開先は自宅の Raspberry Pi + Cloudflare Tunnel**（TODO-002、担当 ai1、手順は [raspi.md](raspi.md)）。Pi での動作確認は ai1 待ち。
+- **公開先は自宅の Raspberry Pi + Tailscale Funnel**（`https://<Pi>.<tailnet>.ts.net/bg/`、無料・ドメイン不要。同じ Pi で別のアプリも別のパスで公開する予定があるので、アプリはパスの下でも動くようにしてある）（TODO-002、担当 ai1、手順は [raspi.md](raspi.md)）。Pi での動作確認は ai1 待ち。
   ホーム画面への追加には HTTPS が必要。サーバーレス関数は不可、ワーカー1つで常駐。
 - **Docker:** 必須ではなくサーバー公開用。`docker build` は ai1 の手元で動作確認済み（2026-10-13）。
   Claude のクラウド環境からは Docker Hub（429）や ghcr（403）、deb.debian.org に届かず試せないので、

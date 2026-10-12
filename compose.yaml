@@ -1,7 +1,7 @@
 # Raspberry Pi など自宅のマシンで常駐させる（手順は docs/raspi.md）。
-#   docker compose up -d --build        # アプリと Cloudflare Tunnel を起動
-#   docker compose up -d --build app    # アプリだけ（LAN から http://<IP>:8000/）
-# Cloudflare Tunnel のトークンは同じフォルダの .env に TUNNEL_TOKEN=... と書く（コミットしない）。
+#   docker compose up -d --build     # → LAN から http://<IP>:8000/
+# HTTPS での公開は Pi に入れた Tailscale の Funnel が受けて、ここの 8000 番に転送する
+# （例: tailscale funnel --bg --set-path /bg http://127.0.0.1:8000）。
 services:
   app:
     build: .
@@ -14,14 +14,3 @@ services:
       interval: 1m
       timeout: 5s
       start_period: 30s
-
-  # Cloudflare Tunnel: 外向きの接続だけで https://<自分のドメイン> を app:8000 につなぐ。
-  # 公開するホスト名と行き先（http://app:8000）は Cloudflare のダッシュボードで設定する。
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN:?.env に TUNNEL_TOKEN を書いてください（docs/raspi.md）}
-    depends_on:
-      - app

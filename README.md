@@ -146,10 +146,11 @@ flowchart LR
     end
 ```
 
-### 公開（自宅の Raspberry Pi + Cloudflare Tunnel）
+### 公開（自宅の Raspberry Pi + Tailscale Funnel）
 
-自宅の Raspberry Pi（64bit OS）で `compose.yaml` のアプリと cloudflared を常駐させ、Cloudflare Tunnel で HTTPS を付けて公開します。
-ルーターのポート開放は要りません。手順は [docs/raspi.md](docs/raspi.md) にあります。
+自宅の Raspberry Pi（64bit OS）で `compose.yaml` のアプリを常駐させ、Pi に入れた Tailscale の Funnel で HTTPS を付けて
+`https://<Piの名前>.<tailnet名>.ts.net/bg/` に公開します。費用・ドメイン・ルーターのポート開放は要りません。手順は [docs/raspi.md](docs/raspi.md) にあります。
+PWA は API を相対パスで呼ぶので、`/bg/` のようなパスの下でも動きます（同じ Pi で別のアプリを別のパスに置ける）。
 gnubg が子プロセスとメインスレッドを必要とするため、サーバーレス関数ではなく常駐するプロセスで動かします。
 `Dockerfile` は x86_64 と arm64 の両方でビルドでき（arm64 では gnubg をソースからビルド）、GitHub Actions の `docker` で両方を確かめています。
 PWA を別の静的ホスティングに置く場合は `?api=https://APIのURL` を付けて開けば、その API を呼びます。
@@ -157,18 +158,16 @@ PWA を別の静的ホスティングに置く場合は `?api=https://APIのURL`
 ```mermaid
 flowchart LR
     phone["スマホ<br/>PWA"]
-    subgraph cloudflare["Cloudflare"]
-        tls["HTTPS 終端"]
-    end
-    subgraph pi["自宅の Raspberry Pi（docker compose）"]
-        tunnel["cloudflared"]
-        uv["uvicorn + app.py<br/>（ワーカー1つ）<br/>PWA の配信も兼ねる"]
+    relay["Tailscale の中継<br/>（Funnel）"]
+    subgraph pi["自宅の Raspberry Pi"]
+        tsd["tailscaled<br/>HTTPS 終端・/bg/ → :8000"]
+        uv["uvicorn + app.py（docker compose）<br/>ワーカー1つ・PWA の配信も兼ねる"]
         child["gnubg 子プロセス"]
-        tunnel --> uv --> child
+        tsd --> uv --> child
     end
 
-    phone -- "HTTPS：アプリ本体の取得・写真と盤面の送信" --> tls
-    tls <-- "Pi から外向きの接続" --> tunnel
+    phone -- "HTTPS：アプリ本体の取得・写真と盤面の送信" --> relay
+    relay <-- "Pi から外向きの接続" --> tsd
 ```
 
 - 写真はサーバーに送って処理するだけで、保存はしません。
