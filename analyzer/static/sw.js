@@ -1,6 +1,6 @@
 // Offline shell: cache the app files; API calls always go to the network.
-const CACHE = "bganalyzer-v4";
-const SHELL = ["./", "index.html", "style.css", "app.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
+const CACHE = "bganalyzer-v5";
+const SHELL = ["./", "index.html", "style.css", "app.js", "photo.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

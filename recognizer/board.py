@@ -35,7 +35,7 @@ from position import Position
 
 # The recognizer's version (board.py and position.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -763,6 +763,12 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
                 layout=dict(a=float(lay.a), bar=float(lay.bar), h=float(lay.h)), pitch=float(pitch),
                 checker_lab=None if cc is None else cc.round(1).tolist(),
                 board_lab=board.round(1).tolist())
+    # Where the playing area and its columns ended up, for showing the photo next to the read board:
+    # corners in image pixels (TL TR BR BL), columns and bar edges as fractions of the width.
+    info["geometry"] = dict(
+        corners=cv2.perspectiveTransform(lay.src_pts()[None], H)[0].round(1).tolist(),
+        columns=[round(float(lay.col_x(c) / lay.w), 4) for c in range(12)],
+        bar=[round(float(lay.a / lay.w), 4), round(float((lay.a + lay.bar) / lay.w), 4)])
     info["tilt_deg"] = round(view_tilt_deg(corners, img.shape), 1)
     info["warnings"] = ["oblique"] if info["tilt_deg"] > OBLIQUE_WARN_DEG else []
     if debug_prefix:

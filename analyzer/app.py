@@ -22,7 +22,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -145,11 +145,13 @@ async def analyze_photo(
     pos, info = recognize(img, list(zip(c[0::2], c[1::2])), home=home, bottom_colour=bottom_colour)
     warnings = [WARNINGS[w] for w in info.get("warnings", [])]
     errors = pos.validate()
+    # geometry: where the recognizer found the board and its columns (image pixels of the sent image),
+    # so the app can line the photo up with the read board.
+    out = {"recognized": pos.to_dict(), "errors": errors, "warnings": warnings, "geometry": info.get("geometry")}
     if errors:
         # Let the app show the read board for manual correction.
-        return {"recognized": pos.to_dict(), "errors": errors, "warnings": warnings, "analysis": None}
-    return {"recognized": pos.to_dict(), "errors": [], "warnings": warnings,
-            "analysis": _run(pos, on_roll, plies, d)}
+        return out | {"analysis": None}
+    return out | {"analysis": _run(pos, on_roll, plies, d)}
 
 
 # What the recognizer's warnings mean for the person holding the phone.
