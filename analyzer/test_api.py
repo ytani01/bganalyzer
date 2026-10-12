@@ -51,7 +51,7 @@ def test_api_position_id_with_dice():
 
 
 def test_api_board_matches_truth():
-    truth = json.loads((Path(__file__).parent.parent / "samples" / "photo1.truth.json").read_text())
+    truth = json.loads((Path(__file__).parent.parent / "samples" / "photo2.truth.json").read_text())
     res = client.post("/analyze", json={"board": {"points": truth["points"]}, "on_roll": "black"})
     assert res.status_code == 200, res.text
     j = res.json()
