@@ -1,5 +1,5 @@
 // Offline shell: cache the app files; API calls always go to the network.
-const CACHE = "bganalyzer-v5";
+const CACHE = "bganalyzer-v6";
 const SHELL = ["./", "index.html", "style.css", "app.js", "photo.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {

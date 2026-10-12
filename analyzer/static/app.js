@@ -15,6 +15,8 @@ const state = {
   file: null,        // the chosen File
   bitmap: null,      // decoded image (EXIF orientation applied)
   corners: [],       // [[x, y], ...] in image pixels, TL TR BR BL
+  cornerGuess: "",   // the starting corners: "finding", "found", "default" (a rectangle), "moved" or "" (tapped)
+  cornersMoved: false,
   home: "right",
   bottomColour: 1,   // 0 = the darker checkers are 手前's, 1 = the lighter ones
   onRoll: "white",
@@ -67,10 +69,14 @@ $("file").addEventListener("change", async (e) => {
   try {
     state.bitmap = await decode(file);
     state.file = file;
-    state.corners = [];
     state.fromPhoto = true;
+    // start from a rectangle at once, and replace it with the server's guess when that comes
+    state.corners = defaultCorners();
+    state.cornerGuess = "finding";
+    state.cornersMoved = false;
     updateCornerUi();
     show("corners");
+    guessCorners(file);
   } catch (err) {
     alert("写真を開けませんでした: " + err.message);
   } finally {
@@ -104,6 +110,31 @@ $("manual").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------- step 2: corners
+// The rectangle the corners start from while (or if) the board can't be found.
+function defaultCorners() {
+  const [iw, ih] = imgSize();
+  const mx = iw * 0.1, my = ih * 0.1;
+  return [[mx, my], [iw - mx, my], [iw - mx, ih - my], [mx, ih - my]];
+}
+
+async function guessCorners(file) {
+  let corners = null;
+  try {
+    const { blob, scale } = await uploadImage();   // the guess is steadier from the larger image
+    const fd = new FormData();
+    fd.append("image", blob, "board.jpg");
+    const data = await post("find-corners", fd);
+    if (data.corners) corners = data.corners.map(([x, y]) => [x / scale, y / scale]);
+  } catch (_) { /* keep the rectangle */ }
+  // the user may have moved on to another photo, or started on the corners already
+  if (state.file !== file || state.cornerGuess !== "finding") return;
+  if (state.cornersMoved) state.cornerGuess = "moved";
+  else if (corners) [state.corners, state.cornerGuess] = [corners, "found"];
+  else state.cornerGuess = "default";
+  updateCornerUi();
+  drawPhoto();
+}
+
 const canvas = $("photo-canvas");
 let view = null;   // {scale, ox, oy} image px -> canvas css px
 let drag = null;   // {index, pointerId}
@@ -201,6 +232,7 @@ canvas.addEventListener("pointerdown", (e) => {
     state.corners.push(toImage(e));
     index = state.corners.length - 1;
   }
+  state.cornersMoved = true;
   drag = { index, pointerId: e.pointerId };
   canvas.setPointerCapture(e.pointerId);
   loupeAt = state.corners[index];
@@ -228,24 +260,35 @@ window.addEventListener("resize", drawPhoto);
 
 function updateCornerUi() {
   const n = state.corners.length;
+  const fit = "点をドラッグして、盤の遊戯面（枠の内側）の四隅 1 左上・2 右上・3 右下・4 左下（手前に座った向き）に合わせてください。";
   $("corner-help").innerHTML = n < 4
     ? `手前に座った向きで、盤の遊戯面（枠の内側）の四隅を <b>${n + 1}. ${CORNER_NAMES[n]}</b> の順にタップしてください（左上→右上→右下→左下）。`
+    : state.cornerGuess === "finding" ? "盤の四隅を探しています… " + fit
+    : state.cornerGuess === "found" ? "盤の四隅を自動で置きました。ずれていたら" + fit
+    : state.cornerGuess === "default" ? "盤を自動で見つけられませんでした。" + fit
+    : state.cornerGuess === "moved" ? fit
     : "四隅が決まりました。ホーム側と駒の色を選んで「盤面を読み取る」を押してください。";
   $("recognize").disabled = n < 4;
 }
 
 $("corner-reset").addEventListener("click", () => {
   state.corners = [];
+  state.cornerGuess = "";
   updateCornerUi();
   drawPhoto();
 });
 $("back-photo").addEventListener("click", () => show("photo"));
 
 // Large photos are scaled down before upload; corners are scaled with them.
-async function uploadImage() {
+function uploadImage() {
   const [iw, ih] = imgSize();
-  if (Math.max(iw, ih) <= SEND_AS_IS_MAX) return { blob: state.file, scale: 1 };
-  const scale = UPLOAD_MAX / Math.max(iw, ih);
+  if (Math.max(iw, ih) <= SEND_AS_IS_MAX) return Promise.resolve({ blob: state.file, scale: 1 });
+  return shrink(UPLOAD_MAX);
+}
+
+async function shrink(maxSide) {
+  const [iw, ih] = imgSize();
+  const scale = Math.min(1, maxSide / Math.max(iw, ih));
   const c = document.createElement("canvas");
   c.width = Math.round(iw * scale);
   c.height = Math.round(ih * scale);

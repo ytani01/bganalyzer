@@ -22,7 +22,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -117,6 +117,18 @@ def analyze_endpoint(req: AnalyzeRequest):
     else:
         pos = _board_to_position(req.board)
     return _run(pos, req.on_roll, req.plies, req.dice)
+
+
+@app.post("/find-corners")
+async def find_corners_endpoint(image: UploadFile = File(...)):
+    """A first guess at the playing area's corners (TL, TR, BR, BL), for the app to show
+    before the user adjusts them. corners is null when no board was found."""
+    from corners import find_corners  # recognizer (OpenCV); imported lazily
+
+    img = cv2.imdecode(np.frombuffer(await image.read(), np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(422, "could not decode image")
+    return {"corners": find_corners(img), "width": img.shape[1], "height": img.shape[0]}
 
 
 @app.post("/analyze-photo")
