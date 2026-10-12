@@ -1,8 +1,8 @@
 // Offline shell: cache the app files; API calls always go to the network.
-const CACHE = "bganalyzer-v5";
+const CACHE = "bganalyzer-v6";
 const SHARE_CACHE = "bganalyzer-share";   // a photo shared from another app, until app.js picks it up
 const SHARE_KEY = "shared-photo";
-const SHELL = ["./", "index.html", "style.css", "app.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
+const SHELL = ["./", "index.html", "style.css", "app.js", "photo.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -25,6 +25,8 @@ const state = {
   board: null,       // {points[24], bar_white, bar_black}
   selected: null,    // point index 0..23, or "bar"
   result: null,
+  photoView: "side", // the photo on the board screen: "side" (next to the board), "overlay" (under the checkers) or "off"
+  rectified: null,   // {bitmap, key, url}: the photo warped onto the board's playing area
 };
 
 // ---------------------------------------------------------------- steps
@@ -339,38 +341,81 @@ function checkerFill(side) {
   return side === "white" ? "var(--white-chk)" : "var(--black-chk)";
 }
 
-function drawStack(svg, x, top, n, side) {
+// style "ring": see-through checkers drawn over the photo, so the real ones show inside.
+function drawStack(svg, x, top, n, side, style) {
   const shown = Math.min(n, 5);
   for (let k = 0; k < shown; k++) {
     const y = top ? B.y0 + B.r + 1 + k * B.step : B.y1 - B.r - 1 - k * B.step;
-    el("circle", { cx: x, cy: y, r: B.r, fill: checkerFill(side), stroke: "#555", "stroke-width": 1.5, "pointer-events": "none" }, svg);
+    if (style === "ring") {
+      el("circle", { cx: x, cy: y, r: B.r - 2, fill: "none", stroke: "#000", "stroke-width": 6, "stroke-opacity": 0.5, "pointer-events": "none" }, svg);
+      el("circle", { cx: x, cy: y, r: B.r - 2, fill: "none", stroke: checkerFill(side), "stroke-width": 3, "pointer-events": "none" }, svg);
+    } else {
+      el("circle", { cx: x, cy: y, r: B.r, fill: checkerFill(side), stroke: "#555", "stroke-width": 1.5, "pointer-events": "none" }, svg);
+    }
     if (k === shown - 1 && n > 5) {
-      const t = el("text", { x, y, class: "stack-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg);
+      const t = style === "ring"
+        ? el("text", { x, y, class: "stack-n ring", fill: checkerFill(side), "pointer-events": "none" }, svg)
+        : el("text", { x, y, class: "stack-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg);
       t.textContent = n;
     }
   }
 }
 
+// The photo of the playing area (TL TR BR BL corners) warped onto the drawn one, made once per photo and corners.
+const PLAY = { x: B.x0, y: B.y0, w: 12 * B.pw + B.bar, h: B.y1 - B.y0 };
+function rectifiedPhoto() {
+  if (!state.fromPhoto || !state.bitmap || state.corners.length !== 4 || !window.BgPhoto) return null;
+  const key = JSON.stringify(state.corners);
+  const r = state.rectified;
+  if (r && r.bitmap === state.bitmap && r.key === key) return r.url;
+  let url = null;
+  try {
+    url = BgPhoto.rectify(state.bitmap, state.corners, PLAY.w * 2, PLAY.h * 2);
+  } catch (err) {
+    console.warn("could not show the photo:", err);
+  }
+  state.rectified = { bitmap: state.bitmap, key, url };
+  return url;
+}
+
 function drawBoard() {
-  const svg = $("board-svg");
+  const photo = rectifiedPhoto();
+  const view = photo ? state.photoView : "off";
+  $("photo-tools").hidden = !photo;
+  $("photo-wrap").hidden = view !== "side";
+  $("boards").classList.toggle("two", view === "side");
+  if (view === "side") drawBoardOn($("photo-svg"), { photo, checkers: false });
+  drawBoardOn($("board-svg"), { photo: view === "overlay" ? photo : null, checkers: true });
+  drawCounts();
+  drawEditor();
+}
+
+// One board picture: the drawn board, or the photo with point numbers (opts.photo), with or without
+// the recognized checkers. Both pictures share the layout, so a tap selects the same point on either.
+function drawBoardOn(svg, opts) {
   svg.textContent = "";
   const b = state.board;
   const xR = B.x0 + 12 * B.pw + B.bar;
   el("rect", { x: 0, y: 0, width: 660, height: 440, fill: "var(--card)" }, svg);
   el("rect", { x: B.x0 - 6, y: B.y0 - 6, width: xR - B.x0 + 12, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
-  el("rect", { x: B.x0, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
-  el("rect", { x: B.x0 + 6 * B.pw + B.bar, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
+  if (opts.photo) {
+    el("image", { href: opts.photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
+  } else {
+    el("rect", { x: B.x0, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
+    el("rect", { x: B.x0 + 6 * B.pw + B.bar, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
+  }
+  const style = opts.photo ? "ring" : "solid";
 
   for (const top of [true, false]) {
     for (let c = 0; c < 12; c++) {
       const i = pointAt(top, c);
       const x = colX(c), h = B.pw / 2;
       const base = top ? B.y0 : B.y1, tip = top ? B.y0 + B.tri : B.y1 - B.tri;
-      el("polygon", { points: `${x - h},${base} ${x + h},${base} ${x},${tip}`, fill: c % 2 ? "var(--tri-b)" : "var(--tri-a)" }, svg);
+      if (!opts.photo) el("polygon", { points: `${x - h},${base} ${x + h},${base} ${x},${tip}`, fill: c % 2 ? "var(--tri-b)" : "var(--tri-a)" }, svg);
       const lbl = el("text", { x, y: top ? 16 : 434, class: "num" }, svg);
       lbl.textContent = i + 1;
       const n = b.points[i];
-      if (n) drawStack(svg, x, top, Math.abs(n), n > 0 ? "white" : "black");
+      if (n && opts.checkers) drawStack(svg, x, top, Math.abs(n), n > 0 ? "white" : "black", style);
       if (state.selected === i) {
         el("rect", { x: x - h + 1, y: top ? B.y0 + 1 : B.y0 + (B.y1 - B.y0) / 2 + 1, width: B.pw - 2, height: (B.y1 - B.y0) / 2 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
       }
@@ -381,18 +426,17 @@ function drawBoard() {
 
   // Bar: 奥's checkers in the upper half, 手前's in the lower half.
   const bx = B.x0 + 6 * B.pw + B.bar / 2;
-  if (b.bar_black) drawStack(svg, bx, true, b.bar_black, "black");
-  if (b.bar_white) drawStack(svg, bx, false, b.bar_white, "white");
-  const barLbl = el("text", { x: bx, y: (B.y0 + B.y1) / 2 + 5, class: "label" }, svg);
-  barLbl.textContent = "バー";
+  if (b.bar_black && opts.checkers) drawStack(svg, bx, true, b.bar_black, "black", style);
+  if (b.bar_white && opts.checkers) drawStack(svg, bx, false, b.bar_white, "white", style);
+  if (!opts.photo) {
+    const barLbl = el("text", { x: bx, y: (B.y0 + B.y1) / 2 + 5, class: "label" }, svg);
+    barLbl.textContent = "バー";
+  }
   if (state.selected === "bar") {
     el("rect", { x: bx - B.bar / 2 + 1, y: B.y0 + 1, width: B.bar - 2, height: B.y1 - B.y0 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
   }
   const barHit = el("rect", { x: bx - B.bar / 2, y: B.y0, width: B.bar, height: B.y1 - B.y0, fill: "transparent", class: "hit" }, svg);
   barHit.addEventListener("click", () => select("bar"));
-
-  drawCounts();
-  drawEditor();
 }
 
 function counts() {
@@ -599,6 +643,7 @@ function syncColours() {
 const syncHome = initSeg("home");
 const syncBottomColour = initSeg("bottomColour", syncColours);
 initSeg("onRoll", () => state.result && $("result").classList.add("stale"));
+initSeg("photoView", drawBoard);
 syncColours();
 updateCornerUi();
 show("photo");
