@@ -7,15 +7,18 @@
 ## コマンド
 
 ```bash
-pip install -r analyzer/requirements.txt
-python3 -m pytest analyzer                                       # テスト
-uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000    # API と PWA（/）の起動
+uv sync                                                          # 依存を .venv に入れる（uv.lock どおり）
+uv run pytest analyzer                                           # テスト
+uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000   # API と PWA（/）の起動
 docker build -t bganalyzer . && docker run --rm -p 8000:8000 bganalyzer   # コンテナで起動
-python3 recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
+uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
 ```
 
 ## 変えないもの
 
+- **Python の依存は uv で管理する。** 追加・削除は `uv add` / `uv remove`
+  （テスト用は `--dev`）で行い、`pyproject.toml` と `uv.lock` を一緒にコミットする。
+  Docker も `uv sync --frozen` で同じ `uv.lock` から入れる
 - **API は `--reload` や複数ワーカーで動かさない。** gnubg はメインスレッド以外で
   評価するとクラッシュするので、解析は専用の子プロセスで行っている
   （`analyzer/analysis.py`）
