@@ -7,13 +7,17 @@
 
 ---
 
-## TODO-002. PWA と API の公開先を決める
+## TODO-002. PWA と API を自宅の Raspberry Pi で公開する
 
 **担当:** ai1
 
-PWA と API は `Dockerfile` で1つのコンテナになっている（ステップ3）。スマホからいつでも使うには、
-HTTPS で常駐できるホスト（コンテナを動かせる PaaS や VPS）に置く必要がある。gnubg の都合でサーバーレス関数は不可、
-ワーカーは1つ。どこに置くかは ai1 が決める。決まったら HTTPS 終端と `docker run` の手順を README に書く。
+公開先は **自宅の Raspberry Pi（64bit OS）+ Cloudflare Tunnel** に決めた（2026-10-12、ai1）。
+`Dockerfile` は arm64 でもビルドできるようにし（gnubg をソースからビルド）、GitHub Actions の `docker` で
+x86_64 と arm64 の両方のビルドと解析を確かめている。`compose.yaml` でアプリと cloudflared を常駐させる。
+
+残り（ai1 の手が要る）: [docs/raspi.md](docs/raspi.md) の手順で Pi に Docker を入れて起動し、
+Cloudflare でドメインと Tunnel を用意して、スマホから https で使えることを確かめる。
+確かめたら、Pi の機種とビルドにかかった時間を docs/raspi.md に書き、この項目を完了にする。
 
 ---
 

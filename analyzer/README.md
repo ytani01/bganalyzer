@@ -38,6 +38,9 @@ docker build -t bganalyzer .
 docker run --rm -p 8000:8000 bganalyzer     # http://localhost:8000/
 ```
 
+x86_64 と arm64（Raspberry Pi）の両方でビルドできる。arm64 には gnubg の wheel がないので、ソースからビルドする。
+自宅の Raspberry Pi で公開する手順は [docs/raspi.md](../docs/raspi.md)（`compose.yaml` と Cloudflare Tunnel）。
+
 ## API
 
 色の呼び方は認識側と同じです: **white = 写真の手前のプレイヤー、black = 奥のプレイヤー**。
