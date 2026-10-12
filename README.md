@@ -111,20 +111,30 @@ sequenceDiagram
 
 ### 今（開発中）
 
-uvicorn か Docker で起動し、PC やスマホ（同じ LAN）のブラウザで `http://<マシンのIP>:8000/` を開きます。
+uv か Docker で起動し、PC やスマホ（同じ LAN）のブラウザで `http://<マシンのIP>:8000/` を開きます。
 http のままでも写真の撮影・解析はできますが、ホーム画面への追加（インストール）とオフライン用の Service Worker は
 HTTPS（または localhost）でしか有効になりません。
 
-```bash
-docker build -t bganalyzer .
-docker run --rm -p 8000:8000 bganalyzer
-```
-
-Docker を使わずに動かすときは [uv](https://docs.astral.sh/uv/) で依存を入れます（`pyproject.toml` と `uv.lock` で固定）。
+手元で動かすだけなら Docker は要りません。[uv](https://docs.astral.sh/uv/) で依存を入れて起動します
+（`pyproject.toml` と `uv.lock` で版を固定）。
 
 ```bash
 uv sync
 uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
+```
+
+#### uv と Docker の役割
+
+| | 管理するもの | 使う場面 |
+|---|---|---|
+| uv | Python のパッケージ（gnubg、FastAPI、OpenCV など）と Python 本体の版 | 手元での開発・テスト・起動。これだけで足りる |
+| Docker | OS のライブラリ（gnubg が使う glib など）も含めた実行環境まるごと | サーバーに公開するとき、どのマシンでも同じ環境で動かすため（必須ではない） |
+
+Docker イメージの中でも、Python のパッケージは同じ `uv.lock` から `uv sync --frozen` で入れています。
+
+```bash
+docker build -t bganalyzer .
+docker run --rm -p 8000:8000 bganalyzer
 ```
 
 ```mermaid
