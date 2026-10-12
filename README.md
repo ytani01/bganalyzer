@@ -179,6 +179,7 @@ flowchart LR
 - `analyzer/`: ステップ2の局面解析 API（GNU Backgammon / FastAPI）と、ステップ3の PWA（`analyzer/static/`、`/` で配信）。詳細は [analyzer/README.md](analyzer/README.md)。
 - `Dockerfile`: API と PWA を1つのコンテナで動かす。
 - `samples/`: 精度確認用の写真・アプリ画面と正解データ（`*.truth.json`）。
+- `docs/HANDOVER.md`: 別のアカウントや Claude プロジェクトへ引き継ぐときのメモ（方針・進捗・運用ルール）。
 
 ## 予定
 
