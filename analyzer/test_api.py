@@ -84,3 +84,18 @@ def test_server_exit_stops_gnubg_helper():
         helpers = list(analysis._pool._processes.values())
     assert analysis._pool is None
     assert helpers and not any(p.is_alive() for p in helpers)
+
+
+def test_steep_photo_is_flagged():
+    # photo1 was taken at a steep angle and reads badly; the top-down shots and screenshots are fine.
+    import cv2
+    from board import OBLIQUE_WARN_DEG, view_tilt_deg
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    tilt = {}
+    for f in samples.glob("*.truth.json"):
+        t = json.loads(f.read_text())
+        shape = cv2.imread(str(samples / t["image"])).shape
+        tilt[f.name.split(".")[0]] = view_tilt_deg(t["corners_TL_TR_BR_BL"], shape)
+    assert tilt["photo1"] > OBLIQUE_WARN_DEG
+    assert all(v < OBLIQUE_WARN_DEG for k, v in tilt.items() if k != "photo1")

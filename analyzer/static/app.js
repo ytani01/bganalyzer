@@ -19,6 +19,7 @@ const state = {
   bottomColour: 1,   // 0 = the darker checkers are 手前's, 1 = the lighter ones
   onRoll: "white",
   fromPhoto: false,
+  warnings: [],      // the server's notes on the photo (e.g. taken at a steep angle)
   board: null,       // {points[24], bar_white, bar_black}
   selected: null,    // point index 0..23, or "bar"
   result: null,
@@ -92,6 +93,7 @@ async function decode(file) {
 
 $("manual").addEventListener("click", () => {
   state.fromPhoto = false;
+  state.warnings = [];
   state.board = { points: START.slice(), bar_white: 0, bar_black: 0 };
   state.selected = null;
   setResult(null);
@@ -264,6 +266,7 @@ $("recognize").addEventListener("click", async () => {
     if (dice) fd.append("dice", dice.join(","));
     const data = await post("analyze-photo", fd);
     const rec = data.recognized;
+    state.warnings = data.warnings || [];
     state.board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
     state.selected = null;
     show("board");
@@ -389,6 +392,7 @@ function drawCounts() {
   if (!errs.length && state.fromPhoto && (offW > 0 || offB > 0)) {
     errs.push(`上がった駒が 手前 ${offW} 個・奥 ${offB} 個 の扱いです。駒の見落としがないか確かめてください。`);
   }
+  if (state.fromPhoto) errs.unshift(...state.warnings);
   $("errors").hidden = !errs.length;
   $("errors").textContent = errs.join(" / ");
 }

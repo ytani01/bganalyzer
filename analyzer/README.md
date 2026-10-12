@@ -86,7 +86,8 @@ curl -s localhost:8000/analyze -H 'content-type: application/json' \
 フィールド: `image`、`corners`（`x1,y1,…,x4,y4`）、`home`、`bottom_colour`（意味は recognizer/README.md と同じ）、
 `on_roll`、`plies`、`dice`（例 `3,1`）。
 
-応答は `{"recognized": 認識結果, "errors": [...], "analysis": 上の /analyze と同じ形}`。
+応答は `{"recognized": 認識結果, "errors": [...], "warnings": [...], "analysis": 上の /analyze と同じ形}`。
+`warnings` は写真についての注意（日本語の文）。今は、盤を真上から 40° 以上傾けて撮ったときに「斜めから撮った」と出る。
 認識で駒数が合わないときは `analysis` が `null` になり、`errors` に理由が入ります（アプリで手修正してから
 `/analyze` を呼ぶ想定）。
 
