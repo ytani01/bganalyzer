@@ -1,13 +1,19 @@
-"""HTTP API for position analysis (step 2). Run: uvicorn app:app --app-dir analyzer
+"""HTTP API for position analysis (step 2) and the PWA (step 3, static/ served at /).
+
+Run: uvicorn app:app --app-dir analyzer
 
 Do not run with --reload or several workers: the gnubg extension is not fork-safe.
 """
 from __future__ import annotations
 
+import mimetypes
+from pathlib import Path
+
 import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from analysis import DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_position, summary_ja
@@ -100,3 +106,8 @@ async def analyze_photo(
         # Let the app show the read board for manual correction.
         return {"recognized": pos.to_dict(), "errors": errors, "analysis": None}
     return {"recognized": pos.to_dict(), "errors": [], "analysis": _run(pos, on_roll, plies, d)}
+
+
+# The PWA. Mounted last so the API routes above take precedence.
+mimetypes.add_type("application/manifest+json", ".webmanifest")   # unknown before Python 3.13
+app.mount("/", StaticFiles(directory=Path(__file__).resolve().parent / "static", html=True), name="pwa")

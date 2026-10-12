@@ -1,17 +1,17 @@
 # bganalyzer
 
-スマホで撮った実物のバックギャモン盤の写真から局面を読み取り、GNU Backgammon で解析する（勝率・ギャモン率・ピップ数）ためのプロジェクトです。最終的には PWA にする予定です。
+スマホで撮った実物のバックギャモン盤の写真から局面を読み取り、GNU Backgammon で解析する（勝率・ギャモン率・ピップ数）ためのプロジェクトです。スマホのブラウザで使う PWA から写真を送って解析できます。
 
 図の中で点線・「予定」と書いた部分はまだ作っていません。
 
 ## 全体のソフトウェア構成
 
-利用者のスマホで動く PWA（予定）が写真を撮り、サーバーの解析 API に送ります。サーバーは盤面認識（OpenCV）と局面解析（GNU Backgammon）を行い、結果を JSON で返します。
+利用者のスマホで動く PWA が写真を撮り、サーバーの解析 API に送ります。PWA の画面（HTML / JS）も同じサーバーが配信します。サーバーは盤面認識（OpenCV）と局面解析（GNU Backgammon）を行い、結果を JSON で返します。
 
 ```mermaid
 flowchart LR
     subgraph phone["スマホ（ブラウザ）"]
-        pwa["PWA（予定）<br/>撮影・四隅タップ<br/>自分の色・ホーム側の指定<br/>認識結果の手修正・結果表示"]
+        pwa["PWA（analyzer/static/）<br/>撮影・四隅タップ<br/>自分の色・ホーム側の指定<br/>認識結果の手修正・結果表示"]
     end
 
     subgraph server["解析サーバー（Python）"]
@@ -24,15 +24,12 @@ flowchart LR
         ana --> gnubg
     end
 
-    pwa -. "HTTPS / JSON・multipart（予定）" .-> api
-
-    classDef planned stroke-dasharray: 5 5;
-    class pwa planned;
+    pwa -- "HTTP(S) / JSON・multipart" --> api
 ```
 
 | 層 | 場所 | 技術 | 状態 |
 |---|---|---|---|
-| 画面（撮影・手修正・結果表示） | スマホのブラウザ | PWA | 予定（ステップ3） |
+| 画面（撮影・手修正・結果表示） | スマホのブラウザ | PWA（素の HTML / JS、ビルド不要） | 済（ステップ3） |
 | HTTP API | サーバー | FastAPI / uvicorn | 済（ステップ2） |
 | 盤面認識 | サーバー | Python / OpenCV | 済（ステップ1） |
 | 局面解析 | サーバー（子プロセス） | GNU Backgammon（gnubg） | 済（ステップ2） |
@@ -41,11 +38,12 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph analyzer["analyzer/（ステップ2）"]
-        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /health"]
+    subgraph analyzer["analyzer/（ステップ2・3）"]
+        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /health<br/>/ で static/ を配信"]
         analysis["analysis.py<br/>gnubg 呼び出し・確率/エクイティ整形<br/>日本語の要約"]
         worker["gnubg 子プロセス<br/>（そのメインスレッドで評価）"]
         test["test_api.py<br/>API のテスト"]
+        static["static/<br/>PWA（index.html, app.js,<br/>manifest, Service Worker）"]
     end
 
     subgraph recognizer["recognizer/（ステップ1）"]
@@ -57,6 +55,7 @@ flowchart TB
 
     samples[("samples/<br/>写真・画面と正解 *.truth.json")]
 
+    static -- "fetch" --> app
     app --> analysis
     app -- "/analyze-photo のときだけ読み込む" --> board
     analysis --> position
@@ -74,6 +73,7 @@ flowchart TB
 | `recognizer/position.py` | 盤面モデル（`points` 24個・バー・上がり）、gnubg Position ID の作成/読み込み、ピップ数。認識と解析の共通の型 |
 | `recognizer/synth.py`, `evaluate.py` | 精度確認用（合成画像の生成、`samples/*.truth.json` との比較） |
 | `analyzer/app.py` | HTTP API。JSON の盤面または写真を受け取り、認識・解析して返す |
+| `analyzer/static/` | PWA。写真を選ぶ → 四隅をタップ（ルーペ付き・ドラッグで調整）→ `/analyze-photo` → 盤面を表示してタップで修正 → `/analyze` → 勝率・ギャモン率・ピップ・最善手を表示。長辺 2560px を超える写真は 2048px に縮めて送る |
 | `analyzer/analysis.py` | gnubg で勝率・ギャモン率・エクイティ・最善手を計算。gnubg はメインスレッド以外で落ちるので専用の子プロセスで動かす |
 
 詳しくは [recognizer/README.md](recognizer/README.md) と [analyzer/README.md](analyzer/README.md) を見てください。
@@ -83,7 +83,7 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     actor U as 利用者
-    participant P as PWA（予定）
+    participant P as PWA
     participant A as app.py
     participant R as board.py
     participant G as analysis.py + gnubg
@@ -111,11 +111,18 @@ sequenceDiagram
 
 ### 今（開発中）
 
-PWA はまだ無いので、API は `curl` などで直接呼び出します。
+uvicorn か Docker で起動し、PC やスマホ（同じ LAN）のブラウザで `http://<マシンのIP>:8000/` を開きます。
+http のままでも写真の撮影・解析はできますが、ホーム画面への追加（インストール）とオフライン用の Service Worker は
+HTTPS（または localhost）でしか有効になりません。
+
+```bash
+docker build -t bganalyzer .
+docker run --rm -p 8000:8000 bganalyzer
+```
 
 ```mermaid
 flowchart LR
-    dev["開発者の PC<br/>curl / テスト"] -- "HTTP :8000" --> uv["uvicorn<br/>（ワーカー1つ・--reload なし）"]
+    dev["PC / スマホのブラウザ<br/>curl / テスト"] -- "HTTP :8000" --> uv["uvicorn<br/>（ワーカー1つ・--reload なし）"]
     subgraph host["開発マシン"]
         uv --> app["app.py"]
         app --> child["gnubg 子プロセス"]
@@ -125,12 +132,14 @@ flowchart LR
 ### 予定（公開後）
 
 ホスティング先は未定です。gnubg が子プロセスとメインスレッドを必要とするため、サーバーレス関数ではなく常駐する Python プロセス（コンテナや VPS）で動かす想定です。
+リポジトリ直下の `Dockerfile` でそのままコンテナにできます。PWA は同じサーバーから配信するのが一番簡単ですが、
+別の静的ホスティングに置く場合は `?api=https://APIのURL` を付けて開けば、その API を呼びます。
 
 ```mermaid
 flowchart LR
-    phone["スマホ<br/>PWA（予定）"]
-    static["静的ファイル配信（予定）<br/>HTML / JS / manifest / Service Worker"]
-    subgraph backend["API サーバー（予定・ホスティング先は未定）"]
+    phone["スマホ<br/>PWA"]
+    static["静的ファイル配信<br/>HTML / JS / manifest / Service Worker<br/>（今は API サーバーが兼ねる）"]
+    subgraph backend["API + PWA サーバー（ホスティング先は未定）"]
         tls["HTTPS 終端<br/>（リバースプロキシ等）"]
         uv["uvicorn + app.py<br/>（ワーカー1つ）"]
         child["gnubg 子プロセス"]
@@ -141,7 +150,7 @@ flowchart LR
     phone -- "HTTPS：写真・盤面の送信（CORS 許可済み）" --> tls
 
     classDef planned stroke-dasharray: 5 5;
-    class phone,static,tls,uv,child planned;
+    class tls planned;
 ```
 
 - 写真はサーバーに送って処理するだけで、保存はしません。
@@ -150,12 +159,13 @@ flowchart LR
 ## 現状
 
 - `recognizer/`: ステップ1の盤面認識プロトタイプ（Python / OpenCV）。詳細は [recognizer/README.md](recognizer/README.md)。
-- `analyzer/`: ステップ2の局面解析 API（GNU Backgammon / FastAPI）。詳細は [analyzer/README.md](analyzer/README.md)。
+- `analyzer/`: ステップ2の局面解析 API（GNU Backgammon / FastAPI）と、ステップ3の PWA（`analyzer/static/`、`/` で配信）。詳細は [analyzer/README.md](analyzer/README.md)。
+- `Dockerfile`: API と PWA を1つのコンテナで動かす。
 - `samples/`: 精度確認用の写真・アプリ画面と正解データ（`*.truth.json`）。
 
 ## 予定
 
 1. 盤面認識の試作（済）
 2. gnubg による解析（サーバー側）（済）
-3. PWA（撮影・四隅指定・手修正）
+3. PWA（撮影・四隅指定・手修正）（済）
 4. 実写真での調整
