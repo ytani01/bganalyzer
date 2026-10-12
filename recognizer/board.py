@@ -33,9 +33,9 @@ import numpy as np
 
 from position import Position
 
-# The recognizer's version (board.py and position.py). Bump it when recognizer/ changes;
+# The recognizer's version (board.py, position.py and corners.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -75,15 +75,21 @@ class Layout:
 
 # ---------------------------------------------------------------- geometry --
 
-def _edge_points(lab, axis, pos, lo, hi, win, step=4):
+def _edge_gradients(lab):
+    """Contrast across horizontal and across vertical edges, for _edge_points."""
+    return {"h": cv2.blur(np.abs(np.diff(lab, axis=0)).sum(2), (15, 1)),
+            "v": cv2.blur(np.abs(np.diff(lab, axis=1)).sum(2), (1, 15))}
+
+
+def _edge_points(grads, axis, pos, lo, hi, win, step=4):
     """Points of the strongest straight edge near canonical line `pos`.
 
     axis='h': horizontal edge y≈pos spanning x in [lo, hi]; axis='v': vertical.
+    grads: from _edge_gradients.
     """
     pts = []
+    g = grads[axis]
     if axis == "h":
-        g = np.abs(np.diff(lab, axis=0)).sum(2)
-        g = cv2.blur(g, (15, 1))
         for x in range(int(lo), int(hi), step):
             y0, y1 = int(max(pos - win, 0)), int(min(pos + win, g.shape[0] - 1))
             if y1 <= y0 or not (0 <= x < g.shape[1]):
@@ -93,8 +99,6 @@ def _edge_points(lab, axis, pos, lo, hi, win, step=4):
             if col[k] > 6:
                 pts.append((x, y0 + k + 0.5, col[k]))
     else:
-        g = np.abs(np.diff(lab, axis=1)).sum(2)
-        g = cv2.blur(g, (1, 15))
         for y in range(int(lo), int(hi), step):
             x0, x1 = int(max(pos - win, 0)), int(min(pos + win, g.shape[1] - 1))
             if x1 <= x0 or not (0 <= y < g.shape[0]):
@@ -144,19 +148,20 @@ def refine(img, corners, lay: Layout, m: int):
     size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
     warp = cv2.warpPerspective(img, Sh @ np.linalg.inv(H0), size, flags=cv2.INTER_AREA)
     lab = cv2.GaussianBlur(cv2.cvtColor(warp, cv2.COLOR_BGR2Lab).astype(np.float32), (0, 0), 1.5)
+    grads = _edge_gradients(lab)
     win = 0.06 * lay.h
     xs = [m, m + lay.a, m + lay.a + lay.bar, m + lay.w]
     lines, quality = {}, []
     for name, pos in (("top", m), ("bot", m + lay.h)):
         pts = []
         for x0, x1 in ((xs[0], xs[1]), (xs[2], xs[3])):
-            pts.append(_edge_points(lab, "h", pos, x0 + 0.05 * lay.a, x1 - 0.05 * lay.a, win))
+            pts.append(_edge_points(grads, "h", pos, x0 + 0.05 * lay.a, x1 - 0.05 * lay.a, win))
         pts = [p for p in pts if len(p)]
         r = _ransac_line(np.vstack(pts), "h") if pts else None
         lines[name] = r
     ys = (m + 0.03 * lay.h, m + 0.97 * lay.h)
     for name, pos in zip(("L", "BL", "BR", "R"), xs):
-        lines[name] = _ransac_line(_edge_points(lab, "v", pos, *ys, win if name in ("L", "R") else lay.bar * 0.45), "v")
+        lines[name] = _ransac_line(_edge_points(grads, "v", pos, *ys, win if name in ("L", "R") else lay.bar * 0.45), "v")
     if any(lines[k] is None for k in ("top", "bot", "L", "R")):
         return H0, 0.0, lay
     quality = float(np.mean([v[2] for v in lines.values() if v is not None]))

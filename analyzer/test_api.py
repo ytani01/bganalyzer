@@ -128,6 +128,61 @@ def test_git_commit_reads_packed_and_detached_refs(tmp_path):
     assert git_commit(tmp_path / "missing") is None
 
 
+def _corner_error(found, truth, shape):
+    """Largest distance between found and true corners, as a share of the photo's long side."""
+    import numpy as np
+    return float(np.linalg.norm(np.subtract(found, truth), axis=1).max() / max(shape[:2]))
+
+
+def test_corners_are_found_on_samples():
+    # The app shows these as the starting corners; the user drags them into place.
+    # Boards with printed triangles are found; carved ones (photo4) and striped app
+    # screens (screen1) may not be, and the app then starts from a rectangle.
+    import cv2
+    from corners import find_corners
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    for name in ("photo2", "photo3", "screen2"):
+        t = json.loads((samples / f"{name}.truth.json").read_text())
+        img = cv2.imread(str(samples / t["image"]))
+        found = find_corners(img)
+        assert found is not None, name
+        assert _corner_error(found, t["corners_TL_TR_BR_BL"], img.shape) < 0.035, name
+
+
+def test_corners_are_found_on_synthetic_boards():
+    import numpy as np
+    from corners import find_corners
+    from synth import photograph, random_position, render_board
+
+    rng = np.random.default_rng(1)
+    for k in range(4):
+        board_img, c = render_board(random_position(rng), rng, home="right" if k % 2 else "left")
+        photo, c = photograph(board_img, c, rng)
+        found = find_corners(photo)
+        assert found is not None and _corner_error(found, c, photo.shape) < 0.035, k
+
+
+def test_api_find_corners():
+    import cv2
+    import numpy as np
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    img = cv2.imread(str(samples / "photo2.jpg"))
+    f = 2048 / max(img.shape[:2])   # the app sends large photos at this size
+    small = cv2.resize(img, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
+    res = client.post("/find-corners", files={"image": ("b.jpg", cv2.imencode(".jpg", small)[1].tobytes())})
+    assert res.status_code == 200, res.text
+    j = res.json()
+    assert (j["width"], j["height"]) == (small.shape[1], small.shape[0])
+    truth = json.loads((samples / "photo2.truth.json").read_text())["corners_TL_TR_BR_BL"]
+    assert _corner_error(j["corners"], np.multiply(truth, f), small.shape) < 0.035
+
+    blank = cv2.imencode(".png", np.full((300, 400, 3), 200, np.uint8))[1].tobytes()
+    assert client.post("/find-corners", files={"image": ("b.png", blank)}).json()["corners"] is None
+    assert client.post("/find-corners", files={"image": ("x.jpg", b"not an image")}).status_code == 422
+
+
 def test_share_target():
     # Android's share sheet posts the photo to the manifest's share_target; sw.js answers on the
     # phone. Without it the server must not keep the photo, only send the app back to ./.
