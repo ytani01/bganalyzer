@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BG Analyzer</title>
 <meta name="theme-color" content="#2e5a3a">
+<script>
+// Served under a path such as /bg/: without the trailing slash, relative URLs would miss it.
+if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
+  location.replace(location.pathname + "/" + location.search + location.hash);
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
