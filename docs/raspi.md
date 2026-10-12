@@ -121,3 +121,10 @@ sudo tailscale serve --bg --set-path /bg http://127.0.0.1:8000
 - **ビルドが途中で止まる・Pi が固まる:** メモリ不足の可能性があります。メモリ 1GB の Pi ではスワップを増やすか、Pi 4/5（2GB 以上）を使ってください。
 - **https で開くと 502 になる:** `docker compose ps` で app が動いているか、`curl http://127.0.0.1:8000/health` が `{"ok":true}` を返すかを確かめます。
 - **スマホで開けない:** `tailscale funnel status` で `/bg` がインターネットに公開（Funnel）になっているか確かめます。公開直後は DNS が行き渡るまで数分かかることがあります。
+- **Pi の名前を変えたあと、スマホで `NET::ERR_CERT_COMMON_NAME_INVALID` になる:** 新しい名前が公開 DNS に載っていません
+  （`dig +short @1.1.1.1 <Piの名前>.<tailnet名>.ts.net` が何も返さない）。Pi の中から開くと MagicDNS で直接つながるので、Pi からは気づけません。
+  Funnel を一度オフにしてオンに戻すと、数分で載ります。
+
+  ```bash
+  sudo tailscale funnel --https=443 off && sudo tailscale funnel --bg --set-path /bg http://127.0.0.1:8000
+  ```
