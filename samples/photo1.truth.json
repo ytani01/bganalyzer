@@ -1,0 +1,8 @@
+{
+  "image": "photo1.jpg",
+  "note": "Read by eye. Canonical view: bottom = player at the lower-right of the photo (purple), whose home board is on the LEFT. White = purple, Black = dark red.",
+  "corners_TL_TR_BR_BL": [[1450,1712],[2268,1366],[3137,1553],[2320,2157]],
+  "home": "left",
+  "points": [-1, -1, 0, 2, -1, 4, 0, 2, 0, 0, 0, -5, 5, 0, 0, 0, 1, 0, -3, -2, -2, 0, 0, 1],
+  "bar_white": 0, "bar_black": 0, "off_white": 0, "off_black": 0
+}
