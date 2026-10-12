@@ -56,8 +56,9 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
 - **ai1 の盤:** クラフト紙色の盤面、赤と紺の三角形、白い枠。駒はえんじ色と紫。えんじ色の駒と赤い三角形は
   色がほぼ同じ（Lab で差 ~8）で、色だけでは区別できない。斜めの写真が一番の弱点なので、真上から撮ってもらう。
 - **公開先は未定**（TODO-002、担当 ai1）。ホーム画面への追加には HTTPS が必要。サーバーレス関数は不可、ワーカー1つで常駐。
-- **Docker:** 必須ではなくサーバー公開用。`docker build` はまだ誰も確認していない。
-  Claude のクラウド環境からは Docker Hub（429）や ghcr（403）、deb.debian.org に届かず試せない。
+- **Docker:** 必須ではなくサーバー公開用。`docker build` は ai1 の手元で動作確認済み（2026-10-13）。
+  Claude のクラウド環境からは Docker Hub（429）や ghcr（403）、deb.debian.org に届かず試せないので、
+  Dockerfile を変えたときは ai1 の手元で確認してもらう。
 - **サンプル写真:** `samples/` の顔と第三者の投稿は隠してある。リポジトリは public で、加工前の写真が
   Git の履歴に残っている（TODO-003、担当 ai1）。加工前の写真を再びコミットしない。
 - **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR と main への push で `uv run pytest analyzer` を実行する。
