@@ -67,3 +67,12 @@ def test_api_rejects_bad_input():
     too_many[0] = 16
     assert client.post("/analyze", json={"board": {"points": too_many}}).status_code == 422
     assert client.post("/analyze", json={"position_id": START_ID, "dice": [0, 7]}).status_code == 422
+
+
+def test_server_exit_stops_gnubg_helper():
+    import analysis
+    with TestClient(app) as c:   # runs the lifespan, like uvicorn does
+        assert c.post("/analyze", json={"position_id": START_ID}).status_code == 200
+        helpers = list(analysis._pool._processes.values())
+    assert analysis._pool is None
+    assert helpers and not any(p.is_alive() for p in helpers)
