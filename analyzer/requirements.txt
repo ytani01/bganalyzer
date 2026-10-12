@@ -1,0 +1,6 @@
+gnubg>=1.1.0a16
+fastapi
+uvicorn
+python-multipart
+numpy
+opencv-python-headless
