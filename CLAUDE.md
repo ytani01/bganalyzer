@@ -9,7 +9,8 @@
 ```bash
 pip install -r analyzer/requirements.txt
 python3 -m pytest analyzer                                       # テスト
-uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000    # API の起動
+uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000    # API と PWA（/）の起動
+docker build -t bganalyzer . && docker run --rm -p 8000:8000 bganalyzer   # コンテナで起動
 python3 recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
 ```
 
