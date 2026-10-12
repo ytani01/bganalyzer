@@ -10,8 +10,8 @@ GNU Backgammon 本体は PyPI の [`gnubg`](https://pypi.org/project/gnubg/) パ
 ## 起動
 
 ```
-pip install -r analyzer/requirements.txt
-uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
+uv sync
+uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
 ```
 
 `--reload` や複数ワーカーは使わないでください。gnubg の拡張モジュールはメインスレッド以外で
@@ -92,5 +92,5 @@ curl -s localhost:8000/analyze -H 'content-type: application/json' \
 ## テスト
 
 ```
-python3 -m pytest analyzer
+uv run pytest analyzer
 ```

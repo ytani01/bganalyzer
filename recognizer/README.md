@@ -6,7 +6,7 @@ GNU Backgammon にそのまま渡せる **Position ID** を出します。
 ## 使い方
 
 ```
-python3 board.py <写真> --corners x1,y1,x2,y2,x3,y3,x4,y4 --home left|right [--bottom-colour 0|1] [--debug 出力先]
+uv run python board.py <写真> --corners x1,y1,x2,y2,x3,y3,x4,y4 --home left|right [--bottom-colour 0|1] [--debug 出力先]
 ```
 
 - `--corners`: 盤の遊戯面（左右のフィールド＋バー、枠の内側）の四隅。手前側プレイヤーから見て 左上, 右上, 右下, 左下 の順。
