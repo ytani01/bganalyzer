@@ -5,11 +5,12 @@
 ## 現状
 
 - `recognizer/`: ステップ1の盤面認識プロトタイプ（Python / OpenCV）。詳細は [recognizer/README.md](recognizer/README.md)。
+- `analyzer/`: ステップ2の局面解析 API（GNU Backgammon / FastAPI）。詳細は [analyzer/README.md](analyzer/README.md)。
 - `samples/`: 正解データ（`*.truth.json`）。写真そのものは人物が写っているためリポジトリに含めていません。
 
 ## 予定
 
 1. 盤面認識の試作（済）
-2. gnubg による解析（サーバー側）
+2. gnubg による解析（サーバー側）（済）
 3. PWA（撮影・四隅指定・手修正）
 4. 実写真での調整
