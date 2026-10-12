@@ -252,6 +252,45 @@ def fit_columns(ground_bgr, lay: Layout, m: int) -> Layout:
     return Layout(a=lay.a, bar=lay.bar, h=lay.h, cols=cols)
 
 
+def fit_columns_to_checkers(lay: Layout, circles) -> Layout:
+    """Re-fit each field's columns to the detected checkers.
+
+    Checkers sit on column centres, so they pin the columns down even when the
+    triangles are faint or carved. Candidates start from both the triangle fit
+    and even spacing between the frame edges; a field keeps its columns unless
+    at least two columns' worth of checkers support a better fit.
+    """
+    if lay.cols is None or not len(circles):
+        return lay
+    xs_all = np.array([c[0] for c in circles], np.float64)
+    cols = list(lay.cols)
+    for f, f0 in ((0, 0.0), (1, lay.a + lay.bar)):
+        cur = np.array(lay.cols[6 * f:6 * f + 6])
+        even = f0 + (np.arange(6) + 0.5) * lay.pw
+        xs = xs_all[(xs_all > f0 - 0.3 * lay.pw) & (xs_all < f0 + lay.a + 0.3 * lay.pw)]
+        if len(xs) < 3:
+            continue
+
+        def score(c):
+            d = np.abs(xs[:, None] - c[None, :])
+            near = d.min(1)
+            used = len(set(d.argmin(1)[near < 0.25 * lay.pw]))
+            return np.exp(-(near / (0.12 * lay.pw)) ** 2).sum(), used
+
+        best = None
+        for base in (cur, even):
+            mid = base.mean()
+            for scale in np.linspace(0.9, 1.1, 21):
+                for off in np.linspace(-0.6, 0.6, 49) * lay.pw:
+                    c = mid + off + (base - mid) * scale
+                    sc, used = score(c)
+                    if best is None or sc > best[0] + 1e-6:
+                        best = (sc, used, c)
+        if best[1] >= 2 and best[0] > score(cur)[0] + 0.5:
+            cols[6 * f:6 * f + 6] = list(best[2])
+    return Layout(a=lay.a, bar=lay.bar, h=lay.h, cols=cols)
+
+
 def find_tips(ground_bgr, lay: Layout, m: int):
     """Sub-pixel triangle tips in a (roughly) rectified ground image.
 
@@ -359,12 +398,17 @@ def refine_tips(img, H, lay: Layout, m: int):
     return Hn / Hn[2, 2], new, tips
 
 
-def _plain_colour(lab, lay: Layout, m: int):
+def _plain_colour(lab, lay: Layout, m: int, mask=None):
     y0, y1 = int(m + lay.h * 0.47), int(m + lay.h * 0.53)
-    samples = np.concatenate([
-        lab[y0:y1, int(m + lay.a * 0.1):int(m + lay.a * 0.9)].reshape(-1, 3),
-        lab[y0:y1, int(m + lay.a + lay.bar + lay.a * 0.1):int(m + lay.w - lay.a * 0.1)].reshape(-1, 3)])
-    return np.median(samples, 0)
+    parts = []
+    for x0, x1 in ((int(m + lay.a * 0.1), int(m + lay.a * 0.9)),
+                   (int(m + lay.a + lay.bar + lay.a * 0.1), int(m + lay.w - lay.a * 0.1))):
+        part = lab[y0:y1, x0:x1].reshape(-1, 3)
+        if mask is not None:
+            part = part[~mask[y0:y1, x0:x1].ravel()]
+        parts.append(part)
+    samples = np.concatenate(parts)
+    return np.median(samples, 0) if len(samples) > 50 else np.median(lab[y0:y1].reshape(-1, 3), 0)
 
 
 # ---------------------------------------------------------------- colours --
@@ -372,10 +416,15 @@ def _plain_colour(lab, lay: Layout, m: int):
 LAB_W = np.float32([0.5, 1.0, 1.0])  # lighting mostly changes L
 
 
-def board_colours(ground_bgr, lay: Layout, m: int, tips):
-    """Lab colours of the plain field, the two triangle colours and the frame."""
+def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None):
+    """Lab colours of the plain field, the two triangle colours and the frame.
+
+    mask: pixels to ignore (e.g. under checkers already found)."""
     lab = cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab).astype(np.float32)
-    plain = _plain_colour(lab, lay, m)
+    plain = _plain_colour(lab, lay, m, mask)
+    if mask is not None:
+        lab = lab.copy()
+        lab[mask] = np.nan
     px = []
     for c, r, x, y, L, dx in tips:     # inside detected triangles, along the centre line
         sgn = 1 if r == "top" else -1
@@ -388,16 +437,18 @@ def board_colours(ground_bgr, lay: Layout, m: int, tips):
             for y0 in (m + lay.h * TRI_DEPTH * 0.3, m + lay.h * (1 - TRI_DEPTH * 0.6)):
                 px.append(lab[int(y0):int(y0 + lay.h * TRI_DEPTH * 0.3), x - 2:x + 3].reshape(-1, 3))
     px = np.vstack(px)
+    px = px[~np.isnan(px).any(1)]
     px = px[np.linalg.norm(px - plain, axis=1) > 25] if (np.linalg.norm(px - plain, axis=1) > 25).sum() > 10 else px
     _, _, tri = cv2.kmeans(px, 2, None, (cv2.TERM_CRITERIA_EPS, 20, 0.5), 3, cv2.KMEANS_PP_CENTERS)
     # frame: the strip just outside the near (bottom) edge of the field
-    frames = [np.median(lab[int(m + lay.h + m * 0.3):int(m + lay.h + m * 0.8),
+    frames = [np.nanmedian(lab[int(m + lay.h + m * 0.3):int(m + lay.h + m * 0.8),
                             int(m):int(m + lay.w)].reshape(-1, 3), 0)]
     bx0, bx1 = int(m + lay.col_x(5) + lay.pw * 0.6), int(m + lay.col_x(6) - lay.pw * 0.6)
     if bx1 - bx0 >= 4:   # the bar, where visible
-        frames.append(np.median(lab[int(m + lay.h * 0.3):int(m + lay.h * 0.7), bx0:bx1].reshape(-1, 3), 0))
+        frames.append(np.nanmedian(lab[int(m + lay.h * 0.3):int(m + lay.h * 0.7), bx0:bx1].reshape(-1, 3), 0))
     for x0 in (int(m * 0.2), int(m + lay.w + m * 0.3)):   # left / right frame
-        frames.append(np.median(lab[int(m + lay.h * 0.3):int(m + lay.h * 0.7), x0:x0 + int(m * 0.5)].reshape(-1, 3), 0))
+        frames.append(np.nanmedian(lab[int(m + lay.h * 0.3):int(m + lay.h * 0.7), x0:x0 + int(m * 0.5)].reshape(-1, 3), 0))
+    frames = [f for f in frames if not np.isnan(f).any()]
     return np.vstack([plain, tri, *frames]).astype(np.float32)
 
 
@@ -469,7 +520,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     found = []
     for ch in (gray, lab8[:, :, 1], lab8[:, :, 2]):
         ch = cv2.GaussianBlur(cv2.normalize(ch, None, 0, 255, cv2.NORM_MINMAX), (0, 0), 2)
-        c = cv2.HoughCircles(ch, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.6, param1=70, param2=HOUGH_VOTES,
+        c = cv2.HoughCircles(ch, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.3, param1=70, param2=HOUGH_VOTES,
                              minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
         if c is not None:
             found.append(c[0])
@@ -486,7 +537,8 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     scored = []
     for x, y, r in cs[0]:
         cx, cy = x - m, y - m
-        if not (-0.3 * pitch < cx < lay.w + 0.3 * pitch and -0.3 * pitch < cy < lay.h + 0.3 * pitch):
+        # a checker's centre lies inside the field (labels and scores on the frame do not)
+        if not (-0.3 * pitch < cx < lay.w + 0.3 * pitch and -0.1 * pitch < cy < lay.h + 0.1 * pitch):
             continue
         x0, x1, y0, y1 = int(max(x - r, 0)), int(min(x + r + 1, ww)), int(max(y - r, 0)), int(min(y + r + 1, hh))
         d2 = (xx[y0:y1, x0:x1] - x) ** 2 + (yy[y0:y1, x0:x1] - y) ** 2
@@ -521,7 +573,9 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         scored.append((score, cx, cy, r, med / LAB_W))
     out = []
     for score, cx, cy, r, med in sorted(scored, key=lambda t: -t[0]):
-        if any((cx - o[0]) ** 2 + (cy - o[1]) ** 2 < (0.8 * pitch) ** 2 for o in out):
+        # overlapping checkers of one stack are allowed closer, straight in line
+        if any((cx - o[0]) ** 2 + (cy - o[1]) ** 2 < (0.8 * pitch) ** 2 and
+               not (abs(cx - o[0]) < 0.12 * pitch and abs(cy - o[1]) > 0.6 * pitch) for o in out):
             continue
         out.append((cx, cy, r, med))
     return out
@@ -536,10 +590,13 @@ def count_from_circles(circles, lay: Layout, pitch: float):
     order = np.argsort(cc[:, 0])           # colour 0 = darker
     remap = {int(order[0]): 0, int(order[1]): 1}
     lbl = [remap[int(v)] for v in lbl.ravel()]
+    # how sure each colour call is: glare makes some checkers sit between the two
+    dd = np.linalg.norm(cols[:, None, :] - cc[order][None, :, :], axis=2)
+    conf = np.abs(dd[:, 0] - dd[:, 1]) / (dd.sum(1) + 1e-6)
     counts = {(c, r): [] for c in range(12) for r in ("top", "bottom")}
     bar = [0, 0]
     bar_x0, bar_x1 = lay.col_x(5) + lay.pw / 2, lay.col_x(6) - lay.pw / 2
-    for (x, y, r, _), k in zip(circles, lbl):
+    for (x, y, r, _), k, w in zip(circles, lbl, conf):
         if bar_x0 - 0.15 * lay.pw < x < bar_x1 + 0.15 * lay.pw and \
                 min(abs(x - lay.col_x(5)), abs(x - lay.col_x(6))) > 0.45 * lay.pw:
             bar[k] += 1
@@ -548,12 +605,12 @@ def count_from_circles(circles, lay: Layout, pitch: float):
         if abs(x - lay.col_x(c)) > 0.5 * lay.pw:
             continue
         row = "top" if y < lay.h / 2 else "bottom"
-        counts[(c, row)].append((y if row == "top" else lay.h - y, k))   # depth from the edge
+        counts[(c, row)].append((y if row == "top" else lay.h - y, k, w))   # depth from the edge
     # the first checker sits a little in from the canonical edge (frame lip,
     # rough corners): measure that per row from the stacks themselves
     lip = {}
     for row in ("top", "bottom"):
-        firsts = [min(d for d, _ in v) for (c, r), v in counts.items() if r == row and v]
+        firsts = [min(d for d, *_ in v) for (c, r), v in counts.items() if r == row and v]
         firsts = [f for f in firsts if f < 1.6 * pitch]
         lip[row] = float(np.clip(np.median(firsts) - pitch / 2, -0.3 * pitch, 0.8 * pitch)) if firsts else 0.0
     runs = {}
@@ -562,17 +619,23 @@ def count_from_circles(circles, lay: Layout, pitch: float):
             runs[(c, row)] = (None, 0)
             continue
         # a point holds one colour: vote, then count the whole stack
-        k = 0 if sum(1 for _, kk in v if kk == 0) >= sum(1 for _, kk in v if kk == 1) else 1
+        k = 0 if sum(w for _, kk, w in v if kk == 0) >= sum(w for _, kk, w in v if kk == 1) else 1
         # checkers stack from the base without gaps, so walk out from the base and
         # let the farthest checker of that chain give the count (a checker missed
         # in the middle is still counted; a stray circle far away is not)
-        last, used = None, 0
-        for depth in sorted(d - lip[row] for d, _ in v):
-            limit = 1.6 * pitch if last is None else last + 2.3 * pitch
+        last, used, chain = None, 0, []
+        for depth in sorted(d - lip[row] for d, *_ in v):
+            limit = 2.3 * pitch if last is None else last + 2.3 * pitch
             if depth > limit:
                 break
             last, used = depth, used + 1
+            chain.append(depth)
         n = 0 if last is None else max(used, int(round(last / pitch + 0.5)))
+        gaps = np.diff(chain)
+        if len(gaps) >= 2 and np.median(gaps) < 0.85 * pitch:
+            # apps and full points overlap the checkers: count in steps of the overlap
+            step = float(np.median(gaps))
+            n = max(used, 1 + int(sum(round(g / step) for g in gaps)))
         runs[(c, row)] = (k if n else None, min(n, 15))
     return runs, bar, cc[order] / LAB_W
 
@@ -611,6 +674,18 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
     if len(circles) >= 4:   # checkers may be wider than a point: measure them
         pitch = float(2 * np.median([c[2] for c in circles]))
+        circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
+    if len(circles) >= 4:   # learn the board colours again without the checkers on it
+        mask = np.zeros(ground.shape[:2], np.uint8)
+        for x, y, r, _ in circles:
+            cv2.circle(mask, (int(x + m), int(y + m)), int(r * 1.1), 1, -1)
+        board = board_colours(ground, lay, m, tips, mask.astype(bool))
+        tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
+        circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
+    lay2 = fit_columns_to_checkers(lay, circles)
+    if lay2.cols != lay.cols:
+        lay = lay2
+        tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
     runs, bar, cc = count_from_circles(circles, lay, pitch)
     pos = to_position(runs, bar, bottom_colour, home)
