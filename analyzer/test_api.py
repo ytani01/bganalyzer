@@ -75,3 +75,12 @@ def test_pwa_is_served():
     assert client.get("/manifest.webmanifest").headers["content-type"].startswith("application/manifest+json")
     assert client.get("/sw.js").status_code == 200
     assert client.get("/health").json() == {"ok": True}   # API routes still win over the static mount
+
+
+def test_server_exit_stops_gnubg_helper():
+    import analysis
+    with TestClient(app) as c:   # runs the lifespan, like uvicorn does
+        assert c.post("/analyze", json={"position_id": START_ID}).status_code == 200
+        helpers = list(analysis._pool._processes.values())
+    assert analysis._pool is None
+    assert helpers and not any(p.is_alive() for p in helpers)

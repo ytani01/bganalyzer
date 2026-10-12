@@ -7,6 +7,7 @@ Do not run with --reload or several workers: the gnubg extension is not fork-saf
 from __future__ import annotations
 
 import mimetypes
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import cv2
@@ -16,9 +17,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from analysis import DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_position, summary_ja
+from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_position, shutdown,
+                      summary_ja)
 
-app = FastAPI(title="bganalyzer")
+
+@asynccontextmanager
+async def lifespan(_app):
+    yield
+    shutdown()   # uvicorn re-raises SIGTERM after this, so atexit hooks never run
+
+
+app = FastAPI(title="bganalyzer", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
