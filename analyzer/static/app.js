@@ -8,6 +8,8 @@ const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const START = [-2, 0, 0, 0, 0, 5, 0, 3, 0, 0, 0, -5, 5, 0, 0, 0, -3, 0, -5, 0, 0, 0, 0, 2];
 const NAME = { white: "手前", black: "奥" };
 const CORNER_NAMES = ["左上", "右上", "右下", "左下"];
+const SHARE_CACHE = "bganalyzer-share";   // same names as in sw.js
+const SHARE_KEY = "shared-photo";
 
 const $ = (id) => document.getElementById(id);
 
@@ -57,10 +59,13 @@ function initSeg(name, onChange) {
 }
 
 // ---------------------------------------------------------------- step 1: photo
-$("file").addEventListener("change", async (e) => {
+$("file").addEventListener("change", (e) => {
   const file = e.target.files[0];
   e.target.value = "";
-  if (!file) return;
+  if (file) loadPhoto(file);
+});
+
+async function loadPhoto(file) {
   busy("写真を読み込んでいます…");
   try {
     state.bitmap = await decode(file);
@@ -74,7 +79,33 @@ $("file").addEventListener("change", async (e) => {
   } finally {
     busy();
   }
-});
+}
+
+// A photo shared from another app (Android: 共有 → BG Analyzer). sw.js keeps it in a cache on the
+// phone and opens ./?shared=1; it is not sent to the server until 盤面を読み取る, as usual.
+async function loadSharedPhoto() {
+  const params = new URLSearchParams(location.search);
+  const shared = params.get("shared");
+  if (shared === null) return;
+  params.delete("shared");
+  const rest = params.toString();
+  history.replaceState(null, "", location.pathname + (rest ? "?" + rest : ""));
+  if (shared === "none") {   // the service worker was not running yet, so the photo did not arrive
+    alert("共有された写真を受け取れませんでした。もう一度共有するか、「写真を撮る / 選ぶ」から選んでください。");
+    return;
+  }
+  try {
+    const cache = await caches.open(SHARE_CACHE);
+    const res = await cache.match(SHARE_KEY);
+    if (!res) return;
+    await cache.delete(SHARE_KEY);
+    const blob = await res.blob();
+    const name = decodeURIComponent(res.headers.get("X-File-Name") || "shared.jpg");
+    loadPhoto(new File([blob], name, { type: blob.type }));
+  } catch (err) {
+    alert("共有された写真を開けませんでした: " + err.message);
+  }
+}
 
 async function decode(file) {
   if (window.createImageBitmap) {
@@ -585,3 +616,5 @@ fetch(API ? `${API}/version` : "version")
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
+
+loadSharedPhoto();
