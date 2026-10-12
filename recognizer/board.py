@@ -602,21 +602,72 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
 
 
 def count_from_circles(circles, lay: Layout, pitch: float):
-    """Assign circles to points / bar; split colours with 2-means."""
+    """Assign circles to points / bar, count the stacks, split colours with 2-means."""
     if len(circles) < 2:
         return {}, [0, 0], None
-    cols = np.float32([c[3] for c in circles]) * LAB_W
-    _, lbl, cc = cv2.kmeans(cols, 2, None, (cv2.TERM_CRITERIA_EPS, 30, 0.1), 5, cv2.KMEANS_PP_CENTERS)
-    order = np.argsort(cc[:, 0])           # colour 0 = darker
-    remap = {int(order[0]): 0, int(order[1]): 1}
-    lbl = [remap[int(v)] for v in lbl.ravel()]
+    # 1. where each circle is: a point (column, row, depth from the edge) or the bar
+    counts = {(c, r): [] for c in range(12) for r in ("top", "bottom")}
+    on_bar = []
+    bar_x0, bar_x1 = lay.col_x(5) + lay.pw / 2, lay.col_x(6) - lay.pw / 2
+    for i, (x, y, r, _, sc) in enumerate(circles):
+        if bar_x0 - 0.15 * lay.pw < x < bar_x1 + 0.15 * lay.pw and \
+                min(abs(x - lay.col_x(5)), abs(x - lay.col_x(6))) > 0.45 * lay.pw:
+            on_bar.append(i)
+            continue
+        c = int(np.argmin([abs(x - lay.col_x(i)) for i in range(12)]))
+        if abs(x - lay.col_x(c)) > 0.5 * lay.pw:
+            continue
+        row = "top" if y < lay.h / 2 else "bottom"
+        counts[(c, row)].append((y if row == "top" else lay.h - y, x, sc, i))   # depth from the edge
+    # the first checker sits a little in from the canonical edge (frame lip,
+    # rough corners): measure that per row from the stacks themselves
+    lip = {}
+    for row in ("top", "bottom"):
+        firsts = [min(d for d, *_ in v) for (c, r), v in counts.items() if r == row and v]
+        firsts = [f for f in firsts if f < 1.6 * pitch]
+        lip[row] = float(np.clip(np.median(firsts) - pitch / 2, -0.3 * pitch, 0.8 * pitch)) if firsts else 0.0
+    # 2. count each stack
+    stacks = {}
+    for (c, row), v in counts.items():
+        # checkers stack from the base without gaps, so walk out from the base and
+        # let the farthest checker of that chain give the count (a checker missed
+        # in the middle is still counted; a stray circle far away is not)
+        last, last_x, chain, members = None, None, [], []
+        for depth, x, sc, i in sorted((d - lip[row], x, sc, i) for d, x, sc, i in v):
+            limit = 2.3 * pitch if last is None else last + 2.3 * pitch
+            # a stack is straight; round things piled askew (a dice cup) are not
+            if depth > limit or (last_x is not None and abs(x - last_x) > STACK_SKEW * pitch):
+                break
+            last, last_x = depth, x
+            chain.append(depth)
+            members.append(i)
+        used = len(chain)
+        n = 0 if last is None else max(used, int(round(last / pitch + 0.5)))
+        if n == 1 and circles[members[0]][4] < LONE_MIN_SCORE:
+            n = 0   # a lone checker needs a clearer circle than one in a stack
+        gaps = np.diff(chain)
+        if len(gaps) >= 2 and np.median(gaps) < 0.85 * pitch:
+            # apps and full points overlap the checkers: count in steps of the overlap
+            step = float(np.median(gaps))
+            n = max(used, 1 + int(sum(round(g / step) for g in gaps)))
+        stacks[(c, row)] = (min(n, 15), members if n else [])
+    # 3. colours, learnt from the checkers only: circles that are in no stack
+    # (a dice cup, a printed emblem) would pull a cluster to themselves
+    keep = sorted({i for _, mem in stacks.values() for i in mem} | set(on_bar))
+    if len(keep) < 2:
+        keep = list(range(len(circles)))
+    raw = np.float32([c[3] for c in circles])
+    cols = raw * LAB_W
+    _, _, cc = cv2.kmeans(cols[keep], 2, None, (cv2.TERM_CRITERIA_EPS, 30, 0.1), 5, cv2.KMEANS_PP_CENTERS)
+    cc = cc[np.argsort(cc[:, 0])]          # colour 0 = darker
+    dd = np.linalg.norm(cols[:, None, :] - cc[None, :, :], axis=2)
+    lbl = list(np.argmin(dd, 1))
     # glare washes a coloured checker towards white (red looks pink). When one
     # colour is neutral (white, black) and the other is not, a checker with clear
     # chroma in the coloured one's hue belongs to it, however light it looks
-    raw = np.float32([c[3] for c in circles])
     chroma = np.hypot(raw[:, 1] - 128, raw[:, 2] - 128)
     hue = np.arctan2(raw[:, 2] - 128, raw[:, 1] - 128)
-    cent = cc[order] / LAB_W
+    cent = cc / LAB_W
     cchroma = np.hypot(cent[:, 1] - 128, cent[:, 2] - 128)
     neutral = int(np.argmin(cchroma))
     if cchroma[neutral] < 15 and cchroma[1 - neutral] > 35:
@@ -626,58 +677,19 @@ def count_from_circles(circles, lay: Layout, pitch: float):
             if lbl[i] == neutral and chroma[i] > 20 and dh[i] < np.radians(35):
                 lbl[i] = 1 - neutral
     # how sure each colour call is: glare makes some checkers sit between the two
-    dd = np.linalg.norm(cols[:, None, :] - cc[order][None, :, :], axis=2)
     conf = np.abs(dd[:, 0] - dd[:, 1]) / (dd.sum(1) + 1e-6)
-    counts = {(c, r): [] for c in range(12) for r in ("top", "bottom")}
     bar = [0, 0]
-    bar_x0, bar_x1 = lay.col_x(5) + lay.pw / 2, lay.col_x(6) - lay.pw / 2
-    for (x, y, r, _, sc), k, w in zip(circles, lbl, conf):
-        if bar_x0 - 0.15 * lay.pw < x < bar_x1 + 0.15 * lay.pw and \
-                min(abs(x - lay.col_x(5)), abs(x - lay.col_x(6))) > 0.45 * lay.pw:
-            bar[k] += 1
-            continue
-        c = int(np.argmin([abs(x - lay.col_x(i)) for i in range(12)]))
-        if abs(x - lay.col_x(c)) > 0.5 * lay.pw:
-            continue
-        row = "top" if y < lay.h / 2 else "bottom"
-        counts[(c, row)].append((y if row == "top" else lay.h - y, k, w, x, sc))   # depth from the edge
-    # the first checker sits a little in from the canonical edge (frame lip,
-    # rough corners): measure that per row from the stacks themselves
-    lip = {}
-    for row in ("top", "bottom"):
-        firsts = [min(d for d, *_ in v) for (c, r), v in counts.items() if r == row and v]
-        firsts = [f for f in firsts if f < 1.6 * pitch]
-        lip[row] = float(np.clip(np.median(firsts) - pitch / 2, -0.3 * pitch, 0.8 * pitch)) if firsts else 0.0
+    for i in on_bar:
+        bar[lbl[i]] += 1
     runs = {}
-    for (c, row), v in counts.items():
-        if not v:
-            runs[(c, row)] = (None, 0)
+    for key, (n, members) in stacks.items():
+        if not n:
+            runs[key] = (None, 0)
             continue
-        # a point holds one colour: vote, then count the whole stack
-        k = 0 if sum(w for _, kk, w, *_ in v if kk == 0) >= sum(w for _, kk, w, *_ in v if kk == 1) else 1
-        # checkers stack from the base without gaps, so walk out from the base and
-        # let the farthest checker of that chain give the count (a checker missed
-        # in the middle is still counted; a stray circle far away is not)
-        last, used, chain, scores = None, 0, [], []
-        last_x = None
-        for depth, x, sc in sorted((d - lip[row], x, sc) for d, _, _, x, sc in v):
-            limit = 2.3 * pitch if last is None else last + 2.3 * pitch
-            # a stack is straight; round things piled askew (a dice cup) are not
-            if depth > limit or (last_x is not None and abs(x - last_x) > STACK_SKEW * pitch):
-                break
-            last, last_x, used = depth, x, used + 1
-            chain.append(depth)
-            scores.append(sc)
-        n = 0 if last is None else max(used, int(round(last / pitch + 0.5)))
-        if n == 1 and scores[0] < LONE_MIN_SCORE:
-            n = 0   # a lone checker needs a clearer circle than one in a stack
-        gaps = np.diff(chain)
-        if len(gaps) >= 2 and np.median(gaps) < 0.85 * pitch:
-            # apps and full points overlap the checkers: count in steps of the overlap
-            step = float(np.median(gaps))
-            n = max(used, 1 + int(sum(round(g / step) for g in gaps)))
-        runs[(c, row)] = (k if n else None, min(n, 15))
-    return runs, bar, cc[order] / LAB_W
+        # a point holds one colour: vote
+        k = 0 if sum(conf[i] for i in members if lbl[i] == 0) >= sum(conf[i] for i in members if lbl[i] == 1) else 1
+        runs[key] = (k, n)
+    return runs, bar, cent
 
 
 def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
