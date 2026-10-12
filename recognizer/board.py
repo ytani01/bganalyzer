@@ -595,7 +595,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     for score, cx, cy, r, med in ranked:
         if score >= CIRCLE_MIN_SCORE or not clear(cx, cy, out):
             continue
-        line = [o[1] for o in out if abs(o[0] - cx) < 0.15 * pitch]
+        line = [o[1] for o in out if abs(o[0] - cx) < 0.15 * pitch and abs(o[1] - cy) < 2.3 * pitch]
         if any(y < cy for y in line) and any(y > cy for y in line):
             out.append((cx, cy, r, med, score))
     return out
@@ -658,7 +658,7 @@ def count_from_circles(circles, lay: Layout, pitch: float):
         # checkers stack from the base without gaps, so walk out from the base and
         # let the farthest checker of that chain give the count (a checker missed
         # in the middle is still counted; a stray circle far away is not)
-        last, used, chain = None, 0, []
+        last, used, chain, scores = None, 0, [], []
         last_x = None
         for depth, x, sc in sorted((d - lip[row], x, sc) for d, _, _, x, sc in v):
             limit = 2.3 * pitch if last is None else last + 2.3 * pitch
@@ -667,8 +667,9 @@ def count_from_circles(circles, lay: Layout, pitch: float):
                 break
             last, last_x, used = depth, x, used + 1
             chain.append(depth)
+            scores.append(sc)
         n = 0 if last is None else max(used, int(round(last / pitch + 0.5)))
-        if n == 1 and max(sc for *_, sc in v) < LONE_MIN_SCORE:
+        if n == 1 and scores[0] < LONE_MIN_SCORE:
             n = 0   # a lone checker needs a clearer circle than one in a stack
         gaps = np.diff(chain)
         if len(gaps) >= 2 and np.median(gaps) < 0.85 * pitch:
