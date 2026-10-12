@@ -69,6 +69,14 @@ def test_api_rejects_bad_input():
     assert client.post("/analyze", json={"position_id": START_ID, "dice": [0, 7]}).status_code == 422
 
 
+def test_pwa_is_served():
+    r = client.get("/")
+    assert r.status_code == 200 and "BG Analyzer" in r.text
+    assert client.get("/manifest.webmanifest").headers["content-type"].startswith("application/manifest+json")
+    assert client.get("/sw.js").status_code == 200
+    assert client.get("/health").json() == {"ok": True}   # API routes still win over the static mount
+
+
 def test_server_exit_stops_gnubg_helper():
     import analysis
     with TestClient(app) as c:   # runs the lifespan, like uvicorn does
