@@ -23,7 +23,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.5.0"
+__version__ = "0.5.2"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -183,4 +183,16 @@ WARNINGS = {
 
 # The PWA. Mounted last so the API routes above take precedence.
 mimetypes.add_type("application/manifest+json", ".webmanifest")   # unknown before Python 3.13
-app.mount("/", StaticFiles(directory=Path(__file__).resolve().parent / "static", html=True), name="pwa")
+class AppFiles(StaticFiles):
+    """The PWA's files, which the browser must check for a newer copy each time.
+
+    Without Cache-Control, browsers keep a file for a while on their own guess (a share
+    of its age), so after an update the phone can run the old app.js against the new API."""
+
+    def file_response(self, *args, **kwargs):
+        res = super().file_response(*args, **kwargs)
+        res.headers["Cache-Control"] = "no-cache"
+        return res
+
+
+app.mount("/", AppFiles(directory=Path(__file__).resolve().parent / "static", html=True), name="pwa")
