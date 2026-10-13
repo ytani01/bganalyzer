@@ -2,6 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
+const APP_VERSION = "0.5.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -819,7 +820,8 @@ fetch(API ? `${API}/version` : "version")
   .then((v) => {
     if (!v) return;
     $("version").textContent = `analyzer ${v.analyzer} · recognizer ${v.recognizer}` +
-      (v.commit ? ` · ${v.commit}` : "");
+      (v.commit ? ` · ${v.commit}` : "") +
+      (v.analyzer !== APP_VERSION ? `（画面は ${APP_VERSION}。開き直すと新しくなります）` : "");
   })
   .catch(() => {});
 

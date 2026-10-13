@@ -74,6 +74,9 @@ def test_pwa_is_served():
     assert r.status_code == 200 and "BG Analyzer" in r.text
     assert client.get("/manifest.webmanifest").headers["content-type"].startswith("application/manifest+json")
     assert client.get("/sw.js").status_code == 200
+    # the phone must not keep running an old app.js after the server is updated
+    assert client.get("/app.js").headers["cache-control"] == "no-cache"
+    assert client.get("/").headers["cache-control"] == "no-cache"
     assert client.get("/health").json() == {"ok": True}   # API routes still win over the static mount
 
 
@@ -108,6 +111,9 @@ def test_version_reports_both_parts_and_commit():
     import app as app_module
     v = client.get("/version").json()
     assert v["analyzer"] == app_module.__version__
+    # the PWA shows its own version when it differs from the server's (an old cached copy)
+    app_js = (Path(__file__).parent / "static" / "app.js").read_text()
+    assert f'const APP_VERSION = "{app_module.__version__}"' in app_js
     assert v["recognizer"] == board.__version__
     head = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True,
                           cwd=Path(__file__).parent).stdout.strip()

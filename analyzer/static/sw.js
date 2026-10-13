@@ -1,5 +1,5 @@
 // Offline shell: cache the app files; API calls always go to the network.
-const CACHE = "bganalyzer-v9";
+const CACHE = "bganalyzer-v10";
 const SHARE_CACHE = "bganalyzer-share";   // a photo shared from another app, until app.js picks it up
 const SHARE_KEY = "shared-photo";
 const SHELL = ["./", "index.html", "style.css", "app.js", "photo.js", "history.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
@@ -22,7 +22,8 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
-  e.respondWith(fetch(e.request)
+  // no-cache: ask the server even when the browser's own cache thinks its copy is fresh
+  e.respondWith(fetch(e.request, { cache: "no-cache" })
     .then((res) => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
       return res;
