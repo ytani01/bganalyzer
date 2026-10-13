@@ -1,7 +1,7 @@
 # サンプル写真の出典
 
-`commons-*.jpg` は Wikimedia Commons の写真です。どれも CC BY / CC BY-SA で、人の顔や個人情報は写っていません。
-Commons が配る縮小版（長辺 1920px、元が小さいものは 960px）をそのまま使っていて、ほかの加工はしていません。
+`commons-*.jpg` は Wikimedia Commons の写真です。どれも CC BY / CC BY-SA / CC0 で、人の顔や個人情報は写っていません。
+Commons が配る縮小版（長辺 1920px、元が小さいものは 960px。盤面図 3 枚は 500px、set-cube-dice は元の 640px）をそのまま使っていて、ほかの加工はしていません。
 CC BY-SA の写真（とその縮小版）は同じ CC BY-SA で配布します。正解の `*.truth.json` は目で読みました。
 
 | ファイル | 元の写真 | 作者 | ライセンス |
@@ -12,6 +12,10 @@ CC BY-SA の写真（とその縮小版）は同じ CC BY-SA で配布します�
 | `commons-leather-cups.jpg` | [Backgammon board.jpg](https://commons.wikimedia.org/wiki/File:Backgammon_board.jpg) | Ptkfgs | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
 | `commons-nardy-midgame.jpg` | [Нарды в уменьшенном формате.jpg](https://commons.wikimedia.org/wiki/File:%D0%9D%D0%B0%D1%80%D0%B4%D1%8B_%D0%B2_%D1%83%D0%BC%D0%B5%D0%BD%D1%8C%D1%88%D0%B5%D0%BD%D0%BD%D0%BE%D0%BC_%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%82%D0%B5.jpg) | StatisksExpert | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `commons-rollup-oblique.jpg` | [Melia Games Backgammon.jpg](https://commons.wikimedia.org/wiki/File:Melia_Games_Backgammon.jpg) | Ilker Bicakci | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| `commons-diagram-closed-bar.jpg` | [Backgammon--Chiusura della tavola interna.jpg](https://commons.wikimedia.org/wiki/File:Backgammon--Chiusura_della_tavola_interna.jpg) | Francesco De Lorenzo（イタリア語版 Wikipedia の Gico） | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)（GFDL と併記） |
+| `commons-diagram-holding.jpg` | [Bkgm5ptHoldingGame.jpg](https://commons.wikimedia.org/wiki/File:Bkgm5ptHoldingGame.jpg) | Mr Swordfish3 | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `commons-diagram-prime.jpg` | [Backgammon--Esempio di blocco.jpg](https://commons.wikimedia.org/wiki/File:Backgammon--Esempio_di_blocco.jpg) | Francesco De Lorenzo（イタリア語版 Wikipedia の Gico） | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)（GFDL と併記） |
+| `commons-set-cube-dice.jpg` | [Backgammon Set.jpg](https://commons.wikimedia.org/wiki/File:Backgammon_Set.jpg) | Kyoku | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
 | `commons-tavli-black.jpg` | [Tavli Board without slots (traditional) 1960s.jpg](https://commons.wikimedia.org/wiki/File:Tavli_Board_without_slots_(traditional)_1960s.jpg) | Nikos Kitsakis | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `commons-tavli-blue.jpg` | [Tavli Board without slots (traditional) C.jpg](https://commons.wikimedia.org/wiki/File:Tavli_Board_without_slots_(traditional)_C.jpg) | Nikos Kitsakis | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `commons-tavli-burl.jpg` | [Tavli Board without slots (traditional).jpg](https://commons.wikimedia.org/wiki/File:Tavli_Board_without_slots_(traditional).jpg) | Nikos Kitsakis | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
