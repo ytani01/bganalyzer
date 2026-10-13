@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.19.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.20.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -47,7 +47,7 @@ const state = {
   moveShown: 0,      // the move in the result's list drawn as arrows on the board
   historyId: null,   // this photo's entry in PhotoHistory (history.js), null if not stored
   historyScale: 1,   // image px -> the stored copy's px
-  photoView: "side", // the photo on the board screen: "side" (next to the board), "overlay" (under the checkers) or "off"
+  photoView: "side", // the photo on the board screen: "side" (next to the board) or "off"
   geometry: null,    // where the recognizer found the board: {corners (image px), columns, bar (fractions), bitmap, from}
   rectified: null,   // {bitmap, key, url}: the photo warped onto the board's playing area
 };
@@ -494,21 +494,13 @@ function checkerFill(side) {
   return side === "white" ? "var(--white-chk)" : "var(--black-chk)";
 }
 
-// style "ring": see-through checkers drawn over the photo, so the real ones show inside.
-function drawStack(svg, x, top, n, side, style) {
+function drawStack(svg, x, top, n, side) {
   const shown = Math.min(n, 5);
   for (let k = 0; k < shown; k++) {
     const y = top ? B.y0 + B.r + 1 + k * B.step : B.y1 - B.r - 1 - k * B.step;
-    if (style === "ring") {
-      el("circle", { cx: x, cy: y, r: B.r - 2, fill: "none", stroke: "#000", "stroke-width": 6, "stroke-opacity": 0.5, "pointer-events": "none" }, svg);
-      el("circle", { cx: x, cy: y, r: B.r - 2, fill: "none", stroke: checkerFill(side), "stroke-width": 3, "pointer-events": "none" }, svg);
-    } else {
-      el("circle", { cx: x, cy: y, r: B.r, fill: checkerFill(side), stroke: "#555", "stroke-width": 1.5, "pointer-events": "none" }, svg);
-    }
+    el("circle", { cx: x, cy: y, r: B.r, fill: checkerFill(side), stroke: "#555", "stroke-width": 1.5, "pointer-events": "none" }, svg);
     if (k === shown - 1 && n > 5) {
-      const t = style === "ring"
-        ? el("text", { x, y, class: "stack-n ring", fill: checkerFill(side), "pointer-events": "none" }, svg)
-        : el("text", { x, y, class: "stack-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg);
+      const t = el("text", { x, y, class: "stack-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg);
       t.textContent = n;
     }
   }
@@ -555,13 +547,13 @@ function drawBoard() {
   $("photo-wrap").hidden = view !== "side";
   $("boards").classList.toggle("two", view === "side");
   if (view === "side") drawBoardOn($("photo-svg"), { photo, checkers: false });
-  drawBoardOn($("board-svg"), { photo: view === "overlay" ? photo : null, checkers: true });
+  drawBoardOn($("board-svg"), { photo: null, checkers: true });
   drawCounts();
   drawEditor();
 }
 
-// One board picture: the drawn board, or the photo with point numbers (opts.photo), with or without
-// the recognized checkers. Both pictures share the layout, so a tap selects the same point on either.
+// One board picture: the drawn board with the recognized checkers, or the photo with point numbers
+// (opts.photo, no checkers). Both pictures share the layout, so a tap selects the same point on either.
 function drawBoardOn(svg, opts) {
   svg.textContent = "";
   const b = state.board;
@@ -579,7 +571,6 @@ function drawBoardOn(svg, opts) {
     el("rect", { x: B.x0, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
     el("rect", { x: B.x0 + 6 * B.pw + B.bar, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
   }
-  const style = opts.photo ? "ring" : "solid";
 
   for (const top of [true, false]) {
     for (let c = 0; c < 12; c++) {
@@ -590,7 +581,7 @@ function drawBoardOn(svg, opts) {
       const lbl = el("text", { x, y: top ? 16 : 434, class: "num" }, svg);
       lbl.textContent = i + 1;
       const n = b.points[i];
-      if (n && opts.checkers) drawStack(svg, x, top, Math.abs(n), n > 0 ? "white" : "black", style);
+      if (n && opts.checkers) drawStack(svg, x, top, Math.abs(n), n > 0 ? "white" : "black");
       if (state.selected === i) {
         el("rect", { x: x - h + 1, y: top ? B.y0 + 1 : B.y0 + (B.y1 - B.y0) / 2 + 1, width: B.pw - 2, height: (B.y1 - B.y0) / 2 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
       }
@@ -601,8 +592,8 @@ function drawBoardOn(svg, opts) {
 
   // Bar: 奥's checkers in the upper half, 手前's in the lower half.
   const bx = B.x0 + 6 * B.pw + B.bar / 2;
-  if (b.bar_black && opts.checkers) drawStack(svg, bx, true, b.bar_black, "black", style);
-  if (b.bar_white && opts.checkers) drawStack(svg, bx, false, b.bar_white, "white", style);
+  if (b.bar_black && opts.checkers) drawStack(svg, bx, true, b.bar_black, "black");
+  if (b.bar_white && opts.checkers) drawStack(svg, bx, false, b.bar_white, "white");
   if (!opts.photo) {
     const barLbl = el("text", { x: bx, y: (B.y0 + B.y1) / 2 + 5, class: "label" }, svg);
     barLbl.textContent = state.cubeAt === "centre" && opts.checkers ? "" : "バー";
