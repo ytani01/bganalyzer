@@ -49,7 +49,23 @@ header {
   z-index: 5;
 }
 header .bar { display: flex; align-items: center; gap: 8px; min-height: 40px; }
-header h1 { font-size: 18px; margin: 0; }
+header h1 { font-size: 18px; margin: 0; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header .actions { display: flex; gap: 6px; flex: none; }
+.act {
+  appearance: none;
+  background: var(--accent-fg);
+  color: var(--accent);
+  border: 1px solid var(--accent-fg);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 16px;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.act:active { opacity: .8; }
+.act:disabled { opacity: .45; cursor: default; }
+.act.on { background: transparent; color: var(--accent-fg); }
 .back {
   appearance: none;
   background: rgba(255,255,255,.18);
