@@ -31,7 +31,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <nav id="steps">
     <span data-step="photo">1 写真</span>
     <span data-step="corners">2 四隅</span>
-    <span data-step="board">3 盤面・解析</span>
+    <span data-step="board">3 盤面・設定</span>
+    <span data-step="outcome">4 結果</span>
   </nav>
 </header>
 
@@ -169,6 +170,13 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <p class="note">3手は少し正確になりますが、10倍以上時間がかかります。</p>
     </div>
 
+  </section>
+
+  <!-- 4. 解析の結果。盤面図は最善手の矢印を見るためのもので、ここでは直せない（直すときは戻る） -->
+  <section id="outcome" class="step" hidden>
+    <div class="board-pin">
+      <div class="board-wrap"><svg id="result-svg" viewBox="0 0 660 440"></svg></div>
+    </div>
     <div id="result" class="result" hidden></div>
   </section>
 </main>

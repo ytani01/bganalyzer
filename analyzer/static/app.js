@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.21.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.22.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -53,18 +53,13 @@ const state = {
 };
 
 // ---------------------------------------------------------------- steps
-const STEPS = ["photo", "corners", "board"];
-const STEP_TITLES = { corners: "四隅", board: "盤面・解析" };   // the header's title on a phone, where the step list is hidden
+const STEPS = ["photo", "corners", "board", "outcome"];
+const STEP_TITLES = { corners: "四隅", board: "盤面・設定", outcome: "結果" };   // the header's title on a phone, where the step list is hidden
 
-// The sticky header and board are as tall as their contents; CSS needs the heights for what sits
-// below them (the board sticks under the header, a scrolled-to result under both).
-const stickyHeights = new ResizeObserver(() => {
-  const root = document.documentElement.style;
-  root.setProperty("--hdr-h", document.querySelector("header").offsetHeight + "px");
-  root.setProperty("--pin-h-live", $("board-pin").offsetHeight + "px");
-});
-stickyHeights.observe(document.querySelector("header"));
-stickyHeights.observe($("board-pin"));
+// The sticky header is as tall as its contents; the board sticks just under it (CSS --hdr-h).
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty("--hdr-h", document.querySelector("header").offsetHeight + "px");
+}).observe(document.querySelector("header"));
 let currentStep = "photo";
 
 function show(step) {
@@ -85,7 +80,7 @@ function show(step) {
     $("to-board").hidden = !(state.fromPhoto && state.board);
     requestAnimationFrame(drawPhoto);
   }
-  if (step === "board") drawBoard();
+  if (step === "board" || step === "outcome") drawBoard();
   if (step === "photo") renderHistory();
   window.scrollTo(0, 0);
 }
@@ -95,11 +90,12 @@ function show(step) {
 function syncHeaderActions() {
   $("recognize").hidden = currentStep !== "corners";
   $("analyze").hidden = currentStep !== "board";
-  $("speak").hidden = !(currentStep === "board" && state.result && window.speechSynthesis);
+  $("speak").hidden = !(currentStep === "outcome" && state.result && window.speechSynthesis);
 }
 $("speak").addEventListener("click", () => { if (state.speech) toggleSpeaking(state.speech); });
 
 function previousStep() {
+  if (currentStep === "outcome") return "board";
   return currentStep === "board" && state.fromPhoto ? "corners" : "photo";
 }
 
@@ -546,6 +542,7 @@ function drawBoard() {
   $("boards").classList.toggle("two", view === "side");
   if (view === "side") drawBoardOn($("photo-svg"), { photo, checkers: false });
   drawBoardOn($("board-svg"), { photo: null, checkers: true });
+  drawBoardOn($("result-svg"), { photo: null, checkers: true });   // the result screen's copy (taps are off there)
   drawCounts();
   drawEditor();
 }
@@ -934,7 +931,13 @@ function currentDice() {
 $("analyze").addEventListener("click", async () => {
   const errs = boardErrors();
   if (errs.length) { alert(errs.join("\n")); return; }
-  if (state.selected !== null) select(state.selected);   // done editing: the edit buttons give their room to the result
+  if (state.selected !== null) select(state.selected);   // done editing
+  // The result on hand still fits the board and settings (e.g. worked out when the photo was read): just show it.
+  if (state.result && !$("result").classList.contains("stale") &&
+      state.resultKey === analysisKey(state.board, state.onRoll, currentDice())) {
+    show("outcome");
+    return;
+  }
   busy(analysingText());
   try {
     const dice = currentDice();
@@ -943,7 +946,7 @@ $("analyze").addEventListener("click", async () => {
     if (dice) body.dice = dice;
     const r = await post("analyze", JSON.stringify(body), { "content-type": "application/json" });
     setResult(r, dice);
-    $("result").scrollIntoView({ behavior: "smooth" });
+    show("outcome");
   } catch (err) {
     alert("解析に失敗しました: " + err.message);
   } finally {
@@ -1039,7 +1042,7 @@ function showMove(list, li) {
   state.moveShown = Number(li.dataset.k);
   for (const x of list.children) x.classList.toggle("on", x === li);
   drawBoard();
-  $("board-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  $("result-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 // ---------------------------------------------------------------- reading the result aloud
