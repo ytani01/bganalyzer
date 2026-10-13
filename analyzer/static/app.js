@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.6.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.7.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -703,7 +703,9 @@ function setResult(r, dice) {
   const pipLine = pips.leader
     ? `${NAME[pips.leader]}が ${pips.difference} ピップ リード`
     : "ピップは同じ";
+  stopSpeaking();
   let html = `<h2>${esc(r.summary)}</h2>`;
+  if (window.speechSynthesis) html += `<button id="speak" class="button small">🔊 読み上げる</button>`;
   if (!r.game_over) {
     const p = r.probabilities;
     const w = p.white.win, bl = p.black.win;
@@ -726,7 +728,73 @@ function setResult(r, dice) {
   }
   html += `<p class="note">gnubg ${r.plies}手読み・キューブなし。Position ID: <code>${esc(r.position_id)}</code></p>`;
   box.innerHTML = html;
+  const speak = $("speak");
+  if (speak) speak.onclick = () => toggleSpeaking(speechText(r, dice));
 }
+
+// ---------------------------------------------------------------- reading the result aloud
+// The browser's own speech (Web Speech API): free, nothing to set up, and on Android's Chrome
+// it is Google's voice. Nothing is sent to our server.
+const pct = (x) => `${x}パーセント`;
+
+function speechText(r, dice) {
+  const pips = r.pips;
+  const parts = [];
+  if (r.game_over) {
+    parts.push(`${NAME[r.favourite]}の勝ちで終局しています。`);
+  } else {
+    const p = r.probabilities;
+    parts.push(`${NAME[r.favourite]}が有利です。`);
+    parts.push(`勝率は、手前 ${pct(p.white.win)}、奥 ${pct(p.black.win)}。`);
+    parts.push(`ギャモン勝ちは、手前 ${pct(p.white.gammon)}、奥 ${pct(p.black.gammon)}。`);
+  }
+  parts.push(`ピップ数は、手前 ${pips.white}、奥 ${pips.black}` +
+    (pips.leader ? `で、${NAME[pips.leader]}が ${pips.difference} ピップ リード。` : `で、同じです。`));
+  parts.push(`次に振るのは${NAME[r.on_roll]}の人です。`);
+  if (r.moves && dice) {
+    parts.push(r.moves.length
+      ? `ダイス ${dice[0]} ${dice[1]} の最善手は、${moveToSpeech(r.moves[0].move)}。`
+      : `ダイス ${dice[0]} ${dice[1]} では動かせる手がありません。`);
+  }
+  return parts.join("");
+}
+
+// "bar/22* 13/8(2) 6/off" -> "バーから22でヒット、13から8を2つ、6から上がり"
+function moveToSpeech(move) {
+  return move.trim().split(/\s+/).map((step) => {
+    const m = step.match(/^(.*?)(?:\((\d+)\))?$/);
+    const pts = m[1].split("/").map((x) => {
+      const hit = x.endsWith("*");
+      const n = x.replace("*", "").toLowerCase();
+      return (n === "bar" ? "バー" : n === "off" ? "上がり" : n) + (hit ? "でヒット" : "");
+    });
+    return pts.join("から") + (m[2] ? `を${m[2]}つ` : "");
+  }).join("、");
+}
+
+function japaneseVoice() {
+  const voices = window.speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
+  return voices.find((v) => /google/i.test(v.name)) || voices[0] || null;
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+function toggleSpeaking(text) {
+  const synth = window.speechSynthesis;
+  const btn = $("speak");
+  if (synth.speaking) { synth.cancel(); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ja-JP";
+  const voice = japaneseVoice();
+  if (voice) u.voice = voice;
+  const label = (on) => { if (btn && btn.isConnected) btn.textContent = on ? "■ 止める" : "🔊 読み上げる"; };
+  u.onstart = () => label(true);
+  u.onend = u.onerror = () => label(false);
+  synth.speak(u);
+}
+if (window.speechSynthesis) window.speechSynthesis.getVoices();   // Chrome loads the voice list lazily
 
 // ---------------------------------------------------------------- recent photos (history.js)
 // Stored on this device only. Failures (no IndexedDB, private mode, storage full) never block the app.
