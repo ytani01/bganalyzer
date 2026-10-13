@@ -1279,11 +1279,15 @@ syncCube();
 updateCornerUi();
 show("photo");
 
-// Server versions in the footer, to tell which build is running (e.g. on the Raspberry Pi).
+// Versions, to tell which build is running (e.g. on the Raspberry Pi): small in the header, in full in the footer.
+$("hdr-version").textContent = `v${APP_VERSION}`;
 fetch(API ? `${API}/version` : "version")
   .then((res) => (res.ok ? res.json() : null))
   .then((v) => {
     if (!v) return;
+    const old = v.analyzer !== APP_VERSION;   // an old app.js still cached on this device
+    $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + (old ? `（新しい ${v.analyzer} は開き直すと出ます）` : "");
+    $("hdr-version").classList.toggle("old", old);
     $("version").textContent = `analyzer ${v.analyzer} · recognizer ${v.recognizer}` +
       (v.commit ? ` · ${v.commit}` : "") +
       (v.analyzer !== APP_VERSION ? `（画面は ${APP_VERSION}。開き直すと新しくなります）` : "");

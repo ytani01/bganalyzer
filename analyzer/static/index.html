@@ -20,7 +20,10 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 <header>
   <div class="bar">
     <button id="back" class="back" type="button" aria-label="前の画面に戻る" hidden>‹ 戻る</button>
-    <h1 id="title">BG Analyzer</h1>
+    <div class="titles">
+      <h1 id="title">BG Analyzer</h1>
+      <div id="hdr-version" class="hdr-version"></div>
+    </div>
     <!-- その画面の主な操作。ヘッダーにだけ置き、スクロールしてもいつでも押せる -->
     <div class="actions">
       <button id="recognize" class="act" type="button" hidden disabled>盤面を読み取る</button>
