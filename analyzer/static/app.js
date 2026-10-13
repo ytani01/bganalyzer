@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.6.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.7.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -20,7 +20,9 @@ const state = {
   corners: [],       // [[x, y], ...] in image pixels, TL TR BR BL
   cornerGuess: "",   // the starting corners: "finding", "found", "default" (a rectangle), "moved" or "" (tapped)
   cornersMoved: false,
-  home: "right",
+  homePick: "auto",  // the choice on the corners screen: "auto" (guess from the checkers), "left" or "right"
+  home: "right",     // the side the board is read and drawn with
+  homeGuess: null,   // how the server guessed home (homePick "auto"): {margin}; null once flipped by hand
   bottomColour: 1,   // 0 = the darker checkers are 手前's, 1 = the lighter ones
   onRoll: "white",
   fromPhoto: false,
@@ -351,7 +353,7 @@ $("recognize").addEventListener("click", async () => {
     const fd = new FormData();
     fd.append("image", blob, "board.jpg");
     fd.append("corners", state.corners.flat().map((v) => (v * scale).toFixed(1)).join(","));
-    fd.append("home", state.home);
+    fd.append("home", state.homePick);
     fd.append("bottom_colour", String(state.bottomColour));
     fd.append("on_roll", state.onRoll);
     const dice = currentDice();
@@ -363,6 +365,8 @@ $("recognize").addEventListener("click", async () => {
     state.geometry = g && { ...g, corners: g.corners.map(([x, y]) => [x / scale, y / scale]),
                             bitmap: state.bitmap, from: JSON.stringify(state.corners) };
     state.board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
+    state.home = data.home || (state.homePick === "auto" ? "right" : state.homePick);
+    state.homeGuess = data.home_guess || null;
     state.selected = null;
     saveHistory();
     show("board");
@@ -550,6 +554,17 @@ function drawCounts() {
   if (state.fromPhoto) errs.unshift(...state.warnings);
   $("errors").hidden = !errs.length;
   $("errors").textContent = errs.join(" / ");
+  drawHomeNote();
+}
+
+// Which side the bottom player's home board was read on, and whether it was guessed.
+function drawHomeNote() {
+  const side = state.home === "right" ? "右" : "左";
+  const g = state.fromPhoto && state.homeGuess;
+  $("home-note").hidden = !state.fromPhoto;
+  $("home-note").textContent = !g ? `手前の人のホームボードは${side}です。`
+    : Math.abs(g.margin) < 1 ? `駒の並びからはホームボードの左右を決められなかったので、${side}にしています。逆なら「左右を入れ替える」を押してください。`
+    : `駒の並びから、手前の人のホームボードを${side}と推測しました。逆なら「左右を入れ替える」を押してください。`;
 }
 
 function select(target) {
@@ -616,7 +631,7 @@ $("flip-home").addEventListener("click", () => {
   const b = state.board;
   b.points = b.points.map((_, i) => b.points[i < 12 ? 11 - i : 35 - i]);
   state.home = state.home === "right" ? "left" : "right";
-  syncHome();
+  state.homeGuess = null;
   state.selected = null;
   boardChanged();
 });
@@ -801,7 +816,9 @@ function saveHistory() {
     corners: state.corners.map(([x, y]) => [x * s, y * s]),
     cornerGuess: state.cornerGuess,
     cornersMoved: state.cornersMoved,
+    homePick: state.homePick,
     home: state.home,
+    homeGuess: state.homeGuess,
     bottomColour: state.bottomColour,
     onRoll: state.onRoll,
     dice: currentDice(),
@@ -824,7 +841,9 @@ async function openHistory(id) {
     state.corners = guess ? defaultCorners() : e.corners.map((c) => c.slice());
     state.cornerGuess = guess ? "finding" : e.cornerGuess || "";
     state.cornersMoved = !!e.cornersMoved;
+    state.homePick = e.homePick || e.home || "auto";   // entries from before 0.6.0 kept only the side picked
     state.home = e.home || "right";
+    state.homeGuess = e.homeGuess || null;
     state.bottomColour = e.bottomColour ?? 1;
     state.onRoll = e.onRoll || "white";
     state.fromPhoto = true;
@@ -833,7 +852,7 @@ async function openHistory(id) {
     state.selected = null;
     $("die1").value = e.dice ? String(e.dice[0]) : "";
     $("die2").value = e.dice ? String(e.dice[1]) : "";
-    syncHome();
+    syncHomePick();
     syncColours();
     syncOnRoll();
     setResult(null);
@@ -897,7 +916,7 @@ function syncColours() {
   syncBottomColour();
 }
 
-const syncHome = initSeg("home");
+const syncHomePick = initSeg("homePick");
 const syncBottomColour = initSeg("bottomColour", syncColours);
 const syncOnRoll = initSeg("onRoll", () => state.result && $("result").classList.add("stale"));
 initSeg("photoView", drawBoard);

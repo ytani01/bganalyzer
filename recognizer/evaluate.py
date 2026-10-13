@@ -2,6 +2,7 @@
 import glob, json, os, sys, urllib.request
 import cv2
 import board
+import home_prior
 from position import Position
 
 def shrink_like_app(img, corners, max_side=2048, send_as_is=2560):
@@ -38,14 +39,18 @@ def run(path, debug=None, app=False):
             best = (pos, wrong)
     pos, wrong = best
     bar_ok = (pos.bar_white, pos.bar_black) == (truth.bar_white, truth.bar_black)
-    return pos, truth, wrong, bar_ok
+    # the app's guess of the home side, from this reading with the truth's checker colour
+    read = (pos1 if t.get("bottom_colour", 1) else pos0).points
+    home, margin = home_prior.guess(read if t["home"] == "right" else home_prior.mirror(read))
+    return pos, truth, wrong, bar_ok, (home == t["home"], margin)
 
 if __name__ == "__main__":
     # --app: shrink large photos the way the PWA does before sending them
     app = "--app" in sys.argv
     files = [a for a in sys.argv[1:] if a != "--app"] or sorted(glob.glob(os.path.join(os.path.dirname(__file__), "..", "samples", "*.truth.json")))
     for f in files:
-        pos, truth, wrong, bar_ok = run(f, app=app)
-        print(f"{os.path.basename(f)}: {24 - len(wrong)}/24 points correct, bar {'ok' if bar_ok else 'wrong'}")
+        pos, truth, wrong, bar_ok, (home_ok, margin) = run(f, app=app)
+        print(f"{os.path.basename(f)}: {24 - len(wrong)}/24 points correct, bar {'ok' if bar_ok else 'wrong'}, "
+              f"home guess {'ok' if home_ok else 'wrong'} ({margin:+.1f})")
         for pt, a, b in wrong:
             print(f"   point {pt:2d}: truth {a:+d}  got {b:+d}")

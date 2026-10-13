@@ -202,3 +202,30 @@ def test_share_target():
     res = client.post("/" + st["action"], files={name: ("b.jpg", b"\xff\xd8", "image/jpeg")},
                       follow_redirects=False)
     assert res.status_code == 303 and res.headers["location"] == "./?shared=none"
+
+
+def test_home_side_is_guessed_from_the_checkers():
+    import home_prior
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    for f in sorted(samples.glob("*.truth.json")) + sorted((samples / "external").glob("*.truth.json")):
+        t = json.loads(f.read_text())
+        right = t["points"] if t["home"] == "right" else home_prior.mirror(t["points"])
+        assert home_prior.guess(right)[0] == t["home"], f.name
+    # nothing to go on: keep the default
+    assert home_prior.guess([0] * 24, default="left") == ("left", 0)
+
+
+def test_api_guesses_home_side():
+    import cv2
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    t = json.loads((samples / "screen1.truth.json").read_text())   # home on the left
+    ok, png = cv2.imencode(".png", cv2.imread(str(samples / t["image"])))
+    res = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")},
+                      data={"corners": ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy),
+                            "home": "auto", "bottom_colour": str(t["bottom_colour"]), "plies": "0"})
+    assert res.status_code == 200, res.text
+    j = res.json()
+    assert j["home"] == "left" and j["home_guess"]["margin"] < -1
+    assert j["recognized"]["points"] == t["points"]

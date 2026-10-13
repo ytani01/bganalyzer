@@ -23,7 +23,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -136,7 +136,7 @@ async def find_corners_endpoint(image: UploadFile = File(...)):
 async def analyze_photo(
     image: UploadFile = File(...),
     corners: str = Form(..., description="x1,y1,...,x4,y4: TL,TR,BR,BL of the playing area"),
-    home: str = Form("right"),
+    home: str = Form("right", description="left, right or auto (guessed from the checkers)"),
     bottom_colour: int = Form(0),
     on_roll: str = Form("white"),
     plies: int = Form(DEFAULT_PLIES),
@@ -153,14 +153,14 @@ async def analyze_photo(
         d = tuple(int(v) for v in dice.split(",")) if dice else None
     except Exception as e:
         raise HTTPException(422, "corners must be 8 numbers, dice two numbers") from e
-    if home not in ("left", "right"):
-        raise HTTPException(422, "home must be left or right")
+    if home not in ("left", "right", "auto"):
+        raise HTTPException(422, "home must be left, right or auto")
     pos, info = recognize(img, list(zip(c[0::2], c[1::2])), home=home, bottom_colour=bottom_colour)
     warnings = [WARNINGS[w] for w in info.get("warnings", [])]
     errors = pos.validate()
     # geometry: where the recognizer found the board and its columns (image pixels of the sent image),
     # so the app can line the photo up with the read board.
-    out = {"recognized": pos.to_dict(), "errors": errors, "warnings": warnings, "geometry": info.get("geometry")}
+    out = {"recognized": pos.to_dict(), "home": info["home"], "home_guess": info["home_guess"], "errors": errors, "warnings": warnings, "geometry": info.get("geometry")}
     if errors:
         # Let the app show the read board for manual correction.
         return out | {"analysis": None}

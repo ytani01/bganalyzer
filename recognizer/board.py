@@ -31,11 +31,12 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
+import home_prior
 from position import Position
 
 # The recognizer's version (board.py, position.py and corners.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -801,7 +802,8 @@ def count_from_circles(circles, lay: Layout, pitch: float):
 
 def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
               a_ratio=None, debug_prefix=None):
-    """corners: TL, TR, BR, BL of the playing area as seen from the bottom player."""
+    """corners: TL, TR, BR, BL of the playing area as seen from the bottom player.
+    home: 'left', 'right' or 'auto' (guessed from the checkers; info['home'] says which)."""
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
     m = 60
     H0 = cv2.getPerspectiveTransform(np.float32([(0, 0), (1, 0), (1, 1), (0, 1)]), np.float32(corners))
@@ -852,8 +854,12 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
     runs, bar, cc = count_from_circles(circles, lay, pitch)
+    guessed = None
+    if home == "auto":   # which way the checkers move: guess from where they stand
+        home, margin = home_prior.guess(to_position(runs, bar, bottom_colour, "right").points)
+        guessed = dict(margin=round(float(margin), 1))
     pos = to_position(runs, bar, bottom_colour, home)
-    info = dict(edge_quality=float(quality), tips=len(tips), circles=len(circles),
+    info = dict(home=home, home_guess=guessed, edge_quality=float(quality), tips=len(tips), circles=len(circles),
                 layout=dict(a=float(lay.a), bar=float(lay.bar), h=float(lay.h)), pitch=float(pitch),
                 checker_lab=None if cc is None else cc.round(1).tolist(),
                 board_lab=board.round(1).tolist())
@@ -895,7 +901,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("image")
     ap.add_argument("--corners", required=True, help="x1,y1,x2,y2,x3,y3,x4,y4 (TL,TR,BR,BL)")
-    ap.add_argument("--home", default="right", choices=["left", "right"])
+    ap.add_argument("--home", default="right", choices=["left", "right", "auto"])
     ap.add_argument("--bottom-colour", type=int, default=0)
     ap.add_argument("--debug")
     args = ap.parse_args()
