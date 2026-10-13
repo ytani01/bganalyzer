@@ -32,9 +32,133 @@ def _engine(pid: str, plies: int, dice, max_moves: int):
     moves = None
     if dice is not None:
         found = gnubg.find_best_moves(board, gnubg.cube_info(), ctx, tuple(dice))
-        moves = [{"move": gnubg.move_tuple_to_string(m["move"], board),
-                  "equity": round(m["score"], 3)} for m in found[:max_moves]]
+        tuples = _complete_moves(gnubg, board, ctx, tuple(dice), found, max_moves)
+        moves = [{"move": gnubg.move_tuple_to_string(t, board),
+                  "equity": round(m["score"], 3)} for t, m in zip(tuples, found)]
     return probs, moves
+
+
+# A play is a list of (from, to) steps, numbered as gnubg does from the side of the
+# player on roll: 1-24 the points, 25 the bar, 0 off. A board is (opponent, player).
+
+def _step(board, src, dst):
+    opp, me = list(board[0]), list(board[1])
+    me[src - 1] -= 1
+    if dst:
+        me[dst - 1] += 1
+        if opp[24 - dst] == 1:            # a blot: hit it onto the bar
+            opp[24 - dst] = 0
+            opp[24] += 1
+    return tuple(opp), tuple(me)
+
+
+def _legal_plays(board, dice) -> dict:
+    """Every legal play for the roll, one per resulting board: {board: steps}."""
+    d1, d2 = dice
+    orders = [(d1,) * 4] if d1 == d2 else [(d1, d2), (d2, d1)]
+    found: dict = {}   # resulting board -> (steps, dice used)
+
+    def sources(me, d):
+        if me[24]:
+            return [(25, 25 - d)]
+        home = not any(me[6:25])
+        out = []
+        for i in range(24):
+            if me[i]:
+                if i - d >= 0:
+                    out.append((i + 1, i + 1 - d))
+                elif home and (i - d == -1 or not any(me[i + 1:6])):
+                    out.append((i + 1, 0))
+        return out
+
+    def walk(b, rest, steps, used):
+        moved = False
+        if rest:
+            for src, dst in sources(b[1], rest[0]):
+                if dst and b[0][24 - dst] >= 2:
+                    continue              # the point is made
+                moved = True
+                walk(_step(b, src, dst), rest[1:], steps + [(src, dst)], used + [rest[0]])
+        if not moved:
+            found.setdefault(b, (steps, used))
+
+    for order in orders:
+        walk(tuple(map(tuple, board)), order, [], [])
+    most = max(len(s) for s, _ in found.values())
+    plays = {b: (s, u) for b, (s, u) in found.items() if len(s) == most}
+    if most == 1 and d1 != d2 and any(u == [max(dice)] for _, u in plays.values()):
+        plays = {b: v for b, v in plays.items() if v[1] == [max(dice)]}   # must use the larger die
+    return {b: s for b, (s, _) in plays.items()}
+
+
+def _below(a, b) -> bool:
+    """Can the player's checkers on board a still move on to board b?"""
+    ca = cb = 0
+    for i in range(24, -1, -1):
+        ca, cb = ca + a[1][i], cb + b[1][i]
+        if cb > ca:
+            return False
+    return True
+
+
+def _complete_moves(gnubg, board, ctx, dice, found, count) -> list[tuple]:
+    """The move tuples of the first count of gnubg's find_best_moves, made whole.
+
+    gnubg's tuple stops at the first checker borne off: 3-1 gives (3,) for both
+    "3/off 1/off" and "3/off 3/2". Such a play is found again among the legal
+    plays: one that can follow the steps we do have, scoring what gnubg scored.
+    """
+    tuples = [tuple(m["move"]) for m in found]
+    if all(len(t) % 2 == 0 for t in tuples[:count]):
+        return tuples[:count]
+    plays = _legal_plays(board, dice)
+    taken = set()                         # the plays whose tuples are whole
+    for t in tuples:
+        if len(t) % 2 == 0:
+            b = tuple(map(tuple, board))
+            for k in range(0, len(t), 2):
+                b = _step(b, t[k], t[k + 1])
+            taken.add(b)
+    tuples = tuples[:count]
+    open_ = {}                            # index -> the board after the steps we have
+    for n, t in enumerate(tuples):
+        if len(t) % 2:
+            b = tuple(map(tuple, board))
+            for k in range(0, len(t) - 1, 2):
+                b = _step(b, t[k], t[k + 1])
+            open_[n] = _step(b, t[-1], 0)     # the step that was cut: a checker borne off
+    out = list(tuples)
+    scores: dict = {}
+
+    def gap(n, a):                        # how far the play leading to a is from gnubg's score
+        if a not in scores:
+            scores[a] = -gnubg.evaluate((a[1], a[0]), gnubg.cube_info(), ctx)[5]
+        return round(abs(found[n]["score"] - scores[a]), 6)
+
+    # The steps we have can lead to several plays, and the board after them can even be
+    # another play's end ("5/off 1/off" cut to "5/off" = "5/4 4/off"), so go by the score:
+    # match each cut move to a play gnubg scored the same, then to any play that fits.
+    cands = {n: [a for a in plays if a not in taken and _below(b, a)] for n, b in open_.items()}
+    if any(len(c) > 1 for c in cands.values()):
+        cands = {n: sorted(c, key=lambda a: (gap(n, a), a != open_[n])) for n, c in cands.items()}
+    owner: dict = {}                      # play -> the cut move it is given to
+
+    def give(n, edges, seen):             # Kuhn's augmenting path
+        for a in edges(n):
+            if a not in seen:
+                seen.add(a)
+                if a not in owner or give(owner[a], edges, seen):
+                    owner[a] = n
+                    return True
+        return False
+
+    for edges in (lambda n: [a for a in cands[n] if gap(n, a) <= 1e-5], lambda n: cands[n]):
+        for n in cands:
+            if n not in owner.values():
+                give(n, edges, set())
+    for a, n in owner.items():
+        out[n] = tuple(x for step in plays[a] for x in step)
+    return out
 
 
 def _call_engine(*args):
