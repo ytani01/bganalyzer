@@ -50,6 +50,16 @@ def test_api_position_id_with_dice():
     assert j["board"]["points"][5] == 5 and "summary" in j
 
 
+def test_api_moves_bearing_off_are_whole():
+    # gnubg's move tuple stops at the first checker borne off, so "3/off 1/off" and
+    # "3/off 3/2" both came out as "3/off"
+    res = client.post("/analyze", json={"position_id": "e24HABDZAAAAAA", "dice": [3, 1]})
+    assert res.status_code == 200, res.text
+    moves = [m["move"] for m in res.json()["moves"]]
+    assert moves[0] == "3/off 1/off"
+    assert "3/2* 3/off" in moves and len(set(moves)) == len(moves)
+
+
 def test_api_board_matches_truth():
     truth = json.loads((Path(__file__).parent.parent / "samples" / "photo2.truth.json").read_text())
     res = client.post("/analyze", json={"board": {"points": truth["points"]}, "on_roll": "black"})
