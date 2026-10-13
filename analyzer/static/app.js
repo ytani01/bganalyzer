@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.8.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.9.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -529,6 +529,28 @@ function drawBoardOn(svg, opts) {
   }
   const barHit = el("rect", { x: bx - B.bar / 2, y: B.y0, width: B.bar, height: B.y1 - B.y0, fill: "transparent", class: "hit" }, svg);
   barHit.addEventListener("click", () => select("bar"));
+  if (opts.checkers) drawDice(svg);
+}
+
+// The dice entered below the board, where the side on roll throws them: in its own right-hand
+// field (手前: the right one in the picture, 奥: the left one), in its checker colour.
+const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
+               4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
+               6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
+function drawDice(svg) {
+  const dice = currentDice();
+  if (!dice) return;
+  const side = state.onRoll, size = 34;
+  const field = side === "white" ? B.x0 + 6 * B.pw + B.bar : B.x0;
+  const cx = field + 3 * B.pw, cy = (B.y0 + B.y1) / 2;
+  dice.forEach((d, k) => {
+    const x = cx + (k ? 6 : -size - 6), y = cy - size / 2;
+    const g = el("g", { class: "die" }, svg);
+    el("rect", { x, y, width: size, height: size, rx: 6, fill: `var(--${side}-chk)`, stroke: "#0006", "stroke-width": 1.5 }, g);
+    for (const [px, py] of PIPS[d]) {
+      el("circle", { cx: x + size / 2 + px * size * 0.27, cy: y + size / 2 + py * size * 0.27, r: size * 0.09, fill: `var(--${side}-fg)` }, g);
+    }
+  });
 }
 
 function counts() {
@@ -659,6 +681,7 @@ for (const id of ["die1", "die2"]) {
   $(id).addEventListener("change", () => {
     if (state.result) $("result").classList.add("stale");
     $("dice-note").hidden = true;
+    if (state.board) drawBoard();
     saveHistory();
   });
 }
@@ -668,6 +691,7 @@ function setDice(dice, fromPhoto = false) {
   $("die1").value = dice ? String(dice[0]) : "";
   $("die2").value = dice ? String(dice[1]) : "";
   $("dice-note").hidden = !fromPhoto;
+  if (state.board) drawBoard();
 }
 
 function currentDice() {
@@ -935,7 +959,10 @@ function syncColours() {
 
 const syncHomePick = initSeg("homePick");
 const syncBottomColour = initSeg("bottomColour", syncColours);
-const syncOnRoll = initSeg("onRoll", () => state.result && $("result").classList.add("stale"));
+const syncOnRoll = initSeg("onRoll", () => {
+  if (state.result) $("result").classList.add("stale");
+  if (state.board) drawBoard();   // the dice move to the other side
+});
 initSeg("photoView", drawBoard);
 syncColours();
 updateCornerUi();

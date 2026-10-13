@@ -149,3 +149,4 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .history-list .sub { color: var(--muted); font-size: 13px; display: block; }
 .history-list .del { width: 40px; height: 40px; padding: 0; font-size: 18px; }
 #to-board { display: block; margin: 0 0 12px auto; }
+.die { pointer-events: none; }   /* taps go to the point under the dice */
