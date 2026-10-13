@@ -95,7 +95,7 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
             cv2.drawContours(g, [b["hull"]], -1, (0, 255, 255), 1)
         cv2.imwrite(debug, g)
     # the cube: the one place found at enough levels, and far more often than any other square
-    # (photo3's cube is found 6 or 7 times, and on the Raspberry Pi fewer: 6 was too many to ask)
+    # (photo3's cube is found 6 or 7 times on x86_64, 5 on the Raspberry Pi; other squares 3 at most)
     cubes.sort(key=lambda c: -c["seen"])
     if not cubes or cubes[0]["seen"] < MIN_READINGS or (len(cubes) > 1 and cubes[1]["seen"] * 2 > cubes[0]["seen"]):
         return None
