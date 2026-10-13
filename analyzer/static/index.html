@@ -20,7 +20,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 <header>
   <div class="bar">
     <button id="back" class="back" type="button" aria-label="前の画面に戻る" hidden>‹ 戻る</button>
-    <h1>BG Analyzer</h1>
+    <h1 id="title">BG Analyzer</h1>
     <!-- その画面の主な操作。下の大きいボタンと同じで、スクロールしてもいつでも押せる -->
     <div class="actions">
       <button id="hdr-recognize" class="act" type="button" hidden disabled>読み取る</button>
@@ -74,18 +74,18 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <button id="corner-reset" class="button small">四隅をやり直す</button>
       <span class="note">点はドラッグで動かせます。ざっくりで大丈夫です。</span>
     </div>
-    <fieldset>
-      <legend>手前の人のホームボード（上がる側）</legend>
+    <div class="opt">
+      <span class="opt-label">手前のホーム<small>（上がる側）</small></span>
       <div class="seg" data-name="homePick">
         <button data-value="auto">自動</button><button data-value="left">左</button><button data-value="right">右</button>
       </div>
-    </fieldset>
-    <fieldset>
-      <legend>手前の人の駒の色</legend>
+    </div>
+    <div class="opt">
+      <span class="opt-label">手前の駒の色</span>
       <div class="seg" data-name="bottomColour">
         <button data-value="0">暗い方</button><button data-value="1">明るい方</button>
       </div>
-    </fieldset>
+    </div>
     <button id="recognize" class="button primary big" disabled>盤面を読み取る</button>
     <button id="to-board" class="button small" hidden>前に読み取った盤面を開く（直した所もそのまま）</button>
   </section>
@@ -93,33 +93,33 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <!-- 3. 盤面の確認・修正と解析 -->
   <section id="board" class="step" hidden>
     <div id="errors" class="alert" hidden></div>
-    <div class="panel">
-    <h2 class="panel-title">盤面を確かめる</h2>
-    <p class="note">違っている所はポイントをタップして直してください。下が手前の人です。</p>
-    <fieldset id="photo-tools" hidden>
-      <legend>元の写真（四隅で補正し、盤面図と同じ並びにしたもの）</legend>
+    <!-- 元の写真は四隅で補正し、盤面図と同じ並びにしたもの -->
+    <div id="photo-tools" class="opt" hidden>
+      <span class="opt-label">元の写真</span>
       <div class="seg" data-name="photoView">
-        <button data-value="side">並べる</button><button data-value="overlay">重ねる</button><button data-value="off">隠す</button>
+        <button data-value="side">並べる</button><button data-value="off">隠す</button>
       </div>
-    </fieldset>
+    </div>
+    <!-- スマホの縦長の画面では、盤面図と駒の数を直すボタン（#board-pin）が上に貼り付き、
+         下の設定や結果をスクロールしても盤面が見えたままになる -->
     <div id="boards" class="boards">
       <div id="photo-wrap" class="board-wrap" hidden><svg id="photo-svg" viewBox="0 0 660 440"></svg></div>
-      <div class="board-wrap"><svg id="board-svg" viewBox="0 0 660 440"></svg></div>
-    </div>
-    <div id="editor" class="editor">
-      <div id="editor-title" class="editor-title">ポイントをタップすると駒の数を直せます</div>
-      <div id="editor-buttons" hidden>
-        <div class="editor-row">
-          <span class="chip white"></span><span>手前の駒</span>
-          <button data-op="w-">−</button><button data-op="w+">＋</button>
+      <div id="board-pin" class="board-pin">
+        <div class="board-wrap"><svg id="board-svg" viewBox="0 0 660 440"></svg></div>
+        <div id="editor" class="editor">
+          <div id="editor-title" class="editor-title">違う所はポイントやバーをタップして直す（下が手前）</div>
+          <div id="editor-buttons" class="editor-buttons" hidden>
+            <span class="chip white" title="手前の駒"></span>
+            <button data-op="w-" aria-label="手前の駒を減らす">−</button><button data-op="w+" aria-label="手前の駒を増やす">＋</button>
+            <span class="chip black" title="奥の駒"></span>
+            <button data-op="b-" aria-label="奥の駒を減らす">−</button><button data-op="b+" aria-label="奥の駒を増やす">＋</button>
+            <button data-op="clear" class="clear">空</button>
+            <button data-op="close" class="clear" aria-label="閉じる">✕</button>
+          </div>
         </div>
-        <div class="editor-row">
-          <span class="chip black"></span><span>奥の駒</span>
-          <button data-op="b-">−</button><button data-op="b+">＋</button>
-        </div>
-        <button data-op="clear" class="button small">空にする</button>
       </div>
     </div>
+    <div class="panel">
     <div id="counts" class="counts"></div>
     <div class="row wrap">
       <button id="swap-colours" class="button small">駒の色を入れ替える</button>
@@ -131,25 +131,28 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 
     <div class="panel">
     <h2 class="panel-title">解析の設定</h2>
-    <fieldset>
-      <legend>次にダイスを振る人</legend>
+    <div class="opt">
+      <span class="opt-label">次に振る人</span>
       <div class="seg" data-name="onRoll">
         <button data-value="white">手前</button><button data-value="black">奥</button>
       </div>
-      <button id="flip-turn" class="button small">手番を入れ替える</button>
-    </fieldset>
-    <fieldset>
-      <legend>ダイスの目（入れると最善手も出します）</legend>
+      <button id="flip-turn" class="button small" title="手番を入れ替えます（解析した後なら解析し直します）">入れ替える</button>
+    </div>
+    <div class="opt">
+      <span class="opt-label">ダイスの目</span>
       <div class="dice">
-        <select id="die1"><option value="">-</option></select>
-        <select id="die2"><option value="">-</option></select>
+        <select id="die1" aria-label="ダイス 1"><option value="">-</option></select>
+        <select id="die2" aria-label="ダイス 2"><option value="">-</option></select>
       </div>
-      <p id="dice-note" class="note" hidden>写真からダイスの目を読み取りました。違うときは直してください。</p>
-    </fieldset>
+      <span class="note">入れると最善手も出します</span>
+    </div>
+    <p id="dice-note" class="note" hidden>写真からダイスの目を読み取りました。違うときは直してください。</p>
     <fieldset>
-      <legend>キューブの場所</legend>
-      <div class="seg" data-name="cubeAt">
-        <button data-value="centre">中央</button><button data-value="white">手前</button><button data-value="black">奥</button>
+      <div class="opt">
+        <span class="opt-label">キューブ</span>
+        <div class="seg" data-name="cubeAt">
+          <button data-value="centre">中央</button><button data-value="white">手前</button><button data-value="black">奥</button>
+        </div>
       </div>
       <div id="cube-side" class="row wrap" hidden>
         <label>キューブの数 <select id="cube-value"></select></label>
@@ -158,13 +161,13 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <p id="cube-help" class="note"></p>
       <p id="cube-note" class="note" hidden>写真からキューブを読み取りました。違うときは直してください。</p>
     </fieldset>
-    <fieldset>
-      <legend>読みの深さ</legend>
+    <div class="opt">
+      <span class="opt-label">読みの深さ</span>
       <div class="seg" data-name="plies">
-        <button data-value="2">2手（ふつう）</button><button data-value="3">3手（じっくり）</button>
+        <button data-value="2">2手</button><button data-value="3">3手</button>
       </div>
-      <p class="note">3手は少し正確になりますが、10倍以上時間がかかります。</p>
-    </fieldset>
+    </div>
+    <p class="note">3手は少し正確になりますが、10倍以上時間がかかります。</p>
     </div>
     <button id="analyze" class="button primary big">解析する</button>
 

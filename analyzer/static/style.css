@@ -104,7 +104,7 @@ main { max-width: 720px; margin: 0 auto; padding: 12px 16px 40px; }
   display: inline-block;
 }
 .button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-.button.big { display: block; padding: 18px; font-size: 18px; margin: 16px 0; }
+.button.big { display: block; width: 100%; padding: 14px; font-size: 18px; margin: 12px 0; }
 .button.small { padding: 6px 12px; font-size: 14px; }
 .button:disabled { opacity: .4; cursor: default; }
 
@@ -134,7 +134,6 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .board-wrap svg .num { font-size: 11px; fill: var(--muted); text-anchor: middle; }
 .board-wrap svg .off-n { font-size: 15px; font-weight: bold; fill: #3a2614; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .stack-n { font-size: 15px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
-.board-wrap svg .stack-n.ring { font-size: 18px; paint-order: stroke; stroke: #000; stroke-width: 3px; }
 .boards { display: grid; gap: 8px; }
 /* Photo and board side by side when there is room; one above the other on a phone. */
 @media (min-width: 1000px) {
@@ -142,11 +141,17 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
   #board:not([hidden]) .boards.two { grid-template-columns: 1fr 1fr; }
 }
 
-.editor { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
-.editor-title { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
-.editor-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-.editor-row span:nth-child(2) { flex: 1; }
-.editor-row button { width: 56px; font-size: 20px; padding: 6px 0; }
+.editor { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin: 6px 0 0; }
+.editor-title { font-size: 13px; color: var(--muted); }
+.editor-buttons { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.editor-buttons button {
+  appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--fg);
+  border-radius: 8px; min-width: 40px; height: 36px; font-size: 20px; padding: 0 6px; cursor: pointer;
+}
+.editor-buttons .chip { margin-left: 6px; }
+.editor-buttons .chip:first-child { margin-left: 0; }
+.editor-buttons .clear { font-size: 14px; }
+.editor-buttons .clear:first-of-type { margin-left: auto; }
 .chip { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #888; display: inline-block; }
 .chip.white { background: var(--white-chk); }
 .chip.black { background: var(--black-chk); }
@@ -161,7 +166,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .result { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 16px 0; }
 .result.stale { opacity: .5; }
 .result h2 { font-size: 18px; margin: 0 0 8px; }
-.button.speak { display: block; width: 100%; min-height: 52px; font-size: 18px; font-weight: bold; margin: 4px 0 12px; }
+.button.speak { display: block; width: 100%; min-height: 44px; font-size: 17px; font-weight: bold; margin: 4px 0 12px; }
 .button.speak.on { background: var(--card); color: var(--accent); }
 .winbar { display: flex; height: 28px; border-radius: 8px; overflow: hidden; margin: 8px 0; font-size: 14px; font-weight: bold; }
 .winbar div { display: flex; align-items: center; padding: 0 8px; white-space: nowrap; }
@@ -197,3 +202,34 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .result .answer { font-size: 20px; margin: 4px 0; }
 #cube-side label { display: flex; align-items: center; gap: 6px; }
 #cube-side select { font-size: 16px; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+
+/* A setting on one line: its name on the left, the buttons on the right. */
+.opt { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.opt-label { width: 6.5em; flex: none; font-size: 14px; color: var(--muted); line-height: 1.3; }
+.opt-label small { display: block; font-size: 11px; }
+.opt .seg { flex: 1; min-width: 0; }
+.opt .seg button { padding: 7px 6px; font-size: 15px; }
+.opt .note { flex-basis: 100%; margin: 0; }
+.opt .dice + .note { flex-basis: auto; flex: 1; }
+.opt .dice select { width: 64px; font-size: 17px; padding: 5px 6px; }
+#flip-turn { margin-top: 0; }
+.panel .note { margin: 4px 0 8px; }
+
+/* Phone held upright: the header is one line (the step's name instead of the step list), and the board
+   with its edit buttons stays at the top while the settings and the result scroll under it. */
+@media (max-width: 599px) {
+  #steps { display: none; }
+  .lead { font-size: 15px; margin: 4px 0 8px; }
+  #corner-help { min-height: 3em; }
+  .row { margin: 8px 0; }
+  .panel { padding: 2px 10px 6px; }
+  .panel-title { font-size: 15px; }
+}
+:root { --pin-h: 0px; }
+@media (max-width: 699px) and (orientation: portrait) {
+  :root { --pin-h: var(--pin-h-live, 0px); }
+  #board:not([hidden]) .boards { display: contents; }
+  #photo-wrap { margin-bottom: 8px; }
+  .board-pin { position: sticky; top: var(--hdr-h, 56px); z-index: 4; background: var(--bg); padding: 4px 0 6px; }
+}
+#result, #analyze { scroll-margin-top: calc(var(--hdr-h, 56px) + var(--pin-h) + 8px); }
