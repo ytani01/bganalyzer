@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.9.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.10.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -13,6 +13,14 @@ const SHARE_CACHE = "bganalyzer-share";   // same names as in sw.js
 const SHARE_KEY = "shared-photo";
 
 const $ = (id) => document.getElementById(id);
+
+function storedPlies() {
+  try { return localStorage.getItem("plies") === "3" ? "3" : "2"; } catch (_) { return "2"; }
+}
+
+function analysingText() {
+  return state.plies === "3" ? "3手読みで解析しています（しばらくかかります）…" : "解析しています…";
+}
 
 const state = {
   file: null,        // the chosen File
@@ -25,6 +33,7 @@ const state = {
   homeGuess: null,   // how the server guessed home (homePick "auto"): {margin}; null once flipped by hand
   bottomColour: 1,   // 0 = the darker checkers are 手前's, 1 = the lighter ones
   onRoll: "white",
+  plies: storedPlies(),   // how deep gnubg reads: "2" or "3" (kept on this phone)
   fromPhoto: false,
   warnings: [],      // the server's notes on the photo (e.g. taken at a steep angle)
   board: null,       // {points[24], bar_white, bar_black}
@@ -362,6 +371,7 @@ $("recognize").addEventListener("click", async () => {
     fd.append("on_roll", state.onRoll);
     let dice = currentDice();
     if (dice) fd.append("dice", dice.join(","));
+    fd.append("plies", state.plies);
     const data = await post("analyze-photo", fd);
     if (!dice && data.dice_read) {   // read from the photo (the analysis used them too)
       dice = data.dice_read;
@@ -702,9 +712,9 @@ function currentDice() {
 $("analyze").addEventListener("click", async () => {
   const errs = boardErrors();
   if (errs.length) { alert(errs.join("\n")); return; }
-  busy("解析しています…");
+  busy(analysingText());
   try {
-    const body = { board: { ...state.board }, on_roll: state.onRoll };
+    const body = { board: { ...state.board }, on_roll: state.onRoll, plies: Number(state.plies) };
     const dice = currentDice();
     if (dice) body.dice = dice;
     const r = await post("analyze", JSON.stringify(body), { "content-type": "application/json" });
@@ -964,6 +974,10 @@ const syncOnRoll = initSeg("onRoll", () => {
   if (state.board) drawBoard();   // the dice move to the other side
 });
 initSeg("photoView", drawBoard);
+initSeg("plies", () => {
+  try { localStorage.setItem("plies", state.plies); } catch (_) { /* private mode */ }
+  if (state.result) $("result").classList.add("stale");
+});
 syncColours();
 updateCornerUi();
 show("photo");
