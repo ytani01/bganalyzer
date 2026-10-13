@@ -35,7 +35,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py and corners.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -44,6 +44,8 @@ CIRCLE_MIN_SCORE = 0.85  # circle score for a checker on its own
 LONE_MIN_SCORE = 1.0     # ... and for a single checker with no stack to back it
 STACK_SKEW = 0.25        # max sideways step between neighbouring checkers of a stack / pitch
 GAP_MIN_SCORE = 0.6      # enough for a circle in line between two checkers of a stack
+OUTLINE_SUPPORT = 0.8    # edge support of a checker that has the colour of the spot under it
+BAR_COLOUR_TOL = 0.25    # a checker on the bar: colour distance to its cluster / distance between the clusters
 
 
 @dataclass
@@ -241,8 +243,11 @@ OBLIQUE_WARN_DEG = 40   # samples: top-down shots 0-23 degrees, photo1 69
 COL_MIN_SCORE = 1.0
 
 
-def fit_columns(ground_bgr, lay: Layout, m: int) -> Layout:
-    """Fit column centres to the triangles (near their tips, rarely covered)."""
+def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
+    """Fit column centres to the triangles (near their tips, rarely covered).
+
+    reach: how far (in pitches) the columns may move from the even spacing.
+    """
     lab = cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab).astype(np.float32)
     plain = _plain_colour(lab, lay, m)
     dist = np.linalg.norm(lab - plain, axis=2)
@@ -257,14 +262,15 @@ def fit_columns(ground_bgr, lay: Layout, m: int) -> Layout:
     cols = []
     for f0 in (0.0, lay.a + lay.bar):
         best = None
-        for scale in np.linspace(0.85, 1.15, 31):
+        for scale in np.linspace(1 - 0.125 * reach, 1 + 0.125 * reach, 31):
             pw = lay.pw * scale
-            for off in np.linspace(-1.2, 1.2, 97) * lay.pw:
+            for off in np.linspace(-reach, reach, 97) * lay.pw:
                 c = m + f0 + off + lay.a / 2 + (np.arange(6) - 2.5) * pw
-                # near their tips the triangles are narrow peaks; the bar and the
-                # frame are wide plateaus, so score peaks, not just colour
+                # near their tips the triangles are narrow peaks; the bar, the frame
+                # and a stack of checkers (about one pitch wide) are plateaus, so
+                # score peaks, not just colour
                 on = np.interp(c, xs, prof)
-                side = (np.interp(c - 0.4 * pw, xs, prof) + np.interp(c + 0.4 * pw, xs, prof)) / 2
+                side = (np.interp(c - 0.5 * pw, xs, prof) + np.interp(c + 0.5 * pw, xs, prof)) / 2
                 sc = (on - side).sum()
                 if best is None or sc > best[0]:
                     best = (sc, c - m)
@@ -317,12 +323,33 @@ def fit_columns_to_checkers(lay: Layout, circles) -> Layout:
     return Layout(a=lay.a, bar=lay.bar, h=lay.h, cols=cols)
 
 
+def _run_at(line, k0, max_off):
+    """(width, centre) of the run of True pixels nearest index k0, or (0, None)."""
+    idx = np.flatnonzero(line)
+    if not len(idx):
+        return 0, None
+    k = idx[np.argmin(np.abs(idx - k0))]
+    if abs(k - k0) > max_off:
+        return 0, None
+    lo = k
+    while lo > 0 and line[lo - 1]:
+        lo -= 1
+    hi = k
+    while hi < len(line) - 1 and line[hi + 1]:
+        hi += 1
+    return hi - lo + 1, (lo + hi) / 2
+
+
 def find_tips(ground_bgr, lay: Layout, m: int):
     """Sub-pixel triangle tips in a (roughly) rectified ground image.
 
     The tips are printed on the board surface, sit mid-board and are rarely
     covered, so unlike the frame edges they are not shifted by the frame's
-    height in oblique photos. Returns list of (column, row, x, y) canonical.
+    height in oblique photos. Returns a list of
+    (column, row, tip x, tip y, length, lean, base) canonical: length is where
+    the sides are one pitch apart, lean the centre line's sideways step per
+    pixel of depth, base the distance from the tip to where the triangle ends
+    (None when not found; short when a checker stands on the point).
     """
     lab = cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab).astype(np.float32)
     lab = cv2.GaussianBlur(lab, (0, 0), 1.5)
@@ -333,28 +360,19 @@ def find_tips(ground_bgr, lay: Layout, m: int):
     for c in range(12):
         cx = m + lay.col_x(c)
         x0, x1 = int(cx - 0.6 * lay.pw), int(cx + 0.6 * lay.pw)
+        if x0 < 0 or x1 > tri.shape[1]:
+            continue
         for row in ("top", "bottom"):
-            ys = np.arange(int(D * 0.45), int(D * 1.35))
-            yy = (m + ys) if row == "top" else (m + lay.h - ys)
-            yy = yy[(yy >= 0) & (yy < tri.shape[0])]
+            def img_y(depth):
+                return int(m + depth) if row == "top" else int(m + lay.h - depth)
             data, miss = [], 0
-            for depth, y in zip(ys, yy):
-                line = tri[y, x0:x1]
-                w = 0
-                idx = np.flatnonzero(line)
-                if len(idx):
-                    # run of triangle pixels containing the point nearest the centre
-                    k = idx[np.argmin(np.abs(idx - (cx - x0)))]
-                    if abs(k - (cx - x0)) <= 0.25 * lay.pw:
-                        lo = k
-                        while lo > 0 and line[lo - 1]:
-                            lo -= 1
-                        hi = k
-                        while hi < len(line) - 1 and line[hi + 1]:
-                            hi += 1
-                        w = hi - lo + 1
+            for depth in range(int(D * 0.45), int(D * 1.35)):
+                y = img_y(depth)
+                if not 0 <= y < tri.shape[0]:
+                    break
+                w, mid = _run_at(tri[y, x0:x1], cx - x0, 0.25 * lay.pw)
                 if 0.08 * lay.pw < w < 0.75 * lay.pw:
-                    data.append((depth, w, x0 + (lo + hi) / 2))
+                    data.append((depth, w, x0 + mid))
                     miss = 0
                 elif data:
                     miss += 1
@@ -373,17 +391,57 @@ def find_tips(ground_bgr, lay: Layout, m: int):
             exp_slope = -lay.pw / D
             if not (1.6 * exp_slope < p[0] < 0.6 * exp_slope) or np.median(res) > 2.5 or len(d) < 15:
                 continue
-            tip_depth = -p[1] / p[0]
+            # where the sides would meet; triangles with blunt or rounded ends stop short of it
+            tip_depth = min(-p[1] / p[0], d[:, 0].max() + 0.02 * lay.h)
             px = np.polyfit(d[:, 0], d[:, 2], 1)
             tip_x = np.polyval(px, tip_depth)
             tip_y = m + tip_depth if row == "top" else m + lay.h - tip_depth
             # triangle length in this image = depth at which width reaches one pitch
             length = -lay.pw / p[0]
-            tips.append((c, row, tip_x - m, tip_y - m, length, px[0]))
+            base = _triangle_base(lab, plain, lay, m, img_y, p, px, d, tip_depth)
+            tips.append((c, row, tip_x - m, tip_y - m, length, px[0], base))
     if tips:  # all triangles are the same shape: drop odd ones
         med = np.median([t[4] for t in tips])
         tips = [t for t in tips if abs(t[4] - med) < 0.15 * med and abs(t[5]) < 0.08]
     return tips
+
+
+def _triangle_base(lab, plain, lay, m, img_y, p, px, d, tip_depth):
+    """Distance from the tip to the triangle's base, or None if it runs off the image.
+
+    Walks from the measured part of the triangle towards the frame along its centre
+    line, in pixels of the triangle's own colour (a neighbour has the other colour),
+    while the width keeps to the straight sides. The base is where that stops: the
+    frame, or a checker standing on the point (then the triangle looks shorter).
+    """
+    depths = d[:, 0]
+    sel = (depths > tip_depth - 0.6 * (tip_depth - depths.min())) & (depths < tip_depth - 0.1 * (tip_depth - depths.min()))
+    pts = [lab[img_y(dd), int(round(np.polyval(px, dd)))] for dd in depths[sel]] if sel.sum() >= 5 else []
+    if not len(pts):
+        return None
+    col = np.median(np.array(pts), 0)
+    thr = max(15.0, 0.45 * float(np.linalg.norm(col - plain)))
+    miss, last = 0, None
+    for depth in range(int(depths.min()), -int(m), -1):
+        y = img_y(depth)
+        if not 0 <= y < lab.shape[0]:
+            return None
+        xc = np.polyval(px, depth)
+        x0, x1 = int(xc - 0.7 * lay.pw), int(xc + 0.7 * lay.pw)
+        if x0 < 0 or x1 > lab.shape[1]:
+            return None
+        own = np.linalg.norm(lab[y, x0:x1] - col, axis=1) < thr
+        w, _ = _run_at(own, xc - x0, 0.15 * lay.pw)
+        pred = np.polyval(p, depth)
+        if 0.6 * pred - 3 < w < 1.35 * pred + 3:
+            last, miss = depth, 0
+        else:
+            miss += 1
+            if miss > max(4, 0.01 * lay.h):
+                break
+    else:
+        return None
+    return None if last is None else tip_depth - last
 
 
 def refine_tips(img, H, lay: Layout, m: int):
@@ -396,23 +454,27 @@ def refine_tips(img, H, lay: Layout, m: int):
     if len(tips) < 6 or rows != {"top", "bottom"}:
         return H, lay, tips
     # field height in this image: from top-row bases to bottom-row bases
-    tb = [y - L for _, r, _, y, L, _ in tips if r == "top"]
-    bb = [y + L for _, r, _, y, L, _ in tips if r == "bottom"]
-    field_h = np.median(bb) - np.median(tb)
-    ratio = float(np.clip(np.median([L for *_, L, _ in tips]) / field_h, 0.3, 0.48))
+    tb, bb = _row_bases(tips, "top"), _row_bases(tips, "bottom")
+    if tb is None or bb is None:
+        # no bases seen: assume the sides reach one pitch apart at the frame
+        tb = np.median([y - L for _, r, _, y, L, *_ in tips if r == "top"])
+        bb = np.median([y + L for _, r, _, y, L, *_ in tips if r == "bottom"])
+    field_h = bb - tb
     pw = (lay.col_x(5) - lay.col_x(0) + lay.col_x(11) - lay.col_x(6)) / 10
     bar = lay.col_x(6) - lay.col_x(5) - pw
     s = lay.h / field_h
     new = Layout(a=6 * pw * s, bar=max(bar * s, 1.0), h=lay.h)
-    D = ratio * new.h
+    # tips lie on two straight lines across the board
+    D = s * np.median([y - tb for _, r, _, y, *_ in tips if r == "top"] +
+                      [bb - y for _, r, _, y, *_ in tips if r == "bottom"])
     obs, ideal = [], []
-    for c, r, x, y, L, dx in tips:
+    for c, r, x, y, L, dx, _ in tips:
         sgn = 1 if r == "top" else -1
         for f in (0.0, 0.35, 0.6):           # fraction of the way back towards the base
             oy = y - sgn * L * f
             ox = x - dx * L * f * sgn
             half_o = lay.pw / 2 * f
-            iy = (D * (1 - f)) if r == "top" else new.h - D * (1 - f)
+            iy = (D - L * s * f) if r == "top" else new.h - D + L * s * f
             half_i = new.pw / 2 * f
             for k in ((0,) if f == 0 else (-1, 1)):
                 obs.append((ox + k * half_o, oy))
@@ -422,6 +484,19 @@ def refine_tips(img, H, lay: Layout, m: int):
     if Hn is None:
         return H, lay, tips
     return Hn / Hn[2, 2], new, tips
+
+
+def _row_bases(tips, row):
+    """Where one row's triangles meet the frame (canonical y), or None.
+
+    A checker standing on a point makes its triangle look shorter, and most
+    positions leave some points of each row empty: take the outer bases.
+    """
+    sgn = 1 if row == "top" else -1
+    ys = sorted((y - sgn * b for _, r, _, y, _, _, b in tips if r == row and b is not None), key=lambda v: sgn * v)
+    if len(ys) < 3:
+        return None
+    return float(np.median(ys[:max(2, (len(ys) + 1) // 2)]))
 
 
 def _plain_colour(lab, lay: Layout, m: int, mask=None):
@@ -452,7 +527,7 @@ def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None):
         lab = lab.copy()
         lab[mask] = np.nan
     px = []
-    for c, r, x, y, L, dx in tips:     # inside detected triangles, along the centre line
+    for c, r, x, y, L, dx, _ in tips:     # inside detected triangles, along the centre line
         sgn = 1 if r == "top" else -1
         for f in np.linspace(0.15, 0.5, 8):
             yy, xx = int(m + y - sgn * L * f), int(m + x - dx * L * f * sgn)
@@ -506,7 +581,7 @@ def triangle_colour_map(board, lay, m, tips, ground_lab):
     """Triangle colour index for each (column, row), using alternation."""
     tri = board[1:3] * LAB_W
     votes = []
-    for c, r, x, y, L, dx in tips:
+    for c, r, x, y, L, dx, _ in tips:
         sgn = 1 if r == "top" else -1
         yy, xx = int(m + y - sgn * L * 0.3), int(m + x)
         col = np.median(ground_lab[yy - 2:yy + 3, xx - 2:xx + 3].reshape(-1, 3), 0) * LAB_W
@@ -597,7 +672,9 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         distinct = float(np.min(np.linalg.norm(np.float32(expected) - med, axis=1)))
         support = _edge_support(gx, gy, x, y, r)
         score = support + 0.012 * min(distinct, 30) + 0.3 * ring_same
-        if support < 0.2 or ring_same < 0.35 or distinct < 8:
+        # the colour of an empty spot is fine with a clear outline all round
+        # (a white checker on a white triangle in a diagram)
+        if support < 0.2 or ring_same < 0.35 or (distinct < 8 and (support < OUTLINE_SUPPORT or ring_same < 0.6)):
             continue
         if score < GAP_MIN_SCORE:
             continue
@@ -675,8 +752,11 @@ def count_from_circles(circles, lay: Layout, pitch: float):
             n = max(used, 1 + int(sum(round(g / step) for g in gaps)))
         stacks[(c, row)] = (min(n, 15), members if n else [])
     # 3. colours, learnt from the checkers only: circles that are in no stack
-    # (a dice cup, a printed emblem) would pull a cluster to themselves
-    keep = sorted({i for _, mem in stacks.values() for i in mem} | set(on_bar))
+    # (a dice cup, a printed emblem) would pull a cluster to themselves; so would
+    # hinges and straps on the bar
+    keep = sorted({i for _, mem in stacks.values() for i in mem})
+    if len(keep) < 2:
+        keep = sorted(set(keep) | set(on_bar))
     if len(keep) < 2:
         keep = list(range(len(circles)))
     raw = np.float32([c[3] for c in circles])
@@ -703,6 +783,10 @@ def count_from_circles(circles, lay: Layout, pitch: float):
     conf = np.abs(dd[:, 0] - dd[:, 1]) / (dd.sum(1) + 1e-6)
     bar = [0, 0]
     for i in on_bar:
+        # hinges, clasps and straps on the bar make circles too: a checker there
+        # needs a clear circle and one of the checker colours
+        if circles[i][4] < LONE_MIN_SCORE or dd[i].min() > BAR_COLOUR_TOL * np.linalg.norm(cc[0] - cc[1]):
+            continue
         bar[lbl[i]] += 1
     runs = {}
     for key, (n, members) in stacks.items():
@@ -732,11 +816,16 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     H, quality, lay = refine(img, cv2.perspectiveTransform(lay.src_pts()[None], H)[0], lay, m)
     Sh = np.array([[1, 0, m], [0, 1, m], [0, 0, 1]], np.float64)
     tips = []
+    reach = 1.2
     for _ in range(2):
         size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
         ground = cv2.warpPerspective(img, Sh @ np.linalg.inv(H), size, flags=cv2.INTER_AREA)
-        lay = fit_columns(ground, lay, m)
+        lay = fit_columns(ground, lay, m, reach)
         H, lay, tips = refine_tips(img, H, lay, m)
+        if lay.cols is None:
+            # fitted to the triangles: from here on only small corrections, as other
+            # things on the board can look like triangles too
+            reach = 0.4
     size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
     ground = cv2.warpPerspective(img, Sh @ np.linalg.inv(H), size, flags=cv2.INTER_AREA)
     tips = find_tips(ground, lay, m)
