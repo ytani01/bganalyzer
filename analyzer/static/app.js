@@ -833,7 +833,7 @@ function setResult(r, dice) {
     : "ピップは同じ";
   stopSpeaking();
   let html = `<h2>${esc(r.summary)}</h2>`;
-  if (window.speechSynthesis) html += `<button id="speak" class="button small">🔊 読み上げる</button>`;
+  if (window.speechSynthesis) html += `<button id="speak" class="button primary speak" aria-pressed="false">🔊 読み上げ</button>`;
   if (!r.game_over) {
     const p = r.probabilities;
     const w = p.white.win, bl = p.black.win;
@@ -930,7 +930,12 @@ function toggleSpeaking(text) {
   u.lang = "ja-JP";
   const voice = japaneseVoice();
   if (voice) u.voice = voice;
-  const label = (on) => { if (btn && btn.isConnected) btn.textContent = on ? "■ 止める" : "🔊 読み上げる"; };
+  const label = (on) => {
+    if (!btn || !btn.isConnected) return;
+    btn.textContent = on ? "■ 停止" : "🔊 読み上げ";
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", on);
+  };
   u.onstart = () => label(true);
   u.onend = u.onerror = () => label(false);
   synth.speak(u);
