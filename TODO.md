@@ -15,7 +15,8 @@
   - [x] 三角形への合わせ直しが、盤の外の駒入れの溝や細い蝶番のバーに引っ張られてずれる（commons-travel-case 15→21/24、commons-tavli-grey 11→23/24。recognizer 0.3.1）
   - [x] 蝶番や留め具をバーの駒と数える（Commons 11 枚のバーが全部正しくなった。0.3.1）
   - [x] 盤面図で、白い三角形の上の白い駒を見落とす（USBGF 7 枚 147→166/168。0.3.1）
-  - [ ] バーの帯がない盤（commons-dark-homeleft 12/24）とダイスカップが乗ったやや斜めの写真（commons-leather-cups 14/24）
+  - [x] ダイスカップが乗ったやや斜めの写真（commons-leather-cups。Raspberry Pi で 9→19/24。recognizer 0.5.1）
+  - [ ] バーの帯がない盤（commons-dark-homeleft 12/24）
   - [ ] 四隅の推定（corners.py）が Commons の写真 11 枚中 4 枚で見つからず、5 枚で 4.5〜12.9% ずれる
 - dark-homeleft を調べて分かったこと（2026-10-13、Raspberry Pi で）: 暗い盤の上の焦げ茶の駒が円として見つからない。
   三角形が白・赤・黒の 3 色ある盤で、`board_colours` が三角形の色を 2 つにしか分けないので、空いた白や赤の三角形の底を駒と読む。
