@@ -31,6 +31,9 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
    読めないとき・自信がないとき（1 つしかない、3 つ以上ある、バーやカップの中など）は空のまま。
    次に振る人とダイスの目（任意）、読みの深さ（2手 / 3手。選んだほうを端末に覚える）を選んで「解析する」。ダイスの目が入っているときは、盤面図にもダイスの絵が出る
    （次に振る人の右手側のフィールド、つまり手前なら右・奥なら左に、その人の駒の色で）。
+   **キューブ**は場所（中央 / 手前 / 奥）と数を選ぶ（`static/cube.js`。盤面図のバーにも出る）。ダイスがなければ、中央なら次に振る人がダブルすべきかを、
+   片側にあれば「その側がダブルされたところ」としてテイクかパスかを判定する（次に振る人はダブルした側に自動で変わる）。
+   「ダブルされたところ」を外すと、その側がキューブを持っている扱いになる（持ち主が次に振るならリダブルすべきかを判定）。
    「手番を入れ替える」で次に振る人を反対にできる（解析の結果が出ていれば、そのまま新しい手番で解析し直す）。勝率・ギャモン率・エクイティ・ピップ数と、ダイスを入れたときは最善手5つを表示。
    最善手は盤面図に矢印で出る（最初は 1 位の手。一覧の行をタップするとその手の矢印に変わる。ヒットした先は赤い丸。手の表記の読み方は `static/moves.js`）。盤面を直すと矢印は消える。
    写真から読み取ったときは、元の写真も出して読み間違いを見比べられる（下記）。
@@ -77,6 +80,9 @@ x86_64 と arm64（Raspberry Pi）の両方でビルドできる。arm64 には 
 | `on_roll` | 次にサイコロを振る側 `"white"`（既定）/`"black"` |
 | `plies` | 読みの深さ 0〜3（既定 2。2 で 1局面 約30ms、3 で 約0.7秒） |
 | `dice` | 例 `[3, 1]`。指定すると最善手の候補（上位5つ）も返す |
+| `cube_value` | キューブの数 1, 2, 4, …, 64（既定 1 = 中央） |
+| `cube_owner` | キューブの持ち主 `"white"` / `"black"`、中央なら `null`（既定）。数が 2 以上なら持ち主が要る |
+| `doubled` | `true` なら、`on_roll` の側が今 `cube_value` にダブルし、`cube_owner`（相手側）がテイクかパスかを決めるところ（ダイスとは一緒に使えない） |
 
 ```
 curl -s localhost:8000/analyze -H 'content-type: application/json' \
@@ -102,6 +108,19 @@ curl -s localhost:8000/analyze -H 'content-type: application/json' \
 - `equity` はキューブなし（cubeless）のマネーゲームのエクイティ。+1 が確実なシングル勝ち。
 - `favourite` はエクイティが高い側。片方が15個上げ終わっていれば `game_over: true`。
 - 駒が15個ずつでない、Position ID が不正などは 422 とエラーメッセージ。
+- **キューブ判断（`cube`）:** ダイスがないとき、`on_roll` の側がダブル（リダブル）できるなら、gnubg のキューブ判断を返す
+  （マネーゲーム、gnubg の既定どおりジャコビー・ルールあり・ビーバーなし。深さは `plies`）。ダイスがあるとき、相手がキューブを持っているときは `null`。
+
+  ```json
+  "cube": {"question": "double", "doubler": "white", "taker": "black", "value": 1,
+           "equity": {"no_double": 0.81, "double_take": 0.899, "double_pass": 1.0},
+           "double": true, "too_good": false, "take": true, "proper": "Double, take"}
+  ```
+
+  `question` は `"double"`（ダブルすべきか）か `"take"`（`doubled: true` のとき。テイクかパスか）。`value` はダブルする前のキューブの数、
+  `equity` はダブルする側から見たキューブありのエクイティ（ダブル前のキューブ 1 つ分を単位とする）。`too_good` はダブルせずギャモンを狙う方がよい局面。
+  `proper` は gnubg の言葉そのまま。gnubg の Python モジュールにはキューブ判断を返す関数がないので、解析用の子プロセスで gnubg の
+  `hint` コマンドを実行し、表示された文字を読んでいる（`analysis.py` の `_cube_hint`）。
 
 ### `POST /find-corners`（multipart）
 
@@ -113,7 +132,7 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 
 写真から認識（`recognizer/board.py`）して、そのまま解析します。
 フィールド: `image`、`corners`（`x1,y1,…,x4,y4`）、`home`（`left`・`right`・`auto`。既定 `right`）、
-`bottom_colour`（意味は recognizer/README.md と同じ）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）。
+`bottom_colour`（意味は recognizer/README.md と同じ）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）、`cube_value`・`cube_owner`・`doubled`（/analyze と同じ）。
 
 応答は `{"recognized": 認識結果, "home": "left" か "right", "home_guess": {...} か null, "errors": [...], "warnings": [...], "geometry": {...}, "dice_read": [大, 小] か null, "analysis": 上の /analyze と同じ形}`。
 `dice_read` は写真のフィールドに 2 つのダイスがあって、目を自信を持って読めたときだけ入る（recognizer/README.md の「ダイス」）。

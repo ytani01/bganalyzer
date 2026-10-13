@@ -141,6 +141,18 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <p id="dice-note" class="note" hidden>写真からダイスの目を読み取りました。違うときは直してください。</p>
     </fieldset>
     <fieldset>
+      <legend>キューブの場所</legend>
+      <div class="seg" data-name="cubeAt">
+        <button data-value="centre">中央</button><button data-value="white">手前</button><button data-value="black">奥</button>
+      </div>
+      <div id="cube-side" class="row wrap" hidden>
+        <label>キューブの数 <select id="cube-value"></select></label>
+        <label><input type="checkbox" id="cube-offered" checked> ダブルされたところ（テイクかパスか）</label>
+      </div>
+      <p id="cube-help" class="note"></p>
+      <p id="cube-note" class="note" hidden>写真からキューブを読み取りました。違うときは直してください。</p>
+    </fieldset>
+    <fieldset>
       <legend>読みの深さ</legend>
       <div class="seg" data-name="plies">
         <button data-value="2">2手（ふつう）</button><button data-value="3">3手（じっくり）</button>
@@ -161,6 +173,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 <script src="photo.js"></script>
 <script src="history.js"></script>
 <script src="moves.js"></script>
+<script src="cube.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
