@@ -90,6 +90,15 @@ def test_pwa_is_served():
     assert client.get("/health").json() == {"ok": True}   # API routes still win over the static mount
 
 
+def test_depth_choice():
+    # the PWA offers 2- and 3-ply; deeper is refused (it would take tens of seconds on the Pi)
+    html = client.get("/").text
+    assert 'data-name="plies"' in html and 'data-value="3"' in html
+    r = client.post("/analyze", json={"position_id": START_ID, "plies": 3})
+    assert r.status_code == 200 and r.json()["plies"] == 3
+    assert client.post("/analyze", json={"position_id": START_ID, "plies": 4}).status_code == 422
+
+
 def test_server_exit_stops_gnubg_helper():
     import analysis
     with TestClient(app) as c:   # runs the lifespan, like uvicorn does

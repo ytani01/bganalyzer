@@ -134,6 +134,13 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </div>
       <p id="dice-note" class="note" hidden>写真からダイスの目を読み取りました。違うときは直してください。</p>
     </fieldset>
+    <fieldset>
+      <legend>読みの深さ</legend>
+      <div class="seg" data-name="plies">
+        <button data-value="2">2手（ふつう）</button><button data-value="3">3手（じっくり）</button>
+      </div>
+      <p class="note">3手は少し正確になりますが、10倍以上時間がかかります。</p>
+    </fieldset>
     <div class="row">
       <button id="back-corners" class="button">戻る</button>
       <button id="analyze" class="button primary">解析する</button>
