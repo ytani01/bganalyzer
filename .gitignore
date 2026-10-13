@@ -7,3 +7,6 @@ out/
 samples/external/*
 !samples/external/*.truth.json
 !samples/external/README.md
+
+# screenshots left at the repo root while checking the PWA
+/*.png
