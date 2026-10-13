@@ -51,7 +51,7 @@ header {
 header .bar { display: flex; align-items: center; gap: 8px; min-height: 40px; }
 header .titles { flex: 1; min-width: 0; line-height: 1.2; }
 header h1 { font-size: 18px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hdr-version { font-size: 10px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hdr-version { font-size: 12px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hdr-version:empty { display: none; }
 .hdr-version.old { opacity: 1; color: var(--sel); }
 header .actions { display: flex; gap: 6px; flex: none; }
