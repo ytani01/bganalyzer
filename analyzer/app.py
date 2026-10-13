@@ -23,7 +23,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
