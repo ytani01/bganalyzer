@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.15.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.16.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -540,8 +540,13 @@ function drawBoardOn(svg, opts) {
   svg.textContent = "";
   const b = state.board;
   const xR = B.x0 + 12 * B.pw + B.bar;
-  el("rect", { x: 0, y: 0, width: 660, height: 440, fill: "var(--card)" }, svg);
-  el("rect", { x: B.x0 - 6, y: B.y0 - 6, width: xR - B.x0 + 12, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
+  // The picture widens on the home side for the tray of borne-off checkers.
+  const vx = state.home === "right" ? 0 : -TRAY.extra;
+  svg.setAttribute("viewBox", `${vx} 0 ${660 + TRAY.extra} 440`);
+  el("rect", { x: vx, y: 0, width: 660 + TRAY.extra, height: 440, fill: "var(--card)" }, svg);
+  const fx = Math.min(B.x0, trayX()) - 6, fr = Math.max(xR, trayX() + TRAY.w) + 6;
+  el("rect", { x: fx, y: B.y0 - 6, width: fr - fx, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
+  el("rect", { x: trayX(), y: B.y0, width: TRAY.w, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
   if (opts.photo) {
     el("image", { href: opts.photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
   } else {
@@ -581,8 +586,32 @@ function drawBoardOn(svg, opts) {
   }
   const barHit = el("rect", { x: bx - B.bar / 2, y: B.y0, width: B.bar, height: B.y1 - B.y0, fill: "transparent", class: "hit" }, svg);
   barHit.addEventListener("click", () => select("bar"));
+  if (opts.checkers) drawBorneOff(svg);
   if (opts.checkers) drawDice(svg);
   if (opts.checkers) drawMoveArrows(svg);
+}
+
+// The tray of borne-off checkers, outside the frame on the home side as on a real board.
+const TRAY = { w: 32, extra: 44 };
+function trayX() {
+  return state.home === "right" ? B.x0 + 12 * B.pw + B.bar + 12 : B.x0 - 12 - TRAY.w;
+}
+
+// Borne-off checkers as thin slabs on their side: 手前's from the bottom, 奥's from the top, with the count.
+function drawBorneOff(svg) {
+  const { offW, offB } = counts();
+  const x = trayX() + 2, w = TRAY.w - 4, hgt = 9, step = 10;
+  for (let [side, n] of [["white", offW], ["black", offB]]) {
+    if (n <= 0) continue;
+    const top = side === "black";
+    n = Math.min(n, 15);
+    for (let k = 0; k < n; k++) {
+      const y = top ? B.y0 + 2 + k * step : B.y1 - 2 - hgt - k * step;
+      el("rect", { x, y, width: w, height: hgt, rx: 2, fill: checkerFill(side), stroke: "#555", "stroke-width": 1, "pointer-events": "none" }, svg);
+    }
+    const t = el("text", { x: trayX() + TRAY.w / 2, y: top ? B.y0 + n * step + 12 : B.y1 - n * step - 12, class: "off-n", "pointer-events": "none" }, svg);
+    t.textContent = n;
+  }
 }
 
 // Column of point index i (0..23) and whether it is in the upper row: the inverse of pointAt.
@@ -612,7 +641,7 @@ function drawMoveArrows(svg) {
   const hops = BgMoves.hops(state.board, r.on_roll, m.move);
   if (!hops) return;
   const bx = B.x0 + 6 * B.pw + B.bar / 2;
-  const offX = state.home === "right" ? B.x0 + 12 * B.pw + B.bar + 3 : B.x0 - 3;
+  const offX = trayX() + TRAY.w / 2;
   const g = el("g", { class: "arrows" }, svg);
   for (const h of hops) {
     let x0, y0;
