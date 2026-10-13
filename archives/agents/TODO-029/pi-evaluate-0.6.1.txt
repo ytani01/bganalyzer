@@ -1,0 +1,83 @@
+commons-case-dice.truth.json: 18/24 points correct, bar ok, home guess ok (+3.7), dice not read (read None, truth [5, 3]), cube ok (read None, truth None)
+   point  1: truth -2  got +0
+   point  5: truth +0  got +5
+   point  6: truth +5  got -2
+   point 19: truth -5  got +0
+   point 20: truth +0  got -5
+   point 24: truth +2  got +0
+commons-case-midgame.truth.json: 23/24 points correct, bar ok, home guess ok (-17.8), dice ok (read None, truth None), cube ok (read None, truth None)
+   point  5: truth +0  got +1
+commons-dark-homeleft.truth.json: 12/24 points correct, bar ok, home guess ok (-1.6), dice ok (read None, truth None), cube ok (read None, truth None)
+   point  1: truth -2  got +0
+   point  3: truth +0  got +2
+   point  5: truth +0  got +2
+   point 11: truth +0  got +2
+   point 12: truth -5  got +0
+   point 13: truth +5  got -5
+   point 14: truth +0  got -1
+   point 15: truth +0  got +2
+   point 16: truth +0  got -1
+   point 17: truth -3  got +0
+   point 19: truth -5  got +0
+   point 21: truth +0  got +1
+commons-diagram-closed-bar.truth.json: 24/24 points correct, bar ok, home guess ok (+38.9), dice ok (read None, truth None), cube ok (read None, truth None)
+commons-diagram-holding.truth.json: 24/24 points correct, bar ok, home guess ok (+24.9), dice ok (read None, truth None), cube ok (read centre, truth centre)
+commons-diagram-prime.truth.json: 24/24 points correct, bar ok, home guess ok (+30.0), dice ok (read None, truth None), cube ok (read None, truth None)
+commons-leather-cups.truth.json: 19/24 points correct, bar ok, home guess ok (+19.5), dice WRONG (read [3, 3], truth None), cube ok (read None, truth None)
+   point  1: truth -2  got +0
+   point 13: truth +5  got +4
+   point 15: truth +0  got -1
+   point 21: truth +0  got -2
+   point 22: truth +0  got -1
+commons-nardy-midgame.truth.json: 18/24 points correct, bar ok, home guess ok (+7.3), dice ok (read None, truth None), cube ok (read None, truth None)
+   point  3: truth -1  got +0
+   point  4: truth +1  got +0
+   point  9: truth -1  got +0
+   point 15: truth -2  got +0
+   point 17: truth -1  got +0
+   point 19: truth -1  got +0
+commons-rollup-oblique.truth.json: 13/24 points correct, bar ok, home guess ok (+18.3), dice ok (read None, truth None), cube not found (read None, truth centre)
+   point  2: truth +0  got -1
+   point  4: truth +0  got -2
+   point 10: truth +0  got -1
+   point 14: truth +0  got -2
+   point 16: truth +0  got -1
+   point 18: truth +0  got -1
+   point 19: truth -5  got -3
+   point 20: truth +0  got -2
+   point 21: truth +0  got -3
+   point 23: truth +0  got +2
+   point 24: truth +2  got +0
+commons-set-cube-dice.truth.json: 12/24 points correct, bar wrong, home guess ok (+2.2), dice ok (read None, truth None), cube ok (read centre, truth centre)
+   point  1: truth -2  got +0
+   point  2: truth +0  got -2
+   point  6: truth +5  got +0
+   point  8: truth +3  got +2
+   point 10: truth +0  got -1
+   point 12: truth -5  got +0
+   point 15: truth +0  got +1
+   point 17: truth -3  got -2
+   point 18: truth +0  got -2
+   point 19: truth -5  got +0
+   point 23: truth +0  got +2
+   point 24: truth +2  got +0
+commons-tavli-black.truth.json: 24/24 points correct, bar ok, home guess ok (+17.7), dice ok (read [6, 1], truth [6, 1]), cube ok (read None, truth None)
+commons-tavli-blue.truth.json: 24/24 points correct, bar ok, home guess ok (+17.7), dice ok (read [6, 1], truth [6, 1]), cube ok (read None, truth None)
+commons-tavli-burl.truth.json: 23/24 points correct, bar ok, home guess ok (+19.2), dice ok (read [6, 1], truth [6, 1]), cube ok (read None, truth None)
+   point 23: truth +0  got -1
+commons-tavli-grey.truth.json: 24/24 points correct, bar ok, home guess ok (+17.7), dice ok (read [6, 1], truth [6, 1]), cube ok (read None, truth None)
+commons-tavli-red-brown.truth.json: 24/24 points correct, bar ok, home guess ok (+17.7), dice ok (read [6, 1], truth [6, 1]), cube ok (read None, truth None)
+commons-tavli-red-diamond.truth.json: 24/24 points correct, bar ok, home guess ok (+17.7), dice ok (read [6, 1], truth [6, 1]), cube ok (read None, truth None)
+commons-tavli-red-white.truth.json: 24/24 points correct, bar ok, home guess ok (+17.7), dice ok (read [6, 1], truth [6, 1]), cube ok (read None, truth None)
+commons-travel-case.truth.json: 21/24 points correct, bar ok, home guess ok (+13.8), dice ok (read None, truth None), cube ok (read None, truth None)
+   point 12: truth -5  got +0
+   point 13: truth +5  got +0
+   point 22: truth +0  got -1
+photo2.truth.json: 22/24 points correct, bar ok, home guess ok (+8.8), dice ok (read None, truth None), cube ok (read None, truth None)
+   point 12: truth -5  got +0
+   point 19: truth -5  got +0
+photo3.truth.json: 24/24 points correct, bar ok, home guess ok (+25.3), dice not read (read None, truth [4, 4]), cube not found (read None, truth centre)
+photo4.truth.json: 24/24 points correct, bar ok, home guess ok (+17.7), dice ok (read None, truth None), cube ok (read None, truth None)
+screen1.truth.json: 24/24 points correct, bar ok, home guess ok (-18.0), dice ok (read [4, 2], truth [4, 2]), cube not found (read None, truth centre)
+screen2.truth.json: 23/24 points correct, bar ok, home guess ok (+17.3), dice ok (read [5, 4], truth [5, 4]), cube ok (read black, truth black)
+   point 10: truth +0  got -1
