@@ -41,7 +41,10 @@ const state = {
 function show(step) {
   for (const s of document.querySelectorAll("section.step")) s.hidden = s.id !== step;
   for (const s of document.querySelectorAll("#steps span")) s.classList.toggle("on", s.dataset.step === step);
-  if (step === "corners") requestAnimationFrame(drawPhoto);
+  if (step === "corners") {
+    $("to-board").hidden = !(state.fromPhoto && state.board);
+    requestAnimationFrame(drawPhoto);
+  }
   if (step === "board") drawBoard();
   if (step === "photo") renderHistory();
   window.scrollTo(0, 0);
@@ -809,6 +812,8 @@ function toggleSpeaking(text) {
 }
 if (window.speechSynthesis) window.speechSynthesis.getVoices();   // Chrome loads the voice list lazily
 
+$("to-board").addEventListener("click", () => show("board"));
+
 // ---------------------------------------------------------------- recent photos (history.js)
 // Stored on this device only. Failures (no IndexedDB, private mode, storage full) never block the app.
 async function addToHistory(file) {
@@ -870,7 +875,7 @@ async function openHistory(id) {
     setResult(null);
     updateCornerUi();
     saveHistory();   // now the most recent
-    show(state.board ? "board" : "corners");
+    show("corners");   // from before reading the board; the board read before is one button away
     if (guess) guessCorners(e.image);
   } catch (err) {
     alert("写真を開けませんでした: " + err.message);
