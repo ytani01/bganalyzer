@@ -20,18 +20,22 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 <header>
   <div class="bar">
     <button id="back" class="back" type="button" aria-label="前の画面に戻る" hidden>‹ 戻る</button>
-    <h1 id="title">BG Analyzer</h1>
-    <!-- その画面の主な操作。下の大きいボタンと同じで、スクロールしてもいつでも押せる -->
+    <div class="titles">
+      <h1 id="title">BG Analyzer</h1>
+      <div id="hdr-version" class="hdr-version"></div>
+    </div>
+    <!-- その画面の主な操作。ヘッダーにだけ置き、スクロールしてもいつでも押せる -->
     <div class="actions">
-      <button id="hdr-recognize" class="act" type="button" hidden disabled>読み取る</button>
-      <button id="hdr-analyze" class="act" type="button" hidden>解析する</button>
-      <button id="hdr-speak" class="act speak-btn" type="button" aria-label="結果を読み上げる" aria-pressed="false" hidden>🔊</button>
+      <button id="recognize" class="act" type="button" hidden disabled>盤面を読み取る</button>
+      <button id="analyze" class="act" type="button" hidden>解析する</button>
+      <button id="speak" class="act" type="button" aria-label="結果を読み上げる" aria-pressed="false" hidden>🔊</button>
     </div>
   </div>
   <nav id="steps">
     <span data-step="photo">1 写真</span>
     <span data-step="corners">2 四隅</span>
-    <span data-step="board">3 盤面・解析</span>
+    <span data-step="board">3 盤面・設定</span>
+    <span data-step="outcome">4 結果</span>
   </nav>
 </header>
 
@@ -86,7 +90,6 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
         <button data-value="0">暗い方</button><button data-value="1">明るい方</button>
       </div>
     </div>
-    <button id="recognize" class="button primary big" disabled>盤面を読み取る</button>
     <button id="to-board" class="button small" hidden>前に読み取った盤面を開く（直した所もそのまま）</button>
   </section>
 
@@ -169,8 +172,14 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     </div>
     <p class="note">3手は少し正確になりますが、10倍以上時間がかかります。</p>
     </div>
-    <button id="analyze" class="button primary big">解析する</button>
 
+  </section>
+
+  <!-- 4. 解析の結果。盤面図は最善手の矢印を見るためのもので、ここでは直せない（直すときは戻る） -->
+  <section id="outcome" class="step" hidden>
+    <div class="board-pin">
+      <div class="board-wrap"><svg id="result-svg" viewBox="0 0 660 440"></svg></div>
+    </div>
     <div id="result" class="result" hidden></div>
   </section>
 </main>
