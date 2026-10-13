@@ -46,6 +46,13 @@ analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同
 認識を変えたら `recognizer/evaluate.py` で `samples/*.truth.json` と比べ、
 `recognizer/README.md` の「精度」の表を更新する。
 
+## Raspberry Pi で確かめること
+
+マージ後に自宅の Raspberry Pi（本番）でしか確かめられないことは [docs/PI_CHECKS.md](docs/PI_CHECKS.md) に並べる。
+**Raspberry Pi の上で作業する Claude Code は、`git pull` のあとに docs/PI_CHECKS.md を読み、**
+**未確認の項目を確かめて結果を書き込む**（アプリの更新は `docker compose up -d --build`、詳しくは [docs/raspi.md](docs/raspi.md)）。
+期待と違えばユーザーに報告する。
+
 ## タスク管理
 
 `TODO.md` で管理する（書式は `~/.claude/CLAUDE.md` と `todo-workflow` skill）。
@@ -60,6 +67,7 @@ analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同
   ルールはこの CLAUDE.md、作業と担当は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
 - **作業の前に main を pull する。** 着手する TODO の担当を自分にして、先にコミットしておく
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
+- **マージ後に Pi で確かめる必要がある変更は、その PR の中で docs/PI_CHECKS.md に項目を足す**
 - **マージの直前に最新の main を取り込み、`uv run pytest analyzer` と GitHub Actions の `test` が
   両方通ってからマージする。** どちらかが落ちていたらマージしない。
   相手の担当の部分とぶつかったら、勝手に直さずユーザーに報告する
