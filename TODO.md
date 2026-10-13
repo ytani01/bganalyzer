@@ -61,7 +61,7 @@ TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま
 
 ## TODO-029. Raspberry Pi で photo3 のキューブが見つからない
 
-- **担当:** 未定
+- **担当:** ai1
 - **見込み:** main Opus 5.5 / effort medium（原因の切り分け）+ verifier（Sonnet 5.5 / medium。evaluate.py の実測）。直すことになったら reviewer（Opus 5.5 / high）も入れる
 - [ ] Pi で photo3 のキューブ（中央）が読めない原因を確かめ、直すか、Pi と x86_64 の違いとして残すかを決める
 
