@@ -71,11 +71,13 @@ function initSeg(name, onChange) {
 }
 
 // ---------------------------------------------------------------- step 1: photo
-$("file").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  e.target.value = "";
-  if (file) loadPhoto(file);
-});
+for (const id of ["camera", "file"]) {
+  $(id).addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (file) loadPhoto(file);
+  });
+}
 
 async function loadPhoto(file) {
   busy("写真を読み込んでいます…");
