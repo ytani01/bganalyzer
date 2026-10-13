@@ -18,7 +18,10 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 </head>
 <body>
 <header>
-  <h1>BG Analyzer</h1>
+  <div class="bar">
+    <button id="back" class="back" type="button" aria-label="前の画面に戻る" hidden>‹ 戻る</button>
+    <h1>BG Analyzer</h1>
+  </div>
   <nav id="steps">
     <span data-step="photo">1 写真</span>
     <span data-step="corners">2 四隅</span>
@@ -77,16 +80,15 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
         <button data-value="0">暗い方</button><button data-value="1">明るい方</button>
       </div>
     </fieldset>
-    <div class="row">
-      <button id="back-photo" class="button">戻る</button>
-      <button id="recognize" class="button primary" disabled>盤面を読み取る</button>
-    </div>
+    <button id="recognize" class="button primary big" disabled>盤面を読み取る</button>
     <button id="to-board" class="button small" hidden>前に読み取った盤面を開く（直した所もそのまま）</button>
   </section>
 
   <!-- 3. 盤面の確認・修正と解析 -->
   <section id="board" class="step" hidden>
     <div id="errors" class="alert" hidden></div>
+    <div class="panel">
+    <h2 class="panel-title">盤面を確かめる</h2>
     <p class="note">違っている所はポイントをタップして直してください。下が手前の人です。</p>
     <fieldset id="photo-tools" hidden>
       <legend>元の写真（四隅で補正し、盤面図と同じ並びにしたもの）</legend>
@@ -119,7 +121,10 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <button id="reset-start" class="button small">初期配置にする</button>
     </div>
     <p id="home-note" class="note" hidden></p>
+    </div>
 
+    <div class="panel">
+    <h2 class="panel-title">解析の設定</h2>
     <fieldset>
       <legend>次にダイスを振る人</legend>
       <div class="seg" data-name="onRoll">
@@ -142,10 +147,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </div>
       <p class="note">3手は少し正確になりますが、10倍以上時間がかかります。</p>
     </fieldset>
-    <div class="row">
-      <button id="back-corners" class="button">戻る</button>
-      <button id="analyze" class="button primary">解析する</button>
     </div>
+    <button id="analyze" class="button primary big">解析する</button>
 
     <div id="result" class="result" hidden></div>
   </section>

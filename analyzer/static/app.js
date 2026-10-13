@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.13.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.14.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -49,9 +49,21 @@ const state = {
 };
 
 // ---------------------------------------------------------------- steps
+const STEPS = ["photo", "corners", "board"];
+let currentStep = "photo";
+
 function show(step) {
+  currentStep = step;
   for (const s of document.querySelectorAll("section.step")) s.hidden = s.id !== step;
-  for (const s of document.querySelectorAll("#steps span")) s.classList.toggle("on", s.dataset.step === step);
+  const at = STEPS.indexOf(step);
+  for (const s of document.querySelectorAll("#steps span")) {
+    s.classList.toggle("on", s.dataset.step === step);
+    s.classList.toggle("done", STEPS.indexOf(s.dataset.step) < at);
+  }
+  $("back").hidden = step === "photo";
+  // One history entry stands for "inside the app", so the phone's own back button
+  // (or gesture) comes back here as a popstate instead of leaving the app.
+  if (step !== "photo" && !(history.state && history.state.bg)) history.pushState({ bg: true }, "");
   if (step === "corners") {
     $("to-board").hidden = !(state.fromPhoto && state.board);
     requestAnimationFrame(drawPhoto);
@@ -60,6 +72,22 @@ function show(step) {
   if (step === "photo") renderHistory();
   window.scrollTo(0, 0);
 }
+
+function previousStep() {
+  return currentStep === "board" && state.fromPhoto ? "corners" : "photo";
+}
+
+// Back to the photo screen also uses up the history entry, so the next back leaves the app.
+function goBack() {
+  if (previousStep() === "photo" && history.state && history.state.bg) history.back();
+  else show(previousStep());
+}
+
+$("back").addEventListener("click", goBack);
+window.addEventListener("popstate", () => {
+  if (!$("busy").hidden) { history.pushState({ bg: true }, ""); return; }   // wait for the server
+  if (currentStep !== "photo") show(previousStep());
+});
 
 function busy(text) {
   $("busy").hidden = !text;
@@ -341,7 +369,6 @@ $("corner-reset").addEventListener("click", () => {
   drawPhoto();
   saveHistory();
 });
-$("back-photo").addEventListener("click", () => show("photo"));
 
 // Large photos are scaled down before upload; corners are scaled with them.
 function uploadImage() {
@@ -756,8 +783,6 @@ $("reset-start").addEventListener("click", () => {
   state.selected = null;
   boardChanged();
 });
-
-$("back-corners").addEventListener("click", () => show(state.fromPhoto ? "corners" : "photo"));
 
 // ---------------------------------------------------------------- analysis
 for (const id of ["die1", "die2"]) {
