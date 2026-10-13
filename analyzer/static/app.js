@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.8.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.8.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -41,7 +41,10 @@ const state = {
 function show(step) {
   for (const s of document.querySelectorAll("section.step")) s.hidden = s.id !== step;
   for (const s of document.querySelectorAll("#steps span")) s.classList.toggle("on", s.dataset.step === step);
-  if (step === "corners") requestAnimationFrame(drawPhoto);
+  if (step === "corners") {
+    $("to-board").hidden = !(state.fromPhoto && state.board);
+    requestAnimationFrame(drawPhoto);
+  }
   if (step === "board") drawBoard();
   if (step === "photo") renderHistory();
   window.scrollTo(0, 0);
@@ -809,6 +812,8 @@ function toggleSpeaking(text) {
 }
 if (window.speechSynthesis) window.speechSynthesis.getVoices();   // Chrome loads the voice list lazily
 
+$("to-board").addEventListener("click", () => show("board"));
+
 // ---------------------------------------------------------------- recent photos (history.js)
 // Stored on this device only. Failures (no IndexedDB, private mode, storage full) never block the app.
 async function addToHistory(file) {
@@ -870,7 +875,7 @@ async function openHistory(id) {
     setResult(null);
     updateCornerUi();
     saveHistory();   // now the most recent
-    show(state.board ? "board" : "corners");
+    show("corners");   // from before reading the board; the board read before is one button away
     if (guess) guessCorners(e.image);
   } catch (err) {
     alert("写真を開けませんでした: " + err.message);
