@@ -48,7 +48,7 @@ JPEG 品質 0.92 で書き出した写真（PWA は長辺 2560px を超える写
 | ツイートに載った盤面 screen2（緑の盤、駒が重なった山、バーに2個） | 24 | 24（縮めない） |
 | Wikimedia Commons の写真 11枚（`samples/commons-*`、下の表） | 264ポイント中 236（直す前 210） | 同じ（2048px 以下なので縮めない） |
 | Wikimedia Commons の写真 3枚（TODO-017 で追加。途中局面・斜め・盤上のダイス。下の表） | 72ポイント中 49（Raspberry Pi で測定） | 同じ（縮めない） |
-| Wikimedia Commons の盤面図 3枚と写真 1枚（TODO-023 で追加。途中局面・バーの駒・2 人分のダイス。下の表） | 96ポイント中 84 | 同じ（縮めない） |
+| Wikimedia Commons の盤面図 3枚と写真 1枚（TODO-024 で追加。途中局面・バーの駒・2 人分のダイス。下の表） | 96ポイント中 84 | 同じ（縮めない） |
 | USBGF の盤面図 7枚（`samples/external/`、画像はリポジトリに入れない） | 168ポイント中 166（直す前 147） | － |
 
 `python3 evaluate.py --app` は OpenCV（バイリニア＋JPEG 0.92）で同じ縮め方を真似る。ブラウザとの画素の差は
@@ -84,7 +84,7 @@ TODO-017 で足した 3 枚（2026-10-13、recognizer 0.5.0、Raspberry Pi で�
 | commons-nardy-midgame | やや斜め・小さな木の盤、途中の局面（ロングナルディ） | 18 | 黒い三角形の上の黒い駒（5 か所）と、赤い三角形の上の白い駒 1 個を見落とす。ナルディの局面なので、正解のホーム（右）は駒の配置からの推測に合わせて仮に決めた |
 | commons-rollup-oblique | 強い斜め・巻ける革の盤、初期配置、ダイス 2 組とキューブ | 13 | 空いた三角形 9 か所に駒があると読み、19 ポイントの 5 個を 3 個と数える。四隅の推定も見つからない |
 
-TODO-023 で足した 4 枚（2026-10-13、recognizer 0.5.0、x86_64 のクラウド環境で測定）:
+TODO-024 で足した 4 枚（2026-10-13、recognizer 0.5.0、x86_64 のクラウド環境で測定）:
 
 | 写真 | 撮り方・盤 | 正しいポイント | 外したところ |
 |---|---|---|---|
@@ -168,7 +168,7 @@ photo1（削除済み）が難しかった理由:
 tavli-red-brown 3.5%）、4.5〜12.9% が 5 枚、見つからないのが 4 枚（case-midgame、dark-homeleft、tavli-red-diamond、travel-case）。
 USBGF の盤面図 7 枚は 6 枚が 1.7% 以内、experts-105 は見つからない。
 TODO-017 で足した 3 枚では、nardy-midgame が 2.4%、case-dice と rollup-oblique は見つからない。
-TODO-023 で足した 4 枚では、diagram-holding が 3.0%、set-cube-dice が 14.3%、diagram-prime と diagram-closed-bar は見つからない。
+TODO-024 で足した 4 枚では、diagram-holding が 3.0%、set-cube-dice が 14.3%、diagram-prime と diagram-closed-bar は見つからない。
 
 ## ダイス（`dice.py`、TODO-015）
 
@@ -203,8 +203,8 @@ TODO-023 で足した 4 枚では、diagram-holding が 3.0%、set-cube-dice が
 | photo4・travel-case・dark-homeleft | フィールドにダイスなし（溝やカップの中） | 読まない |
 | commons-case-dice（TODO-017） | 赤 3 と白 5（色違いの 2 つ） | 読まない（原因は調べていない） |
 | commons-rollup-oblique（TODO-017） | 赤 2 つと白 2 つ、キューブ | 読まない |
-| commons-set-cube-dice（TODO-023） | 白 2 つと黒 2 つ、キューブ | 読まない |
-| USBGF の盤面図 7 枚（`samples/external/`） | 5 枚に赤いダイス（2-2・5-5・6-5・3-2・3-2） | 5 枚とも当たる（TODO-023 で正解を付けるまでは正解が無く WRONG と出ていた） |
+| commons-set-cube-dice（TODO-024） | 白 2 つと黒 2 つ、キューブ | 読まない |
+| USBGF の盤面図 7 枚（`samples/external/`） | 5 枚に赤いダイス（2-2・5-5・6-5・3-2・3-2） | 5 枚とも当たる（TODO-024 で正解を付けるまでは正解が無く WRONG と出ていた） |
 
 16 枚中、読めるはずの 10 枚で 9 枚当たり、**間違った目を入れたものはない**（読めないときは空のまま）。
 
