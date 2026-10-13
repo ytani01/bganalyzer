@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.18.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.19.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -54,6 +54,17 @@ const state = {
 
 // ---------------------------------------------------------------- steps
 const STEPS = ["photo", "corners", "board"];
+const STEP_TITLES = { corners: "四隅", board: "盤面・解析" };   // the header's title on a phone, where the step list is hidden
+
+// The sticky header and board are as tall as their contents; CSS needs the heights for what sits
+// below them (the board sticks under the header, a scrolled-to result under both).
+const stickyHeights = new ResizeObserver(() => {
+  const root = document.documentElement.style;
+  root.setProperty("--hdr-h", document.querySelector("header").offsetHeight + "px");
+  root.setProperty("--pin-h-live", $("board-pin").offsetHeight + "px");
+});
+stickyHeights.observe(document.querySelector("header"));
+stickyHeights.observe($("board-pin"));
 let currentStep = "photo";
 
 function show(step) {
@@ -65,6 +76,7 @@ function show(step) {
     s.classList.toggle("done", STEPS.indexOf(s.dataset.step) < at);
   }
   $("back").hidden = step === "photo";
+  $("title").textContent = step === "photo" ? "BG Analyzer" : STEP_TITLES[step];
   syncHeaderActions();
   // One history entry stands for "inside the app", so the phone's own back button
   // (or gesture) comes back here as a popstate instead of leaving the app.
@@ -785,7 +797,7 @@ function drawEditor() {
   const s = state.selected;
   $("editor-buttons").hidden = s === null;
   if (s === null) {
-    $("editor-title").textContent = "ポイントかバーをタップすると駒の数を直せます";
+    $("editor-title").textContent = "違う所はポイントやバーをタップして直す（下が手前）";
     return;
   }
   const b = state.board;
@@ -793,7 +805,7 @@ function drawEditor() {
     $("editor-title").textContent = `バー: 手前 ${b.bar_white} 個、奥 ${b.bar_black} 個`;
   } else {
     const n = b.points[s];
-    $("editor-title").textContent = `ポイント ${s + 1}（手前から見た番号）: ` +
+    $("editor-title").textContent = `ポイント ${s + 1}: ` +
       (n === 0 ? "空" : `${n > 0 ? "手前" : "奥"}の駒 ${Math.abs(n)} 個`);
   }
 }
@@ -801,6 +813,7 @@ function drawEditor() {
 $("editor-buttons").addEventListener("click", (e) => {
   const op = e.target.dataset && e.target.dataset.op;
   if (!op || state.selected === null) return;
+  if (op === "close") { select(state.selected); return; }
   const b = state.board, s = state.selected;
   if (s === "bar") {
     if (op === "w+") b.bar_white++;
@@ -932,6 +945,7 @@ function currentDice() {
 $("analyze").addEventListener("click", async () => {
   const errs = boardErrors();
   if (errs.length) { alert(errs.join("\n")); return; }
+  if (state.selected !== null) select(state.selected);   // done editing: the edit buttons give their room to the result
   busy(analysingText());
   try {
     const dice = currentDice();
