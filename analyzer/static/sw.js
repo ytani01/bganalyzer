@@ -5,7 +5,7 @@ const SHARE_KEY = "shared-photo";
 const SHELL = ["./", "index.html", "style.css", "app.js", "photo.js", "history.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "no-cache" })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (e) => {
