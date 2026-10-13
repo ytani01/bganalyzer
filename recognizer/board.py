@@ -33,6 +33,10 @@ import numpy as np
 
 from position import Position
 
+# The recognizer's version (board.py, position.py and corners.py). Bump it when recognizer/ changes;
+# the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
+__version__ = "0.3.0"
+
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
 HOUGH_VOTES = 18
@@ -71,15 +75,21 @@ class Layout:
 
 # ---------------------------------------------------------------- geometry --
 
-def _edge_points(lab, axis, pos, lo, hi, win, step=4):
+def _edge_gradients(lab):
+    """Contrast across horizontal and across vertical edges, for _edge_points."""
+    return {"h": cv2.blur(np.abs(np.diff(lab, axis=0)).sum(2), (15, 1)),
+            "v": cv2.blur(np.abs(np.diff(lab, axis=1)).sum(2), (1, 15))}
+
+
+def _edge_points(grads, axis, pos, lo, hi, win, step=4):
     """Points of the strongest straight edge near canonical line `pos`.
 
     axis='h': horizontal edge y≈pos spanning x in [lo, hi]; axis='v': vertical.
+    grads: from _edge_gradients.
     """
     pts = []
+    g = grads[axis]
     if axis == "h":
-        g = np.abs(np.diff(lab, axis=0)).sum(2)
-        g = cv2.blur(g, (15, 1))
         for x in range(int(lo), int(hi), step):
             y0, y1 = int(max(pos - win, 0)), int(min(pos + win, g.shape[0] - 1))
             if y1 <= y0 or not (0 <= x < g.shape[1]):
@@ -89,8 +99,6 @@ def _edge_points(lab, axis, pos, lo, hi, win, step=4):
             if col[k] > 6:
                 pts.append((x, y0 + k + 0.5, col[k]))
     else:
-        g = np.abs(np.diff(lab, axis=1)).sum(2)
-        g = cv2.blur(g, (1, 15))
         for y in range(int(lo), int(hi), step):
             x0, x1 = int(max(pos - win, 0)), int(min(pos + win, g.shape[1] - 1))
             if x1 <= x0 or not (0 <= y < g.shape[0]):
@@ -140,19 +148,20 @@ def refine(img, corners, lay: Layout, m: int):
     size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
     warp = cv2.warpPerspective(img, Sh @ np.linalg.inv(H0), size, flags=cv2.INTER_AREA)
     lab = cv2.GaussianBlur(cv2.cvtColor(warp, cv2.COLOR_BGR2Lab).astype(np.float32), (0, 0), 1.5)
+    grads = _edge_gradients(lab)
     win = 0.06 * lay.h
     xs = [m, m + lay.a, m + lay.a + lay.bar, m + lay.w]
     lines, quality = {}, []
     for name, pos in (("top", m), ("bot", m + lay.h)):
         pts = []
         for x0, x1 in ((xs[0], xs[1]), (xs[2], xs[3])):
-            pts.append(_edge_points(lab, "h", pos, x0 + 0.05 * lay.a, x1 - 0.05 * lay.a, win))
+            pts.append(_edge_points(grads, "h", pos, x0 + 0.05 * lay.a, x1 - 0.05 * lay.a, win))
         pts = [p for p in pts if len(p)]
         r = _ransac_line(np.vstack(pts), "h") if pts else None
         lines[name] = r
     ys = (m + 0.03 * lay.h, m + 0.97 * lay.h)
     for name, pos in zip(("L", "BL", "BR", "R"), xs):
-        lines[name] = _ransac_line(_edge_points(lab, "v", pos, *ys, win if name in ("L", "R") else lay.bar * 0.45), "v")
+        lines[name] = _ransac_line(_edge_points(grads, "v", pos, *ys, win if name in ("L", "R") else lay.bar * 0.45), "v")
     if any(lines[k] is None for k in ("top", "bot", "L", "R")):
         return H0, 0.0, lay
     quality = float(np.mean([v[2] for v in lines.values() if v is not None]))
@@ -759,6 +768,12 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
                 layout=dict(a=float(lay.a), bar=float(lay.bar), h=float(lay.h)), pitch=float(pitch),
                 checker_lab=None if cc is None else cc.round(1).tolist(),
                 board_lab=board.round(1).tolist())
+    # Where the playing area and its columns ended up, for showing the photo next to the read board:
+    # corners in image pixels (TL TR BR BL), columns and bar edges as fractions of the width.
+    info["geometry"] = dict(
+        corners=cv2.perspectiveTransform(lay.src_pts()[None], H)[0].round(1).tolist(),
+        columns=[round(float(lay.col_x(c) / lay.w), 4) for c in range(12)],
+        bar=[round(float(lay.a / lay.w), 4), round(float((lay.a + lay.bar) / lay.w), 4)])
     info["tilt_deg"] = round(view_tilt_deg(corners, img.shape), 1)
     info["warnings"] = ["oblique"] if info["tilt_deg"] > OBLIQUE_WARN_DEG else []
     if debug_prefix:

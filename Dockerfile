@@ -49,6 +49,8 @@ WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY recognizer/ recognizer/
 COPY analyzer/ analyzer/
+# .git は HEAD と refs だけ（.dockerignore）。/version がコミット ID を読む
+COPY .git/ .git/
 
 ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8000

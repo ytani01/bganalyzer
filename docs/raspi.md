@@ -88,6 +88,7 @@ tailscale funnel status
 | やること | コマンド（`bganalyzer` フォルダで） |
 |---|---|
 | 新しい版に更新する | `git pull && docker compose up -d --build` |
+| 動いている版を見る | `curl http://127.0.0.1:8000/version`（アプリの画面のいちばん下にも出ます） |
 | ログを見る | `docker compose logs -f app` |
 | 止める | `docker compose down` |
 | 公開の設定を見る | `tailscale funnel status` |

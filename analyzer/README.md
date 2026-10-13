@@ -22,14 +22,25 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
 起動したサーバーの `/` をスマホのブラウザで開くと使えます（`analyzer/static/`、ビルド不要の HTML / JS）。
 
 1. 写真を撮る / 選ぶ（アプリ画面のスクリーンショットも可）。「写真なしで入力する」で初期配置から手入力もできる。
-2. 盤の遊戯面の四隅を 左上→右上→右下→左下 の順にタップ（ドラッグで調整、指の下はルーペで拡大表示）。
+2. 盤の遊戯面の四隅に初期値の点が出る（`/find-corners` で推定。見つからないときは画像の内側の長方形）。
+   ずれていればドラッグで合わせる（指の下はルーペで拡大表示）。「四隅をやり直す」で 左上→右上→右下→左下 の順にタップし直すこともできる。
    手前の人のホーム側（左/右）と駒の色（暗い方/明るい方）を選んで「盤面を読み取る」。
 3. 読み取った盤面が出るので、違うポイントやバーをタップして駒の数を直す。駒の色・左右の入れ替えボタンもある。
    次に振る人とダイスの目（任意）を選んで「解析する」。勝率・ギャモン率・エクイティ・ピップ数と、ダイスを入れたときは最善手5つを表示。
+   写真から読み取ったときは、元の写真も出して読み間違いを見比べられる（下記）。
+
+**元の写真の表示（`static/photo.js`）:** 四隅で台形補正した写真を、盤面図と同じ向き・同じポイントの並びで出す。
+「並べる」（広い画面では左右、スマホでは上下）、「重ねる」（写真の上に読み取った駒を輪で描く）、「隠す」を選べる。
+写真側のポイントをタップしても同じポイントが選ばれる。補正には `/analyze-photo` が返す `geometry`
+（認識が見つけた盤の四隅と列の位置）を使い、写真の列を盤面図の列にそろえる。補正は端末の中で行い、写真を追加で送ったり保存したりはしない。
 
 - 長辺 2560px を超える写真は、ブラウザで長辺 2048px に縮めてから送る（この大きさでのサンプルの精度は [recognizer/README.md](../recognizer/README.md) の「精度」の「アプリ経由」の列）。
 - 別のホストに PWA を置くときは `?api=https://APIのURL` を付けて開く。
 - ホーム画面への追加と Service Worker は HTTPS（または localhost）のときだけ有効。
+- **Android** でホーム画面に追加すると、写真アプリなどの「共有」の一覧に BG Analyzer が出る（manifest の `share_target`）。
+  共有した写真は Service Worker が端末の中で受け取り（`sw.js`）、選んだときと同じく四隅の指定に進む。サーバーに送るのは「盤面を読み取る」のときだけ。
+  Service Worker がまだ動いていないとき（追加した直後など）は、サーバーの `POST /share-target` が写真を読まずにアプリへ戻し、選び直すよう表示する。
+  iPhone（Safari）には PWA を共有先にする仕組みがないので、アプリ内で選ぶ。
 
 ## Docker
 
@@ -80,18 +91,37 @@ curl -s localhost:8000/analyze -H 'content-type: application/json' \
 - `favourite` はエクイティが高い側。片方が15個上げ終わっていれば `game_over: true`。
 - 駒が15個ずつでない、Position ID が不正などは 422 とエラーメッセージ。
 
+### `POST /find-corners`（multipart）
+
+フィールド `image`。盤の遊戯面の四隅の推定（`recognizer/corners.py`）を返す:
+`{"corners": [[x, y] × 4（左上・右上・右下・左下、送った画像の画素）] または null, "width": 幅, "height": 高さ}`。
+PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさに縮めた写真を送り、結果を四隅の初期値にする。
+
 ### `POST /analyze-photo`（multipart）
 
 写真から認識（`recognizer/board.py`）して、そのまま解析します。
 フィールド: `image`、`corners`（`x1,y1,…,x4,y4`）、`home`、`bottom_colour`（意味は recognizer/README.md と同じ）、
 `on_roll`、`plies`、`dice`（例 `3,1`）。
 
-応答は `{"recognized": 認識結果, "errors": [...], "warnings": [...], "analysis": 上の /analyze と同じ形}`。
+応答は `{"recognized": 認識結果, "errors": [...], "warnings": [...], "geometry": {...}, "analysis": 上の /analyze と同じ形}`。
+`geometry` は認識が見つけた遊戯面の位置: `corners`（送った画像の画素で 左上・右上・右下・左下）、
+`columns`（12 列の中心、左から。遊戯面の幅に対する割合）、`bar`（バーの左右の端、同じく割合）。
 `warnings` は写真についての注意（日本語の文）。今は、盤を真上から 40° 以上傾けて撮ったときに「斜めから撮った」と出る。
 認識で駒数が合わないときは `analysis` が `null` になり、`errors` に理由が入ります（アプリで手修正してから
 `/analyze` を呼ぶ想定）。
 
 ### `GET /health`
+
+`{"ok": true}` を返す（Docker の healthcheck 用）。
+
+### `GET /version`
+
+```json
+{"analyzer": "0.1.0", "recognizer": "0.1.0", "commit": "7bd7f55"}
+```
+
+analyzer（この API と PWA）と recognizer のバージョン、動いているコードの git のコミット ID（取れなければ `null`）。
+PWA は画面のいちばん下にこれを出す。上げ方は [CLAUDE.md](../CLAUDE.md) の「バージョン」。
 
 ## テスト
 

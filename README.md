@@ -11,7 +11,7 @@
 ```mermaid
 flowchart LR
     subgraph phone["スマホ（ブラウザ）"]
-        pwa["PWA（analyzer/static/）<br/>撮影・四隅タップ<br/>自分の色・ホーム側の指定<br/>認識結果の手修正・結果表示"]
+        pwa["PWA（analyzer/static/）<br/>撮影・四隅の確認<br/>自分の色・ホーム側の指定<br/>認識結果の手修正・結果表示"]
     end
 
     subgraph server["解析サーバー（Python）"]
@@ -39,7 +39,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph analyzer["analyzer/（ステップ2・3）"]
-        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /health<br/>/ で static/ を配信"]
+        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /health, /version<br/>/ で static/ を配信"]
         analysis["analysis.py<br/>gnubg 呼び出し・確率/エクイティ整形<br/>日本語の要約"]
         worker["gnubg 子プロセス<br/>（そのメインスレッドで評価）"]
         test["test_api.py<br/>API のテスト"]
@@ -70,10 +70,11 @@ flowchart TB
 | ファイル | 役割 |
 |---|---|
 | `recognizer/board.py` | 写真＋四隅 → 射影変換 → 三角形・縁で補正 → 駒を円として検出 → ポイントごとに数える。コマンドラインでも使える |
+| `recognizer/corners.py` | 写真から盤の遊戯面の四隅を推定する（印刷された三角形から）。アプリが四隅の初期値に使う |
 | `recognizer/position.py` | 盤面モデル（`points` 24個・バー・上がり）、gnubg Position ID の作成/読み込み、ピップ数。認識と解析の共通の型 |
 | `recognizer/synth.py`, `evaluate.py` | 精度確認用（合成画像の生成、`samples/*.truth.json` との比較） |
 | `analyzer/app.py` | HTTP API。JSON の盤面または写真を受け取り、認識・解析して返す |
-| `analyzer/static/` | PWA。写真を選ぶ → 四隅をタップ（ルーペ付き・ドラッグで調整）→ `/analyze-photo` → 盤面を表示してタップで修正 → `/analyze` → 勝率・ギャモン率・ピップ・最善手を表示。長辺 2560px を超える写真は 2048px に縮めて送る |
+| `analyzer/static/` | PWA。写真を選ぶ → 四隅の初期値（`/find-corners`）をドラッグで調整（ルーペ付き）→ `/analyze-photo` → 盤面を表示してタップで修正 → `/analyze` → 勝率・ギャモン率・ピップ・最善手を表示。長辺 2560px を超える写真は 2048px に縮めて送る |
 | `analyzer/analysis.py` | gnubg で勝率・ギャモン率・エクイティ・最善手を計算。gnubg はメインスレッド以外で落ちるので専用の子プロセスで動かす |
 
 詳しくは [recognizer/README.md](recognizer/README.md) と [analyzer/README.md](analyzer/README.md) を見てください。
@@ -88,7 +89,10 @@ sequenceDiagram
     participant R as board.py
     participant G as analysis.py + gnubg
 
-    U->>P: 盤を真上から撮影し、四隅をタップ
+    U->>P: 盤を真上から撮影
+    P->>A: POST /find-corners（画像）
+    A-->>P: 四隅の推定
+    U->>P: 四隅をドラッグで合わせる
     P->>A: POST /analyze-photo（画像・四隅・ホーム側・自分の色）
     A->>R: recognize()
     R-->>A: 盤面（points / bar / off）と errors
