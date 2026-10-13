@@ -44,16 +44,20 @@ def run(path, debug=None, app=False):
     home, margin = home_prior.guess(read if t["home"] == "right" else home_prior.mirror(read))
     # dice: the pair read with confidence (None when not sure) against the truth's (None when no pair can be read)
     want = t.get("dice") and sorted(t["dice"], reverse=True)
-    return pos, truth, wrong, bar_ok, (home == t["home"], margin), (info["dice"]["values"], want)
+    # cube: where it lies ({"at": ...}) against the truth's (None when there is no cube)
+    cube = info["cube"] and {"at": info["cube"]["at"]}
+    return pos, truth, wrong, bar_ok, (home == t["home"], margin), (info["dice"]["values"], want), (cube, t.get("cube"))
 
 if __name__ == "__main__":
     # --app: shrink large photos the way the PWA does before sending them
     app = "--app" in sys.argv
     files = [a for a in sys.argv[1:] if a != "--app"] or sorted(glob.glob(os.path.join(os.path.dirname(__file__), "..", "samples", "*.truth.json")))
     for f in files:
-        pos, truth, wrong, bar_ok, (home_ok, margin), (dice, want) = run(f, app=app)
+        pos, truth, wrong, bar_ok, (home_ok, margin), (dice, want), (cube, cube_want) = run(f, app=app)
         dice_ok = "ok" if dice == want else "not read" if dice is None else "WRONG"
+        cube_ok = "ok" if cube == cube_want else "not found" if cube is None else "WRONG"
         print(f"{os.path.basename(f)}: {24 - len(wrong)}/24 points correct, bar {'ok' if bar_ok else 'wrong'}, "
-              f"home guess {'ok' if home_ok else 'wrong'} ({margin:+.1f}), dice {dice_ok} (read {dice}, truth {want})")
+              f"home guess {'ok' if home_ok else 'wrong'} ({margin:+.1f}), dice {dice_ok} (read {dice}, truth {want}), "
+              f"cube {cube_ok} (read {cube and cube['at']}, truth {cube_want and cube_want['at']})")
         for pt, a, b in wrong:
             print(f"   point {pt:2d}: truth {a:+d}  got {b:+d}")
