@@ -21,6 +21,12 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <div class="bar">
     <button id="back" class="back" type="button" aria-label="前の画面に戻る" hidden>‹ 戻る</button>
     <h1>BG Analyzer</h1>
+    <!-- その画面の主な操作。下の大きいボタンと同じで、スクロールしてもいつでも押せる -->
+    <div class="actions">
+      <button id="hdr-recognize" class="act" type="button" hidden disabled>読み取る</button>
+      <button id="hdr-analyze" class="act" type="button" hidden>解析する</button>
+      <button id="hdr-speak" class="act speak-btn" type="button" aria-label="結果を読み上げる" aria-pressed="false" hidden>🔊</button>
+    </div>
   </div>
   <nav id="steps">
     <span data-step="photo">1 写真</span>
