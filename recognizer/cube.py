@@ -14,6 +14,7 @@ import dice as dice_reader
 
 SIDE_MIN, SIDE_MAX = 0.45, 1.15    # cube side / checker diameter
 MARGIN = 2.2                       # how far (checker diameters) to look beyond the playing area, left and right
+MAX_MARKS = 8                      # marks on the face: photo3's "64" breaks into 5 to 7 on the Raspberry Pi
 MIN_READINGS = 4                   # brightness levels at which the block is found (the samples' other squares: 3 at most)
 MIDDLE = 0.18                      # within this share of the board's height from the middle line: in the middle
 
@@ -78,7 +79,7 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
         if any(dice_reader._face_value(dice_reader._pips(gray, b, dark, 0.5), b) for dark in (True, False)):
             continue
         share, marks = _ink(gray, b)
-        if not (0.04 <= share <= 0.4 and 1 <= marks <= 4):
+        if not (0.04 <= share <= 0.4 and 1 <= marks <= MAX_MARKS):
             continue
         found.append(b | dict(cx=x, cy=y))
     cubes = []
