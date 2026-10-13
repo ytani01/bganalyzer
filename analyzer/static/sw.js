@@ -1,14 +1,11 @@
 // Offline shell: cache the app files; API calls always go to the network.
-const CACHE = "bganalyzer-v9";
+const CACHE = "bganalyzer-v8";
 const SHARE_CACHE = "bganalyzer-share";   // a photo shared from another app, until app.js picks it up
 const SHARE_KEY = "shared-photo";
 const SHELL = ["./", "index.html", "style.css", "app.js", "photo.js", "history.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
-  // cache: "reload" skips the browser's HTTP cache, which could hand back an older app.js.
-  e.waitUntil(caches.open(CACHE)
-    .then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" }))))
-    .then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (e) => {
@@ -18,7 +15,6 @@ self.addEventListener("activate", (e) => {
 });
 
 // Network first so a new version shows up at once; the cache is the fallback when offline.
-// cache: "no-cache" asks the server every time (it answers 304 when nothing changed).
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method === "POST" && url.href === new URL("share-target", self.registration.scope).href) {
@@ -26,7 +22,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
-  e.respondWith(fetch(e.request, { cache: "no-cache" })
+  e.respondWith(fetch(e.request)
     .then((res) => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
       return res;
