@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.11.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.12.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -755,7 +755,7 @@ function setResult(r, dice) {
     : "ピップは同じ";
   stopSpeaking();
   let html = `<h2>${esc(r.summary)}</h2>`;
-  if (window.speechSynthesis) html += `<button id="speak" class="button small">🔊 読み上げる</button>`;
+  if (window.speechSynthesis) html += `<button id="speak" class="button primary speak" aria-pressed="false">🔊 読み上げ</button>`;
   if (!r.game_over) {
     const p = r.probabilities;
     const w = p.white.win, bl = p.black.win;
@@ -841,7 +841,12 @@ function toggleSpeaking(text) {
   u.lang = "ja-JP";
   const voice = japaneseVoice();
   if (voice) u.voice = voice;
-  const label = (on) => { if (btn && btn.isConnected) btn.textContent = on ? "■ 止める" : "🔊 読み上げる"; };
+  const label = (on) => {
+    if (!btn || !btn.isConnected) return;
+    btn.textContent = on ? "■ 停止" : "🔊 読み上げ";
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", on);
+  };
   u.onstart = () => label(true);
   u.onend = u.onerror = () => label(false);
   synth.speak(u);
