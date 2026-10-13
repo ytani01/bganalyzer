@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.14.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.15.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -39,6 +39,7 @@ const state = {
   board: null,       // {points[24], bar_white, bar_black}
   selected: null,    // point index 0..23, or "bar"
   result: null,
+  speech: null,      // the result read aloud (speechText), for both speak buttons
   resultKey: null,  // analysisKey() of what the result on screen was worked out for
   moveShown: 0,      // the move in the result's list drawn as arrows on the board
   historyId: null,   // this photo's entry in PhotoHistory (history.js), null if not stored
@@ -61,6 +62,7 @@ function show(step) {
     s.classList.toggle("done", STEPS.indexOf(s.dataset.step) < at);
   }
   $("back").hidden = step === "photo";
+  syncHeaderActions();
   // One history entry stands for "inside the app", so the phone's own back button
   // (or gesture) comes back here as a popstate instead of leaving the app.
   if (step !== "photo" && !(history.state && history.state.bg)) history.pushState({ bg: true }, "");
@@ -72,6 +74,17 @@ function show(step) {
   if (step === "photo") renderHistory();
   window.scrollTo(0, 0);
 }
+
+// The header carries the screen's main action (and reading aloud once there is a result),
+// so it can be pressed without scrolling down to the big button.
+function syncHeaderActions() {
+  $("hdr-recognize").hidden = currentStep !== "corners";
+  $("hdr-analyze").hidden = currentStep !== "board";
+  $("hdr-speak").hidden = !(currentStep === "board" && state.result && window.speechSynthesis);
+}
+$("hdr-recognize").addEventListener("click", () => $("recognize").click());
+$("hdr-analyze").addEventListener("click", () => $("analyze").click());
+$("hdr-speak").addEventListener("click", () => { if (state.speech) toggleSpeaking(state.speech); });
 
 function previousStep() {
   return currentStep === "board" && state.fromPhoto ? "corners" : "photo";
@@ -359,7 +372,7 @@ function updateCornerUi() {
     : state.cornerGuess === "default" ? "盤を自動で見つけられませんでした。" + fit
     : state.cornerGuess === "moved" ? fit
     : "四隅が決まりました。ホーム側と駒の色を選んで「盤面を読み取る」を押してください。";
-  $("recognize").disabled = n < 4;
+  $("recognize").disabled = $("hdr-recognize").disabled = n < 4;
 }
 
 $("corner-reset").addEventListener("click", () => {
@@ -851,6 +864,8 @@ function setResult(r, dice) {
   const box = $("result");
   box.classList.remove("stale");
   box.hidden = !r;
+  state.speech = r ? speechText(r, dice) : null;
+  syncHeaderActions();
   if (!r) return;
   const pips = r.pips;
   const pipLine = pips.leader
@@ -858,7 +873,7 @@ function setResult(r, dice) {
     : "ピップは同じ";
   stopSpeaking();
   let html = `<h2>${esc(r.summary)}</h2>`;
-  if (window.speechSynthesis) html += `<button id="speak" class="button primary speak" aria-pressed="false">🔊 読み上げ</button>`;
+  if (window.speechSynthesis) html += `<button id="speak" class="button primary speak speak-btn" aria-pressed="false">🔊 読み上げ</button>`;
   if (!r.game_over) {
     const p = r.probabilities;
     const w = p.white.win, bl = p.black.win;
@@ -884,7 +899,7 @@ function setResult(r, dice) {
   const list = box.querySelector(".moves");
   if (list) list.addEventListener("click", (e) => showMove(list, e.target.closest("li")));
   const speak = $("speak");
-  if (speak) speak.onclick = () => toggleSpeaking(speechText(r, dice));
+  if (speak) speak.onclick = () => toggleSpeaking(state.speech);
 }
 
 // A row of the best moves was tapped: show that move's arrows on the board.
@@ -949,17 +964,17 @@ function stopSpeaking() {
 
 function toggleSpeaking(text) {
   const synth = window.speechSynthesis;
-  const btn = $("speak");
   if (synth.speaking) { synth.cancel(); return; }
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "ja-JP";
   const voice = japaneseVoice();
   if (voice) u.voice = voice;
   const label = (on) => {
-    if (!btn || !btn.isConnected) return;
-    btn.textContent = on ? "■ 停止" : "🔊 読み上げ";
-    btn.classList.toggle("on", on);
-    btn.setAttribute("aria-pressed", on);
+    for (const btn of document.querySelectorAll(".speak-btn")) {
+      btn.textContent = btn.id === "hdr-speak" ? (on ? "■" : "🔊") : (on ? "■ 停止" : "🔊 読み上げ");
+      btn.classList.toggle("on", on);
+      btn.setAttribute("aria-pressed", on);
+    }
   };
   u.onstart = () => label(true);
   u.onend = u.onerror = () => label(false);
