@@ -66,4 +66,3 @@ def test_photo_helpers():
     assert out["same"] == [x * 10 + y for y in range(3) for x in range(4)]
     assert out["shifted"] == [10, 20, 30]
     assert out["interp"] == pytest.approx([0, 0.25, 0.75, 1.5])
-
