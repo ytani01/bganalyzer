@@ -727,8 +727,8 @@ async function openHistory(id) {
     state.file = e.image;
     state.historyId = id;
     state.historyScale = 1;   // the stored copy is now the image
-    // corners still being guessed when the photo was left are guessed again
-    const guess = !e.corners || e.cornerGuess === "finding";
+    // corners still being guessed when the photo was left, or never set, are guessed again
+    const guess = !e.corners || e.corners.length < 4 || e.cornerGuess === "finding";
     state.corners = guess ? defaultCorners() : e.corners.map((c) => c.slice());
     state.cornerGuess = guess ? "finding" : e.cornerGuess || "";
     state.cornersMoved = !!e.cornersMoved;
