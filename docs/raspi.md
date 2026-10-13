@@ -95,6 +95,7 @@ tailscale funnel status
 
 - Pi を再起動しても、Docker がアプリを自動で立ち上げ直します（`restart: unless-stopped`）。
 - 更新は `main` を pull してビルドし直すだけです。依存が変わっていなければ数分で終わります。
+- 更新したら [PI_CHECKS.md](PI_CHECKS.md) の未確認の項目を確かめます（Pi の上の Claude Code に「PI_CHECKS を確かめて」と頼めます）。
 
 ## 同じ Pi で別のアプリも公開する
 
