@@ -193,3 +193,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 #to-board { display: block; margin: 0 0 12px auto; }
 .die, .arrows { pointer-events: none; }   /* taps go to the point under the dice */
 #flip-turn { margin-top: 8px; }
+.board-wrap svg .cube-num { font-size: 15px; font-weight: bold; fill: #222; text-anchor: middle; }
+.result .answer { font-size: 20px; margin: 4px 0; }
+#cube-side label { display: flex; align-items: center; gap: 6px; }
+#cube-side select { font-size: 16px; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }

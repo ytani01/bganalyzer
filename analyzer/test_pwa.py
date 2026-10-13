@@ -96,3 +96,32 @@ def test_move_hops_on_the_board():
         {"from": 21, "to": "off", "fromLevel": 1, "toLevel": 0, "hit": False},
     ]
     assert run_moves('m.hops(board(START), "white", "5/1")') is None   # no checker there
+
+
+def test_cube_script_is_served_and_cached():
+    assert client.get("/cube.js").status_code == 200
+    assert '<script src="cube.js"></script>' in client.get("/").text
+    assert '"cube.js"' in (STATIC / "sw.js").read_text()
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_cube_request():
+    script = f"""
+    const c = require({json.dumps(str(STATIC / "cube.js"))});
+    console.log(JSON.stringify([
+      c.request({{at: "centre", value: 2, offered: true}}, "white", null),
+      c.request({{at: "white", value: 2, offered: true}}, "white", null),
+      c.request({{at: "black", value: 4, offered: true}}, "black", [3, 1]),
+      c.request({{at: "black", value: 4, offered: false}}, "white", null),
+      c.fromRead(null), c.fromRead({{at: "black", value: 3}}),
+    ]));
+    """
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    centre, offered, with_dice, owned, none, odd = json.loads(r.stdout)
+    assert centre == {"on_roll": "white", "cube_value": 1, "cube_owner": None, "doubled": False}
+    # offered to 手前: 奥 doubled, so 奥 is on roll
+    assert offered == {"on_roll": "black", "cube_value": 2, "cube_owner": "white", "doubled": True}
+    # with dice the cube is owned, not offered
+    assert with_dice == {"on_roll": "black", "cube_value": 4, "cube_owner": "black", "doubled": False}
+    assert owned["doubled"] is False and owned["on_roll"] == "white"
+    assert none["at"] == "centre" and odd == {"at": "black", "value": 2, "offered": True}
