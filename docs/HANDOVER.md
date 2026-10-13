@@ -78,6 +78,7 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
   著作権のある盤面図（USBGF）は URL と正解だけを `samples/external/` に置き、画像は入れない（TODO-011）。
 - **Pi での確認（TODO-023、2026-10-13）:** マージ後に Pi でしか確かめられないこと（Pi での所要時間など）は
   [PI_CHECKS.md](PI_CHECKS.md) に足す。Pi の上の Claude Code が git pull のあとに読んで確かめ、結果を書き込む（CLAUDE.md）。
+  2026-10-13 から TODO.md と同じ決まり（通し番号・担当・`- [ ]`・決着したら `archives/pi/` へ）で管理する（TODO-026）。
 - **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR と main への push で `uv run pytest analyzer` を実行する。
 
 ## 6. ぶつからないための決まり
