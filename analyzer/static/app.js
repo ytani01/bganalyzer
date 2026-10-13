@@ -790,6 +790,13 @@ const pct = (x) => `${x}パーセント`;
 function speechText(r, dice) {
   const pips = r.pips;
   const parts = [];
+  const bestMove = r.moves && dice;   // read first: it is what the player wants to hear
+  if (bestMove) {
+    const who = `${NAME[r.on_roll]}の人、ダイス ${dice[0]} ${dice[1]}`;
+    parts.push(r.moves.length
+      ? `${who}の最善手は、${moveToSpeech(r.moves[0].move)}。`
+      : `${who}では動かせる手がありません。`);
+  }
   if (r.game_over) {
     parts.push(`${NAME[r.favourite]}の勝ちで終局しています。`);
   } else {
@@ -800,12 +807,7 @@ function speechText(r, dice) {
   }
   parts.push(`ピップ数は、手前 ${pips.white}、奥 ${pips.black}` +
     (pips.leader ? `で、${NAME[pips.leader]}が ${pips.difference} ピップ リード。` : `で、同じです。`));
-  parts.push(`次に振るのは${NAME[r.on_roll]}の人です。`);
-  if (r.moves && dice) {
-    parts.push(r.moves.length
-      ? `ダイス ${dice[0]} ${dice[1]} の最善手は、${moveToSpeech(r.moves[0].move)}。`
-      : `ダイス ${dice[0]} ${dice[1]} では動かせる手がありません。`);
-  }
+  if (!bestMove) parts.push(`次に振るのは${NAME[r.on_roll]}の人です。`);
   return parts.join("");
 }
 
