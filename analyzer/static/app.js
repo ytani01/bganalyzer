@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.17.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.18.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -418,15 +418,20 @@ $("recognize").addEventListener("click", async () => {
     const cubeReq = BgCube.request(currentCube(), state.onRoll, dice);
     fd.append("on_roll", cubeReq.on_roll);
     if (dice) fd.append("dice", dice.join(","));
-    fd.append("cube_value", String(cubeReq.cube_value));
-    if (cubeReq.cube_owner) fd.append("cube_owner", cubeReq.cube_owner);
-    fd.append("doubled", String(cubeReq.doubled));
+    // a cube set by hand goes with the photo; else the server uses the one it reads (if any)
+    const cubeByHand = state.cubeAt !== "centre";
+    if (cubeByHand) {
+      fd.append("cube_value", String(cubeReq.cube_value));
+      fd.append("cube_owner", cubeReq.cube_owner);
+      fd.append("doubled", String(cubeReq.doubled));
+    }
     fd.append("plies", state.plies);
     const data = await post("analyze-photo", fd);
     if (!dice && data.dice_read) {   // read from the photo (the analysis used them too)
       dice = data.dice_read;
       setDice(dice, true);
     }
+    if (!cubeByHand && data.cube_read) setCube(BgCube.fromRead(data.cube_read), true);   // used by the analysis too
     if (data.analysis) setOnRoll(data.analysis.on_roll);
     const rec = data.recognized;
     state.warnings = data.warnings || [];

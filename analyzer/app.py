@@ -23,7 +23,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.17.0"
+__version__ = "0.18.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -146,7 +146,7 @@ async def analyze_photo(
     on_roll: str = Form("white"),
     plies: int = Form(DEFAULT_PLIES),
     dice: str | None = Form(None, description="e.g. 3,1; without it, the dice read from the photo (if any)"),
-    cube_value: int = Form(1),
+    cube_value: int | None = Form(None, description="without it, the cube read from the photo (if any)"),
     cube_owner: str | None = Form(None, description="white or black; empty: in the middle"),
     doubled: bool = Form(False),
 ):
@@ -169,13 +169,24 @@ async def analyze_photo(
     # geometry: where the recognizer found the board and its columns (image pixels of the sent image),
     # so the app can line the photo up with the read board.
     # dice_read: the two dice lying in the fields, when the recognizer is sure of them (else null)
+    # cube_read: where the doubling cube lies, {"at": "centre" | "white" | "black"} (its number is not read), or null
     read = info["dice"]["values"]
+    cube = info.get("cube")
+    cube_read = cube and {"at": cube["at"]}
     out = {"recognized": pos.to_dict(), "home": info["home"], "home_guess": info["home_guess"], "errors": errors, "warnings": warnings, "geometry": info.get("geometry"),
-           "dice_read": read}
+           "dice_read": read, "cube_read": cube_read}
     if errors:
         # Let the app show the read board for manual correction.
         return out | {"analysis": None}
-    return out | {"analysis": _run(pos, on_roll, plies, d or (tuple(read) if read else None),
+    d = d or (tuple(read) if read else None)
+    if cube_value is None:
+        cube_value, cube_owner, doubled = 1, None, False
+        if cube_read and cube_read["at"] != "centre":
+            # a cube on one side shows 2 or more (2 when unread); with no dice, it has just been offered there
+            cube_value, cube_owner, doubled = 2, cube_read["at"], d is None
+            if doubled:
+                on_roll = "black" if cube_owner == "white" else "white"
+    return out | {"analysis": _run(pos, on_roll, plies, d,
                                    cube_value=cube_value, cube_owner=cube_owner or None, doubled=doubled)}
 
 

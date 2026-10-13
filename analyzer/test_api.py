@@ -368,3 +368,64 @@ def test_api_cube():
            {"cube_value": 2, "doubled": True, "dice": [3, 1]}]
     for extra in bad:
         assert client.post("/analyze", json={"position_id": START_ID} | extra).status_code == 422, extra
+
+
+def _draw_cube(img, x, y, side, text):
+    import cv2
+
+    cv2.rectangle(img, (x - side // 2, y - side // 2), (x + side // 2, y + side // 2), (235, 235, 235), -1)
+    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)
+    cv2.putText(img, text, (x - tw // 2, y + th // 2), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (20, 20, 20), 3)
+
+
+def test_cube_is_found_on_a_drawn_board():
+    import numpy as np
+    import cube
+    from board import Layout
+
+    lay = Layout(a=430, bar=70)
+    H = np.eye(3)
+    for x, y, text, at in ((650, 150, "2", "black"), (650, 500, "64", "centre"), (650, 850, "4", "white")):
+        img = np.full((int(lay.h), int(lay.w), 3), (40, 70, 30), np.uint8)
+        _draw_cube(img, x, y, 60, text)
+        assert cube.read_cube(img, H, lay, 80.0)["at"] == at, text
+    # a die is not a cube, and an empty board has none
+    img = np.full((int(lay.h), int(lay.w), 3), (40, 70, 30), np.uint8)
+    _draw_die(img, 650, 480, 50, 5, 10)
+    assert cube.read_cube(img, H, lay, 80.0) is None
+
+
+def test_api_reads_the_cube_from_the_photo():
+    import cv2
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    t = json.loads((samples / "screen2.truth.json").read_text())   # cube 2 on 奥's side, dice 5-4
+    ok, jpg = cv2.imencode(".jpg", cv2.imread(str(samples / t["image"])))
+    form = {"corners": ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy),
+            "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0"}
+    j = client.post("/analyze-photo", files={"image": ("s.jpg", jpg.tobytes(), "image/jpeg")}, data=form).json()
+    assert j["cube_read"] == {"at": "black"}
+    assert j["analysis"]["moves"] and j["analysis"]["cube"] is None    # dice on the board: 奥 owns the cube
+    # a cube set by hand comes first
+    j = client.post("/analyze-photo", files={"image": ("s.jpg", jpg.tobytes(), "image/jpeg")},
+                    data=form | {"cube_value": "1"}).json()
+    assert j["cube_read"] == {"at": "black"} and j["analysis"]["cube"] is None and j["analysis"]["moves"]
+
+
+def test_api_cube_read_without_dice_is_a_double(monkeypatch):
+    # the cube on 手前's side and no dice: 奥 has just doubled, and 手前 takes or passes
+    import cv2
+    import numpy as np
+    import board
+
+    def fake(img, corners, **kw):
+        return Position.start(), {"home": "right", "home_guess": None, "warnings": [], "geometry": None,
+                                  "dice": {"values": None, "dice": []}, "cube": {"at": "white"}}
+
+    monkeypatch.setattr(board, "recognize", fake)
+    ok, png = cv2.imencode(".png", np.zeros((40, 40, 3), np.uint8))
+    form = {"corners": "0,0,40,0,40,40,0,40", "plies": "0", "on_roll": "white"}
+    j = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")}, data=form).json()
+    a = j["analysis"]
+    assert j["cube_read"] == {"at": "white"} and a["on_roll"] == "black"
+    assert a["cube"]["question"] == "take" and a["cube"]["taker"] == "white" and a["cube"]["take"] is True
