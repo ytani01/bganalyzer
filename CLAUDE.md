@@ -48,9 +48,11 @@ analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同
 
 ## Raspberry Pi で確かめること
 
-マージ後に自宅の Raspberry Pi（本番）でしか確かめられないことは [docs/PI_CHECKS.md](docs/PI_CHECKS.md) に並べる。
+マージ後に自宅の Raspberry Pi（本番）でしか確かめられないことは [docs/PI_CHECKS.md](docs/PI_CHECKS.md) で、
+**TODO.md と同じ決まり**で管理する（`PI-001` からの通し番号、ファイルの先頭に「残っている項目」と「次の番号」、
+各項目に **担当**、状態は `- [ ]` / `- [x]`、決着したら `archives/pi/` に 1 項目 1 ファイルで移す）。
 **Raspberry Pi の上で作業する Claude Code は、`git pull` のあとに docs/PI_CHECKS.md を読み、**
-**未確認の項目を確かめて結果を書き込む**（アプリの更新は `docker compose up -d --build`、詳しくは [docs/raspi.md](docs/raspi.md)）。
+**残っている項目を確かめて結果を書き込む**（アプリの更新は `docker compose up -d --build`、詳しくは [docs/raspi.md](docs/raspi.md)）。
 期待と違えばユーザーに報告する。
 
 ## タスク管理
