@@ -30,6 +30,7 @@ const state = {
   historyId: null,   // this photo's entry in PhotoHistory (history.js), null if not stored
   historyScale: 1,   // image px -> the stored copy's px
   photoView: "side", // the photo on the board screen: "side" (next to the board), "overlay" (under the checkers) or "off"
+  geometry: null,    // where the recognizer found the board: {corners (image px), columns, bar (fractions), bitmap, from}
   rectified: null,   // {bitmap, key, url}: the photo warped onto the board's playing area
 };
 
@@ -355,6 +356,9 @@ $("recognize").addEventListener("click", async () => {
     const data = await post("analyze-photo", fd);
     const rec = data.recognized;
     state.warnings = data.warnings || [];
+    const g = data.geometry;
+    state.geometry = g && { ...g, corners: g.corners.map(([x, y]) => [x / scale, y / scale]),
+                            bitmap: state.bitmap, from: JSON.stringify(state.corners) };
     state.board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
     state.selected = null;
     saveHistory();
@@ -421,17 +425,34 @@ function drawStack(svg, x, top, n, side, style) {
 const PLAY = { x: B.x0, y: B.y0, w: 12 * B.pw + B.bar, h: B.y1 - B.y0 };
 function rectifiedPhoto() {
   if (!state.fromPhoto || !state.bitmap || state.corners.length !== 4 || !window.BgPhoto) return null;
-  const key = JSON.stringify(state.corners);
+  // The recognizer's refined corners and columns line the photo up best; they hold for the photo and corners they came from.
+  const g0 = state.geometry;
+  const g = g0 && g0.bitmap === state.bitmap && g0.from === JSON.stringify(state.corners) ? g0 : null;
+  const key = JSON.stringify([state.corners, g && g.corners]);
   const r = state.rectified;
   if (r && r.bitmap === state.bitmap && r.key === key) return r.url;
   let url = null;
   try {
-    url = BgPhoto.rectify(state.bitmap, state.corners, PLAY.w * 2, PLAY.h * 2);
+    url = BgPhoto.rectify(state.bitmap, g ? g.corners : state.corners, PLAY.w * 2, PLAY.h * 2, g && columnAnchors(g, 2));
   } catch (err) {
     console.warn("could not show the photo:", err);
   }
   state.rectified = { bitmap: state.bitmap, key, url };
   return url;
+}
+
+// [[x on the drawn playing area * zoom, fraction of the photo's width], ...] through the bar edges and
+// the 12 column centres, or just the bar edges if the columns are out of order.
+function columnAnchors(g, zoom) {
+  const half = 6 * B.pw;
+  const bar = [[half * zoom, g.bar[0]], [(half + B.bar) * zoom, g.bar[1]]];
+  const cols = (g.columns || []).map((f, c) => [(colX(c) - B.x0) * zoom, f]);
+  const ends = (mid) => [[0, 0], ...mid, [PLAY.w * zoom, 1]];
+  const increasing = (a) => a.every((p, k) => k === 0 || p[1] > a[k - 1][1]);
+  const full = ends([...cols.slice(0, 6), ...bar, ...cols.slice(6)]);
+  if (cols.length === 12 && increasing(full)) return full;
+  const plain = ends(bar);
+  return increasing(plain) ? plain : null;
 }
 
 function drawBoard() {

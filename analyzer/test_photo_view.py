@@ -66,3 +66,15 @@ def test_photo_helpers():
     assert out["same"] == [x * 10 + y for y in range(3) for x in range(4)]
     assert out["shifted"] == [10, 20, 30]
     assert out["interp"] == pytest.approx([0, 0.25, 0.75, 1.5])
+
+
+def test_app_files_are_checked_on_every_load():
+    # Without this the phone kept an old app.js after an update, and the photo did not show.
+    for path in ("/", "/app.js", "/photo.js", "/sw.js"):
+        assert client.get(path).headers["cache-control"] == "no-cache", path
+    etag = client.get("/app.js").headers["etag"]
+    res = client.get("/app.js", headers={"if-none-match": etag})
+    assert res.status_code == 304 and res.headers["cache-control"] == "no-cache"
+    assert "cache-control" not in client.get("/health").headers   # the API is left alone
+    sw = (STATIC / "sw.js").read_text()
+    assert 'cache: "reload"' in sw and 'cache: "no-cache"' in sw
