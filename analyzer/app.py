@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -22,7 +23,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.2.0"
+__version__ = "0.5.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -119,6 +120,18 @@ def analyze_endpoint(req: AnalyzeRequest):
     return _run(pos, req.on_roll, req.plies, req.dice)
 
 
+@app.post("/find-corners")
+async def find_corners_endpoint(image: UploadFile = File(...)):
+    """A first guess at the playing area's corners (TL, TR, BR, BL), for the app to show
+    before the user adjusts them. corners is null when no board was found."""
+    from corners import find_corners  # recognizer (OpenCV); imported lazily
+
+    img = cv2.imdecode(np.frombuffer(await image.read(), np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(422, "could not decode image")
+    return {"corners": find_corners(img), "width": img.shape[1], "height": img.shape[0]}
+
+
 @app.post("/analyze-photo")
 async def analyze_photo(
     image: UploadFile = File(...),
@@ -145,11 +158,21 @@ async def analyze_photo(
     pos, info = recognize(img, list(zip(c[0::2], c[1::2])), home=home, bottom_colour=bottom_colour)
     warnings = [WARNINGS[w] for w in info.get("warnings", [])]
     errors = pos.validate()
+    # geometry: where the recognizer found the board and its columns (image pixels of the sent image),
+    # so the app can line the photo up with the read board.
+    out = {"recognized": pos.to_dict(), "errors": errors, "warnings": warnings, "geometry": info.get("geometry")}
     if errors:
         # Let the app show the read board for manual correction.
-        return {"recognized": pos.to_dict(), "errors": errors, "warnings": warnings, "analysis": None}
-    return {"recognized": pos.to_dict(), "errors": [], "warnings": warnings,
-            "analysis": _run(pos, on_roll, plies, d)}
+        return out | {"analysis": None}
+    return out | {"analysis": _run(pos, on_roll, plies, d)}
+
+
+@app.post("/share-target")
+def share_target():
+    # Android's share sheet posts photos here (manifest share_target); sw.js normally answers on
+    # the phone. This only runs before the service worker is up: don't read or keep the photo,
+    # just open the app ("./" keeps the /bg/ prefix the proxy strips).
+    return RedirectResponse("./?shared=none", status_code=303)
 
 
 # What the recognizer's warnings mean for the person holding the phone.

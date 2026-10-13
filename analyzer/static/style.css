@@ -91,11 +91,18 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 #photo-canvas { display: block; width: 100%; touch-action: none; }
 
 .board-wrap { background: var(--card); border-radius: 8px; padding: 4px; }
-#board-svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
-#board-svg .hit { cursor: pointer; }
-#board-svg .label { font-size: 13px; fill: #fff; font-weight: bold; text-anchor: middle; }
-#board-svg .num { font-size: 11px; fill: var(--muted); text-anchor: middle; }
-#board-svg .stack-n { font-size: 15px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+.board-wrap svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
+.board-wrap svg .hit { cursor: pointer; }
+.board-wrap svg .label { font-size: 13px; fill: #fff; font-weight: bold; text-anchor: middle; }
+.board-wrap svg .num { font-size: 11px; fill: var(--muted); text-anchor: middle; }
+.board-wrap svg .stack-n { font-size: 15px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+.board-wrap svg .stack-n.ring { font-size: 18px; paint-order: stroke; stroke: #000; stroke-width: 3px; }
+.boards { display: grid; gap: 8px; }
+/* Photo and board side by side when there is room; one above the other on a phone. */
+@media (min-width: 1000px) {
+  main:has(.boards.two:not([hidden])) { max-width: 1240px; }
+  #board:not([hidden]) .boards.two { grid-template-columns: 1fr 1fr; }
+}
 
 .editor { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
 .editor-title { font-size: 14px; color: var(--muted); margin-bottom: 4px; }

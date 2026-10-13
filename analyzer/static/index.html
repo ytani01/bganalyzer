@@ -81,7 +81,16 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <section id="board" class="step" hidden>
     <div id="errors" class="alert" hidden></div>
     <p class="note">違っている所はポイントをタップして直してください。下が手前の人です。</p>
-    <div class="board-wrap"><svg id="board-svg" viewBox="0 0 660 440"></svg></div>
+    <fieldset id="photo-tools" hidden>
+      <legend>元の写真（四隅で補正し、盤面図と同じ並びにしたもの）</legend>
+      <div class="seg" data-name="photoView">
+        <button data-value="side">並べる</button><button data-value="overlay">重ねる</button><button data-value="off">隠す</button>
+      </div>
+    </fieldset>
+    <div id="boards" class="boards">
+      <div id="photo-wrap" class="board-wrap" hidden><svg id="photo-svg" viewBox="0 0 660 440"></svg></div>
+      <div class="board-wrap"><svg id="board-svg" viewBox="0 0 660 440"></svg></div>
+    </div>
     <div id="editor" class="editor">
       <div id="editor-title" class="editor-title">ポイントをタップすると駒の数を直せます</div>
       <div id="editor-buttons" hidden>
@@ -129,6 +138,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 
 <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text"></p></div>
 
+<script src="photo.js"></script>
 <script src="history.js"></script>
 <script src="app.js"></script>
 </body>
