@@ -37,7 +37,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -457,6 +457,15 @@ def refine_tips(img, H, lay: Layout, m: int):
         return H, lay, tips
     # field height in this image: from top-row bases to bottom-row bases
     tb, bb = _row_bases(tips, "top"), _row_bases(tips, "bottom")
+    if (tb is None) != (bb is None):
+        # one row's bases hidden (dice cups on the points): the triangles are all the
+        # same length, so take it from the other row
+        top_tip = np.median([y for _, r, _, y, *_ in tips if r == "top"])
+        bot_tip = np.median([y for _, r, _, y, *_ in tips if r == "bottom"])
+        if tb is None:
+            tb = top_tip - (bb - bot_tip)
+        else:
+            bb = bot_tip + (top_tip - tb)
     if tb is None or bb is None:
         # no bases seen: assume the sides reach one pitch apart at the frame
         tb = np.median([y - L for _, r, _, y, L, *_ in tips if r == "top"])
@@ -692,13 +701,20 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     for score, cx, cy, r, med in ranked:
         if score >= CIRCLE_MIN_SCORE and clear(cx, cy, out):
             out.append((cx, cy, r, med, score))
-    # stacks have no holes: a weaker circle in line between two sure checkers
-    # (e.g. white on a white triangle) is a checker too
+    # stacks have no holes and start at the frame: a weaker circle in line between
+    # a sure checker and either another one or the frame (e.g. white on a white
+    # triangle, brown on a brown one) is a checker too
     for score, cx, cy, r, med in ranked:
         if score >= CIRCLE_MIN_SCORE or not clear(cx, cy, out):
             continue
         line = [o[1] for o in out if abs(o[0] - cx) < 0.15 * pitch and abs(o[1] - cy) < 2.3 * pitch]
-        if any(y < cy for y in line) and any(y > cy for y in line):
+        top = cy < lay.h / 2
+        inner = [y for y in line if (y > cy) == top]   # towards mid-board
+        outer = [y for y in line if (y > cy) != top]
+        stack = [o for o in out if abs(o[0] - cx) < 0.15 * pitch and (o[1] < lay.h / 2) == top]
+        depth = cy if top else lay.h - cy   # a checker's centre is half a pitch in from the frame
+        # between two checkers, or between a stack of at least two and the frame
+        if inner and (outer or (len(stack) >= 2 and depth > 0.3 * pitch)):
             out.append((cx, cy, r, med, score))
     return out
 
