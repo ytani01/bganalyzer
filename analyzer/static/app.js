@@ -938,9 +938,7 @@ $("analyze").addEventListener("click", async () => {
     const body = { board: { ...state.board }, plies: Number(state.plies),
                    ...BgCube.request(currentCube(), state.onRoll, dice) };
     if (dice) body.dice = dice;
-    const key = analysisKey(state.board, state.onRoll, dice);
     const r = await post("analyze", JSON.stringify(body), { "content-type": "application/json" });
-    state.resultKey = key;
     setResult(r, dice);
     $("result").scrollIntoView({ behavior: "smooth" });
   } catch (err) {
@@ -968,6 +966,7 @@ function esc(s) {
 
 function setResult(r, dice) {
   state.result = r;
+  state.resultKey = r ? analysisKey(state.board, state.onRoll, dice || null) : null;   // the board it was worked out for
   state.moveShown = 0;
   if (state.board) drawBoard();   // the best move's arrows, or none
   const box = $("result");

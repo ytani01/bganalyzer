@@ -1,26 +1,9 @@
 # TODO
 
-**残っている項目: TODO-012、TODO-025。** これまでに 23 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-026`。**
+**残っている項目: TODO-025、TODO-027、TODO-028。** これまでに 25 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-029`。**
 各項目の最初に **担当**（ai1 か、共同開発者のアカウント名、未定）を書き、着手する前に自分の担当にしてコミットする
 （[docs/HANDOVER.md](docs/HANDOVER.md)）。
-
----
-
-## TODO-012. ネット上のサンプルで見つかった認識の弱点を直す
-
-- **担当:** ai1
-- **見込み:** main Opus 5.5 / effort medium（実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 に上書き / medium。evaluate.py の実測）
-- TODO-011 で集めたサンプルで見つかった弱点（詳しくは [recognizer/README.md](recognizer/README.md) の「ネット上のサンプル」）:
-  - [x] 三角形への合わせ直しが、盤の外の駒入れの溝や細い蝶番のバーに引っ張られてずれる（commons-travel-case 15→21/24、commons-tavli-grey 11→23/24。recognizer 0.3.1）
-  - [x] 蝶番や留め具をバーの駒と数える（Commons 11 枚のバーが全部正しくなった。0.3.1）
-  - [x] 盤面図で、白い三角形の上の白い駒を見落とす（USBGF 7 枚 147→166/168。0.3.1）
-  - [x] ダイスカップが乗ったやや斜めの写真（commons-leather-cups。Raspberry Pi で 9→19/24。recognizer 0.5.1）
-  - [ ] バーの帯がない盤（commons-dark-homeleft 12/24）
-  - [ ] 四隅の推定（corners.py）が Commons の写真 11 枚中 4 枚で見つからず、5 枚で 4.5〜12.9% ずれる
-- dark-homeleft を調べて分かったこと（2026-10-13、Raspberry Pi で）: 暗い盤の上の焦げ茶の駒が円として見つからない。
-  三角形が白・赤・黒の 3 色ある盤で、`board_colours` が三角形の色を 2 つにしか分けないので、空いた白や赤の三角形の底を駒と読む。
-  直すには駒の検出と三角形の色の扱いの両方に手が入るので、全サンプルを x86_64 の環境で測りながら進める（Pi は精度の値が少し違う）。
 
 ---
 
@@ -35,6 +18,44 @@
 - [x] 解析（gnubg のキューブ判断）と PWA の表示・手動の設定（analyzer 0.17.0）
 - [x] 写真からキューブの場所を読み取る（recognizer 0.6.0。6 枚中 3 枚、誤検出なし）
 - [ ] キューブの数字を読む（今は片側なら 2 とし、手で直す）
+
+---
+
+## TODO-027. 暗い盤の上の焦げ茶の駒を見つける（commons-dark-homeleft）
+
+- **担当:** 未定
+- **見込み:** main Opus 5.5 / effort high（設計と実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。evaluate.py の実測）
+- [ ] commons-dark-homeleft（Raspberry Pi で 12/24）を、ほかのサンプルを下げずに上げる
+
+TODO-012 から分けた。分かっていること（2026-10-14、Raspberry Pi で測定）:
+
+- 列の位置はほぼ合っている（バーの帯の代わりに盤の継ぎ目がある）。外しているのは、焦げ茶の駒の見落とし（1・12・17・19 ポイント）と、
+  空いた三角形の赤・クリームの部分を駒と読むこと（3・5・11・14〜16・21）。13 ポイントの白い駒は、焦げ茶の駒が少ないため色の分け方がずれて黒と読む。
+- 三角形は白い縁取りの黒で、底の側だけ赤とクリームで塗ってある（3 色）。`board_colours` は三角形の色を 2 つに分けるので、赤が入らない。
+- 焦げ茶の駒は Lab の縁の強さ（しきい値 40）が 0.03〜0.42 で、Hough では 15 個中 3 個しか出ない。
+  CLAHE（局所コントラスト強調）をかけたグレーでは 11〜14 個出て、縁の強さも 0.30〜0.86 になるが、空いた三角形の底（0.38〜0.55）と重なる。
+- CLAHE を Hough の入力に足し、縁の強さを Lab と CLAHE の大きい方にすると、ほかの盤で模様も駒と読み、全サンプルで 492 → 429 ポイントに下がった。
+- 同じ色の列の中央値を「空いたときの見た目」にして比べる方法は、初期配置では同じ色の列に駒が多く、中央値が駒に引っ張られて分けられなかった。
+- 直すには、候補（CLAHE など）と、三角形の色を 3 つまで扱う空いた所の色の見積もりを、両方変える必要がある。
+
+---
+
+## TODO-028. 四隅の推定（corners.py）を作り直す
+
+- **担当:** 未定
+- **見込み:** main Opus 5.5 / effort high（設計と実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。四隅のずれの実測）
+- [ ] `corners.find_corners` が見つからない・大きくずれるサンプルを減らす
+
+TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま測った結果（2026-10-14、目視の四隅とのずれの最大、写真の長辺に対する割合）:
+
+- 3.6% 以内: diagram-holding 3.0%、nardy-midgame 2.5%、tavli-red-white 3.6%、photo2 2.7%、photo3 2.7%、screen2 2.8%
+- 大きくずれる: set-cube-dice 14.3%、tavli-burl 13.6%、tavli-red-brown 11.9%
+- 見つからない（14 枚）: case-dice、case-midgame、dark-homeleft、diagram-closed-bar、diagram-prime、leather-cups、rollup-oblique、
+  tavli-black、tavli-blue、tavli-grey、tavli-red-diamond、travel-case、photo4、screen1
+- recognizer/README.md の記録（x86_64、Commons 11 枚中 4 枚が見つからない）より見つからない写真が多い。
+  Pi と x86_64 の違い（k-means など）かどうかは確かめていない。着手したらまず x86_64 でも測る。
+- 色を 8 つに分けて細長い三角形の領域を探す今の作り方は、三角形が駒に隠れる・縁取りだけの三角形・盤面図の木目で崩れやすい。
+  作り直しの方針（例: board.py の三角形の先端の探し方を使う、縁の直線から探す）は着手するときに決める。
 
 ---
 
