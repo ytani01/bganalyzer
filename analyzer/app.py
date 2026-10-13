@@ -23,7 +23,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.16.0"
+__version__ = "0.17.1"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -53,6 +53,10 @@ class AnalyzeRequest(BaseModel):
     on_roll: str = "white"
     plies: int = Field(DEFAULT_PLIES, ge=0, le=MAX_PLIES)
     dice: tuple[int, int] | None = None
+    # The doubling cube (money game). Without dice, the answer has the cube decision.
+    cube_value: int = 1
+    cube_owner: str | None = None   # white, black or null (in the middle)
+    doubled: bool = False           # on_roll has just doubled to cube_value: take or pass?
 
 
 def _board_to_position(b: Board) -> Position:
@@ -63,9 +67,9 @@ def _board_to_position(b: Board) -> Position:
     return pos
 
 
-def _run(pos: Position, on_roll: str, plies: int, dice) -> dict:
+def _run(pos: Position, on_roll: str, plies: int, dice, **cube) -> dict:
     try:
-        r = analyze(pos, on_roll, plies=plies, dice=dice)
+        r = analyze(pos, on_roll, plies=plies, dice=dice, **cube)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     r["board"] = {k: v for k, v in pos.to_dict().items() if k in
@@ -117,7 +121,8 @@ def analyze_endpoint(req: AnalyzeRequest):
             raise HTTPException(422, f"invalid position id: {req.position_id}") from e
     else:
         pos = _board_to_position(req.board)
-    return _run(pos, req.on_roll, req.plies, req.dice)
+    return _run(pos, req.on_roll, req.plies, req.dice,
+                cube_value=req.cube_value, cube_owner=req.cube_owner, doubled=req.doubled)
 
 
 @app.post("/find-corners")
@@ -141,6 +146,9 @@ async def analyze_photo(
     on_roll: str = Form("white"),
     plies: int = Form(DEFAULT_PLIES),
     dice: str | None = Form(None, description="e.g. 3,1; without it, the dice read from the photo (if any)"),
+    cube_value: int = Form(1),
+    cube_owner: str | None = Form(None, description="white or black; empty: in the middle"),
+    doubled: bool = Form(False),
 ):
     from board import recognize  # recognizer (OpenCV); imported lazily
 
@@ -167,7 +175,8 @@ async def analyze_photo(
     if errors:
         # Let the app show the read board for manual correction.
         return out | {"analysis": None}
-    return out | {"analysis": _run(pos, on_roll, plies, d or (tuple(read) if read else None))}
+    return out | {"analysis": _run(pos, on_roll, plies, d or (tuple(read) if read else None),
+                                   cube_value=cube_value, cube_owner=cube_owner or None, doubled=doubled)}
 
 
 @app.post("/share-target")

@@ -305,3 +305,66 @@ def test_api_reads_dice_from_the_photo():
                     data=form | {"dice": "6,5"}).json()
     want = client.post("/analyze", json={"position_id": j["analysis"]["position_id"], "dice": [6, 5], "plies": 0}).json()
     assert j["dice_read"] == [4, 2] and j["analysis"]["moves"] == want["moves"]
+
+
+def _race(me_pips, opp_pips):
+    """A race: White's checkers on its points (dict point -> count), Black's on its own."""
+    pos = Position(points=[0] * 24)
+    for p, n in me_pips.items():
+        pos.points[p - 1] = n
+    for p, n in opp_pips.items():
+        pos.points[24 - p] = -n
+    w, b = pos.counts()
+    pos.off_white, pos.off_black = 15 - w, 15 - b
+    return pos
+
+
+def test_cube_decision_without_dice():
+    # Start: nobody doubles; a double would be taken
+    c = analyze(Position.start(), "white", plies=0)["cube"]
+    assert c["question"] == "double" and c["doubler"] == "white" and c["taker"] == "black"
+    assert c["double"] is False and c["take"] is True
+    assert set(c["equity"]) == {"no_double", "double_take", "double_pass"}
+    assert c["equity"]["double_pass"] == 1.0
+    # A race 8 pips ahead with 11 checkers each: double, take
+    pos = _race({6: 4, 7: 4, 8: 3}, {6: 4, 7: 4, 8: 4})
+    c = analyze(pos, "white", plies=2)["cube"]
+    assert c["double"] is True and c["take"] is True
+    # ...and Black, on roll and behind, doesn't double
+    assert analyze(pos, "black", plies=2)["cube"]["double"] is False
+    # Far ahead: double, pass
+    pos = _race({1: 3, 2: 3, 3: 3, 4: 2}, {6: 3, 7: 3, 8: 3, 9: 2})
+    c = analyze(pos, "white", plies=0)["cube"]
+    assert c["double"] is True and c["take"] is False
+
+
+def test_no_cube_decision_with_dice_or_without_access():
+    r = analyze(Position.start(), "white", plies=0, dice=(3, 1))
+    assert r["cube"] is None and r["moves"]
+    # Black owns the cube: White on roll can't double
+    r = analyze(Position.start(), "white", plies=0, cube_value=2, cube_owner="black")
+    assert r["cube"] is None and r["moves"] is None
+
+
+def test_take_or_pass_after_a_double():
+    pos = _race({6: 4, 7: 4, 8: 3}, {6: 4, 7: 4, 8: 4})
+    c = analyze(pos, "white", plies=2, cube_value=2, cube_owner="black", doubled=True)["cube"]
+    assert c["question"] == "take" and c["value"] == 1 and c["take"] is True and c["double"] is True
+    # A redouble to 4: White owned the cube at 2
+    c = analyze(pos, "white", plies=2, cube_value=4, cube_owner="black", doubled=True)["cube"]
+    assert c["value"] == 2 and "redouble" in c["proper"].lower()
+
+
+def test_api_cube():
+    res = client.post("/analyze", json={"position_id": START_ID, "plies": 0})
+    assert res.status_code == 200, res.text
+    assert res.json()["cube"]["question"] == "double" and "ダブル" in res.json()["summary"]
+    res = client.post("/analyze", json={"position_id": START_ID, "plies": 0, "cube_value": 2,
+                                        "cube_owner": "black", "doubled": True})
+    assert res.status_code == 200, res.text
+    assert res.json()["cube"]["question"] == "take" and "テイク" in res.json()["summary"]
+    bad = [{"cube_value": 3}, {"cube_value": 2}, {"cube_owner": "white"},
+           {"cube_value": 2, "cube_owner": "white", "doubled": True},
+           {"cube_value": 2, "doubled": True, "dice": [3, 1]}]
+    for extra in bad:
+        assert client.post("/analyze", json={"position_id": START_ID} | extra).status_code == 422, extra

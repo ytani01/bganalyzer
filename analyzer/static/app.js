@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.16.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.17.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -33,6 +33,9 @@ const state = {
   homeGuess: null,   // how the server guessed home (homePick "auto"): {margin}; null once flipped by hand
   bottomColour: 1,   // 0 = the darker checkers are 手前's, 1 = the lighter ones
   onRoll: "white",
+  cubeAt: "centre",  // where the doubling cube lies: "centre", "white" (手前's side) or "black" (cube.js)
+  cubeValue: 2,      // the number on it when on a side
+  cubeOffered: true, // on a side with no dice: just offered there (take or pass?), not owned
   plies: storedPlies(),   // how deep gnubg reads: "2" or "3" (kept on this phone)
   fromPhoto: false,
   warnings: [],      // the server's notes on the photo (e.g. taken at a steep angle)
@@ -143,6 +146,7 @@ async function loadPhoto(file) {
     state.board = null;
     state.warnings = [];
     setDice(null);   // the dice of the last position are not this photo's
+    setCube(null);
     setResult(null);
     // start from a rectangle at once, and replace it with the server's guess when that comes
     state.corners = defaultCorners();
@@ -410,15 +414,20 @@ $("recognize").addEventListener("click", async () => {
     fd.append("corners", state.corners.flat().map((v) => (v * scale).toFixed(1)).join(","));
     fd.append("home", state.homePick);
     fd.append("bottom_colour", String(state.bottomColour));
-    fd.append("on_roll", state.onRoll);
     let dice = currentDice();
+    const cubeReq = BgCube.request(currentCube(), state.onRoll, dice);
+    fd.append("on_roll", cubeReq.on_roll);
     if (dice) fd.append("dice", dice.join(","));
+    fd.append("cube_value", String(cubeReq.cube_value));
+    if (cubeReq.cube_owner) fd.append("cube_owner", cubeReq.cube_owner);
+    fd.append("doubled", String(cubeReq.doubled));
     fd.append("plies", state.plies);
     const data = await post("analyze-photo", fd);
     if (!dice && data.dice_read) {   // read from the photo (the analysis used them too)
       dice = data.dice_read;
       setDice(dice, true);
     }
+    if (data.analysis) setOnRoll(data.analysis.on_roll);
     const rec = data.recognized;
     state.warnings = data.warnings || [];
     const g = data.geometry;
@@ -579,7 +588,7 @@ function drawBoardOn(svg, opts) {
   if (b.bar_white && opts.checkers) drawStack(svg, bx, false, b.bar_white, "white", style);
   if (!opts.photo) {
     const barLbl = el("text", { x: bx, y: (B.y0 + B.y1) / 2 + 5, class: "label" }, svg);
-    barLbl.textContent = "バー";
+    barLbl.textContent = state.cubeAt === "centre" && opts.checkers ? "" : "バー";
   }
   if (state.selected === "bar") {
     el("rect", { x: bx - B.bar / 2 + 1, y: B.y0 + 1, width: B.bar - 2, height: B.y1 - B.y0 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
@@ -588,6 +597,7 @@ function drawBoardOn(svg, opts) {
   barHit.addEventListener("click", () => select("bar"));
   if (opts.checkers) drawBorneOff(svg);
   if (opts.checkers) drawDice(svg);
+  if (opts.checkers) drawCube(svg);
   if (opts.checkers) drawMoveArrows(svg);
 }
 
@@ -629,7 +639,7 @@ function stackY(top, k) {
 
 // Analysis inputs, to tell whether the result on screen still fits the board drawn.
 function analysisKey(board, onRoll, dice) {
-  return JSON.stringify([board.points, board.bar_white, board.bar_black, onRoll, dice]);
+  return JSON.stringify([board.points, board.bar_white, board.bar_black, onRoll, dice, currentCube()]);
 }
 
 // The move picked in the result's list (the best one at first), as arrows on the board.
@@ -704,6 +714,17 @@ function drawDice(svg) {
       el("circle", { cx: x + size / 2 + px * size * 0.27, cy: y + size / 2 + py * size * 0.27, r: size * 0.09, fill: `var(--${side}-fg)` }, g);
     }
   });
+}
+
+// The doubling cube on the bar: in the middle showing 64, or towards the side it lies on.
+function drawCube(svg) {
+  const size = 32, x = B.x0 + 6 * B.pw + B.bar / 2 - size / 2;
+  const mid = (B.y0 + B.y1) / 2;
+  const y = state.cubeAt === "centre" ? mid - size / 2 : state.cubeAt === "white" ? mid + 30 : mid - 30 - size;
+  const g = el("g", { class: "die" }, svg);
+  el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
+  const t = el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g);
+  t.textContent = state.cubeAt === "centre" ? "64" : String(state.cubeValue);
 }
 
 function counts() {
@@ -832,9 +853,62 @@ for (const id of ["die1", "die2"]) {
   $(id).addEventListener("change", () => {
     if (state.result) $("result").classList.add("stale");
     $("dice-note").hidden = true;
+    syncCube();
     if (state.board) drawBoard();
     saveHistory();
   });
+}
+
+// ---------------------------------------------------------------- the doubling cube (cube.js)
+for (const v of BgCube.VALUES) $("cube-value").add(new Option(String(v), String(v)));
+
+function currentCube() {
+  return { at: state.cubeAt, value: state.cubeValue, offered: state.cubeOffered };
+}
+
+// cube: {at, value, offered}, or null for the middle. fromPhoto: read from the photo, so say so.
+function setCube(cube, fromPhoto = false) {
+  const c = cube || BgCube.fromRead(null);
+  state.cubeAt = c.at;
+  state.cubeValue = c.value;
+  state.cubeOffered = c.offered;
+  $("cube-note").hidden = !fromPhoto;
+  syncCube();
+  if (state.board) drawBoard();
+}
+
+// What the cube asks of the analysis, and the side on roll that follows from it.
+function syncCube() {
+  syncCubeAt();
+  $("cube-side").hidden = state.cubeAt === "centre";
+  $("cube-value").value = String(state.cubeValue);
+  $("cube-offered").checked = state.cubeOffered;
+  const req = BgCube.request(currentCube(), state.onRoll, currentDice());
+  if (req.on_roll !== state.onRoll) setOnRoll(req.on_roll);
+  const roll = NAME[req.on_roll];
+  $("cube-help").textContent = currentDice()
+    ? "ダイスがあるので、最善手を出します。"
+    : req.doubled
+      ? `${roll}の人が ${req.cube_value} にダブルしたところとして、${NAME[req.cube_owner]}の人がテイクかパスかを判定します。`
+      : req.cube_owner && req.cube_owner !== req.on_roll
+        ? `キューブは${NAME[req.cube_owner]}の人が持っているので、${roll}の人はダブルできません。`
+        : `ダイスが無いので、${roll}の人がダブルすべきかを判定します。`;
+}
+
+function cubeChanged() {
+  $("cube-note").hidden = true;
+  syncCube();
+  if (state.result) $("result").classList.add("stale");
+  if (state.board) drawBoard();
+  saveHistory();
+}
+
+$("cube-value").addEventListener("change", () => { state.cubeValue = Number($("cube-value").value); cubeChanged(); });
+$("cube-offered").addEventListener("change", () => { state.cubeOffered = $("cube-offered").checked; cubeChanged(); });
+
+function setOnRoll(side) {
+  state.onRoll = side;
+  syncOnRoll();
 }
 
 // fromPhoto: the dice were read from the photo, so say so (the user checks them)
@@ -855,12 +929,11 @@ $("analyze").addEventListener("click", async () => {
   if (errs.length) { alert(errs.join("\n")); return; }
   busy(analysingText());
   try {
-    const body = { board: { ...state.board }, on_roll: state.onRoll, plies: Number(state.plies) };
     const dice = currentDice();
+    const body = { board: { ...state.board }, plies: Number(state.plies),
+                   ...BgCube.request(currentCube(), state.onRoll, dice) };
     if (dice) body.dice = dice;
-    const key = analysisKey(state.board, state.onRoll, dice);
     const r = await post("analyze", JSON.stringify(body), { "content-type": "application/json" });
-    state.resultKey = key;
     setResult(r, dice);
     $("result").scrollIntoView({ behavior: "smooth" });
   } catch (err) {
@@ -888,6 +961,7 @@ function esc(s) {
 
 function setResult(r, dice) {
   state.result = r;
+  state.resultKey = r ? analysisKey(state.board, state.onRoll, dice || null) : null;   // the board it was worked out for
   state.moveShown = 0;
   if (state.board) drawBoard();   // the best move's arrows, or none
   const box = $("result");
@@ -915,7 +989,8 @@ function setResult(r, dice) {
       `<tr><td>エクイティ</td><td>${r.equity.white.toFixed(3)}</td><td>${r.equity.black.toFixed(3)}</td></tr>` +
       `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
   }
-  html += `<p>${pipLine}。次に振るのは${NAME[r.on_roll]}の人。</p>`;
+  html += r.cube ? cubeHtml(r.cube) : `<p>${pipLine}。次に振るのは${NAME[r.on_roll]}の人。</p>`;
+  if (r.cube) html += `<p>${pipLine}。</p>`;
   if (r.moves) {
     html += `<h2>最善手（${NAME[r.on_roll]}・ダイス ${dice ? dice.join("-") : ""}）</h2>`;
     html += r.moves.length
@@ -923,12 +998,34 @@ function setResult(r, dice) {
         `<p class="note">番号は${NAME[r.on_roll]}の人から見たポイント番号です。盤面図の矢印は選んだ手です（行をタップで切り替え）。</p>`
       : "<p>動かせる手がありません。</p>";
   }
-  html += `<p class="note">gnubg ${r.plies}手読み・キューブなし。Position ID: <code>${esc(r.position_id)}</code></p>`;
+  html += `<p class="note">gnubg ${r.plies}手読み。勝率とエクイティはキューブなし${r.cube ? "、キューブの判断はマネーゲーム（ジャコビー・ルールあり）" : ""}。` +
+    `Position ID: <code>${esc(r.position_id)}</code></p>`;
   box.innerHTML = html;
   const list = box.querySelector(".moves");
   if (list) list.addEventListener("click", (e) => showMove(list, e.target.closest("li")));
   const speak = $("speak");
   if (speak) speak.onclick = () => toggleSpeaking(state.speech);
+}
+
+// The cube decision: the answer first, then gnubg's cubeful equities (the doubler's, per cube before the double).
+function cubeHtml(c) {
+  const d = NAME[c.doubler], t = NAME[c.taker];
+  const word = c.value > 1 ? "リダブル" : "ダブル";
+  const take = c.take ? "テイク" : "パス";
+  let html = "<h2>キューブ</h2>";
+  if (c.question === "take") {
+    html += `<p class="answer">${t}の人は <b>${take}</b></p>`;
+    html += `<p>${d}の人の${word}は${c.double ? "正しい" : c.too_good ? "ダブルせずギャモンを狙う方がよい局面" : "早すぎる"}。</p>`;
+  } else {
+    html += `<p class="answer">${d}の人は <b>${c.double ? `${word}する` : c.too_good ? `${word}しない（ギャモン狙い）` : `${word}しない`}</b></p>`;
+    html += `<p>${word}されたら、${t}の人は${take}。</p>`;
+  }
+  const e = c.equity;
+  const row = (name, v) => `<tr><td>${name}</td><td>${v >= 0 ? "+" : ""}${v.toFixed(3)}</td></tr>`;
+  html += `<table><tr><th>${d}の人から見て</th><th>エクイティ</th></tr>` +
+    row(`${word}しない`, e.no_double) + row(`${word}・テイク`, e.double_take) + row(`${word}・パス`, e.double_pass) +
+    `</table><p class="note">gnubg の判断: ${esc(c.proper)}</p>`;
+  return html;
 }
 
 // A row of the best moves was tapped: show that move's arrows on the board.
@@ -954,6 +1051,13 @@ function speechText(r, dice) {
     parts.push(r.moves.length
       ? `${who}の最善手は、${moveToSpeech(r.moves[0].move)}。`
       : `${who}では動かせる手がありません。`);
+  }
+  if (r.cube) {
+    const c = r.cube, word = c.value > 1 ? "リダブル" : "ダブル", take = c.take ? "テイク" : "パス";
+    parts.push(c.question === "take"
+      ? `${NAME[c.taker]}の人は${take}です。`
+      : c.double ? `${NAME[c.doubler]}の人は${word}です。${word}されたら${take}です。`
+        : `${NAME[c.doubler]}の人はまだ${word}しません。${word}されたら${take}です。`);
   }
   if (r.game_over) {
     parts.push(`${NAME[r.favourite]}の勝ちで終局しています。`);
@@ -1039,6 +1143,7 @@ function saveHistory() {
     bottomColour: state.bottomColour,
     onRoll: state.onRoll,
     dice: currentDice(),
+    cube: currentCube(),
     board: state.board,
     warnings: state.warnings,
   }).catch(() => {});
@@ -1068,6 +1173,7 @@ async function openHistory(id) {
     state.board = e.board || null;
     state.selected = null;
     setDice(e.dice);
+    setCube(e.cube || null);
     syncHomePick();
     syncColours();
     syncOnRoll();
@@ -1134,14 +1240,24 @@ function syncColours() {
 
 const syncHomePick = initSeg("homePick");
 const syncBottomColour = initSeg("bottomColour", syncColours);
+// A cube just offered lies on the side of the player doubled, so the other one is on roll.
+function cubeFollowsTurn() {
+  if (BgCube.request(currentCube(), state.onRoll, currentDice()).doubled) {
+    state.cubeAt = state.onRoll === "white" ? "black" : "white";
+    syncCube();
+  }
+}
 const syncOnRoll = initSeg("onRoll", () => {
+  cubeFollowsTurn();
   if (state.result) $("result").classList.add("stale");
   if (state.board) drawBoard();   // the dice move to the other side
 });
+const syncCubeAt = initSeg("cubeAt", cubeChanged);
 // The other side to roll; with a result on screen, analyse again for the new side at once.
 $("flip-turn").addEventListener("click", () => {
   state.onRoll = state.onRoll === "white" ? "black" : "white";
   syncOnRoll();
+  cubeFollowsTurn();
   if (state.board) drawBoard();
   saveHistory();
   if (state.result) $("analyze").click();
@@ -1152,6 +1268,7 @@ initSeg("plies", () => {
   if (state.result) $("result").classList.add("stale");
 });
 syncColours();
+syncCube();
 updateCornerUi();
 show("photo");
 
