@@ -7,8 +7,11 @@ CC BY-SA の写真（とその縮小版）は同じ CC BY-SA で配布します�
 | ファイル | 元の写真 | 作者 | ライセンス |
 |---|---|---|---|
 | `commons-case-midgame.jpg` | [Backgammon (293614687).jpg](https://commons.wikimedia.org/wiki/File:Backgammon_(293614687).jpg) | Takuro Iwabuchi | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) |
+| `commons-case-dice.jpg` | [Backgammon-P1090549 (Kopie) (31742957373).jpg](https://commons.wikimedia.org/wiki/File:Backgammon-P1090549_(Kopie)_(31742957373).jpg) | Martina Grosty | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) |
 | `commons-dark-homeleft.jpg` | [Backgammon (49543113023).jpg](https://commons.wikimedia.org/wiki/File:Backgammon_(49543113023).jpg) | Martina Grosty | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) |
 | `commons-leather-cups.jpg` | [Backgammon board.jpg](https://commons.wikimedia.org/wiki/File:Backgammon_board.jpg) | Ptkfgs | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
+| `commons-nardy-midgame.jpg` | [Нарды в уменьшенном формате.jpg](https://commons.wikimedia.org/wiki/File:%D0%9D%D0%B0%D1%80%D0%B4%D1%8B_%D0%B2_%D1%83%D0%BC%D0%B5%D0%BD%D1%8C%D1%88%D0%B5%D0%BD%D0%BD%D0%BE%D0%BC_%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%82%D0%B5.jpg) | StatisksExpert | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| `commons-rollup-oblique.jpg` | [Melia Games Backgammon.jpg](https://commons.wikimedia.org/wiki/File:Melia_Games_Backgammon.jpg) | Ilker Bicakci | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `commons-tavli-black.jpg` | [Tavli Board without slots (traditional) 1960s.jpg](https://commons.wikimedia.org/wiki/File:Tavli_Board_without_slots_(traditional)_1960s.jpg) | Nikos Kitsakis | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `commons-tavli-blue.jpg` | [Tavli Board without slots (traditional) C.jpg](https://commons.wikimedia.org/wiki/File:Tavli_Board_without_slots_(traditional)_C.jpg) | Nikos Kitsakis | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `commons-tavli-burl.jpg` | [Tavli Board without slots (traditional).jpg](https://commons.wikimedia.org/wiki/File:Tavli_Board_without_slots_(traditional).jpg) | Nikos Kitsakis | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |

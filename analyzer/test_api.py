@@ -116,11 +116,13 @@ def test_steep_photo_is_flagged():
 
     photo1 = view_tilt_deg([[1450, 1712], [2268, 1366], [3137, 1553], [2320, 2157]], (3024, 4032, 3))
     assert photo1 > OBLIQUE_WARN_DEG
+    # the oblique Commons photos added in TODO-017 are steep enough to be flagged too
+    steep = {"commons-nardy-midgame.truth.json", "commons-rollup-oblique.truth.json"}
     samples = Path(__file__).resolve().parent.parent / "samples"
     for f in samples.glob("*.truth.json"):
         t = json.loads(f.read_text())
         shape = cv2.imread(str(samples / t["image"])).shape
-        assert view_tilt_deg(t["corners_TL_TR_BR_BL"], shape) < OBLIQUE_WARN_DEG, f.name
+        assert (view_tilt_deg(t["corners_TL_TR_BR_BL"], shape) > OBLIQUE_WARN_DEG) == (f.name in steep), f.name
 
 
 def test_version_reports_both_parts_and_commit():
