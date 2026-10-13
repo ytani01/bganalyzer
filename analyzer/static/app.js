@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.20.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.21.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -42,7 +42,7 @@ const state = {
   board: null,       // {points[24], bar_white, bar_black}
   selected: null,    // point index 0..23, or "bar"
   result: null,
-  speech: null,      // the result read aloud (speechText), for both speak buttons
+  speech: null,      // the result read aloud (speechText) by the header's 🔊 button
   resultKey: null,  // analysisKey() of what the result on screen was worked out for
   moveShown: 0,      // the move in the result's list drawn as arrows on the board
   historyId: null,   // this photo's entry in PhotoHistory (history.js), null if not stored
@@ -93,13 +93,11 @@ function show(step) {
 // The header carries the screen's main action (and reading aloud once there is a result),
 // so it can be pressed without scrolling down to the big button.
 function syncHeaderActions() {
-  $("hdr-recognize").hidden = currentStep !== "corners";
-  $("hdr-analyze").hidden = currentStep !== "board";
-  $("hdr-speak").hidden = !(currentStep === "board" && state.result && window.speechSynthesis);
+  $("recognize").hidden = currentStep !== "corners";
+  $("analyze").hidden = currentStep !== "board";
+  $("speak").hidden = !(currentStep === "board" && state.result && window.speechSynthesis);
 }
-$("hdr-recognize").addEventListener("click", () => $("recognize").click());
-$("hdr-analyze").addEventListener("click", () => $("analyze").click());
-$("hdr-speak").addEventListener("click", () => { if (state.speech) toggleSpeaking(state.speech); });
+$("speak").addEventListener("click", () => { if (state.speech) toggleSpeaking(state.speech); });
 
 function previousStep() {
   return currentStep === "board" && state.fromPhoto ? "corners" : "photo";
@@ -387,8 +385,8 @@ function updateCornerUi() {
     : state.cornerGuess === "found" ? "盤の四隅を自動で置きました。ずれていたら" + fit
     : state.cornerGuess === "default" ? "盤を自動で見つけられませんでした。" + fit
     : state.cornerGuess === "moved" ? fit
-    : "四隅が決まりました。ホーム側と駒の色を選んで「盤面を読み取る」を押してください。";
-  $("recognize").disabled = $("hdr-recognize").disabled = n < 4;
+    : "四隅が決まりました。ホーム側と駒の色を選んで上の「盤面を読み取る」を押してください。";
+  $("recognize").disabled = n < 4;
 }
 
 $("corner-reset").addEventListener("click", () => {
@@ -986,7 +984,6 @@ function setResult(r, dice) {
     : "ピップは同じ";
   stopSpeaking();
   let html = `<h2>${esc(r.summary)}</h2>`;
-  if (window.speechSynthesis) html += `<button id="speak" class="button primary speak speak-btn" aria-pressed="false">🔊 読み上げ</button>`;
   if (!r.game_over) {
     const p = r.probabilities;
     const w = p.white.win, bl = p.black.win;
@@ -1013,8 +1010,6 @@ function setResult(r, dice) {
   box.innerHTML = html;
   const list = box.querySelector(".moves");
   if (list) list.addEventListener("click", (e) => showMove(list, e.target.closest("li")));
-  const speak = $("speak");
-  if (speak) speak.onclick = () => toggleSpeaking(state.speech);
 }
 
 // The cube decision: the answer first, then gnubg's cubeful equities (the doubler's, per cube before the double).
@@ -1113,11 +1108,10 @@ function toggleSpeaking(text) {
   const voice = japaneseVoice();
   if (voice) u.voice = voice;
   const label = (on) => {
-    for (const btn of document.querySelectorAll(".speak-btn")) {
-      btn.textContent = btn.id === "hdr-speak" ? (on ? "■" : "🔊") : (on ? "■ 停止" : "🔊 読み上げ");
-      btn.classList.toggle("on", on);
-      btn.setAttribute("aria-pressed", on);
-    }
+    const btn = $("speak");
+    btn.textContent = on ? "■" : "🔊";
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", on);
   };
   u.onstart = () => label(true);
   u.onend = u.onerror = () => label(false);

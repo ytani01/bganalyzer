@@ -166,8 +166,6 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .result { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 16px 0; }
 .result.stale { opacity: .5; }
 .result h2 { font-size: 18px; margin: 0 0 8px; }
-.button.speak { display: block; width: 100%; min-height: 44px; font-size: 17px; font-weight: bold; margin: 4px 0 12px; }
-.button.speak.on { background: var(--card); color: var(--accent); }
 .winbar { display: flex; height: 28px; border-radius: 8px; overflow: hidden; margin: 8px 0; font-size: 14px; font-weight: bold; }
 .winbar div { display: flex; align-items: center; padding: 0 8px; white-space: nowrap; }
 .winbar .w { background: var(--white-chk); color: var(--white-fg); }
@@ -232,4 +230,4 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
   #photo-wrap { margin-bottom: 8px; }
   .board-pin { position: sticky; top: var(--hdr-h, 56px); z-index: 4; background: var(--bg); padding: 4px 0 6px; }
 }
-#result, #analyze { scroll-margin-top: calc(var(--hdr-h, 56px) + var(--pin-h) + 8px); }
+#result { scroll-margin-top: calc(var(--hdr-h, 56px) + var(--pin-h) + 8px); }
