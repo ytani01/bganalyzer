@@ -61,8 +61,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     </div>
     <fieldset>
       <legend>手前の人のホームボード（上がる側）</legend>
-      <div class="seg" data-name="home">
-        <button data-value="left">左</button><button data-value="right">右</button>
+      <div class="seg" data-name="homePick">
+        <button data-value="auto">自動</button><button data-value="left">左</button><button data-value="right">右</button>
       </div>
     </fieldset>
     <fieldset>
@@ -111,6 +111,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <button id="flip-home" class="button small">左右を入れ替える</button>
       <button id="reset-start" class="button small">初期配置にする</button>
     </div>
+    <p id="home-note" class="note" hidden></p>
 
     <fieldset>
       <legend>次にダイスを振る人</legend>
