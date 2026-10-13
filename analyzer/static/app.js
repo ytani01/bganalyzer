@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.7.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.8.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -87,6 +87,7 @@ async function loadPhoto(file) {
     state.fromPhoto = true;
     state.board = null;
     state.warnings = [];
+    setDice(null);   // the dice of the last position are not this photo's
     setResult(null);
     // start from a rectangle at once, and replace it with the server's guess when that comes
     state.corners = defaultCorners();
@@ -356,9 +357,13 @@ $("recognize").addEventListener("click", async () => {
     fd.append("home", state.homePick);
     fd.append("bottom_colour", String(state.bottomColour));
     fd.append("on_roll", state.onRoll);
-    const dice = currentDice();
+    let dice = currentDice();
     if (dice) fd.append("dice", dice.join(","));
     const data = await post("analyze-photo", fd);
+    if (!dice && data.dice_read) {   // read from the photo (the analysis used them too)
+      dice = data.dice_read;
+      setDice(dice, true);
+    }
     const rec = data.recognized;
     state.warnings = data.warnings || [];
     const g = data.geometry;
@@ -650,8 +655,16 @@ for (const id of ["die1", "die2"]) {
   for (let d = 1; d <= 6; d++) $(id).add(new Option(String(d), String(d)));
   $(id).addEventListener("change", () => {
     if (state.result) $("result").classList.add("stale");
+    $("dice-note").hidden = true;
     saveHistory();
   });
+}
+
+// fromPhoto: the dice were read from the photo, so say so (the user checks them)
+function setDice(dice, fromPhoto = false) {
+  $("die1").value = dice ? String(dice[0]) : "";
+  $("die2").value = dice ? String(dice[1]) : "";
+  $("dice-note").hidden = !fromPhoto;
 }
 
 function currentDice() {
@@ -850,8 +863,7 @@ async function openHistory(id) {
     state.warnings = e.warnings || [];
     state.board = e.board || null;
     state.selected = null;
-    $("die1").value = e.dice ? String(e.dice[0]) : "";
-    $("die2").value = e.dice ? String(e.dice[1]) : "";
+    setDice(e.dice);
     syncHomePick();
     syncColours();
     syncOnRoll();

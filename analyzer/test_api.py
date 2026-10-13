@@ -229,3 +229,58 @@ def test_api_guesses_home_side():
     j = res.json()
     assert j["home"] == "left" and j["home_guess"]["margin"] < -1
     assert j["recognized"]["points"] == t["points"]
+
+
+def _draw_die(img, cx, cy, side, value, deg):
+    import cv2
+    import numpy as np
+
+    spots = {1: [(0, 0)], 2: [(-1, -1), (1, 1)], 3: [(-1, -1), (0, 0), (1, 1)],
+             4: [(-1, -1), (1, -1), (-1, 1), (1, 1)], 5: [(-1, -1), (1, -1), (0, 0), (-1, 1), (1, 1)],
+             6: [(-1, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (1, 1)]}[value]
+    t = np.deg2rad(deg)
+    R = np.array([[np.cos(t), -np.sin(t)], [np.sin(t), np.cos(t)]])
+    box = (np.array([(-1, -1), (1, -1), (1, 1), (-1, 1)]) * side / 2) @ R.T + (cx, cy)
+    cv2.fillConvexPoly(img, box.astype(np.int32), (235, 235, 235))
+    for p in np.array(spots) * side * 0.27 @ R.T + (cx, cy):
+        cv2.circle(img, (int(p[0]), int(p[1])), int(side * 0.09), (20, 20, 20), -1)
+
+
+def test_dice_are_read_from_a_drawn_board():
+    import cv2
+    import numpy as np
+    import dice
+    from board import Layout
+
+    lay = Layout(a=430, bar=70)
+    H = np.eye(3)
+    for a, b, deg in ((6, 1, 0), (5, 3, 20), (4, 2, 35), (2, 2, 70)):
+        img = np.full((int(lay.h), int(lay.w), 3), (40, 70, 30), np.uint8)
+        _draw_die(img, 650, 480, 50, a, deg)
+        _draw_die(img, 730, 520, 50, b, deg + 25)
+        assert dice.read_dice(img, H, lay, 80.0)["values"] == sorted([a, b], reverse=True)
+    # one die, or a third one, and nothing is filled in
+    img = np.full((int(lay.h), int(lay.w), 3), (40, 70, 30), np.uint8)
+    _draw_die(img, 650, 480, 50, 5, 10)
+    assert dice.read_dice(img, H, lay, 80.0)["values"] is None
+    _draw_die(img, 730, 520, 50, 3, 10)
+    _draw_die(img, 200, 520, 50, 4, 10)
+    assert dice.read_dice(img, H, lay, 80.0)["values"] is None
+
+
+def test_api_reads_dice_from_the_photo():
+    import cv2
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    t = json.loads((samples / "screen1.truth.json").read_text())   # dice 4-2 on the board
+    ok, png = cv2.imencode(".png", cv2.imread(str(samples / t["image"])))
+    form = {"corners": ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy),
+            "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0"}
+    j = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")}, data=form).json()
+    assert j["dice_read"] == [4, 2]
+    assert j["analysis"]["moves"]                 # the best moves for the dice read
+    # dice the user gave come first
+    j = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")},
+                    data=form | {"dice": "6,5"}).json()
+    want = client.post("/analyze", json={"position_id": j["analysis"]["position_id"], "dice": [6, 5], "plies": 0}).json()
+    assert j["dice_read"] == [4, 2] and j["analysis"]["moves"] == want["moves"]

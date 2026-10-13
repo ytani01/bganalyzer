@@ -31,12 +31,13 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
+import dice as dice_reader
 import home_prior
 from position import Position
 
-# The recognizer's version (board.py, position.py and corners.py). Bump it when recognizer/ changes;
+# The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -869,6 +870,8 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         corners=cv2.perspectiveTransform(lay.src_pts()[None], H)[0].round(1).tolist(),
         columns=[round(float(lay.col_x(c) / lay.w), 4) for c in range(12)],
         bar=[round(float(lay.a / lay.w), 4), round(float((lay.a + lay.bar) / lay.w), 4)])
+    info["dice"] = dice_reader.read_dice(img, H, lay, pitch, circles,
+                                         debug=debug_prefix and debug_prefix + "_dice.jpg")
     info["tilt_deg"] = round(view_tilt_deg(corners, img.shape), 1)
     info["warnings"] = ["oblique"] if info["tilt_deg"] > OBLIQUE_WARN_DEG else []
     if debug_prefix:

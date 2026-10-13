@@ -23,7 +23,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -140,7 +140,7 @@ async def analyze_photo(
     bottom_colour: int = Form(0),
     on_roll: str = Form("white"),
     plies: int = Form(DEFAULT_PLIES),
-    dice: str | None = Form(None, description="e.g. 3,1"),
+    dice: str | None = Form(None, description="e.g. 3,1; without it, the dice read from the photo (if any)"),
 ):
     from board import recognize  # recognizer (OpenCV); imported lazily
 
@@ -160,11 +160,14 @@ async def analyze_photo(
     errors = pos.validate()
     # geometry: where the recognizer found the board and its columns (image pixels of the sent image),
     # so the app can line the photo up with the read board.
-    out = {"recognized": pos.to_dict(), "home": info["home"], "home_guess": info["home_guess"], "errors": errors, "warnings": warnings, "geometry": info.get("geometry")}
+    # dice_read: the two dice lying in the fields, when the recognizer is sure of them (else null)
+    read = info["dice"]["values"]
+    out = {"recognized": pos.to_dict(), "home": info["home"], "home_guess": info["home_guess"], "errors": errors, "warnings": warnings, "geometry": info.get("geometry"),
+           "dice_read": read}
     if errors:
         # Let the app show the read board for manual correction.
         return out | {"analysis": None}
-    return out | {"analysis": _run(pos, on_roll, plies, d)}
+    return out | {"analysis": _run(pos, on_roll, plies, d or (tuple(read) if read else None))}
 
 
 @app.post("/share-target")
