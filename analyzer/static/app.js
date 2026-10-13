@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.17.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.17.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -933,9 +933,7 @@ $("analyze").addEventListener("click", async () => {
     const body = { board: { ...state.board }, plies: Number(state.plies),
                    ...BgCube.request(currentCube(), state.onRoll, dice) };
     if (dice) body.dice = dice;
-    const key = analysisKey(state.board, state.onRoll, dice);
     const r = await post("analyze", JSON.stringify(body), { "content-type": "application/json" });
-    state.resultKey = key;
     setResult(r, dice);
     $("result").scrollIntoView({ behavior: "smooth" });
   } catch (err) {
@@ -963,6 +961,7 @@ function esc(s) {
 
 function setResult(r, dice) {
   state.result = r;
+  state.resultKey = r ? analysisKey(state.board, state.onRoll, dice || null) : null;   // the board it was worked out for
   state.moveShown = 0;
   if (state.board) drawBoard();   // the best move's arrows, or none
   const box = $("result");
