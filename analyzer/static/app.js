@@ -973,6 +973,14 @@ const syncOnRoll = initSeg("onRoll", () => {
   if (state.result) $("result").classList.add("stale");
   if (state.board) drawBoard();   // the dice move to the other side
 });
+// The other side to roll; with a result on screen, analyse again for the new side at once.
+$("flip-turn").addEventListener("click", () => {
+  state.onRoll = state.onRoll === "white" ? "black" : "white";
+  syncOnRoll();
+  if (state.board) drawBoard();
+  saveHistory();
+  if (state.result) $("analyze").click();
+});
 initSeg("photoView", drawBoard);
 initSeg("plies", () => {
   try { localStorage.setItem("plies", state.plies); } catch (_) { /* private mode */ }
