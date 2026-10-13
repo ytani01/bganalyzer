@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.11.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.12.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -39,6 +39,8 @@ const state = {
   board: null,       // {points[24], bar_white, bar_black}
   selected: null,    // point index 0..23, or "bar"
   result: null,
+  resultKey: null,  // analysisKey() of what the result on screen was worked out for
+  moveShown: 0,      // the move in the result's list drawn as arrows on the board
   historyId: null,   // this photo's entry in PhotoHistory (history.js), null if not stored
   historyScale: 1,   // image px -> the stored copy's px
   photoView: "side", // the photo on the board screen: "side" (next to the board), "overlay" (under the checkers) or "off"
@@ -540,6 +542,78 @@ function drawBoardOn(svg, opts) {
   const barHit = el("rect", { x: bx - B.bar / 2, y: B.y0, width: B.bar, height: B.y1 - B.y0, fill: "transparent", class: "hit" }, svg);
   barHit.addEventListener("click", () => select("bar"));
   if (opts.checkers) drawDice(svg);
+  if (opts.checkers) drawMoveArrows(svg);
+}
+
+// Column of point index i (0..23) and whether it is in the upper row: the inverse of pointAt.
+function columnOf(i) {
+  const top = i >= 12;
+  if (state.home === "right") return { top, c: top ? i - 12 : 11 - i };
+  return { top, c: top ? 23 - i : i };
+}
+
+// Centre of the checker at level k (0 = by the board's edge) of a stack, as drawStack places it.
+function stackY(top, k) {
+  k = Math.min(k, 4);
+  return top ? B.y0 + B.r + 1 + k * B.step : B.y1 - B.r - 1 - k * B.step;
+}
+
+// Analysis inputs, to tell whether the result on screen still fits the board drawn.
+function analysisKey(board, onRoll, dice) {
+  return JSON.stringify([board.points, board.bar_white, board.bar_black, onRoll, dice]);
+}
+
+// The move picked in the result's list (the best one at first), as arrows on the board.
+function drawMoveArrows(svg) {
+  const r = state.result;
+  if (!r || !r.moves || !r.moves.length || typeof BgMoves === "undefined") return;
+  if (state.resultKey !== analysisKey(state.board, state.onRoll, currentDice())) return;   // board changed since
+  const m = r.moves[state.moveShown] || r.moves[0];
+  const hops = BgMoves.hops(state.board, r.on_roll, m.move);
+  if (!hops) return;
+  const bx = B.x0 + 6 * B.pw + B.bar / 2;
+  const offX = state.home === "right" ? B.x0 + 12 * B.pw + B.bar + 3 : B.x0 - 3;
+  const g = el("g", { class: "arrows" }, svg);
+  for (const h of hops) {
+    let x0, y0;
+    if (h.from === "bar") {
+      const top = r.on_roll === "black";
+      [x0, y0] = [bx, stackY(top, h.fromLevel)];
+    } else {
+      const { top, c } = columnOf(h.from);
+      [x0, y0] = [colX(c), stackY(top, h.fromLevel)];
+    }
+    let x1, y1;
+    if (h.to === "off") {
+      [x1, y1] = [offX, y0];
+    } else {
+      const { top, c } = columnOf(h.to);
+      [x1, y1] = [colX(c), stackY(top, h.toLevel)];
+    }
+    drawArrow(g, x0, y0, x1, y1);
+    if (h.hit) el("circle", { cx: x1, cy: y1, r: B.r, fill: "none", stroke: "#e53935", "stroke-width": 3 }, g);
+  }
+}
+
+// A gently curved arrow (bent toward the middle of the board, off the checkers in between).
+function drawArrow(g, x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+  if (len < 1) return;
+  let px = -dy / len, py = dx / len;
+  const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, cy = (B.y0 + B.y1) / 2;
+  if (py * (cy - my) < 0 || (Math.abs(py) < 0.1 && px * (330 - mx) < 0)) { px = -px; py = -py; }
+  const bend = Math.min(40, len * 0.2);
+  const qx = mx + px * bend, qy = my + py * bend;
+  const tx = x1 - qx, ty = y1 - qy, tl = Math.hypot(tx, ty) || 1;
+  const ux = tx / tl, uy = ty / tl, head = 14;
+  const ex = x1 - ux * head, ey = y1 - uy * head;   // the line stops where the head starts
+  const d = `M${x0},${y0} Q${qx},${qy} ${ex},${ey}`;
+  el("path", { d, fill: "none", stroke: "#000", "stroke-opacity": 0.45, "stroke-width": 8, "stroke-linecap": "round" }, g);
+  el("path", { d, fill: "none", stroke: "var(--sel)", "stroke-width": 4, "stroke-linecap": "round" }, g);
+  el("circle", { cx: x0, cy: y0, r: 5, fill: "var(--sel)", stroke: "#0008", "stroke-width": 1.5 }, g);
+  const w = 8;
+  el("polygon", { points: `${x1},${y1} ${ex - uy * w},${ey + ux * w} ${ex + uy * w},${ey - ux * w}`,
+                  fill: "var(--sel)", stroke: "#0008", "stroke-width": 1.5 }, g);
 }
 
 // The dice entered below the board, where the side on roll throws them: in its own right-hand
@@ -717,7 +791,9 @@ $("analyze").addEventListener("click", async () => {
     const body = { board: { ...state.board }, on_roll: state.onRoll, plies: Number(state.plies) };
     const dice = currentDice();
     if (dice) body.dice = dice;
+    const key = analysisKey(state.board, state.onRoll, dice);
     const r = await post("analyze", JSON.stringify(body), { "content-type": "application/json" });
+    state.resultKey = key;
     setResult(r, dice);
     $("result").scrollIntoView({ behavior: "smooth" });
   } catch (err) {
@@ -745,6 +821,8 @@ function esc(s) {
 
 function setResult(r, dice) {
   state.result = r;
+  state.moveShown = 0;
+  if (state.board) drawBoard();   // the best move's arrows, or none
   const box = $("result");
   box.classList.remove("stale");
   box.hidden = !r;
@@ -772,14 +850,25 @@ function setResult(r, dice) {
   if (r.moves) {
     html += `<h2>最善手（${NAME[r.on_roll]}・ダイス ${dice ? dice.join("-") : ""}）</h2>`;
     html += r.moves.length
-      ? `<ol class="moves">${r.moves.map((m) => `<li>${esc(m.move)}<span>エクイティ ${m.equity.toFixed(3)}</span></li>`).join("")}</ol>` +
-        `<p class="note">番号は${NAME[r.on_roll]}の人から見たポイント番号です。</p>`
+      ? `<ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>エクイティ ${m.equity.toFixed(3)}</span></li>`).join("")}</ol>` +
+        `<p class="note">番号は${NAME[r.on_roll]}の人から見たポイント番号です。盤面図の矢印は選んだ手です（行をタップで切り替え）。</p>`
       : "<p>動かせる手がありません。</p>";
   }
   html += `<p class="note">gnubg ${r.plies}手読み・キューブなし。Position ID: <code>${esc(r.position_id)}</code></p>`;
   box.innerHTML = html;
+  const list = box.querySelector(".moves");
+  if (list) list.addEventListener("click", (e) => showMove(list, e.target.closest("li")));
   const speak = $("speak");
   if (speak) speak.onclick = () => toggleSpeaking(speechText(r, dice));
+}
+
+// A row of the best moves was tapped: show that move's arrows on the board.
+function showMove(list, li) {
+  if (!li) return;
+  state.moveShown = Number(li.dataset.k);
+  for (const x of list.children) x.classList.toggle("on", x === li);
+  drawBoard();
+  $("board-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 // ---------------------------------------------------------------- reading the result aloud
