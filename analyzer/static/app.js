@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.21.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.22.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -42,7 +42,7 @@ const state = {
   board: null,       // {points[24], bar_white, bar_black}
   selected: null,    // point index 0..23, or "bar"
   result: null,
-  speech: null,      // the result read aloud (speechText), for both speak buttons
+  speech: null,      // the result read aloud (speechText) by the header's 🔊 button
   resultKey: null,  // analysisKey() of what the result on screen was worked out for
   moveShown: 0,      // the move in the result's list drawn as arrows on the board
   historyId: null,   // this photo's entry in PhotoHistory (history.js), null if not stored
@@ -53,18 +53,13 @@ const state = {
 };
 
 // ---------------------------------------------------------------- steps
-const STEPS = ["photo", "corners", "board"];
-const STEP_TITLES = { corners: "四隅", board: "盤面・解析" };   // the header's title on a phone, where the step list is hidden
+const STEPS = ["photo", "corners", "board", "outcome"];
+const STEP_TITLES = { corners: "四隅", board: "盤面・設定", outcome: "結果" };   // the header's title on a phone, where the step list is hidden
 
-// The sticky header and board are as tall as their contents; CSS needs the heights for what sits
-// below them (the board sticks under the header, a scrolled-to result under both).
-const stickyHeights = new ResizeObserver(() => {
-  const root = document.documentElement.style;
-  root.setProperty("--hdr-h", document.querySelector("header").offsetHeight + "px");
-  root.setProperty("--pin-h-live", $("board-pin").offsetHeight + "px");
-});
-stickyHeights.observe(document.querySelector("header"));
-stickyHeights.observe($("board-pin"));
+// The sticky header is as tall as its contents; the board sticks just under it (CSS --hdr-h).
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty("--hdr-h", document.querySelector("header").offsetHeight + "px");
+}).observe(document.querySelector("header"));
 let currentStep = "photo";
 
 function show(step) {
@@ -85,7 +80,7 @@ function show(step) {
     $("to-board").hidden = !(state.fromPhoto && state.board);
     requestAnimationFrame(drawPhoto);
   }
-  if (step === "board") drawBoard();
+  if (step === "board" || step === "outcome") drawBoard();
   if (step === "photo") renderHistory();
   window.scrollTo(0, 0);
 }
@@ -93,15 +88,14 @@ function show(step) {
 // The header carries the screen's main action (and reading aloud once there is a result),
 // so it can be pressed without scrolling down to the big button.
 function syncHeaderActions() {
-  $("hdr-recognize").hidden = currentStep !== "corners";
-  $("hdr-analyze").hidden = currentStep !== "board";
-  $("hdr-speak").hidden = !(currentStep === "board" && state.result && window.speechSynthesis);
+  $("recognize").hidden = currentStep !== "corners";
+  $("analyze").hidden = currentStep !== "board";
+  $("speak").hidden = !(currentStep === "outcome" && state.result && window.speechSynthesis);
 }
-$("hdr-recognize").addEventListener("click", () => $("recognize").click());
-$("hdr-analyze").addEventListener("click", () => $("analyze").click());
-$("hdr-speak").addEventListener("click", () => { if (state.speech) toggleSpeaking(state.speech); });
+$("speak").addEventListener("click", () => { if (state.speech) toggleSpeaking(state.speech); });
 
 function previousStep() {
+  if (currentStep === "outcome") return "board";
   return currentStep === "board" && state.fromPhoto ? "corners" : "photo";
 }
 
@@ -387,8 +381,8 @@ function updateCornerUi() {
     : state.cornerGuess === "found" ? "盤の四隅を自動で置きました。ずれていたら" + fit
     : state.cornerGuess === "default" ? "盤を自動で見つけられませんでした。" + fit
     : state.cornerGuess === "moved" ? fit
-    : "四隅が決まりました。ホーム側と駒の色を選んで「盤面を読み取る」を押してください。";
-  $("recognize").disabled = $("hdr-recognize").disabled = n < 4;
+    : "四隅が決まりました。ホーム側と駒の色を選んで上の「盤面を読み取る」を押してください。";
+  $("recognize").disabled = n < 4;
 }
 
 $("corner-reset").addEventListener("click", () => {
@@ -548,6 +542,7 @@ function drawBoard() {
   $("boards").classList.toggle("two", view === "side");
   if (view === "side") drawBoardOn($("photo-svg"), { photo, checkers: false });
   drawBoardOn($("board-svg"), { photo: null, checkers: true });
+  drawBoardOn($("result-svg"), { photo: null, checkers: true });   // the result screen's copy (taps are off there)
   drawCounts();
   drawEditor();
 }
@@ -942,7 +937,13 @@ function currentDice() {
 $("analyze").addEventListener("click", async () => {
   const errs = boardErrors();
   if (errs.length) { alert(errs.join("\n")); return; }
-  if (state.selected !== null) select(state.selected);   // done editing: the edit buttons give their room to the result
+  if (state.selected !== null) select(state.selected);   // done editing
+  // The result on hand still fits the board and settings (e.g. worked out when the photo was read): just show it.
+  if (state.result && !$("result").classList.contains("stale") &&
+      state.resultKey === analysisKey(state.board, state.onRoll, currentDice())) {
+    show("outcome");
+    return;
+  }
   busy(analysingText());
   try {
     const dice = currentDice();
@@ -951,7 +952,7 @@ $("analyze").addEventListener("click", async () => {
     if (dice) body.dice = dice;
     const r = await post("analyze", JSON.stringify(body), { "content-type": "application/json" });
     setResult(r, dice);
-    $("result").scrollIntoView({ behavior: "smooth" });
+    show("outcome");
   } catch (err) {
     alert("解析に失敗しました: " + err.message);
   } finally {
@@ -992,7 +993,6 @@ function setResult(r, dice) {
     : "ピップは同じ";
   stopSpeaking();
   let html = `<h2>${esc(r.summary)}</h2>`;
-  if (window.speechSynthesis) html += `<button id="speak" class="button primary speak speak-btn" aria-pressed="false">🔊 読み上げ</button>`;
   if (!r.game_over) {
     const p = r.probabilities;
     const w = p.white.win, bl = p.black.win;
@@ -1019,8 +1019,6 @@ function setResult(r, dice) {
   box.innerHTML = html;
   const list = box.querySelector(".moves");
   if (list) list.addEventListener("click", (e) => showMove(list, e.target.closest("li")));
-  const speak = $("speak");
-  if (speak) speak.onclick = () => toggleSpeaking(state.speech);
 }
 
 // The cube decision: the answer first, then gnubg's cubeful equities (the doubler's, per cube before the double).
@@ -1050,7 +1048,7 @@ function showMove(list, li) {
   state.moveShown = Number(li.dataset.k);
   for (const x of list.children) x.classList.toggle("on", x === li);
   drawBoard();
-  $("board-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  $("result-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 // ---------------------------------------------------------------- reading the result aloud
@@ -1119,11 +1117,10 @@ function toggleSpeaking(text) {
   const voice = japaneseVoice();
   if (voice) u.voice = voice;
   const label = (on) => {
-    for (const btn of document.querySelectorAll(".speak-btn")) {
-      btn.textContent = btn.id === "hdr-speak" ? (on ? "■" : "🔊") : (on ? "■ 停止" : "🔊 読み上げ");
-      btn.classList.toggle("on", on);
-      btn.setAttribute("aria-pressed", on);
-    }
+    const btn = $("speak");
+    btn.textContent = on ? "■" : "🔊";
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", on);
   };
   u.onstart = () => label(true);
   u.onend = u.onerror = () => label(false);
@@ -1288,11 +1285,15 @@ syncCube();
 updateCornerUi();
 show("photo");
 
-// Server versions in the footer, to tell which build is running (e.g. on the Raspberry Pi).
+// Versions, to tell which build is running (e.g. on the Raspberry Pi): small in the header, in full in the footer.
+$("hdr-version").textContent = `v${APP_VERSION}`;
 fetch(API ? `${API}/version` : "version")
   .then((res) => (res.ok ? res.json() : null))
   .then((v) => {
     if (!v) return;
+    const old = v.analyzer !== APP_VERSION;   // an old app.js still cached on this device
+    $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + (old ? `（新しい ${v.analyzer} は開き直すと出ます）` : "");
+    $("hdr-version").classList.toggle("old", old);
     $("version").textContent = `analyzer ${v.analyzer} · recognizer ${v.recognizer}` +
       (v.commit ? ` · ${v.commit}` : "") +
       (v.analyzer !== APP_VERSION ? `（画面は ${APP_VERSION}。開き直すと新しくなります）` : "");
