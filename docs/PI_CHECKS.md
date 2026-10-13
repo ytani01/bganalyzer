@@ -49,7 +49,7 @@
   「写真からキューブを読み取りました」と出て、キューブの場所が合っているか。
 - **期待:** photo3 と screen2 が `cube ok (read centre / black)`、photo4 が `cube ok`（キューブなし）。1 枚の読み取りが PI-002 の時間（6 秒前後）から大きく延びていない。
 - [ ] Pi: 2026-10-14、f3dac73（analyzer 0.18.0・recognizer 0.6.0）。**photo3 が `cube not found (read None, truth centre)` で期待と違う。**screen2 は `cube ok (read black)`、photo4 は `cube ok`（キューブなし）。`/analyze-photo` は photo3 6.8 秒・commons-case-dice 5.3 秒で、PI-002 から延びていない。ログにエラーなし
-- [ ] スマホ: 自分の盤のキューブの場所が読める（ai1）
+- [x] スマホ: 2026-10-14、f2c4252。自分の盤でキューブを真ん中・片側に置いた写真を読み取り、「写真からキューブを読み取りました」と出て、どちらも場所が合った。OK（ai1）
 
 ---
 
