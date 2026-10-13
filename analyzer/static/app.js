@@ -553,11 +553,12 @@ function drawBoardOn(svg, opts) {
   svg.textContent = "";
   const b = state.board;
   const xR = B.x0 + 12 * B.pw + B.bar;
-  // The picture widens on the home side for the tray of borne-off checkers.
-  const vx = state.home === "right" ? 0 : -TRAY.extra;
-  svg.setAttribute("viewBox", `${vx} 0 ${660 + TRAY.extra} 440`);
-  el("rect", { x: vx, y: 0, width: 660 + TRAY.extra, height: 440, fill: "var(--card)" }, svg);
-  const fx = Math.min(B.x0, trayX()) - 6, fr = Math.max(xR, trayX() + TRAY.w) + 6;
+  // The picture widens on the home side for the tray of borne-off checkers, and on the other side
+  // for the doubling cube's place.
+  const vx = -(state.home === "right" ? CUBE.extra : TRAY.extra), vw = 660 + TRAY.extra + CUBE.extra;
+  svg.setAttribute("viewBox", `${vx} 0 ${vw} 440`);
+  el("rect", { x: vx, y: 0, width: vw, height: 440, fill: "var(--card)" }, svg);
+  const fx = Math.min(B.x0, trayX(), cubeX()) - 6, fr = Math.max(xR, trayX() + TRAY.w, cubeX() + CUBE.w) + 6;
   el("rect", { x: fx, y: B.y0 - 6, width: fr - fx, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
   el("rect", { x: trayX(), y: B.y0, width: TRAY.w, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
   if (opts.photo) {
@@ -591,7 +592,7 @@ function drawBoardOn(svg, opts) {
   if (b.bar_white && opts.checkers) drawStack(svg, bx, false, b.bar_white, "white");
   if (!opts.photo) {
     const barLbl = el("text", { x: bx, y: (B.y0 + B.y1) / 2 + 5, class: "label" }, svg);
-    barLbl.textContent = state.cubeAt === "centre" && opts.checkers ? "" : "バー";
+    barLbl.textContent = "バー";
   }
   if (state.selected === "bar") {
     el("rect", { x: bx - B.bar / 2 + 1, y: B.y0 + 1, width: B.bar - 2, height: B.y1 - B.y0 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
@@ -719,11 +720,16 @@ function drawDice(svg) {
   });
 }
 
-// The doubling cube on the bar: in the middle showing 64, or towards the side it lies on.
+// The doubling cube by the board's edge away from the trays (as it lies on a real board): half-way
+// up showing 64 while nobody owns it, else at the end of the side it lies on.
+const CUBE = { w: 32, extra: 44 };
+function cubeX() {
+  return state.home === "right" ? B.x0 - 12 - CUBE.w : B.x0 + 12 * B.pw + B.bar + 12;
+}
+
 function drawCube(svg) {
-  const size = 32, x = B.x0 + 6 * B.pw + B.bar / 2 - size / 2;
-  const mid = (B.y0 + B.y1) / 2;
-  const y = state.cubeAt === "centre" ? mid - size / 2 : state.cubeAt === "white" ? mid + 30 : mid - 30 - size;
+  const size = 30, x = cubeX() + (CUBE.w - size) / 2;
+  const y = state.cubeAt === "centre" ? (B.y0 + B.y1) / 2 - size / 2 : state.cubeAt === "white" ? B.y1 - size - 2 : B.y0 + 2;
   const g = el("g", { class: "die" }, svg);
   el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
   const t = el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g);

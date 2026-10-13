@@ -14,7 +14,7 @@ import dice as dice_reader
 
 SIDE_MIN, SIDE_MAX = 0.45, 1.15    # cube side / checker diameter
 MARGIN = 2.2                       # how far (checker diameters) to look beyond the playing area, left and right
-MIN_READINGS = 6                   # brightness levels at which the block is found
+MIN_READINGS = 4                   # brightness levels at which the block is found (the samples' other squares: 3 at most)
 MIDDLE = 0.18                      # within this share of the board's height from the middle line: in the middle
 
 
@@ -93,10 +93,12 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
         for b in found:
             cv2.drawContours(g, [b["hull"]], -1, (0, 255, 255), 1)
         cv2.imwrite(debug, g)
-    sure = [c for c in cubes if c["seen"] >= MIN_READINGS]
-    if len(sure) != 1:
+    # the cube: the one place found at enough levels, and far more often than any other square
+    # (photo3's cube is found 6 or 7 times, and on the Raspberry Pi fewer: 6 was too many to ask)
+    cubes.sort(key=lambda c: -c["seen"])
+    if not cubes or cubes[0]["seen"] < MIN_READINGS or (len(cubes) > 1 and cubes[1]["seen"] * 2 > cubes[0]["seen"]):
         return None
-    c = sure[0]
+    c = cubes[0]
     off = c["y"] / lay.h - 0.5
     at = "centre" if abs(off) < MIDDLE else "white" if off > 0 else "black"
     return dict(at=at, x=c["x"], y=c["y"], side=c["side"])
