@@ -1,5 +1,5 @@
 """Compare recognition against *.truth.json samples."""
-import glob, json, os, sys
+import glob, json, os, sys, urllib.request
 import cv2
 import board
 from position import Position
@@ -15,7 +15,13 @@ def shrink_like_app(img, corners, max_side=2048, send_as_is=2560):
 
 def run(path, debug=None, app=False):
     t = json.load(open(path))
-    img = cv2.imread(os.path.join(os.path.dirname(path), t["image"]))
+    img_path = os.path.join(os.path.dirname(path), t["image"])
+    if not os.path.exists(img_path) and "url" in t:
+        # samples/external: images we may not redistribute, fetched on demand (git-ignored)
+        req = urllib.request.Request(t["url"], headers={"User-Agent": "bganalyzer-evaluate"})
+        with urllib.request.urlopen(req) as r, open(img_path, "wb") as f:
+            f.write(r.read())
+    img = cv2.imread(img_path)
     corners = t["corners_TL_TR_BR_BL"]
     if app:
         img, corners = shrink_like_app(img, corners)

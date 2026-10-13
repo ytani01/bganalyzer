@@ -67,6 +67,8 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
   盤の画像以外を塗りつぶしてあり、加工前の画像は履歴に残るが、そのままにすると決めた（TODO-003 完了、`archives/todo/`）。
   GitHub 側には photo1 の古いコミットが SHA 指定で取れる形で残っている（完全に消すには Support への依頼が要る）。
   加工前の写真を再びコミットしない。
+  2026-10-13 に Wikimedia Commons の写真 11 枚（`samples/commons-*`、出典は `samples/CREDITS.md`）を加えた。
+  著作権のある盤面図（USBGF）は URL と正解だけを `samples/external/` に置き、画像は入れない（TODO-006）。
 - **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR と main への push で `uv run pytest analyzer` を実行する。
 
 ## 6. ぶつからないための決まり

@@ -2,3 +2,8 @@ __pycache__/
 .pytest_cache/
 out/
 .venv/
+
+# downloaded by recognizer/evaluate.py, not ours to redistribute
+samples/external/*
+!samples/external/*.truth.json
+!samples/external/README.md

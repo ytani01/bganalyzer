@@ -46,10 +46,38 @@ JPEG 品質 0.92 で書き出した写真（PWA は長辺 2560px を超える写
 | 実写真 photo4（ほぼ真上・木彫りの盤、三角形に色の差なし） | 24 | 23 |
 | アプリの画面 screen1（グレーの盤、赤と黒の駒） | 24 | 24（縮めない） |
 | ツイートに載った盤面 screen2（緑の盤、駒が重なった山、バーに2個） | 24 | 24（縮めない） |
+| Wikimedia Commons の写真 11枚（`samples/commons-*`、下の表） | 264ポイント中 210 | 同じ（2048px 以下なので縮めない） |
+| USBGF の盤面図 7枚（`samples/external/`、画像はリポジトリに入れない） | 168ポイント中 147 | － |
 
 `python3 evaluate.py --app` は OpenCV（バイリニア＋JPEG 0.92）で同じ縮め方を真似る。ブラウザとの画素の差は
 平均 1〜2 程度だが、結果は（photo1 8、削除済み）photo2 22、photo3 23、photo4 21 と少し変わる。
 **わずかな画素の違いで結果が数ポイント動く**（特に photo1）ので、1 枚の結果だけで良し悪しを決めないこと。
+
+### ネット上のサンプル（2026-10-13、TODO-006）
+
+`samples/commons-*` は Wikimedia Commons の写真（出典は [samples/CREDITS.md](../samples/CREDITS.md)）。
+初期配置が多いが、盤の色・材質・駒の色が違う。
+
+| 写真 | 撮り方・盤 | 正しいポイント | バー |
+|---|---|---|---|
+| commons-tavli-blue | 真上・明るい木、白と青 | 24 | ok |
+| commons-tavli-burl | 真上・こぶ杢と黒の三角形、白とグレー | 24 | 誤検出 1 |
+| commons-tavli-red-brown | 真上・ローズウッド、赤と茶 | 24 | 誤検出 1 |
+| commons-tavli-black | 真上・マホガニー、白と黒 | 23 | ok |
+| commons-tavli-red-diamond | 真上・濃い木、白と赤 | 23 | 誤検出 1 |
+| commons-tavli-red-white | 真上・黒い盤、白と赤 | 23 | ok |
+| commons-case-midgame | 斜め・茶色のケース、途中の局面 | 19 | 誤検出 5 |
+| commons-travel-case | 真上・トラベルケース（左右に駒入れの溝） | 15 | 誤検出 14 |
+| commons-leather-cups | やや斜め・革のケース、三角形の上にダイスカップ | 13 | 誤検出 1 |
+| commons-dark-homeleft | ほぼ真上・バーのない盤、ホームが左 | 11 | ok |
+| commons-tavli-grey | 真上・黒い盤、白とグレー、右の溝に予備の黄色い駒 | 11 | 誤検出 10 |
+
+わかった弱点:
+- **三角形への合わせ直しが、盤の外の溝（駒入れ）や細い蝶番のバーに引っ張られてずれる**（travel-case、tavli-grey、
+  dark-homeleft、leather-cups）。手で入れた四隅は合っているのに、補正後に列が半列〜1列ずれる。
+- **バーに駒がないのに、蝶番・留め具・バーの帯を駒と数える**ことがある。
+- USBGF の盤面図（XG 風）では、**白い三角形の上の白い駒を見落とす**（どの図も奥側の白い駒が 3〜4 ポイント抜ける）。
+  茶色い三角形の上の白い駒と赤い駒は全部正しい。
 
 photo1（削除済み）が難しかった理由:
 - 撮影角度が浅く、手前の枠の縁や駒の厚みで駒が隠れたりずれたりする。
@@ -74,6 +102,8 @@ photo1（削除済み）が難しかった理由:
 - `synth.py` 合成画像の生成（正解付き）
 - `evaluate.py` `*.truth.json` と比較して精度を出す
 - `../samples/photoN.truth.json` ユーザー提供の写真（photoN.jpg）を目視で読んだ正解と四隅
+- `../samples/commons-*.truth.json` Wikimedia Commons の写真の正解と四隅（出典は `../samples/CREDITS.md`）
+- `../samples/external/*.truth.json` リポジトリに入れない盤面図の URL と正解（`evaluate.py` が画像を取ってくる）
 - `../out/` デバッグ画像（`*_geometry.jpg` 補正後の盤と検出した三角形の先端、`*_checkers.jpg` 検出した駒）
 
 ## 次にやること
