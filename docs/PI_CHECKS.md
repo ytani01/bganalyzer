@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-006、PI-008、PI-009。** これまでに 6 件を決着させた。
+**残っている項目: PI-008、PI-009。** これまでに 7 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-010`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -61,28 +61,8 @@
   を動かす（Pi は精度の値が少し違うことがある）。スマホでの確認はユーザーに頼む: 自分の盤でキューブを真ん中・片側に置いた写真を読み取り、
   「写真からキューブを読み取りました」と出て、キューブの場所が合っているか。
 - **期待:** photo3 と screen2 が `cube ok (read centre / black)`、photo4 が `cube ok`（キューブなし）。1 枚の読み取りが PI-002 の時間（6 秒前後）から大きく延びていない。
-- [ ] Pi: （結果をここに書く）
-- [ ] スマホ: 自分の盤のキューブの場所が読める（ai1）
-
----
-
-## PI-006. キューブ判断（analyzer 0.17.0）が Pi で動く
-
-- **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
-- **足した日・PR:** 2026-10-13、TODO-025（キューブ判断）
-- **確かめ方:** gnubg の `hint` コマンドの表示を読んで判断を出しているので、arm64 でビルドした gnubg でも同じように読めるかを確かめる。
-
-  ```bash
-  for p in 2 3; do
-    curl -s -w "\nplies=$p %{time_total}s\n" localhost:8000/analyze -H 'content-type: application/json' \
-      -d "{\"position_id\":\"4L0HAAC8dwAAAA\",\"plies\":$p}" | grep -o '"cube":{[^}]*}[^}]*}\|plies=.*'
-  done
-  ```
-  スマホでは、キューブの場所を「奥」にして解析し、「奥の人は テイク」と出るか（ユーザーに頼む）。
-- **期待:** `cube` が null でなく、`"double":true,"too_good":false,"take":true`（手前 8 ピップリードのレース。クラウドの値は
-  ダブルしない +0.810・ダブル/テイク +0.899）。2手で 1 秒以内、3手で 10 秒以内なら OK。
-- [x] Pi: 2026-10-14、b27d2e4。2手 0.23 秒・3手 0.35 秒。どちらも `"double":true,"too_good":false,"take":true`（Double, take）。2手はダブルしない +0.810・ダブル/テイク +0.899 でクラウドと同じ、3手は +0.812・+0.909。OK
-- [ ] スマホ: 「奥の人は テイク」と出る（ai1）
+- [ ] Pi: 2026-10-14、f3dac73（analyzer 0.18.0・recognizer 0.6.0）。**photo3 が `cube not found (read None, truth centre)` で期待と違う。**screen2 は `cube ok (read black)`、photo4 は `cube ok`（キューブなし）。`/analyze-photo` は photo3 6.8 秒・commons-case-dice 5.3 秒で、PI-002 から延びていない。ログにエラーなし
+- [x] スマホ: 2026-10-14、f2c4252。自分の盤でキューブを真ん中・片側に置いた写真を読み取り、「写真からキューブを読み取りました」と出て、どちらも場所が合った。OK（ai1）
 
 ---
 
