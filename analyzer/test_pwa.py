@@ -125,3 +125,41 @@ def test_cube_request():
     assert with_dice == {"on_roll": "black", "cube_value": 4, "cube_owner": "black", "doubled": False}
     assert owned["doubled"] is False and owned["on_roll"] == "white"
     assert none["at"] == "centre" and odd == {"at": "black", "value": 2, "offered": True}
+
+
+def test_sample_script_is_served_and_cached():
+    assert client.get("/sample.js").status_code == 200
+    assert '<script src="sample.js"></script>' in client.get("/").text
+    assert '"sample.js"' in (STATIC / "sw.js").read_text()
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_sample_truth():
+    script = f"""
+    const s = require({json.dumps(str(STATIC / "sample.js"))});
+    const START = [-2, 0, 0, 0, 0, 5, 0, 3, 0, 0, 0, -5, 5, 0, 0, 0, -3, 0, -5, 0, 0, 0, 0, 2];
+    const fixed = START.slice(); fixed[5] = 4; fixed[23] = 0;   // 3 white checkers fewer on the board
+    const read = START.slice(); read[5] = 3;
+    console.log(JSON.stringify({{
+      name: s.baseName(new Date(2026, 9, 4, 9, 5)),
+      t: s.truth({{ image: "x.jpg", corners: [[10.4, 20.6], [100, 20], [110, 90], [0, 90]], home: "left", bottomColour: 0,
+                   board: {{ points: fixed, bar_white: 1, bar_black: 0 }}, dice: [5, 2],
+                   cube: {{ at: "black", value: 4, offered: true }}, read: {{ points: read, bar_white: 0, bar_black: 0 }} }}),
+      plain: s.truth({{ image: "y.png", corners: [[0, 0], [1, 0], [1, 1], [0, 1]], home: "right", bottomColour: 1,
+                       board: {{ points: START, bar_white: 0, bar_black: 0 }}, dice: null,
+                       cube: {{ at: "centre", value: 2, offered: true }}, read: null }}),
+    }}));
+    """
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    out = json.loads(r.stdout)
+    assert out["name"] == "user-20261004-0905"
+    t = out["t"]
+    assert t["corners_TL_TR_BR_BL"] == [[10, 21], [100, 20], [110, 90], [0, 90]]
+    assert (t["home"], t["bottom_colour"], t["dice"]) == ("left", 0, [5, 2])
+    assert (t["bar_white"], t["off_white"], t["off_black"]) == (1, 2, 0)   # 12 on the board + 1 on the bar
+    assert t["cube"] == {"at": "black"} and t["cube_value"] == 4
+    assert t["fixed_points"] == [6, 24]
+    assert t["read"]["points"][5] == 3
+    p = out["plain"]
+    assert p["cube"] == {"at": "centre"} and "cube_value" not in p
+    assert "read" not in p and (p["off_white"], p["off_black"]) == (0, 0)

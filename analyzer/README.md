@@ -52,6 +52,10 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
   選ぶと盤面を読み取る前の四隅の画面から、指定した四隅・ホーム側・駒の色のまま始まる。読み取って直した盤面も残っていて、
   「前に読み取った盤面を開く」で開ける。残すのは**使っている端末の中（IndexedDB）だけ**で、サーバーには残らない。
   写真は長辺 2048px に縮めて（小さいスクリーンショットはそのまま）保存し、古いものから自動で消える。✕ で 1 枚ずつ消せる。
+- 盤面の画面の「精度改善用に書き出す」（`static/sample.js`）は、写真と、手で直した後の盤面を
+  `user-日時.jpg` と `user-日時.truth.json`（`samples/*.truth.json` と同じ形）の 2 つのファイルにする。
+  共有の画面で送れる端末（iPhone など）では共有の画面が開き、送れない端末（JSON を共有できない Android の Chrome や PC）では 2 つともダウンロードになる。サーバーには何も送らない。
+  JSON には認識が読んだ盤面（`read`）と、直したポイントの番号（`fixed_points`）も入る。使い方は TODO-030。
 - 長辺 2560px を超える写真は、ブラウザで長辺 2048px に縮めてから送る（この大きさでのサンプルの精度は [recognizer/README.md](../recognizer/README.md) の「精度」の「アプリ経由」の列）。
 - 別のホストに PWA を置くときは `?api=https://APIのURL` を付けて開く。
 - ホーム画面への追加と Service Worker は HTTPS（または localhost）のときだけ有効。

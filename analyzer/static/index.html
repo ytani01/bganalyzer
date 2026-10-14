@@ -130,6 +130,9 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <button id="reset-start" class="button small">初期配置にする</button>
     </div>
     <p id="home-note" class="note" hidden></p>
+    <div class="row wrap">
+      <button id="export-sample" class="button small" hidden title="写真と、直した後の盤面をファイルにします。開発者に送ると読み取りの改善に使えます">精度改善用に書き出す</button>
+    </div>
     </div>
 
     <div class="panel">
@@ -192,6 +195,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 <script src="history.js"></script>
 <script src="moves.js"></script>
 <script src="cube.js"></script>
+<script src="sample.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
