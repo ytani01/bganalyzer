@@ -139,7 +139,7 @@ TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま
 
 - **担当:** ai1
 - **見込み:** main Opus 5.5 / effort medium（実装）+ verifier（Sonnet 5.5 / medium。git の有る環境と無い環境で走らせ、壊すと落ちるか）
-- [ ] git が無ければ、比べる相手を `git rev-parse` でなく skip にする
+- [x] git が無ければ、比べる相手を `git rev-parse` でなく skip にする
 
 Pi で常駐用のイメージを使って `pytest` を走らせると、イメージに git が無いので `FileNotFoundError` で落ちる（2026-10-14）。
 `/version` の `commit` は git を使わず `.git` のファイルから読んでいる（`analyzer/app.py` の `git_commit`）。
