@@ -176,6 +176,7 @@
       const d = dpr(), w = canvas.width / d, h = canvas.height / d;
       ctx.save();
       ctx.font = "bold 13px ui-monospace, Menlo, monospace";
+      ctx.textAlign = "left";   // whatever was set before (TODO-047: it was cut off when centred)
       const tw = ctx.measureText(text).width;
       ctx.fillStyle = "rgba(0, 0, 0, .55)";
       ctx.fillRect(10, h - 34, tw + 20, 24);

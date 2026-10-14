@@ -159,7 +159,8 @@ k-means の結果が乱数の種で大きく変わる（dark-homeleft は種で 
 **問題:** PI-025 で、演出の左下のラベルの先頭が切れていた（「ダイス 4・5」が「ゞイス 4・5」、「キューブ（奥）」が「ューブ（奥）」、駒の段階も同じ）。
 `analyzer/static/scan.js` の `drawSquare` が `ctx.textAlign = "center"` にしたまま戻さず、`label()` が左寄せを指定していないためとみている（未確認）。
 
-- [ ] `label()` が切れずに出るよう直す。analyzer の版を上げる
+- [x] `label()` が切れずに出るよう直す。analyzer の版を上げる（analyzer 0.35.0。`label()` で左寄せを指定する。
+  途中経過を 1 秒ずつ見せる変更と同じ PR。Pi のヘッドレスの Chromium で切れないか確かめるのは PI-028）
 
 ---
 
