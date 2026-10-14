@@ -95,7 +95,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
   `collected/report.md` を見る。その後、「Pi に残す」で 10 組たまったら、`report.md` が書き直されているか（時刻）を見る。
 - **期待:** `/version` が analyzer 0.26.0・recognizer 0.8.0。report.md に組の数と読み違いが出て、正解の中の文字は出ない。
   読み違いの無い組が 50 以下なら何も消えない。10 組たまると、サーバーが自動で測り直す
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-14、66ca3e0。`/version` は analyzer 0.26.0・recognizer 0.8.0。`--force` で `measured`、report.md は「組: 1、読み違いのある組 1」（ai1 の組のポイント 5）で、正解の中の文字は出ていない。何も消えていない。report.md の時刻はコンテナの UTC。OK
 - [ ] 10 組たまったとき: report.md が自動で書き直される（ai1 が使ってたまったら）
 
 ---
