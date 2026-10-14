@@ -6,6 +6,7 @@ Do not run with --reload or several workers: the gnubg extension is not fork-saf
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import mimetypes
@@ -22,7 +23,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -35,7 +36,7 @@ RECOGNIZER = Path(__file__).resolve().parent.parent / "recognizer"
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.34.0"
+__version__ = "0.35.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -246,6 +247,7 @@ async def analyze_photo(
     cube_value: int | None = Form(None, description="without it, the cube read from the photo (if any)"),
     cube_owner: str | None = Form(None, description="white or black; empty: in the middle"),
     doubled: bool = Form(False),
+    stream: bool = Form(False, description="answer as NDJSON lines: each stage of the reading as it is done, then the result"),
 ):
     from board import recognize  # recognizer (OpenCV); imported lazily
 
@@ -260,7 +262,53 @@ async def analyze_photo(
         raise HTTPException(422, "corners must be 8 numbers, dice two numbers") from e
     if home not in ("left", "right", "auto"):
         raise HTTPException(422, "home must be left, right or auto")
-    pos, info = recognize(img, list(zip(c[0::2], c[1::2])), home=home, bottom_colour=bottom_colour)
+    pts = list(zip(c[0::2], c[1::2]))
+    if stream:
+        def work(progress):
+            pos, info = recognize(img, pts, home=home, bottom_colour=bottom_colour, progress=progress)
+            return _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled)
+        return StreamingResponse(_stream_stages(work), media_type="application/x-ndjson",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    pos, info = recognize(img, pts, home=home, bottom_colour=bottom_colour)
+    return _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled)
+
+
+async def _stream_stages(work):
+    """Runs work(progress) in a thread and yields NDJSON lines: {"stage": ..., ...} for each stage the
+    recognizer reports, then {"stage": "done", "result": what /analyze-photo returns}, or
+    {"stage": "error", "detail": ...} (the status is already 200 by then)."""
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+
+    def progress(stage, data):
+        loop.call_soon_threadsafe(queue.put_nowait, {"stage": stage, **data})
+
+    def line(obj):
+        return json.dumps(obj, ensure_ascii=False) + "\n"
+
+    job = loop.run_in_executor(None, work, progress)
+    while True:
+        getter = asyncio.ensure_future(queue.get())
+        done, _ = await asyncio.wait({getter, job}, return_when=asyncio.FIRST_COMPLETED)
+        if getter in done:
+            yield line(getter.result())
+            continue
+        getter.cancel()
+        break
+    while not queue.empty():   # stages reported just before the end (put before the job finished)
+        yield line(queue.get_nowait())
+    try:
+        yield line({"stage": "done", "result": job.result()})
+    except HTTPException as e:
+        log.warning("analyze-photo (stream): %s", e.detail)
+        yield line({"stage": "error", "detail": e.detail})
+    except Exception as e:   # noqa: BLE001 - the client must hear of it; the status is already sent
+        log.exception("analyze-photo (stream) failed")
+        yield line({"stage": "error", "detail": str(e) or type(e).__name__})
+
+
+def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled) -> dict:
+    """What /analyze-photo returns for the read board: the board, what was read and the analysis."""
     warnings = [WARNINGS[w] for w in info.get("warnings", [])]
     errors = pos.validate()
     # geometry: where the recognizer found the board and its columns (image pixels of the sent image),

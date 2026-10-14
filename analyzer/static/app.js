@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.34.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.35.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -459,7 +459,8 @@ $("recognize").addEventListener("click", async () => {
       fd.append("doubled", String(cubeReq.doubled));
     }
     fd.append("plies", state.plies);
-    const data = await post("analyze-photo", fd);
+    fd.append("stream", "true");   // each stage of the reading as it is done (shown by scan.js)
+    const data = await postStages("analyze-photo", fd, (ev) => scan && scan.push(scaleGeometry(ev, scale)));
     if (!dice && data.dice_read) {   // read from the photo (the analysis used them too)
       dice = data.dice_read;
       setDice(dice, true);
@@ -474,13 +475,10 @@ $("recognize").addEventListener("click", async () => {
     const rec = data.recognized;
     state.warnings = data.warnings || [];
     const g = data.geometry;
-    state.geometry = g && { ...g, corners: g.corners.map(([x, y]) => [x / scale, y / scale]),
-                            tips: (g.tips || []).map(([x, y]) => [x / scale, y / scale]),
-                            checkers: (g.checkers || []).map(([x, y, r, side]) => [x / scale, y / scale, r / scale, side]),
-                            bitmap: state.bitmap, from: JSON.stringify(state.corners) };
-    if (scan) {   // show what was found on the photo before moving on (a tap skips it)
+    state.geometry = g && { ...scaleGeometry(g, scale), bitmap: state.bitmap, from: JSON.stringify(state.corners) };
+    if (scan) {   // the stages still waiting their turn on the photo (a tap skips them)
       $("busy-text").textContent = "読み取りました（タップで次へ）";
-      await scan.reveal(state.geometry);
+      await (data.streamed ? scan.done() : scan.reveal(state.geometry));
     }
     state.board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
     state.read = { points: rec.points.slice(), bar_white: rec.bar_white, bar_black: rec.bar_black };
@@ -1025,6 +1023,56 @@ $("analyze").addEventListener("click", async () => {
 });
 
 // path is relative ("analyze"), so the app also works under a path such as /bg/.
+// Image px of the sent image -> of the photo (the sent image is scaled by `scale`), for the parts of
+// /analyze-photo's geometry (or of one of its streamed stages) that are in pixels.
+function scaleGeometry(g, scale) {
+  const p = ([x, y]) => [x / scale, y / scale];
+  const out = { ...g };
+  if (g.corners) out.corners = g.corners.map(p);
+  if (g.tips) out.tips = g.tips.map(p);
+  if (g.checkers) out.checkers = g.checkers.map(([x, y, r, side]) => [x / scale, y / scale, r / scale, side]);
+  if (g.counts) out.counts = g.counts.map((c) => ({ ...c, at: p(c.at) }));
+  if (g.dice) out.dice = g.dice.map((d) => ({ ...d, quad: d.quad.map(p) }));
+  if (g.cube) out.cube = { ...g.cube, quad: g.cube.quad.map(p) };
+  return out;
+}
+
+// POST asking for the answer in stages (NDJSON lines, {"stage": ...}): onStage(ev) for each stage of
+// the reading as it arrives, and the result of the last line ({"stage": "done", "result"}), marked
+// streamed. A server that answers with plain JSON (an older one) gives that JSON, unmarked.
+async function postStages(path, body, onStage) {
+  const res = await fetch(API ? `${API}/${path}` : path, { method: "POST", body });
+  const type = res.headers.get("content-type") || "";
+  if (!res.ok || !type.includes("ndjson") || !res.body) {
+    let data = null;
+    try { data = await res.json(); } catch (_) { /* not JSON */ }
+    if (!res.ok) {
+      const d = data && data.detail;
+      throw new Error(typeof d === "string" ? d : `HTTP ${res.status}`);
+    }
+    return data;
+  }
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = "", result = null;
+  const take = (line) => {
+    if (!line.trim()) return;
+    const ev = JSON.parse(line);
+    if (ev.stage === "error") throw new Error(typeof ev.detail === "string" ? ev.detail : "読み取りに失敗しました");
+    if (ev.stage === "done") result = { ...ev.result, streamed: true };
+    else onStage(ev);
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let k;
+    while ((k = buf.indexOf("\n")) >= 0) { take(buf.slice(0, k)); buf = buf.slice(k + 1); }
+  }
+  take(buf + dec.decode());
+  if (!result) throw new Error("読み取りの途中で接続が切れました");
+  return result;
+}
+
 async function post(path, body, headers) {
   const res = await fetch(API ? `${API}/${path}` : path, { method: "POST", body, headers });
   let data = null;
