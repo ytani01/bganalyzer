@@ -160,7 +160,7 @@ k-means の結果が乱数の種で大きく変わる（dark-homeleft は種で 
 `analyzer/static/scan.js` の `drawSquare` が `ctx.textAlign = "center"` にしたまま戻さず、`label()` が左寄せを指定していないためとみている（未確認）。
 
 - [x] `label()` が切れずに出るよう直す。analyzer の版を上げる（analyzer 0.35.0。`label()` で左寄せを指定する。
-  途中経過を 1 秒ずつ見せる変更と同じ PR。Pi のヘッドレスの Chromium で切れないか確かめるのは PI-028）
+  途中経過を 1 秒ずつ見せる変更と同じ PR。Pi のヘッドレスの Chromium で切れないか確かめるのは PI-029）
 
 ---
 
