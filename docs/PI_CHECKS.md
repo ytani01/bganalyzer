@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-029、PI-030、PI-031、PI-032、PI-033。** これまでに 28 件を決着させた。
+**残っている項目: PI-032、PI-033。** これまでに 31 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-034`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -119,49 +119,6 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - **マージ:** すべて Commons の CC0 / CC BY / CC BY-SA で人が写っていない写真なら、CLAUDE.md の「共同開発」どおりにマージしてよい。
   それ以外（顔を隠した、出典がはっきりしない、など）があれば TODO-030 と同じく自動マージせず、ai1 が見てからマージする
 - [ ] Pi: （探した結果と足した枚数をここに書く）
-
-## PI-031. 四隅探しと四隅の合わせ直しも段階ごとに 1 秒ずつ見せる（analyzer 0.36.0、recognizer 0.17.0）
-
-- **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
-- **足した日・PR:** 2026-10-15（ユーザーの依頼: 四隅の認識の過程もすべて 1 秒間隔でキューイングして見せる。各段階の秒数はあとで変えられるように）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が analyzer 0.36.0・recognizer 0.17.0 以降。
-  `curl -sN -F image=@samples/photo3.jpg -F stream=true <URL>/find-corners` で行が届くのを見る。`trace_cpu.py check` と `check_accuracy.py`・`check_corners.py --app` が今までどおり（PI-030 と同じ値）。
-  スマホで写真を読み込み、そのまま読み取る
-- **期待:** `/find-corners` が `edges` → `uprights` → `candidates` → `corners` → `done` の順に返し、`done` の四隅は `stream` なしと同じ。
-  スマホでは、写真を読み込むと走査線のあと「横の縁の候補」「縦の縁の候補」「盤らしい四角形の候補を比べています」「四隅が決まりました」が 1 秒ずつ出てから四隅の点が置かれる（タップで飛ばせる）。
-  読み取りでは「四隅を枠の線に合わせました（1・2 回目）」「三角形の並びで四隅を合わせ直しました（1・2 回目）」のあと、PI-029 の段階が続く
-  （analyzer 0.37.0 から、これらの段階の説明の文字は出ず、線と四角だけが順に出る。PI-033）
-- [ ] Pi: （結果をここに書く）
-- [ ] スマホ: 四隅探しの見え方と、写真を読み込んでから四隅を動かせるまでの待ち時間（ai1）
-
-## PI-030. 四隅の初期値を新しい作り方で出す（recognizer 0.16.0）
-
-- **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
-- **足した日・PR:** 2026-10-15（TODO-028）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.16.0 以降。Pi の上で `uv run python recognizer/trace_cpu.py check`（四隅も比べる）と
-  `uv run python recognizer/check_corners.py --app` を走らせる。スマホで写真を読み込み、四隅の初期値と、出るまでの時間を見る
-- **期待:** `trace_cpu.py check` が「same as the reference」。`check_corners.py --app` が「within 3.6%: 16, further: 8, not found: 0」。
-  1 枚の時間（右の列）はこのクラウド環境で 1.0〜1.8 秒なので、Pi では数倍かかりうる。5 秒を大きく超えるならユーザーに報告する
-- [x] Pi: 2026-10-15、3421c7e。`/version` は analyzer 0.35.0・recognizer 0.16.0。`trace_cpu.py check` は「same as the reference: every step of every sample」（終了コード 0）。
-  `check_corners.py --app` は「within 3.6%: 16, further: 8, not found: 0」。1 枚の時間は Pi でも 0.93〜1.77 秒で、5 秒より十分短い。OK
-- [ ] スマホ: ai1 の盤の写真で、四隅の初期値がどれくらい合っているか、出るまで待たされないか（ai1）
-
-## PI-029. 読み取りの途中経過を段階ごとに 1 秒ずつ見せる（analyzer 0.35.0、recognizer 0.15.0）
-
-- **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
-- **足した日・PR:** 2026-10-15（ユーザーの依頼: 認識はリアルタイムで行い、途中経過は 1 秒ずつキューイングして順に見せ、全部見せ終えたら認識完了）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が analyzer 0.35.0・recognizer 0.15.0 以降。
-  Pi の上とクラウドから（公開 URL 経由）、`samples/photo3.jpg` を `stream=true` で送り、行が届くたびに時刻を付けて見る:
-  `curl -sN -F image=@samples/photo3.jpg -F corners=<photo3.truth.json の四隅> -F home=right -F bottom_colour=1 -F plies=1 -F stream=true <URL>/analyze-photo | while IFS= read -r l; do echo "$(date +%T.%N | cut -c1-12) ${l:0:60}"; done`。
-  スマホで写真を読み取る
-- **期待:** `board` から `cube` までの 6 行が、認識の進みに合わせて少しずつ届き（Funnel や service worker が最後にまとめていない）、最後に `done`。
-  スマホでは、段階ごとに 1 秒ずつ「枠と列を合わせました」「三角形の先」「駒の候補」「数えました（ポイントの外側に数）」「ダイス」「キューブ」が順に出て、
-  最後の段階のあとに盤面の画面に進む（タップで飛ばせる）。左下のラベルの先頭が切れていない（TODO-047）
-  （analyzer 0.37.0 から、写真の上の段階の説明の文字は出ない。PI-033）
-- [x] Pi: 2026-10-15、3421c7e。Pi の上（127.0.0.1:8000）と公開 URL 経由の両方で、`board` → `tips`（+0.0 秒）→ `checkers`（+0.8〜1.0 秒）→ `counts` → `dice`（+1.1〜1.3 秒）→ `cube`（+2.0 秒）→ `done` が
-  認識の進みに合わせて届いた（最初の行まで 3.2〜3.6 秒）。Funnel でまとめられていない。なお `corners` は JSON の配列ではなく `749,234,...` のカンマ区切りで渡す（配列だと 422）。OK
-- [ ] スマホ: 途中経過の見え方と待ち時間（ai1）
-
 
 ## 完了済み
 
