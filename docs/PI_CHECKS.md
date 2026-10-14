@@ -1,7 +1,7 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: なし。** これまでに 18 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-019`。**
+**残っている項目: PI-019。** これまでに 18 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-020`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
 マージしたあと、自宅の Raspberry Pi（公開している本番）でしか確かめられないことの一覧です。
@@ -84,6 +84,18 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
+
+---
+
+## PI-019. collected/ を自動で測り直し、古い組を消す（recognizer/collected.py、tools/collected_cron.sh）
+
+- **担当:** ai1（Pi の Claude Code）
+- **足した日・PR:** 2026-10-14、TODO-038
+- **確かめ方:** `docker compose up -d --build` のあと、`docker compose exec -T app python recognizer/collected.py /data/samples --force` を走らせ、
+  `collected/report.md` を見る。crontab に docs/raspi.md の 1 行が入っているかを `crontab -l` で見る。
+  次の日の朝、`~/collected-cron.log` を見る。
+- **期待:** report.md に組の数と読み違いが出る。読み違いの無い組が 50 以下なら何も消えない。ログに `skip:` か `measured` が出る
+- [ ] Pi: （結果をここに書く）
 
 ---
 

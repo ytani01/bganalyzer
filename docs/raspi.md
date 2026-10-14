@@ -110,6 +110,35 @@ PWA の「解析の設定」で「Pi に残す」をオンにすると、解析�
 | 今の認識で測る | `docker compose exec app sh -c 'python recognizer/evaluate.py /data/samples/*.truth.json'` |
 | 直した所の多い写真を見る | `grep -o '"fixed_points": \[[^]]*\]' collected/*.truth.json` |
 
+### 自動で測り直す
+
+`tools/collected_cron.sh` を cron から 1 日 1 回走らせると、次のことを自動で行います。
+
+```mermaid
+flowchart TD
+  A[cron（1 日 1 回）] --> B{前に測ってから新しい組が 10 以上?}
+  B -- いいえ --> Z[何もしない]
+  B -- はい --> C[全部の組を測り直し、collected/report.md に書く]
+  C --> D[読み違いの無い組は新しい 50 組だけ残し、古いものを消す]
+  D --> E[Claude Code（claude -p）が読み違いを調べ、recognizer/ を直して PR を作る]
+  E --> F{変更が recognizer/ だけで、CI が通る?}
+  F -- はい --> G[マージし、Pi を更新して測り直す]
+  F -- いいえ --> Y[マージしない（ログに残す）]
+```
+
+- 読み違いのある組は直す材料なので消しません。読み違いの無い組は、直したことでほかが悪くならないかを確かめるのに使います。
+- `claude -p` に渡す指示は `tools/collected_prompt.md` です。公開の `/samples` からは誰でも写真と正解を送れるので、
+  `claude -p` には `.truth.json` を直接読ませず、使えるコマンドも絞っています。マージの前に、スクリプトが変更の範囲と CI を確かめます。
+- Pi の `bganalyzer` が `main` で、変更が無いときだけ動きます（作業中なら止まります）。
+
+`crontab -e` に次の 1 行を足します（毎日 4 時）。ログは `~/collected-cron.log` に残ります。
+
+```
+0 4 * * * $HOME/work/bganalyzer/tools/collected_cron.sh >> $HOME/collected-cron.log 2>&1
+```
+
+すぐに試すときは `tools/collected_cron.sh --force`（10 組たまっていなくても測ります）。
+
 リポジトリの `samples/` へは自動では入れません。公開リポジトリなので、入れる写真は人の顔などが写っていないものを選んで、
 PR で足します（[CLAUDE.md](../CLAUDE.md)）。
 
