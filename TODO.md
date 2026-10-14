@@ -149,7 +149,7 @@ TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま
 
 ## TODO-035. 認識の精度が下がったら CI で気づけるようにする
 
-- **担当:** 引き継ぎ可
+- **担当:** 引き継ぎ先（2026-10-14 着手）
 - [ ] `recognizer/evaluate.py` の結果が今の正解数より下がったら、GitHub Actions を失敗させる
 
 今の CI（`.github/workflows/test.yml`）は `uv run pytest analyzer` だけで、写真の認識は測っていない。
