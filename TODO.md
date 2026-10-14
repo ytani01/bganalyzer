@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-027、TODO-028、TODO-030、TODO-032、TODO-035、TODO-036。** これまでに 29 件を決着させた。
+**残っている項目: TODO-025、TODO-027、TODO-028、TODO-030、TODO-032、TODO-035。** これまでに 30 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-037`。**
 各項目の最初に **担当**（ai1 か、共同開発者のアカウント名、未定、引き継ぎ可）を書き、着手する前に自分の担当にしてコミットする
 （[docs/HANDOVER.md](docs/HANDOVER.md)）。
@@ -162,24 +162,6 @@ TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま
 - 全 23 枚の `evaluate.py` は、2026-10-14 にクラウドで約 130 秒。CI に入れられる長さ
 - x86_64 と Raspberry Pi で結果が違うことがある（TODO-028 の四隅など）。CI は x86_64 なので、基準は x86_64 で測る
 - `--app`（PWA と同じように縮めて送る）も測るかは、着手するときに決める
-
----
-
-## TODO-036. 「精度改善用に書き出す」で共有に断られたら、ダウンロードに切り替える
-
-|      | main | 担当 |
-|------|------|------|
-| 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5 / medium） |
-
-- **担当:** ai1
-- [x] `navigator.share` が `AbortError`（利用者が閉じた）以外で失敗したら、2 つのファイルをダウンロードする（`analyzer/static/app.js`）
-- [x] `tools/pi_ui_check.py` の `export` に、共有が `NotAllowedError` で断る場合を足す
-- [x] analyzer の版を上げ、docs/PI_CHECKS.md に Android の Chrome で確かめる項目を足す
-
-PI-014（2026-10-14）で、Android の Chrome で「書き出せませんでした: Permission denied」になった。
-Chrome は共有できるファイルの種類が決まっていて `.json` は入らないため、写真と `.truth.json` を渡すと
-`navigator.share` が `NotAllowedError` で断る、と見ている（`canShare` は通る）。今は `AbortError` 以外を
-そのまま投げるので、ダウンロードにも切り替わらない。`pi_ui_check.py` は共有の機能を消して試すので捕まえられなかった。
 
 ---
 

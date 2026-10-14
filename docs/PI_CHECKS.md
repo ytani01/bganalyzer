@@ -90,7 +90,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 ## PI-018. 共有に断られても「精度改善用に書き出す」で 2 つがダウンロードされる（analyzer 0.25.3）
 
 - **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
-- **足した日・PR:** 2026-10-14、TODO-036
+- **足した日・PR:** 2026-10-14、PR #94（TODO-036）
 - **確かめ方:** 更新のあと `/version` を見て、`tools/pi_ui_check.py export export-denied` を走らせる。
   Android の Chrome で写真を読み取り、盤面の画面の「精度改善用に書き出す」を押す（古い app.js が残っていたら再読み込み）。
 - **期待:** `/version` が analyzer 0.25.3。2 つの確認が OK。Android の Chrome でエラーが出ず、写真と `.truth.json` の 2 つがダウンロードされる。
