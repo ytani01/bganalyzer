@@ -30,3 +30,13 @@ scratch に recognizer をコピーし `TEX_HIDDEN = 0`、`TEX_SHOWN = 100` に�
 
 ## 確かめられなかったこと
 - 特になし。dup_hough.py で重複が実際に Hough 呼び出しごとに入ったことは、置き換えが cv2 モジュールの属性に対するものであることからの推定（呼び出し回数は数えていない）。
+
+# 2 回目（コミット 0f28503）
+
+依頼ファイルの 1〜4 を同じやり方で測り直した（終了コードはすべて 0）。dup_hough.py は変更なし。
+- 1. 期待どおり。合計ブランチ 503、main 492。変わるのは dark-homeleft 12→20、set-cube-dice 12→15 だけ。bar・home・dice・cube の判定は 23 枚とも main と同じ（評価行を home guess の数値を除いて diff。差は上記 2 行のみ）。
+- 2. 期待どおり。ブランチ 24・19・14・18・22 = 97、main 23・19・15・18・22 = 97。下回らない。l9azfe は前回と同じく main 15 → ブランチ 14（h8ilqt の 23 → 24 と相殺）。
+- 3. 期待どおり。rollup-oblique・dark-homeleft とも例外なし。
+- 4. 期待どおり。TEX_HIDDEN=0・TEX_SHOWN=100 で dark-homeleft 12/24、set-cube-dice 12/24。ほかは通常のブランチと同じ（rollup-oblique 13 など）。
+- 5. 期待どおり。`git diff origin/main` で accuracy_baseline.json の変更は dark-homeleft 12→20 と set-cube-dice 12→15 の 2 行だけ。.github/workflows/accuracy.yml は差分なし。
+  参考: baseline の case-dice 19・leather-cups 20 は、この Pi の測定（18・19）と違う。ただし main と同じ値で、今回の変更ではない（x86_64 と Pi の差と推定、未確認）。
