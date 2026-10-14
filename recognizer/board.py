@@ -687,7 +687,7 @@ def _top_colour(inner):
     return np.float32([np.median(inner[:, 0]), *np.median(sat[:, 1:], 0)])
 
 
-def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=None, tri_len=None):
+def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=None, tri_len=None, drop_shown=True):
     """Checker tops as circles, scored by edge support and colour.
 
     Returns list of (x, y, r, lab_median, score) in canonical coords (no margin).
@@ -760,7 +760,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     # where the triangle's sides show through there is no checker, unless the circle is
     # in line with ones that are (in an oblique photo, the sides of a stack look like them;
     # a stack: at least two such circles in the column)
-    keep = {i for i, s in enumerate(scored) if not s[5]}
+    keep = {i for i, s in enumerate(scored) if not s[5] or not drop_shown}
     while True:
         more = {i for i, s in enumerate(scored) if i not in keep
                 and any(abs(s[1] - scored[k][1]) < 0.25 * pitch and abs(s[2] - scored[k][2]) < 1.3 * pitch for k in keep)
@@ -969,7 +969,8 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     ground_lab = cv2.cvtColor(ground, cv2.COLOR_BGR2Lab).astype(np.float32)
     tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
     tri_len = np.median([t[4] for t in tips]) if tips else TRI_DEPTH * lay.h
-    circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
+    # measured with all the circles: which ones show the triangle's sides must not change the size
+    circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, drop_shown=False)
     if len(circles) >= 4:   # checkers may be wider than a point: measure them
         pitch = float(2 * np.median([c[2] for c in circles]))
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
