@@ -94,7 +94,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - **確かめ方:** 更新のあと `/version` を見て、`tools/pi_ui_check.py export export-denied` を走らせる。
   Android の Chrome で写真を読み取り、盤面の画面の「精度改善用に書き出す」を押す（古い app.js が残っていたら再読み込み）。
 - **期待:** `/version` が analyzer 0.25.3。2 つの確認が OK。Android の Chrome でエラーが出ず、写真と `.truth.json` の 2 つがダウンロードされる。
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-14、410ef89。`/version` は analyzer 0.25.3。`pi_ui_check.py export export-denied` が両方 OK（写真と `.truth.json` の 2 つ、盤面とダイスが画面と同じ）。OK
 - [ ] スマホ: Android の Chrome で 2 つがダウンロードされる。1 つだけなら、どちらが落ちたかと、許可を求められたかを書く（ai1）
 
 ---
