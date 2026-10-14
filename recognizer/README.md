@@ -94,6 +94,7 @@ SIMD を SSE2 までに落とした x86_64 で 7 枚）。原因は浮動小数�
 - 斜めから真上への写し直しは、元の位置を float64 の 1 演算ずつで出して 1/32 画素に切り、`cv2.remap` の整数の補間で混ぜる（`exact.warp`）
 - 射影変換・直線・逆行列は Python の float か NumPy の 1 演算ずつ（足し算の順番は NumPy が決める）で解く。RANSAC は、外れた点を除いて解き直す最小二乗に替えた
 - k-means は整数で（`exact.kmeans`。四隅の推定で TODO-028 がしたのと同じ）。色相の差は `arctan2` でなく余弦で比べる
+- ダイスの外接長方形は `cv2.minAreaRect` でなく `exact.min_area_rect`（arm64 の NEON_DOTPROD などを使うと、OpenCV のものは別の箱を返した）
 - 段の間で渡す値（四隅、盤の幅、列の位置）は細かい格子に丸め、万一の 1 ビットの違いが次の段に届かないようにした
 
 確かめ方: `recognize(trace=...)` が各段の値のハッシュを残し、`trace_cpu.py check` が全サンプルの各段とを `cpu_reference.json` と比べる。
