@@ -154,7 +154,7 @@ analyzer 0.27.0・recognizer 0.9.0 で入れた（`analyzer/static/scan.js`、�
 - **見込み:** main Opus 5.5 / effort medium（実装）+ verifier（Sonnet 5.5 / medium。定義は haiku、Playwright でスクリーンショットを見るので上書き）
 - ユーザーの依頼（2026-10-14）: 「写真を撮る」「写真を選ぶ」「写真なしで入力する」「うまく読み取るコツ」の表示順と表示方法を工夫する。
 - 決めたこと: コツをボタンの上に置き、3 つのボタンはアイコン付きで横に並べる。大きさと色は揃える（0.29.1 で同じ扱いにした決まりを保つ）。
-- [ ] `analyzer/static/index.html` と `style.css` を直す。幅 390px でもはみ出さない（analyzer 0.30.0、`APP_VERSION` も）
+- [x] `analyzer/static/index.html` と `style.css` を直す。幅 390px でもはみ出さない（analyzer 0.30.0、`APP_VERSION` も）
 
 ---
 
