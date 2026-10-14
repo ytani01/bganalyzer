@@ -25,11 +25,17 @@ window.__spoken = [];
 if (window.speechSynthesis) speechSynthesis.speak = (u) => { window.__spoken.push(u.text); };
 delete Navigator.prototype.canShare; delete Navigator.prototype.share;
 """
+# a share sheet that refuses the files, as Chrome on Android does for a .json
+SHARE_DENIED = """
+navigator.canShare = () => true;
+navigator.share = () => Promise.reject(new DOMException("Permission denied", "NotAllowedError"));
+"""
 
 
-def open_app(browser):
+def open_app(browser, *scripts):
     page = browser.new_page(viewport={"width": 412, "height": 915}, accept_downloads=True)
-    page.add_init_script(INIT)
+    for script in (INIT, *scripts):
+        page.add_init_script(script)
     page.alerts = []
     page.on("dialog", lambda d: (page.alerts.append(d.message), d.dismiss()))
     page.goto(URL)
@@ -81,9 +87,9 @@ def check_speech(browser):
     return ok, f"spoken={spoken!r} alerts={page.alerts}"
 
 
-def check_export(browser):
+def check_export(browser, *scripts):
     """PI-014: 「精度改善用に書き出す」 gives the photo and a truth.json that matches the screen."""
-    page = open_app(browser)
+    page = open_app(browser, *scripts)
     truth = read_photo(page)
     files, downloads = {}, []
     page.on("download", lambda d: downloads.append(d))
@@ -139,7 +145,8 @@ def check_collect(browser):
     return ok, f"off={off_new} on={on_new} evaluate={measured} left={sorted(collected() & set(on_new))}"
 
 
-CHECKS = {"double": check_double, "speech": check_speech, "export": check_export, "collect": check_collect}
+CHECKS = {"double": check_double, "speech": check_speech, "export": check_export,
+          "export-denied": lambda browser: check_export(browser, SHARE_DENIED), "collect": check_collect}
 
 
 def main(names):
