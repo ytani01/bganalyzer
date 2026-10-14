@@ -30,7 +30,7 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 
 - **担当:** ai1（2026-10-14 に再開）
 - **見込み:** main Opus 5.5 / effort high（設計と実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。evaluate.py の実測）
-- [ ] commons-dark-homeleft（Raspberry Pi で 12/24）を、ほかのサンプルを下げずに上げる
+- [x] commons-dark-homeleft（Raspberry Pi で 12/24）を、ほかのサンプルを下げずに上げる（Pi で 22/24、全体 492 → 505。recognizer 0.9.0）
 
 TODO-012 から分けた。分かっていること（2026-10-14、Raspberry Pi で測定）:
 

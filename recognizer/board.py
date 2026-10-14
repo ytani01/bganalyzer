@@ -12,7 +12,10 @@ Pipeline
      detected triangles; frame colours just outside the field.
   4. Checkers: Hough circles, kept when the circle has strong radial edges,
      a solid interior and a colour unlike what an empty spot there would
-     show. The two checker colours are split by 2-means.
+     show; dropped where the triangle's sides show through. Where the sides
+     are hidden from the frame on and at most one circle was found, a stack
+     is added (dark checkers on a dark board make no circle). The two checker
+     colours are split by 2-means.
   5. Counting: circles are assigned to the nearest point column; the
      farthest checker from the point base gives the stack height (so a
      checker missed in the middle of a stack is still counted).
@@ -38,7 +41,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -620,6 +623,68 @@ def _edge_support(gx, gy, x, y, r):
     return best
 
 
+TEX_MIN = 3.0       # median sideways / up-down edge ratio of a row at which the triangles' sides stand out
+TEX_HIDDEN = 0.35   # a spot below this share of the median is covered
+TEX_SHOWN = 0.7     # ... above this share, the sides show through it
+TEX_DEPTHS = 5      # depths (in checkers from the frame) to look at
+
+
+def column_texture(gx, gy, lay: Layout, m: int, pitch: float):
+    """Where the triangles' sides show and where something covers them.
+
+    Near the middle of a column, an empty spot shows the sides of its triangle:
+    edges running up and down. A checker hides them. For each row and depth
+    (in checkers from the frame), compare the sideways / up-down edge ratio of
+    each column with the median of the row (most spots are empty).
+    Returns {(c, row, k): 'shown' | 'hidden'}."""
+    r = int(pitch * 0.45)
+    yy, xx = np.mgrid[-r:r + 1, -r:r + 1]
+    disc = xx ** 2 + yy ** 2 <= r * r
+    ax, ay = np.abs(gx), np.abs(gy)
+    out = {}
+    for row in ("top", "bottom"):
+        for k in range(TEX_DEPTHS):
+            dep = pitch * (k + 0.5)
+            y = int(m + (dep if row == "top" else lay.h - dep))
+            ratio = []
+            for c in range(12):
+                x = int(m + lay.col_x(c))
+                sl = np.s_[y - r:y + r + 1, x - r:x + r + 1]
+                if ax[sl].shape != disc.shape:
+                    ratio.append(np.nan)
+                    continue
+                ratio.append(ax[sl][disc].sum() / (ay[sl][disc].sum() + 1))
+            ratio = np.float32(ratio)
+            med = float(np.nanmedian(ratio))
+            if not med >= TEX_MIN:   # the triangles' sides do not stand out here
+                continue
+            for c in range(12):
+                if ratio[c] < TEX_HIDDEN * med:
+                    out[(c, row, k)] = "hidden"
+                elif ratio[c] > TEX_SHOWN * med:
+                    out[(c, row, k)] = "shown"
+    return out
+
+
+def _slot_of(cx, cy, lay: Layout, pitch: float):
+    """(column, row, depth in checkers) of the nearest spot of a stack, None when off the column."""
+    c = int(np.argmin([abs(cx - lay.col_x(i)) for i in range(12)]))
+    row = "top" if cy < lay.h / 2 else "bottom"
+    depth = (cy if row == "top" else lay.h - cy) / pitch - 0.5
+    k = int(round(depth))
+    if abs(cx - lay.col_x(c)) > 0.3 * pitch or k < 0:
+        return None
+    return c, row, k
+
+
+def _top_colour(inner):
+    """A checker's colour: brightness from the median, hue from the most saturated half
+    (glare makes a red checker look pink; its saturated part stays red)."""
+    chroma = np.hypot(inner[:, 1] - 128, inner[:, 2] - 128)
+    sat = inner[chroma >= np.percentile(chroma, 50)]
+    return np.float32([np.median(inner[:, 0]), *np.median(sat[:, 1:], 0)])
+
+
 def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=None, tri_len=None):
     """Checker tops as circles, scored by edge support and colour.
 
@@ -647,12 +712,15 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     Wb = board * LAB_W
     hh, ww = gray.shape
     yy, xx = np.mgrid[0:hh, 0:ww]
+    tex = column_texture(gx, gy, lay, m, pitch)
     scored = []
     for x, y, r in cs[0]:
         cx, cy = x - m, y - m
         # a checker's centre lies inside the field (labels and scores on the frame do not)
         if not (-0.3 * pitch < cx < lay.w + 0.3 * pitch and -0.1 * pitch < cy < lay.h + 0.1 * pitch):
             continue
+        if tex.get(_slot_of(cx, cy, lay, pitch)) == "shown":
+            continue   # the triangle's sides show through: no checker here
         x0, x1, y0, y1 = int(max(x - r, 0)), int(min(x + r + 1, ww)), int(max(y - r, 0)), int(min(y + r + 1, hh))
         d2 = (xx[y0:y1, x0:x1] - x) ** 2 + (yy[y0:y1, x0:x1] - y) ** 2
         patch = lab[y0:y1, x0:x1]
@@ -660,11 +728,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         ring = patch[(d2 > (0.7 * r) ** 2) & (d2 < (0.92 * r) ** 2)]
         if len(inner) < 20 or len(ring) < 20:
             continue
-        # colour: brightness from the median, hue from the most saturated half
-        # (glare makes a red checker look pink; its saturated part stays red)
-        chroma = np.hypot(inner[:, 1] - 128, inner[:, 2] - 128)
-        sat = inner[chroma >= np.percentile(chroma, 50)]
-        med = np.float32([np.median(inner[:, 0]), *np.median(sat[:, 1:], 0)])
+        med = _top_colour(inner)
         ring_same = float((np.linalg.norm(ring - med, axis=1) < 22).mean())
         # what an empty spot here would look like: field, frame, or this column's triangle.
         # The frame only matters where a circle could sit on it: a checker in
@@ -717,6 +781,41 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         # between two checkers, or between a stack of at least two and the frame
         if inner and (outer or (len(stack) >= 2 and depth > 0.3 * pitch)):
             out.append((cx, cy, r, med, score))
+    return out
+
+
+def add_hidden_stacks(ground_bgr, lay: Layout, m: int, pitch: float, circles):
+    """Checkers that make no circle (dark wood on a dark board): a column whose
+    triangle is covered from the frame on, in an unbroken line, holds a stack.
+    Only where at most one circle was found: next to a stack of circles, a dice
+    or a cup covering the triangle would make it longer. Returns circles + the added ones."""
+    labf = cv2.GaussianBlur(cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab).astype(np.float32), (0, 0), 1.5)
+    gx = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 1, 0) for i in range(3))
+    gy = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 0, 1) for i in range(3))
+    tex = column_texture(gx, gy, lay, m, pitch)
+    lab = labf * LAB_W
+    out = list(circles)
+    r = pitch / 2
+    yy, xx = np.mgrid[-int(r):int(r) + 1, -int(r):int(r) + 1]
+    inner = xx ** 2 + yy ** 2 < (0.55 * r) ** 2
+    for c in range(12):
+        for row in ("top", "bottom"):
+            n = 0   # covered at depths 1..n (at the frame the triangle's sides are hard to see)
+            while tex.get((c, row, n + 1)) == "hidden":
+                n += 1
+            if n < 1 or tex.get((c, row, 0)) == "shown":
+                continue
+            x = lay.col_x(c)
+            if sum(abs(o[0] - x) < 0.5 * lay.pw and (o[1] < lay.h / 2) == (row == "top") for o in circles) > 1:
+                continue
+            for k in range(n + 1):
+                dep = pitch * (k + 0.5)
+                y = dep if row == "top" else lay.h - dep
+                if any((o[0] - x) ** 2 + (o[1] - y) ** 2 < (0.6 * pitch) ** 2 for o in out):
+                    continue
+                X, Y = int(x + m), int(y + m)
+                med = _top_colour(lab[Y - int(r):Y + int(r) + 1, X - int(r):X + int(r) + 1][inner])
+                out.append((x, y, r, med / LAB_W, CIRCLE_MIN_SCORE))
     return out
 
 
@@ -871,6 +970,8 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         lay = lay2
         tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
+    # last, so that the added checkers do not change the measured pitch or the board colours
+    circles = add_hidden_stacks(ground, lay, m, pitch, circles)
     runs, bar, cc = count_from_circles(circles, lay, pitch)
     if method == "slots" and cc is not None:   # experimental (TODO-032): slots.py
         import slots
