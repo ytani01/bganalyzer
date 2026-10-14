@@ -469,3 +469,16 @@ def test_samples_rejects_bad_input(monkeypatch, tmp_path):
     assert client.post("/samples", data={"id": "1", **_sample_form()},
                        files={"image": ("a.gif", b"gif", "image/gif")}).status_code == 422
     assert list(tmp_path.iterdir()) == []
+
+
+def test_4xx_reason_is_logged(caplog):
+    # the access log only has the status; the reason goes to the log too, without the input
+    with caplog.at_level("WARNING", logger="uvicorn.error"):
+        assert client.post("/analyze-photo", files={"image": ("s.png", b"not an image", "image/png")},
+                           data={"corners": "1,2,3,4,5,6,7,8"}).status_code == 422
+        assert client.post("/analyze-photo", data={"plies": "secret-value"}).status_code == 422
+        assert client.post("/analyze", json={"position_id": "bad\nFAKE LINE"}).status_code == 422
+    assert "POST /analyze-photo -> 422: 'could not decode image'" in caplog.text
+    assert "body.image: Field required" in caplog.text and "body.plies:" in caplog.text
+    assert "secret-value" not in caplog.text
+    assert "\nFAKE LINE" not in caplog.text and "bad\\nFAKE LINE" in caplog.text

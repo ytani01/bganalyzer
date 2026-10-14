@@ -7,6 +7,7 @@ Do not run with --reload or several workers: the gnubg extension is not fork-saf
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
 import os
 import re
@@ -15,7 +16,9 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -26,7 +29,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.25.0"
+__version__ = "0.25.1"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -39,6 +42,23 @@ async def lifespan(_app):
 
 app = FastAPI(title="bganalyzer", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+log = logging.getLogger("uvicorn.error")   # uvicorn's access log has the status but not why
+
+
+@app.exception_handler(HTTPException)
+async def log_http_error(request: Request, exc: HTTPException):
+    if 400 <= exc.status_code < 500:
+        # %r: a detail can quote what was sent (a position id); keep it on one line
+        log.warning("%s %s -> %d: %r", request.method, request.url.path, exc.status_code, exc.detail)
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(RequestValidationError)
+async def log_validation_error(request: Request, exc: RequestValidationError):
+    # only where and what, not the input: it can be the photo or the form's values
+    why = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
+    log.warning("%s %s -> 422: %s", request.method, request.url.path, why)
+    return await request_validation_exception_handler(request, exc)
 
 
 class Board(BaseModel):
