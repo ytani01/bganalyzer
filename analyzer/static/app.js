@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.27.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.28.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -82,10 +82,7 @@ function show(step) {
   // One history entry stands for "inside the app", so the phone's own back button
   // (or gesture) comes back here as a popstate instead of leaving the app.
   if (step !== "photo" && !(history.state && history.state.bg)) history.pushState({ bg: true }, "");
-  if (step === "corners") {
-    $("to-board").hidden = !(state.fromPhoto && state.board);
-    requestAnimationFrame(drawPhoto);
-  }
+  if (step === "corners") requestAnimationFrame(drawPhoto);
   if (step === "board") $("export-sample").hidden = !(state.fromPhoto && state.board);
   if (step === "board" || step === "outcome") drawBoard();
   if (step === "photo") renderHistory();
@@ -96,6 +93,7 @@ function show(step) {
 // so it can be pressed without scrolling down to the big button.
 function syncHeaderActions() {
   $("recognize").hidden = currentStep !== "corners";
+  $("hdr-reuse").hidden = !(currentStep === "corners" && state.fromPhoto && state.board);
   $("analyze").hidden = currentStep !== "board";
   $("speak").hidden = !(currentStep === "outcome" && state.result && window.speechSynthesis);
 }
