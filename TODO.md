@@ -165,7 +165,7 @@ TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま
   - PI-014: 共有の画面が無いときの動きで、写真と `.truth.json` がダウンロードされ、中身が合っている
   - 残る手作業（実際の音声、iPhone の共有の画面、チャットへの添付）は「スマホ:」の行に残す
 - reviewer は入れない: アプリのコードは変えず、確認用のスクリプトと手順の文書だけなので
-- [ ] `tools/pi_ui_check.py` と、docs/PI_CHECKS.md の「Pi の上の Claude Code がやること」への手順
+- [x] `tools/pi_ui_check.py` と、docs/PI_CHECKS.md の「Pi の上の Claude Code がやること」への手順
 - [ ] PI-013〜015、PI-017 をこれで確かめて書き込む
 
 ---

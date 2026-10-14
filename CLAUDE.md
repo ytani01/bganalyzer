@@ -14,6 +14,7 @@ docker build -t bganalyzer . && docker run --rm -p 8000:8000 bganalyzer   # コ�
 docker compose up -d --build                                     # Raspberry Pi で常駐（docs/raspi.md）
 uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
 uv run python tools/check_pi.py                                  # Pi の公開サーバーを外から確かめる
+uv run -q --no-project --with playwright python tools/pi_ui_check.py   # Pi の上で、スマホの代わりに PWA を操作して確かめる
 ```
 
 ## 変えないもの
