@@ -97,6 +97,22 @@ tailscale funnel status
 - 更新は `main` を pull してビルドし直すだけです。依存が変わっていなければ数分で終わります。
 - 更新したら [PI_CHECKS.md](PI_CHECKS.md) の未確認の項目を確かめます（Pi の上の Claude Code に「PI_CHECKS を確かめて」と頼めます）。
 
+## 精度改善用に集めた写真（`collected/`）
+
+PWA の「解析の設定」で「Pi に残す」をオンにすると、解析するたびに写真と直した後の盤面が
+`bganalyzer/collected/` に `user-<id>.jpg` と `user-<id>.truth.json` の組で入ります（同じ写真を直し直すと上書き。上限 1000 組）。
+中身は `samples/*.truth.json` と同じ形で、認識が読んだ盤面（`read`）と直したポイント（`fixed_points`）も入っています。
+コンテナが root で書くので、消すときは `sudo rm` を使います。
+
+| やること | コマンド（`bganalyzer` フォルダで） |
+|---|---|
+| 何組あるか | `ls collected/*.truth.json \| wc -l` |
+| 今の認識で測る | `docker compose exec app sh -c 'python recognizer/evaluate.py /data/samples/*.truth.json'` |
+| 直した所の多い写真を見る | `grep -o '"fixed_points": \[[^]]*\]' collected/*.truth.json` |
+
+リポジトリの `samples/` へは自動では入れません。公開リポジトリなので、入れる写真は人の顔などが写っていないものを選んで、
+PR で足します（[CLAUDE.md](../CLAUDE.md)）。
+
 ## 同じ Pi で別のアプリも公開する
 
 アプリごとに別のポートで動かし、別のパスに割り当てます。例えば 8001 番で動くアプリを `/other/` に出すには:

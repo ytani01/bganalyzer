@@ -1,7 +1,7 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-013、PI-014。** これまでに 12 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-015`。**
+**残っている項目: PI-013、PI-014、PI-015。** これまでに 12 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-016`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
 マージしたあと、自宅の Raspberry Pi（公開している本番）でしか確かめられないことの一覧です。
@@ -37,6 +37,20 @@
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
+
+---
+
+## PI-015. 「Pi に残す」で写真と直した盤面が collected/ に入る（analyzer 0.25.0）
+
+- **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
+- **足した日・PR:** 2026-10-14、Pi への自動保存（TODO-030）
+- **確かめ方:** `git pull && docker compose up -d --build`（compose.yaml が変わったので作り直しになる）。`curl -s http://127.0.0.1:8000/version` の `samples` を見る。
+  ユーザーにスマホで「解析の設定」の「Pi に残す」をオンにして 1 枚解析してもらい、`ls -l collected/` と
+  `docker compose exec app sh -c 'python recognizer/evaluate.py /data/samples/*.truth.json'` を実行する。
+- **期待:** `/version` が analyzer 0.25.0 以上で `"samples": true`。解析したあと `collected/` に `user-*.jpg` と `user-*.truth.json` が 1 組でき、evaluate.py で測れる。
+  オフのままなら何も増えない。
+- [ ] Pi: （結果をここに書く）
+- [ ] スマホ: 「解析の設定」の下に「精度の改善」のスイッチが出て、オンにして解析できる（ai1）
 
 ---
 
