@@ -51,6 +51,17 @@ def test_api_position_id_with_dice():
     assert j["board"]["points"][5] == 5 and "summary" in j
 
 
+def test_api_moves_have_one_step_per_die():
+    # 6-5 from the start: "24/13" is played as 24/18 and 18/13, so the board can draw both
+    res = client.post("/analyze", json={"position_id": START_ID, "dice": [6, 5]})
+    assert res.status_code == 200, res.text
+    best = res.json()["moves"][0]
+    assert best["move"] == "24/13" and best["steps"] == [[24, 18], [18, 13]]
+    res = client.post("/analyze", json={"position_id": START_ID, "dice": [3, 3]})
+    for m in res.json()["moves"]:
+        assert len(m["steps"]) == 4 and all(a - b == 3 for a, b in m["steps"])
+
+
 def test_api_moves_bearing_off_are_whole():
     # gnubg's move tuple stops at the first checker borne off, so "3/off 1/off" and
     # "3/off 3/2" both came out as "3/off"
@@ -59,6 +70,8 @@ def test_api_moves_bearing_off_are_whole():
     moves = [m["move"] for m in res.json()["moves"]]
     assert moves[0] == "3/off 1/off"
     assert "3/2* 3/off" in moves and len(set(moves)) == len(moves)
+    steps = {m["move"]: m["steps"] for m in res.json()["moves"]}
+    assert sorted(steps["3/off 1/off"]) == [[1, 0], [3, 0]]      # the completed tuples too
 
 
 def test_api_board_matches_truth():

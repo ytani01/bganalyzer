@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.30.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.31.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -691,7 +691,8 @@ function drawMoveArrows(svg) {
   if (!r || !r.moves || !r.moves.length || typeof BgMoves === "undefined") return;
   if (state.resultKey !== analysisKey(state.board, state.onRoll, currentDice())) return;   // board changed since
   const m = r.moves[state.moveShown] || r.moves[0];
-  const hops = BgMoves.hops(state.board, r.on_roll, m.move);
+  // one arrow per die (the API's steps); results kept from older versions have only the string
+  const hops = (m.steps && BgMoves.hops(state.board, r.on_roll, m.steps)) || BgMoves.hops(state.board, r.on_roll, m.move);
   if (!hops) return;
   const bx = B.x0 + 6 * B.pw + B.bar / 2;
   const offX = trayX() + TRAY.w / 2;
