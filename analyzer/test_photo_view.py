@@ -41,6 +41,25 @@ def test_analyze_photo_returns_geometry():
     ck = g["checkers"]
     assert ck and all(r > 0 and side in ("white", "black") for _, _, r, side in ck)
     assert {side for *_, side in ck} == {"white", "black"}
+    # the dice read (screen1: 4 and 2) as squares in image pixels; no cube found in this one
+    assert sorted(d["value"] for d in g["dice"]) == [2, 4]
+    for d in g["dice"]:
+        assert len(d["quad"]) == 4 and all(min(xs) < x < max(xs) and min(ys) < y < max(ys) for x, y in d["quad"])
+    assert g["cube"] is None
+
+
+def test_analyze_photo_returns_cube_square():
+    t = json.loads((SAMPLES / "screen2.truth.json").read_text())
+    corners = [v for xy in t["corners_TL_TR_BR_BL"] for v in xy]
+    with open(SAMPLES / t["image"], "rb") as f:
+        res = client.post("/analyze-photo", files={"image": (t["image"], f)},
+                          data={"corners": ",".join(map(str, corners)), "home": t["home"],
+                                "bottom_colour": str(t["bottom_colour"]), "plies": "0"})
+    assert res.status_code == 200, res.text
+    cube = res.json()["geometry"]["cube"]
+    assert cube["at"] == "black" and len(cube["quad"]) == 4
+    (x0, y0), _, (x2, y2), _ = cube["quad"]
+    assert x2 > x0 and y2 > y0   # TL to BR, a square of some size
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")

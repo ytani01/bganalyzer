@@ -1,7 +1,7 @@
 // The reading overlay: while the server reads the board, the board's outline, triangles and bar are
 // drawn over the photo in perspective (from the four corners) with a sweeping scan line; when the
-// answer comes, the outline moves to where the recognizer fitted it and the triangle tips and checkers
-// it found appear on the photo. Drawing only: nothing here changes what is read.
+// answer comes, the outline moves to where the recognizer fitted it and the triangle tips, then the
+// checkers, the dice and the cube it found appear on the photo (about half a second each). Drawing only: nothing here changes what is read.
 // Also loaded by Node in the tests (module.exports): layout() and lines() need no DOM.
 "use strict";
 
@@ -197,9 +197,42 @@
       label("▶ " + STAGES[k] + dots, CYAN);
     }
 
+    // The reveal, in phases (ms from the answer): the frame moves to where it was fitted, then the
+    // checkers, the dice and the cube found are each shown for about half a second.
+    const FIT = 380, PHASE = 500;
+    const T_CHECKERS = FIT + 140, T_DICE = T_CHECKERS + PHASE, T_CUBE = T_DICE + PHASE, T_END = T_CUBE + PHASE;
+    const AMBER = "255, 176, 0", WHITE = "255, 255, 255", MAGENTA = "255, 102, 230";
+
+    // A square found on the photo (a die or the cube), drawn in from its centre, with text above it.
+    function drawSquare(quad, rgb, a, text) {
+      const pts = quad.map(cp);
+      const cx = pts.reduce((s, p) => s + p[0], 0) / 4, cy = pts.reduce((s, p) => s + p[1], 0) / 4;
+      const g = 1 + 0.5 * (1 - ease(a));   // shrinks onto the die
+      ctx.beginPath();
+      pts.forEach(([x, y], k) => {
+        const X = cx + (x - cx) * g, Y = cy + (y - cy) * g;
+        k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = `rgba(${rgb}, ${0.18 * a})`;
+      ctx.shadowBlur = 0;
+      ctx.fill();
+      glow(rgb, a, 2.4, 12);
+      ctx.stroke();
+      if (!text) return;
+      const top = Math.min(...pts.map((p) => p[1]));
+      ctx.font = "bold 14px ui-monospace, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillStyle = `rgba(${rgb}, ${a})`;
+      ctx.shadowColor = "rgba(0, 0, 0, .9)";
+      ctx.shadowBlur = 4;
+      ctx.fillText(text, cx, top - 4);
+    }
+
     function frameReveal(t) {
       const r = reveal;
-      const f = ease(t / 380);
+      const f = ease(t / FIT);
       const L = lines(lerpPts(r.fromCorners, r.geom.corners, f), {
         cols: r.from.cols.map((c, i) => lerp(c, r.to.cols[i], f)),
         bar: r.from.bar.map((b, i) => lerp(b, r.to.bar[i], f)),
@@ -211,7 +244,7 @@
       ctx.save();
       // triangle tips: small crosshairs
       (r.geom.tips || []).forEach(([x, y], n) => {
-        const a = clamp01((t - 380 - n * 12) / 120);
+        const a = clamp01((t - FIT - n * 12) / 120);
         if (a <= 0) return;
         const [cx, cy] = cp([x, y]);
         glow(GREEN, a, 1.5, 6);
@@ -219,28 +252,52 @@
         ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6);
         ctx.stroke();
       });
-      // checkers: rings that pop in, left to right
+      // checkers: rings that pop in, left to right (fainter once the dice are being shown)
       const ck = r.checkers;
+      const step = (PHASE - 160) / Math.max(ck.length, 1);
+      const dim = t < T_DICE ? 1 : 0.45;
       ck.forEach(([x, y, rad, side], n) => {
-        const a = clamp01((t - 520 - n * (700 / Math.max(ck.length, 1))) / 160);
+        const a = clamp01((t - T_CHECKERS - n * step) / 160);
         if (a <= 0) return;
         const [cx, cy] = cp([x, y]);
         const [ex] = cp([x + rad, y]);
         const rr = Math.max(4, Math.abs(ex - cx)) * (1 + 0.35 * (1 - ease(a)));
-        const rgb2 = side === "white" ? "255, 255, 255" : "255, 176, 0";
+        const rgb2 = side === "white" ? WHITE : AMBER;
         ctx.beginPath();
         ctx.arc(cx, cy, rr, 0, 2 * Math.PI);
-        ctx.fillStyle = `rgba(${rgb2}, ${0.16 * a})`;
+        ctx.fillStyle = `rgba(${rgb2}, ${0.16 * a * dim})`;
         ctx.shadowBlur = 0;
         ctx.fill();
-        glow(rgb2, a, 2, 10);
+        glow(rgb2, a * dim, 2, 10 * dim);
         ctx.stroke();
       });
+      // dice, then the cube: squares that close in on them, with the number read
+      r.dice.forEach((d, n) => {
+        const a = clamp01((t - T_DICE - n * 120) / 200);
+        if (a > 0) drawSquare(d.quad, CYAN, a, String(d.value));
+      });
+      if (r.cube) {
+        const a = clamp01((t - T_CUBE) / 200);
+        if (a > 0) drawSquare(r.cube.quad, MAGENTA, a, "キューブ");
+      }
       ctx.restore();
-      const counted = Math.min(ck.length, Math.max(0, Math.floor((t - 520) / (700 / Math.max(ck.length, 1)))));
-      label(t < 520 ? "▶ 枠と列を合わせ直しました" : `▶ 駒の候補 ${counted} 個`, GREEN);
+      label(caption(t), t < T_DICE ? GREEN : t < T_CUBE ? CYAN : MAGENTA);
       if (t > r.duration && !r.done) { r.done = true; r.resolve(); }
     }
+
+    function caption(t) {
+      const r = reveal;
+      if (t < T_CHECKERS) return "▶ 枠と列を合わせ直しました";
+      if (t < T_DICE) {
+        const n = r.checkers.length;
+        const shown = Math.min(n, Math.max(0, Math.floor((t - T_CHECKERS) / ((PHASE - 160) / Math.max(n, 1)))));
+        return `▶ 駒の候補 ${shown} 個`;
+      }
+      if (t < T_CUBE) return r.dice.length ? "▶ ダイス " + r.dice.map((d) => d.value).join("・")
+                                             : "▶ ダイスは見つかりません";
+      return r.cube ? "▶ キューブ（" + CUBE_AT[r.cube.at] + "）" : "▶ キューブは見つかりません";
+    }
+    const CUBE_AT = { centre: "真ん中", white: "手前", black: "奥", field: "盤の中＝ダブル" };
 
     function frame(now) {
       if (stopped) return;
@@ -258,9 +315,11 @@
       reveal(geom) {
         if (stopped || !geom || !geom.corners || opts.reduced) return Promise.resolve();
         const checkers = (geom.checkers || []).slice().sort((a, b) => a[0] - b[0]);
+        const dice = (geom.dice || []).filter((d) => d && d.quad && d.quad.length === 4);
+        const cube = geom.cube && geom.cube.quad && geom.cube.quad.length === 4 ? geom.cube : null;
         return new Promise((resolve) => {
-          reveal = { t0: performance.now(), geom, checkers, fromCorners: opts.corners,
-                     from: layout(null), to: layout(geom), duration: 1500, resolve, done: false };
+          reveal = { t0: performance.now(), geom, checkers, dice, cube, fromCorners: opts.corners,
+                     from: layout(null), to: layout(geom), duration: T_END + 150, resolve, done: false };
           cancelAnimationFrame(raf);
           raf = requestAnimationFrame(frame);
         });
