@@ -38,7 +38,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -893,7 +893,9 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     info["geometry"] = dict(
         corners=cv2.perspectiveTransform(lay.src_pts()[None], H)[0].round(1).tolist(),
         columns=[round(float(lay.col_x(c) / lay.w), 4) for c in range(12)],
-        bar=[round(float(lay.a / lay.w), 4), round(float((lay.a + lay.bar) / lay.w), 4)])
+        bar=[round(float(lay.a / lay.w), 4), round(float((lay.a + lay.bar) / lay.w), 4)],
+        tips=geometry_tips(tips, H),
+        checkers=geometry_checkers(circles, cc, bottom_colour, H))
     info["dice"] = dice_reader.read_dice(img, H, lay, pitch, circles,
                                          debug=debug_prefix and debug_prefix + "_dice.jpg")
     info["cube"] = cube_reader.read_cube(img, H, lay, pitch, circles, info["dice"]["dice"],
@@ -903,6 +905,32 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     if debug_prefix:
         save_debug(debug_prefix, ground, lay, m, runs, tips, circles)
     return pos, info
+
+
+def geometry_tips(tips, H):
+    """The triangle tips found, in image pixels [[x, y], ...] (for the app's reading overlay)."""
+    if not tips:
+        return []
+    pts = np.float32([[t[2], t[3]] for t in tips])
+    return cv2.perspectiveTransform(pts[None], H)[0].astype(np.float64).round(1).tolist()
+
+
+def geometry_checkers(circles, cc, bottom_colour, H):
+    """The checker circles found, in image pixels [[x, y, r, side], ...], side "white" (手前) or "black"
+    by the nearer checker colour (for the app's reading overlay; the counts do not come from this)."""
+    if not len(circles):
+        return []
+    pts = np.float32([[x, y] for x, y, *_ in circles] + [[x + r, y] for x, y, r, *_ in circles])
+    img = cv2.perspectiveTransform(pts[None], H)[0]
+    n = len(circles)
+    out = []
+    for i, (_, _, _, lab, _) in enumerate(circles):
+        k = bottom_colour if cc is None else int(np.argmin(np.linalg.norm(
+            (np.float32(cc) - np.float32(lab)) * LAB_W, axis=1)))
+        r = float(np.linalg.norm(img[n + i] - img[i]))
+        out.append([round(float(img[i][0]), 1), round(float(img[i][1]), 1), round(r, 1),
+                    "white" if k == bottom_colour else "black"])
+    return out
 
 
 def save_debug(prefix, ground, lay, m, runs, tips, circles=()):
