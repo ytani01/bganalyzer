@@ -38,6 +38,10 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 - [ ] まだ 3.6% より外の 6 枚: case-dice 8.5%（奥と手前の縁）、set-cube-dice 11.7%（左右が 1〜1.5 ポイント）、diagram-closed-bar 7.8%（奥と手前の縁が内側）、
   case-midgame 4.8%（強い斜めで奥と手前の縁）、leather-cups 4.4%、travel-case 4.1%（左が 1 ポイント）
 - [ ] Pi だけで外れる写真（PI-021、recognizer 0.11.0）: commons-tavli-blue が見つからない（x86_64 は 3.4%）、commons-tavli-red-brown が 11.3%（x86_64 は 2.3%）。dark-homeleft が 3.9% で、Pi では `test_corners_are_found_on_samples` が落ちる（3.5% まで）
+  - 2026-10-14 に Pi で測った原因: `find_triangles` の k-means の分け方で結果が大きく揺れる。乱数の種（`cv2.setRNGSeed`）を 0〜4 に変えると、
+    dark-homeleft 2.6〜11.1%、tavli-red-brown 1.4〜11.3%、tavli-blue は種 1 だけ 2.3%（ほかは見つからない）。Pi と x86_64 の違いは、同じ種でも分け方が変わることで出ていると見られる。
+    k-means の試行を 2 → 10 回にしても（全 23 枚で 3.6% 以内 6〜9 枚、1 枚 1.3〜2.0 秒）、種 3 つ分の三角形を合わせても（9〜10 枚、1 枚 0.9 秒）揺れは収まらず、今の 11 枚より良くならない。
+    色を分ける今の作り方をやめないと直らない（上の 3 段目の作り直しと同じ話）。測ったスクリプトは種を変えて `check_corners.measure` を回すだけのもの
 
 TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま測った結果（2026-10-14、目視の四隅とのずれの最大、写真の長辺に対する割合）:
 
