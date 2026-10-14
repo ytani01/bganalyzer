@@ -47,7 +47,7 @@ TODO-012 から分けた。分かっていること（2026-10-14、Raspberry Pi 
 
 ## TODO-028. 四隅の推定（corners.py）を作り直す
 
-- **担当:** ai1（一時停止中。再開は ai1 が決める）
+- **担当:** 引き継ぎ先（2026-10-14 にユーザーが再開を指示）
 - **見込み:** main Opus 5.5 / effort high（設計と実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。四隅のずれの実測）
 - [ ] `corners.find_corners` が見つからない・大きくずれるサンプルを減らす
 
