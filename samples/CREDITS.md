@@ -1,7 +1,7 @@
 # サンプル写真の出典
 
-`commons-*.jpg` は Wikimedia Commons の写真です。どれも CC BY / CC BY-SA / CC0 で、人の顔や個人情報は写っていません。
-Commons が配る縮小版（長辺 1920px、元が小さいものは 960px。盤面図 3 枚は 500px、set-cube-dice は元の 640px）をそのまま使っていて、ほかの加工はしていません。
+`commons-*.jpg` は Wikimedia Commons の写真です。どれも CC BY / CC BY-SA / CC0（lg-cube-dice だけは作者がパブリックドメインにしたもの）で、人の顔や個人情報は写っていません。
+Commons が配る縮小版（長辺 1920px、元が小さいものは 960px。lg-cube-dice は元の 1500px。盤面図 3 枚は 500px、set-cube-dice は元の 640px）をそのまま使っていて、ほかの加工はしていません。
 CC BY-SA の写真（とその縮小版）は同じ CC BY-SA で配布します。正解の `*.truth.json` は目で読みました。
 
 | ファイル | 元の写真 | 作者 | ライセンス |
@@ -24,6 +24,8 @@ CC BY-SA の写真（とその縮小版）は同じ CC BY-SA で配布します�
 | `commons-tavli-red-diamond.jpg` | [Tavli Board without slots (traditional) B.jpg](https://commons.wikimedia.org/wiki/File:Tavli_Board_without_slots_(traditional)_B.jpg) | Niko Kitsakis | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `commons-tavli-red-white.jpg` | [Tavli Board with slots C.jpg](https://commons.wikimedia.org/wiki/File:Tavli_Board_with_slots_C.jpg) | Nikos Kitsakis | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `commons-travel-case.jpg` | [Backgammon Layout.jpg](https://commons.wikimedia.org/wiki/File:Backgammon_Layout.jpg) | TaurusEmerald | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| `commons-lg-cube-dice.jpg` | [Backgammon lg.jpg](https://commons.wikimedia.org/wiki/File:Backgammon_lg.jpg) | Ptkfgs | Public domain（PD-self） |
+| `commons-wooden-dice.jpg` | [Wooden backgammon (27095563797).jpg](https://commons.wikimedia.org/wiki/File:Wooden_backgammon_(27095563797).jpg) | The Unwinder | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) |
 
 photo2〜4 は ai1 が撮った写真、screen1・screen2 はアプリの画面とツイートの画像（盤以外は塗りつぶし）です。
 
