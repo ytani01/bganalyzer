@@ -264,6 +264,24 @@ TODO-024 で足した 4 枚では、diagram-holding が 3.0%、set-cube-dice が
 - 盤の **真上から**、盤全体が画面いっぱいに入るように撮る。
 - 影や照明の反射が強い所を避ける。
 
+## 位置ごとに判定する読み方の試作（`slots.py`、TODO-032）
+
+円を探す代わりに、射影変換の後に n 個目の駒が来る位置（根元から (n−0.5)×直径）ごとに「空き・暗い色・明るい色」を判定し、
+「1 ポイントは 1 色で、根元から続けて積む」として各ポイントの (色, 数) を一度に決める。空いた位置と駒の見た目は、
+円で読んだ結果から写真ごとに学ぶ（三角形の色と何番目かごとに、空いたと読んだ位置の色の中央値）。
+`board.recognize(..., method="slots")`、`evaluate.py --slots` で動く。アプリは今までどおり円で読む。
+
+2026-10-14、x86_64 で全 23 枚（552 ポイント）: **円 495、位置ごと 478**。
+
+- 重みは総当たりで決めた（`SLOTS_TUNE=縁の重み,しきい値`）。円の縁の強さは空いた三角形の根元でも 0.4〜0.5 あり、
+  重くするほど悪い（縁 1.0 で 403〜452、0.1 で 478、0 で 477）。色だけでほぼ決まる。
+- 円より良い: commons-nardy-midgame 18 → 19、commons-travel-case 21 → 22。同じ: 15 枚。
+- 円より悪い: commons-set-cube-dice 12 → 3（円の読みが悪く、そこから学んだ見た目が外れる）、photo4 24 → 22、
+  leather-cups 20 → 17 など。5 個の山を 4 個と読むことがある。
+- 円の読みから学ぶので、円が大きく外れる写真では一緒に外れる。円が出ない駒（commons-dark-homeleft、TODO-027）は
+  12 のままで、円の代わりにはならなかった。
+- ai1 の盤（えんじ色の駒と赤い三角形）の写真がサンプルにないので、いちばん効くと考えた場面は確かめていない（TODO-030 で写真が集まったら測る）。
+
 ## ファイル
 
 - `position.py` 盤面モデル、gnubg Position ID（初期配置 `4HPwATDgc/ABMA` で検証済み）、ピップ数
@@ -272,7 +290,8 @@ TODO-024 で足した 4 枚では、diagram-holding が 3.0%、set-cube-dice が
 - `dice.py` フィールドのダイスの目
 - `cube.py` キューブの場所
 - `synth.py` 合成画像の生成（正解付き）
-- `evaluate.py` `*.truth.json` と比較して精度を出す
+- `evaluate.py` `*.truth.json` と比較して精度を出す（`--slots` で下の試作の読み方）
+- `slots.py` 位置ごとに判定する読み方の試作（アプリでは使わない）
 - `../samples/photoN.truth.json` ユーザー提供の写真（photoN.jpg）を目視で読んだ正解と四隅
 - `../samples/commons-*.truth.json` Wikimedia Commons の写真の正解と四隅（出典は `../samples/CREDITS.md`）
 - `../samples/external/*.truth.json` リポジトリに入れない盤面図の URL と正解（`evaluate.py` が画像を取ってくる）

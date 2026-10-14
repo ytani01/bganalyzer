@@ -14,7 +14,7 @@ def shrink_like_app(img, corners, max_side=2048, send_as_is=2560):
     img = cv2.imdecode(cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 92])[1], cv2.IMREAD_COLOR)
     return img, [[x * f, y * f] for x, y in corners]
 
-def run(path, debug=None, app=False):
+def run(path, debug=None, app=False, method="circles"):
     t = json.load(open(path))
     img_path = os.path.join(os.path.dirname(path), t["image"])
     if not os.path.exists(img_path) and "url" in t:
@@ -30,7 +30,7 @@ def run(path, debug=None, app=False):
     # which checker colour belongs to the bottom player is the user's choice in the
     # app; here take the assignment that matches the truth
     best = None
-    pos0, info = board.recognize(img, corners, home=t["home"], debug_prefix=debug)
+    pos0, info = board.recognize(img, corners, home=t["home"], debug_prefix=debug, method=method)
     pos1 = Position(points=[-n for n in pos0.points], bar_white=pos0.bar_black, bar_black=pos0.bar_white,
                     off_white=pos0.off_black, off_black=pos0.off_white)
     for pos in (pos0, pos1):
@@ -50,10 +50,12 @@ def run(path, debug=None, app=False):
 
 if __name__ == "__main__":
     # --app: shrink large photos the way the PWA does before sending them
+    # --slots: count by slots (slots.py, experimental) instead of by circles
     app = "--app" in sys.argv
-    files = [a for a in sys.argv[1:] if a != "--app"] or sorted(glob.glob(os.path.join(os.path.dirname(__file__), "..", "samples", "*.truth.json")))
+    method = "slots" if "--slots" in sys.argv else "circles"
+    files = [a for a in sys.argv[1:] if a not in ("--app", "--slots")] or sorted(glob.glob(os.path.join(os.path.dirname(__file__), "..", "samples", "*.truth.json")))
     for f in files:
-        pos, truth, wrong, bar_ok, (home_ok, margin), (dice, want), (cube, cube_want) = run(f, app=app)
+        pos, truth, wrong, bar_ok, (home_ok, margin), (dice, want), (cube, cube_want) = run(f, app=app, method=method)
         dice_ok = "ok" if dice == want else "not read" if dice is None else "WRONG"
         cube_ok = "ok" if cube == cube_want else "not found" if cube is None else "WRONG"
         print(f"{os.path.basename(f)}: {24 - len(wrong)}/24 points correct, bar {'ok' if bar_ok else 'wrong'}, "
