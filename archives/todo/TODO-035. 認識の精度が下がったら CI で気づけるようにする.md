@@ -21,6 +21,7 @@
 - GitHub Actions の `accuracy`（`.github/workflows/accuracy.yml`）が、recognizer・samples・依存を変える PR と main への push で走る（約 70 秒）。
   結果は注釈（notice）にも出すので、ログを開けない環境でも API や PR の画面から読める
 - `--app` は CI では測らない（ブラウザとの画素の差で結果が動くため）
-- わかったこと: 同じ x86_64 でも CPU（GitHub の実行機は回ごとに変わる。AMD EPYC など）で 1 ポイント動くサンプルがある
-  （photo2、commons-tavli-grey）。基準を見た中でいちばん悪い値にし、1 枚ごとに 1 ポイントの揺れを許して合計は下回らせない形にした。
+- わかったこと: GitHub の実行機は回ごとに CPU が違い、OpenCV・NumPy・OpenBLAS が CPU ごとに命令（AVX-512 など）を選ぶため、
+  そのままでは 1〜4 ポイント動くサンプルがあった（AMD EPYC 9V45 で 495 → 490）。`check_accuracy.py` の中だけ AVX2 までに揃えると、
+  クラウドと GitHub の 4 種類の CPU（7 回）で全部同じ 495 になった。まだ試していない CPU のために 1 枚ごとの 1 ポイントの低下は許し、合計は厳密に見る。
   `cv2.setUseOptimized(False)` で揃える案は、5 枚の結果が 1〜4 ポイント変わりアプリと違う動きを測ることになるので採らなかった

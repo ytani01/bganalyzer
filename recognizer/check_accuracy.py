@@ -12,13 +12,11 @@ network) and compares each sample with accuracy_baseline.json:
 
   uv run python recognizer/check_accuracy.py            # check (exit 1 on a regression)
   uv run python recognizer/check_accuracy.py --update   # rewrite the baseline with this run
-                                                         # (a sample 1 point better keeps the old value;
-                                                         #  --replace takes this run as it is)
 
-The baseline is the worst result seen on x86_64 (the cloud and GitHub Actions). Results move
-by a point between x86_64 machines (OpenCV's SIMD code differs by CPU: on 2026-10-14 photo2 was
-22 in the cloud and 23 on GitHub, commons-tavli-grey 24 and 23), hence the 1-point slack per sample.
-Raspberry Pi differs more (recognizer/README.md), so don't update the baseline from a Pi run.
+With the SIMD capped below, every x86_64 machine tried reads the same (2026-10-14: the cloud's
+Xeon, GitHub's AMD EPYC 7763 / 9V74 and Xeon 8370C). The 1-point slack per sample is a guard
+against a machine not tried yet; the total stays strict, so a real loss still fails.
+Raspberry Pi (aarch64) differs (recognizer/README.md), so don't update the baseline from a Pi run.
 """
 import glob, json, os, sys
 from concurrent.futures import ProcessPoolExecutor
@@ -26,10 +24,19 @@ from concurrent.futures import ProcessPoolExecutor
 # Read with the same SIMD code on every x86_64 machine: OpenCV, NumPy and OpenBLAS pick their
 # code by CPU, and AVX-512 machines read some samples 1-4 points differently from AVX2 ones
 # (GitHub Actions gets a different CPU each run). Cap them at AVX2. Set before cv2/numpy load.
-for var, value in (("OPENCV_CPU_DISABLE", "AVX512-SKX"),
-                   ("NPY_DISABLE_CPU_FEATURES", "X86_V4 AVX512_ICL AVX512_SPR"),
-                   ("OPENBLAS_CORETYPE", "Haswell")):
-    os.environ.setdefault(var, value)
+def _has_avx512():
+    try:
+        with open("/proc/cpuinfo") as f:
+            return " avx512f" in f.read()
+    except OSError:
+        return False
+
+
+if _has_avx512():  # OpenCV warns when asked to disable a feature the CPU lacks
+    for var, value in (("OPENCV_CPU_DISABLE", "AVX512-SKX"),
+                       ("NPY_DISABLE_CPU_FEATURES", "X86_V4 AVX512_ICL AVX512_SPR"),
+                       ("OPENBLAS_CORETYPE", "Haswell")):
+        os.environ.setdefault(var, value)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASELINE = os.path.join(HERE, "accuracy_baseline.json")
@@ -62,7 +69,7 @@ def measure_all(jobs=None):
 
 
 def compare(base, now):
-    """(regressions, improvements, moves within the slack) as lists of messages."""
+    """(regressions, improvements, drops within the slack) as lists of messages."""
     worse, better, slack = [], [], []
     for name in sorted(set(base) | set(now)):
         if name not in now:
@@ -76,7 +83,7 @@ def compare(base, now):
             rank = RANK.get(key)
             bv, nv = (rank.index(b[key]), rank.index(n[key])) if rank else (b[key], n[key])
             msg = f"{name}: {key} {b[key]} -> {n[key]}"
-            if key == "points" and 0 < abs(nv - bv) <= SLACK:
+            if key == "points" and 0 < bv - nv <= SLACK:
                 slack.append(msg)
             elif nv < bv:
                 worse.append(msg)
@@ -96,18 +103,10 @@ def main():
     now = measure_all()
     got, of = total(now)
     if "--update" in sys.argv:
-        # keep the worst of this run and the old baseline where this run is only slack-worse,
-        # so a machine that reads a point less doesn't fail later
-        if "--replace" not in sys.argv and os.path.exists(BASELINE):
-            with open(BASELINE) as f:
-                old = json.load(f)
-            for name, r in now.items():
-                if name in old and old[name]["points"] < r["points"] <= old[name]["points"] + SLACK:
-                    r["points"] = old[name]["points"]
         with open(BASELINE, "w") as f:
             # one line per sample, so a diff shows which sample changed
             f.write("{\n" + ",\n".join(f" {json.dumps(k)}: {json.dumps(v)}" for k, v in sorted(now.items())) + "\n}\n")
-        print(f"wrote {os.path.relpath(BASELINE)}: {total(now)[0]}/{of} points (this run read {got})")
+        print(f"wrote {os.path.relpath(BASELINE)}: {got}/{of} points")
         return 0
     with open(BASELINE) as f:
         base = json.load(f)

@@ -60,17 +60,18 @@ JPEG 品質 0.92 で書き出した写真（PWA は長辺 2560px を超える写
 ### CI での確認（2026-10-14、TODO-035）
 
 `check_accuracy.py` が `samples/*.truth.json` の全部（`samples/external` は除く）を読み、サンプルごとの結果を
-`accuracy_baseline.json` と比べる。正しいポイントの数が減る・バーやホームの推定が外れるようになる・ダイスやキューブの読みが
-悪くなる（ok → 読めない → 誤り）と失敗する。ポイントだけは 1 枚ごとに 1 ポイントの揺れを許し、合計が基準の合計を下回ると失敗する。GitHub Actions の `accuracy`（`.github/workflows/accuracy.yml`）が、
+`accuracy_baseline.json` と比べる。正しいポイントの合計が減る・1 枚で 2 ポイント以上減る・バーやホームの推定が外れるようになる・
+ダイスやキューブの読みが悪くなる（ok → 読めない → 誤り）と失敗する。GitHub Actions の `accuracy`（`.github/workflows/accuracy.yml`）が、
 recognizer・samples・依存を変える PR と main への push で走らせる。
 
-- 基準は x86_64 で見た中でいちばん悪い値にする。同じ x86_64 でも CPU で OpenCV の SIMD の処理が変わり、1 ポイント動くことがある
-  （2026-10-14: photo2 はクラウド 22・GitHub 23、commons-tavli-grey はクラウド 24・GitHub 23）。Raspberry Pi の結果では更新しない
-- 良くなったときやサンプルを足した・消したときは `uv run python recognizer/check_accuracy.py --update` で書き直してコミットする（上の表も直す）。
-  基準より 1 だけ良いサンプルは元の値のまま残る（環境の揺れで基準を上げないため。そのまま入れるときは `--replace` も付ける）
-- 2026-10-14 の基準: 23 枚で 552 ポイント中 494（クラウドで読むと 495）。同じ機械なら結果はサンプルの順序や並列に関係なく同じ
-  （OpenCV の乱数の種をサンプルごとに 0 にしている）。上の表の photo2 の 23 は 2026-10-13 のクラウドの値
-- OpenCV の最適化を切って（`cv2.setUseOptimized(False)`）環境の差をなくす案は採らなかった。5 枚の結果が 1〜4 ポイント変わり、アプリと違う動きを測ることになるため
+- 基準は x86_64 で測る。CPU によって OpenCV・NumPy・OpenBLAS が使う命令（AVX-512 など）が変わり、そのままでは 1〜4 ポイント動くサンプルがあった
+  （2026-10-14、GitHub の実行機は回ごとに CPU が違う。AMD EPYC 9V45 で 490）。`check_accuracy.py` の中だけ AVX2 までに揃えると、
+  クラウドの Xeon、GitHub の AMD EPYC 7763・9V74、Xeon 8370C で全部同じ 495 になった。まだ試していない CPU のために 1 枚ごとの 1 ポイントの低下は許すが、
+  合計は基準を下回れない。Raspberry Pi（aarch64）の結果では更新しない
+- 良くなったときやサンプルを足した・消したときは `uv run python recognizer/check_accuracy.py --update` で書き直してコミットする（上の表も直す）
+- 2026-10-14 の基準: 23 枚で 552 ポイント中 495。結果はサンプルの順序や並列に関係なく同じ（OpenCV の乱数の種をサンプルごとに 0 にしている）。
+  上の表の photo2 の 23 は 2026-10-13 の値で、この日のクラウドでは 22
+- OpenCV の最適化を全部切る（`cv2.setUseOptimized(False)`）案は採らなかった。5 枚の結果が 1〜4 ポイント変わり、アプリと違う動きを測ることになるため
 - `--app`（PWA と同じに縮める）は CI では測らない。ブラウザとの画素の差で結果が動くため（上の段落）
 
 ### ネット上のサンプル（2026-10-13、TODO-011）
