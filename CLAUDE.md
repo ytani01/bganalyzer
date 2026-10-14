@@ -13,6 +13,7 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000   # API と
 docker build -t bganalyzer . && docker run --rm -p 8000:8000 bganalyzer   # コンテナで起動
 docker compose up -d --build                                     # Raspberry Pi で常駐（docs/raspi.md）
 uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
+uv run python tools/check_pi.py                                  # Pi の公開サーバーを外から確かめる
 ```
 
 ## 変えないもの
@@ -56,6 +57,8 @@ analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同
 **Raspberry Pi の上で作業する Claude Code は、`git pull` のあとに docs/PI_CHECKS.md を読み、**
 **残っている項目を確かめて結果を書き込む**（アプリの更新は `docker compose up -d --build`、詳しくは [docs/raspi.md](docs/raspi.md)）。
 期待と違えばユーザーに報告する。
+公開している https://bg.tail5c266.ts.net/bg/ にはクラウドからも届くので、版・画面・公開サンプルの読み取りは
+**クラウドの Claude が `uv run python tools/check_pi.py` で先に確かめてよい**（やり方とやらないことは docs/PI_CHECKS.md の「クラウドから確かめられること」）。
 
 ## タスク管理
 
