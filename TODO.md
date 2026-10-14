@@ -32,11 +32,12 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 - **見込み:** main Opus 5.5 / effort high（設計と実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。四隅のずれの実測）
 - [x] `corners.find_corners` が見つからない・大きくずれるサンプルを減らす（recognizer 0.10.0。x86_64 の全 23 枚で、3.6% 以内 7 → 14 枚、見つからない 10 → 3 枚。
   奥と手前の縁を枠の直線で決める、ポイントの幅に「1 つおき」も試す、奥と手前の列を揃えて選ぶ、直線の辺の組も三角形にする。recognizer/README.md の「四隅の推定」）
-- [ ] Raspberry Pi でも測る（PI-021。0.9.0 までは Pi の方が見つからない写真が 4 枚多かった）
+- [x] Raspberry Pi でも測る（PI-021。2026-10-14 に測った。0.9.0 までは Pi の方が見つからない写真が 4 枚多かった）
 - [ ] 三角形の見えない盤（photo4、screen1）と強い斜め（rollup-oblique）: 画像の長い直線で囲まれた四角形を候補にし、
   まっすぐに直したときに中が 2 段 × 12 列のくり返しになっているかで選ぶ（2026-10-14 に提案した 3 段目。まだ作っていない）
 - [ ] まだ 3.6% より外の 6 枚: case-dice 8.5%（奥と手前の縁）、set-cube-dice 11.7%（左右が 1〜1.5 ポイント）、diagram-closed-bar 7.8%（奥と手前の縁が内側）、
   case-midgame 4.8%（強い斜めで奥と手前の縁）、leather-cups 4.4%、travel-case 4.1%（左が 1 ポイント）
+- [ ] Pi だけで外れる写真（PI-021、recognizer 0.11.0）: commons-tavli-blue が見つからない（x86_64 は 3.4%）、commons-tavli-red-brown が 11.3%（x86_64 は 2.3%）。dark-homeleft が 3.9% で、Pi では `test_corners_are_found_on_samples` が落ちる（3.5% まで）
 
 TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま測った結果（2026-10-14、目視の四隅とのずれの最大、写真の長辺に対する割合）:
 

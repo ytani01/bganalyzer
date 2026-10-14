@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-020、PI-021、PI-022。** これまでに 19 件を決着させた。
+**残っている項目: PI-020。** これまでに 21 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-023`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -85,33 +85,6 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
 
-## PI-022. 三角形の辺で駒の有無を確かめる読み方が Pi で動く（recognizer 0.11.0）
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-14、TODO-027
-- **確かめ方:** コンテナの中で `python recognizer/evaluate.py samples/commons-dark-homeleft.truth.json samples/commons-set-cube-dice.truth.json`
-  と `python recognizer/evaluate.py /data/samples/user-*.truth.json` を動かす。`/analyze-photo` に photo3 を送って時間を見る。
-- **期待:** `/version` の recognizer が 0.11.0。dark-homeleft 20/24、set-cube-dice 15/24（マージ前に Pi で測った値）。
-  `collected/` の組は直す前（23・19・15・18・22）から合計で下がらない（マージ前は 24・19・14・18・22）。1 枚の読み取りが PI-002 の時間（6 秒前後）から大きく延びていない。
-- [ ] Pi:
-
----
-
-## PI-021. 四隅の推定（recognizer 0.10.0）が Pi でも x86_64 と同じくらい当たる
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-14（TODO-028）
-- **確かめ方:** Pi の `bganalyzer` フォルダで（コンテナには `samples/` が入っていないので写してから測る）
-  `docker compose cp samples app:/tmp/samples && docker compose exec -T app sh -c 'python recognizer/check_corners.py /tmp/samples/*.truth.json'`。
-  USBGF の盤面図（`samples/external/`、画像は usbgf.org から取る。クラウドからは届かず 0.10.0 では測れていない）も、
-  `docker compose exec -T app sh -c 'python recognizer/evaluate.py /tmp/samples/external/*.truth.json > /dev/null; python recognizer/check_corners.py /tmp/samples/external/*.truth.json'` で測る
-  （evaluate.py が画像を取ってくる）。終わったら `docker compose exec -T app rm -rf /tmp/samples`
-- **期待:** 全 23 枚で x86_64 の値（3.6% 以内 14 枚・それより外 6 枚・見つからない 3 枚、recognizer/README.md の「四隅の推定」）に近い。
-  1 枚 2 秒以内。見つからない写真が x86_64 より多ければ、その名前を書いて TODO-028 に足す
-- [ ] Pi: （結果をここに書く）
-
----
-
 ## PI-020. 読み取り中の補助線の演出（analyzer 0.27.0、recognizer 0.9.0）
 
 - **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
@@ -121,7 +94,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
   画面が盤面の画面に進むことを確かめる。スマホでは「盤面を読み取る」を押して、写真に枠・三角形・走査線が重なり、
   結果が返ったら緑の枠・三角形の先・駒の円が出てから盤面の画面に進むかを見る。
 - **期待:** 版が analyzer 0.27.0・recognizer 0.10.0（あとから入った TODO-028 で上がった。0.9.0 でもこの演出は同じ）。演出がカクつかず、タップで飛ばせる。読み取りにかかる時間は前と変わらない（演出の分の約 1.5 秒を除く）
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-14、d12093e。版は analyzer 0.30.0・recognizer 0.11.0（あとから上がった）。photo3 の `/analyze-photo` の `geometry` に `tips` 22 個・`checkers` 19 個が入る。`tools/pi_ui_check.py` は全部 OK で、読み取りのあと盤面の画面に進む。時間は 5.4〜5.9 秒で PI-002 と同じくらい。OK
 - [ ] スマホ: 演出が出るか、カクつかないか、タップで飛ばせるか（ai1）
 
 ---
