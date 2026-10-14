@@ -28,7 +28,7 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 
 ## TODO-027. 暗い盤の上の焦げ茶の駒を見つける（commons-dark-homeleft）
 
-- **担当:** 未定（ai1 の判断で一時停止中。再開は ai1 が決める）
+- **担当:** ai1（2026-10-14 に再開）
 - **見込み:** main Opus 5.5 / effort high（設計と実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。evaluate.py の実測）
 - [ ] commons-dark-homeleft（Raspberry Pi で 12/24）を、ほかのサンプルを下げずに上げる
 
