@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-028、TODO-030、TODO-032、TODO-042、TODO-043、TODO-044、TODO-045。** これまでに 37 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-046`。**
+**残っている項目: TODO-025、TODO-028、TODO-030、TODO-032、TODO-042、TODO-043、TODO-044、TODO-045、TODO-046。** これまでに 37 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-047`。**
 各項目の最初に **担当**（ai1 か、共同開発者のアカウント名、未定、引き継ぎ可）を書き、着手する前に自分の担当にしてコミットする
 （[docs/HANDOVER.md](docs/HANDOVER.md)）。
 **2026-10-14 から別アカウントに引き継ぎ中**（docs/HANDOVER.md の「0. 引き継ぎ」）。「引き継ぎ可」の項目は、着手するときに担当を自分のアカウント名にしてコミットしてから始める。
@@ -189,6 +189,21 @@ k-means の結果が乱数の種で大きく変わる（dark-homeleft は種で 
 - [ ] 着手時に決める: 誰がダブルしたかをどう決めるか（「次に振る人」を使う、など）と、数字を読むか
 - [ ] `recognizer/cube.py` で、遊戯面の中にあるキューブを「ダブルされたところ」とする
 - [ ] PWA と README を合わせ、recognizer と analyzer の版を上げる
+
+---
+
+## TODO-046. 盤面の読み取りを整数で計算し、x86_64 と Pi で完全に一致させる
+
+- **担当:** ai1
+- **見込み:** main Opus 5.5 / effort high + reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。CI と Pi で全サンプルを比べる）
+
+**問題:** 読み取り（`board.py`・`dice.py`・`cube.py`）が x86_64 と Pi で違う結果を出す（tv-vegas-open は 22 と 23）。
+そのため精度の基準は x86_64 でしか更新できない。四隅の推定は TODO-028 で揃えた。
+
+- [ ] どの処理で分かれるかを測る（TODO-028 と同じく、途中の値のハッシュを CI と Pi で比べる）
+- [ ] 分かれる処理を整数の計算に置き換える（候補: `warpPerspective` の `INTER_AREA`、Hough の円、色の学習）
+- [ ] 全サンプルの読みが x86_64 と Pi で完全に一致することを CI のテストで確かめる
+- [ ] Pi でも基準を更新できるようにし、CLAUDE.md・`check_accuracy.py`・recognizer/README.md の説明を直す。recognizer の版を上げる
 
 ---
 
