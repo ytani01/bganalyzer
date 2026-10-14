@@ -179,23 +179,18 @@ def _corner_error(found, truth, shape):
 
 
 def test_corners_are_found_on_samples():
-    # The app shows these as the starting corners; the user drags them into place.
-    # Boards with printed triangles are found; carved ones (photo4) and striped app
-    # screens (screen1) may not be, and the app then starts from a rectangle.
-    # tavli-black and tavli-burl: the far row's triangles are cut short (the far
-    # edge is the frame's straight edge beyond them); dark-homeleft and
-    # diagram-prime: only every other triangle is found; travel-case: only the
-    # triangles' straight sides show (TODO-028). The colours are split in integers
-    # (recognizer 0.11.1), so every CPU finds the same corners; tavli-black,
-    # dark-homeleft and diagram-prime came out 3.1-8.3% with that split.
+    # The far / near edges are the strongest straight edges, the left / right ones lines with an edge
+    # in nearly every row between them; each edge is moved to the innermost strong edge nearby, and
+    # the quad that frames two rows of twelve triangles best wins (TODO-028, recognizer 0.16.0).
+    # diagram-prime: the frame with the point numbers is taken (4.7%).
     import cv2
     from corners import find_corners
 
     samples = Path(__file__).resolve().parent.parent / "samples"
-    for name, most in (("photo2", 0.035), ("photo3", 0.035), ("screen2", 0.035),
-                       ("commons-tavli-black", 0.09), ("commons-tavli-burl", 0.035),
-                       ("commons-dark-homeleft", 0.04), ("commons-diagram-prime", 0.05),
-                       ("commons-travel-case", 0.05)):
+    for name, most in (("photo2", 0.035), ("photo3", 0.035), ("screen2", 0.035), ("screen1", 0.035),
+                       ("commons-tavli-black", 0.035), ("commons-tavli-burl", 0.035),
+                       ("commons-dark-homeleft", 0.035), ("commons-diagram-prime", 0.05),
+                       ("commons-travel-case", 0.035), ("tv-vegas-open", 0.035)):
         t = json.loads((samples / f"{name}.truth.json").read_text())
         img = cv2.imread(str(samples / t["image"]))
         found = find_corners(img)
@@ -204,19 +199,17 @@ def test_corners_are_found_on_samples():
 
 
 def test_corners_are_the_same_on_every_cpu():
-    # Measured on the Raspberry Pi (aarch64); GitHub Actions runs this on x86_64.
-    # cv2.kmeans and cv2.resize(INTER_AREA) work in floats and gave the two different
-    # corners (TODO-028); in integers both gave the same pixels, labels and corners
-    # (checked on 5 samples; steps after the k-means still use floats).
+    # The corner guess works in integers and in float operations that round the same on every CPU
+    # (exact.py), so x86_64 and the Raspberry Pi find these very corners (TODO-028, TODO-046).
+    # GitHub Actions' cpu-match checks all samples on x86_64 and arm64 (recognizer/trace_cpu.py).
     import cv2
     from corners import find_corners
 
     samples = Path(__file__).resolve().parent.parent / "samples"
-    for name, want in (("commons-dark-homeleft", [[148.1, 154.3], [1733.0, 180.4], [1799.7, 1656.4], [59.2, 1725.7]]),
-                       ("commons-tavli-red-brown", [[489.7, 164.3], [1668.0, 171.5], [1676.3, 1204.5], [501.8, 1207.3]]),
-                       ("photo2", [[965.0, 277.6], [3763.2, 308.1], [4096.3, 2865.6], [847.2, 2953.6]]),
-                       # found from the triangles' straight sides (LSD), not their colour regions
-                       ("commons-travel-case", [[543.8, 314.7], [1478.2, 314.3], [1479.6, 1148.1], [535.5, 1142.8]])):
+    for name, want in (("commons-dark-homeleft", [[183.9, 147.7], [1736.8, 178.8], [1799.1, 1726.0], [112.8, 1643.4]]),
+                       ("commons-tavli-red-brown", [[423.9, 163.3], [1524.4, 163.3], [1514.2, 1181.4], [403.7, 1181.4]]),
+                       ("photo2", [[975.7, 241.8], [3622.9, 315.3], [3953.3, 2790.1], [927.1, 2971.6]]),
+                       ("commons-travel-case", [[494.9, 314.4], [1461.7, 314.4], [1461.4, 1167.5], [479.4, 1109.9]])):
         t = json.loads((samples / f"{name}.truth.json").read_text())
         img = cv2.imread(str(samples / t["image"]))
         assert find_corners(img) == want, name
