@@ -1,7 +1,7 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-020、PI-021。** これまでに 19 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-022`。**
+**残っている項目: PI-020、PI-021、PI-022。** これまでに 19 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-023`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
 マージしたあと、自宅の Raspberry Pi（公開している本番）でしか確かめられないことの一覧です。
@@ -84,6 +84,16 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
+
+## PI-022. 三角形の辺で駒の有無を確かめる読み方が Pi で動く（recognizer 0.11.0）
+
+- **担当:** ai1（Pi の Claude Code）
+- **足した日・PR:** 2026-10-14、TODO-027
+- **確かめ方:** コンテナの中で `python recognizer/evaluate.py samples/commons-dark-homeleft.truth.json samples/commons-set-cube-dice.truth.json`
+  と `python recognizer/evaluate.py /data/samples/user-*.truth.json` を動かす。`/analyze-photo` に photo3 を送って時間を見る。
+- **期待:** `/version` の recognizer が 0.11.0。dark-homeleft 20/24、set-cube-dice 15/24（マージ前に Pi で測った値）。
+  `collected/` の組は直す前（23・19・15・18・22）から合計で下がらない（マージ前は 24・19・14・18・22）。1 枚の読み取りが PI-002 の時間（6 秒前後）から大きく延びていない。
+- [ ] Pi:
 
 ---
 
