@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.26.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.27.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -118,8 +118,10 @@ window.addEventListener("popstate", () => {
   if (currentStep !== "photo") show(previousStep());
 });
 
-function busy(text) {
+// scanning: the reading overlay is drawn on the photo, so the screen is not darkened and the text sits low
+function busy(text, scanning) {
   $("busy").hidden = !text;
+  $("busy").classList.toggle("scanning", !!(text && scanning));
   $("busy-text").textContent = text || "";
 }
 
@@ -267,7 +269,7 @@ function imgSize() {
   return [b.width || b.naturalWidth, b.height || b.naturalHeight];
 }
 
-function drawPhoto() {
+function drawPhoto(bare) {
   if (!state.bitmap || $("corners").hidden) return;
   const [iw, ih] = imgSize();
   const cw = canvas.parentElement.clientWidth;
@@ -283,6 +285,7 @@ function drawPhoto() {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, cw, ch);
   ctx.drawImage(state.bitmap, view.ox, view.oy, iw * scale, ih * scale);
+  if (bare === true) return;   // the reading overlay (scan.js) draws on the photo alone
 
   const pts = state.corners.map(toCanvas);
   if (pts.length > 1) {
@@ -420,8 +423,25 @@ async function shrink(maxSide) {
   return { blob, scale };
 }
 
+// The reading overlay over the photo while the server reads it (scan.js); null when it can't run.
+function startScan() {
+  if (!window.BgScan || state.corners.length !== 4) return null;
+  try {
+    canvas.scrollIntoView({ block: "nearest" });
+    const reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return BgScan.start(canvas, { corners: state.corners.map((p) => p.slice()), reduced,
+                                  prepare: () => { drawPhoto(true); return toCanvas; } });
+  } catch (err) {
+    console.warn("no reading overlay:", err);
+    return null;
+  }
+}
+
 $("recognize").addEventListener("click", async () => {
-  busy("盤面を読み取っています…");
+  const scan = startScan();
+  busy("盤面を読み取っています…", !!scan);
+  const skip = () => scan && scan.skip();
+  $("busy").addEventListener("click", skip);
   try {
     const { blob, scale } = await uploadImage();
     const fd = new FormData();
@@ -453,7 +473,13 @@ $("recognize").addEventListener("click", async () => {
     state.warnings = data.warnings || [];
     const g = data.geometry;
     state.geometry = g && { ...g, corners: g.corners.map(([x, y]) => [x / scale, y / scale]),
+                            tips: (g.tips || []).map(([x, y]) => [x / scale, y / scale]),
+                            checkers: (g.checkers || []).map(([x, y, r, side]) => [x / scale, y / scale, r / scale, side]),
                             bitmap: state.bitmap, from: JSON.stringify(state.corners) };
+    if (scan) {   // show what was found on the photo before moving on (a tap skips it)
+      $("busy-text").textContent = "読み取りました（タップで次へ）";
+      await scan.reveal(state.geometry);
+    }
     state.board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
     state.read = { points: rec.points.slice(), bar_white: rec.bar_white, bar_black: rec.bar_black };
     state.home = data.home || (state.homePick === "auto" ? "right" : state.homePick);
@@ -463,9 +489,13 @@ $("recognize").addEventListener("click", async () => {
     show("board");
     setResult(data.analysis, dice);
   } catch (err) {
+    if (scan) scan.stop();
     alert("読み取りに失敗しました: " + err.message);
   } finally {
+    $("busy").removeEventListener("click", skip);
+    if (scan) scan.stop();
     busy();
+    if (currentStep === "corners") drawPhoto();   // the corners again, as before reading
   }
 });
 
