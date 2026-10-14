@@ -429,3 +429,13 @@ def test_api_cube_read_without_dice_is_a_double(monkeypatch):
     a = j["analysis"]
     assert j["cube_read"] == {"at": "white"} and a["on_roll"] == "black"
     assert a["cube"]["question"] == "take" and a["cube"]["taker"] == "white" and a["cube"]["take"] is True
+
+
+def test_4xx_reason_is_logged(caplog):
+    # the access log only has the status; the reason goes to the log too, without the input
+    with caplog.at_level("WARNING", logger="uvicorn.error"):
+        assert client.post("/analyze-photo", files={"image": ("s.png", b"not an image", "image/png")},
+                           data={"corners": "1,2,3,4,5,6,7,8"}).status_code == 422
+        assert client.post("/analyze-photo", data={"home": "secret-value"}).status_code == 422
+    assert "POST /analyze-photo -> 422: could not decode image" in caplog.text
+    assert "body.image: Field required" in caplog.text and "secret-value" not in caplog.text
