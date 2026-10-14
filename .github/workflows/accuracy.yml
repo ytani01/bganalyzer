@@ -19,4 +19,11 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - run: uv run python recognizer/check_accuracy.py
+      - run: uv run python recognizer/check_accuracy.py 2>&1 | tee accuracy.txt; exit ${PIPESTATUS[0]}
+        shell: bash
+      # 結果を注釈にも出す（ログを開かなくても、PR の画面や API から読める）
+      - if: always()
+        run: |
+          [ -f accuracy.txt ] || exit 0
+          body=$(tail -n 40 accuracy.txt | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          echo "::notice title=accuracy::${body}"
