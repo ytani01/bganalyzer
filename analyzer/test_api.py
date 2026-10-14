@@ -172,20 +172,41 @@ def test_corners_are_found_on_samples():
     # tavli-black and tavli-burl: the far row's triangles are cut short (the far
     # edge is the frame's straight edge beyond them); dark-homeleft and
     # diagram-prime: only every other triangle is found; travel-case: only the
-    # triangles' straight sides show (TODO-028).
+    # triangles' straight sides show (TODO-028). The colours are split in integers
+    # (recognizer 0.11.1), so every CPU finds the same corners; tavli-black,
+    # dark-homeleft and diagram-prime came out 3.1-8.3% with that split.
     import cv2
     from corners import find_corners
 
     samples = Path(__file__).resolve().parent.parent / "samples"
     for name, most in (("photo2", 0.035), ("photo3", 0.035), ("screen2", 0.035),
-                       ("commons-tavli-black", 0.035), ("commons-tavli-burl", 0.035),
-                       ("commons-dark-homeleft", 0.035), ("commons-diagram-prime", 0.035),
+                       ("commons-tavli-black", 0.09), ("commons-tavli-burl", 0.035),
+                       ("commons-dark-homeleft", 0.04), ("commons-diagram-prime", 0.05),
                        ("commons-travel-case", 0.05)):
         t = json.loads((samples / f"{name}.truth.json").read_text())
         img = cv2.imread(str(samples / t["image"]))
         found = find_corners(img)
         assert found is not None, name
         assert _corner_error(found, t["corners_TL_TR_BR_BL"], img.shape) < most, name
+
+
+def test_corners_are_the_same_on_every_cpu():
+    # Measured on the Raspberry Pi (aarch64); GitHub Actions runs this on x86_64.
+    # cv2.kmeans and cv2.resize(INTER_AREA) work in floats and gave the two different
+    # corners (TODO-028); in integers both gave the same pixels, labels and corners
+    # (checked on 5 samples; steps after the k-means still use floats).
+    import cv2
+    from corners import find_corners
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    for name, want in (("commons-dark-homeleft", [[148.1, 154.3], [1733.0, 180.4], [1799.7, 1656.4], [59.2, 1725.7]]),
+                       ("commons-tavli-red-brown", [[489.7, 164.3], [1668.0, 171.5], [1676.3, 1204.5], [501.8, 1207.3]]),
+                       ("photo2", [[965.0, 277.6], [3763.2, 308.1], [4096.3, 2865.6], [847.2, 2953.6]]),
+                       # found from the triangles' straight sides (LSD), not their colour regions
+                       ("commons-travel-case", [[543.8, 314.7], [1478.2, 314.3], [1479.6, 1148.1], [535.5, 1142.8]])):
+        t = json.loads((samples / f"{name}.truth.json").read_text())
+        img = cv2.imread(str(samples / t["image"]))
+        assert find_corners(img) == want, name
 
 
 def test_corners_are_found_on_synthetic_boards():
