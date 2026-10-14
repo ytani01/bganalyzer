@@ -29,7 +29,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.25.1"
+__version__ = "0.25.2"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -252,7 +252,12 @@ async def analyze_photo(
     if errors:
         # Let the app show the read board for manual correction.
         return out | {"analysis": None}
-    d = d or (tuple(read) if read else None)
+    if not d and read:
+        d = tuple(read)
+        # dice in the photo: someone has rolled, so no double waits on take or pass (TODO-033).
+        # A cube offered by hand stays where it was set: its side has taken and owns it, and the
+        # player who doubled (on_roll, as sent) rolls these dice.
+        doubled = False
     if cube_value is None:
         cube_value, cube_owner, doubled = 1, None, False
         if cube_read and cube_read["at"] != "centre":

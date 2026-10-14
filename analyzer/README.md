@@ -139,7 +139,7 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 
 写真から認識（`recognizer/board.py`）して、そのまま解析します。
 フィールド: `image`、`corners`（`x1,y1,…,x4,y4`）、`home`（`left`・`right`・`auto`。既定 `right`）、
-`bottom_colour`（意味は recognizer/README.md と同じ）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）、`cube_value`・`cube_owner`・`doubled`（/analyze と同じ）。
+`bottom_colour`（意味は recognizer/README.md と同じ）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）、`cube_value`・`cube_owner`・`doubled`（/analyze と同じ。ただし `dice` を省いて写真からダイスが読めたときは、`doubled` を false にしてチェッカーの手を評価する）。
 
 応答は `{"recognized": 認識結果, "home": "left" か "right", "home_guess": {...} か null, "errors": [...], "warnings": [...], "geometry": {...}, "dice_read": [大, 小] か null, "analysis": 上の /analyze と同じ形}`。
 `dice_read` は写真のフィールドに 2 つのダイスがあって、目を自信を持って読めたときだけ入る（recognizer/README.md の「ダイス」）。

@@ -431,6 +431,32 @@ def test_api_cube_read_without_dice_is_a_double(monkeypatch):
     assert a["cube"]["question"] == "take" and a["cube"]["taker"] == "white" and a["cube"]["take"] is True
 
 
+def test_api_photo_dice_cancel_a_double_set_by_hand(monkeypatch):
+    # TODO-033: 「ダブルされた」set by hand (doubled=true, no dice) and dice read from the photo:
+    # the photo's dice win, so it is no longer take or pass but the doubler's move (was 422)
+    import cv2
+    import numpy as np
+    import board
+
+    def fake(img, corners, **kw):
+        return Position.start(), {"home": "right", "home_guess": None, "warnings": [], "geometry": None,
+                                  "dice": {"values": [3, 1], "dice": []}, "cube": {"at": "white"}}
+
+    monkeypatch.setattr(board, "recognize", fake)
+    ok, png = cv2.imencode(".png", np.zeros((40, 40, 3), np.uint8))
+    form = {"corners": "0,0,40,0,40,40,0,40", "plies": "0", "on_roll": "black",
+            "cube_value": "2", "cube_owner": "white", "doubled": "true"}
+    r = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")}, data=form)
+    assert r.status_code == 200
+    j = r.json()
+    a = j["analysis"]
+    assert j["dice_read"] == [3, 1] and a["on_roll"] == "black" and a["cube"] is None and a["moves"]
+    # dice set by hand are kept as sent, and a double with dice is still refused
+    r = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")},
+                    data=form | {"dice": "6,5"})
+    assert r.status_code == 422
+
+
 def _sample_form(points=None, home="right"):
     truth = {"image": "x.jpg", "corners_TL_TR_BR_BL": [[0, 0], [10, 0], [10, 10], [0, 10]], "home": home,
              "bottom_colour": 1, "points": points or [0] * 24, "bar_white": 0, "bar_black": 0}
