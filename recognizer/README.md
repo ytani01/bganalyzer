@@ -62,20 +62,50 @@ JPEG 品質 0.92 で書き出した写真（PWA は長辺 2560px を超える写
 ### CI での確認（2026-10-14、TODO-035）
 
 `check_accuracy.py` が `samples/*.truth.json` の全部（`samples/external` は除く）を読み、サンプルごとの結果を
-`accuracy_baseline.json` と比べる。正しいポイントの合計が減る・1 枚で 2 ポイント以上減る・バーやホームの推定が外れるようになる・
+`accuracy_baseline.json` と比べる。正しいポイントの合計が減る・1 枚でも減る（0.13.1 までは 2 ポイント以上）・バーやホームの推定が外れるようになる・
 ダイスやキューブの読みが悪くなる（ok → 読めない → 誤り）と失敗する。GitHub Actions の `accuracy`（`.github/workflows/accuracy.yml`）が、
 recognizer・samples・依存を変える PR と main への push で走らせる。
 
-- 基準は x86_64 で測る。CPU によって OpenCV・NumPy・OpenBLAS が使う命令（AVX-512 など）が変わり、そのままでは 1〜4 ポイント動くサンプルがあった
-  （2026-10-14、GitHub の実行機は回ごとに CPU が違う。AMD EPYC 9V45 で 490）。`check_accuracy.py` の中だけ AVX2 までに揃えると、
-  クラウドの Xeon、GitHub の AMD EPYC 7763・9V74、Xeon 8370C で全部同じ 495 になった。まだ試していない CPU のために 1 枚ごとの 1 ポイントの低下は許すが、
-  合計は基準を下回れない。Raspberry Pi（aarch64）の結果では更新しない
+- 0.14.0 から、どの CPU でも途中の値まで同じに読む（下の「CPU で変わらない読み取り」）ので、基準はどの機械で更新してもよい（Pi でも）。
+  0.13.1 までは CPU によって OpenCV・NumPy・OpenBLAS が使う命令（AVX-512 など）が変わって 1〜4 ポイント動くサンプルがあり、
+  `check_accuracy.py` の中だけ AVX2 までに揃え、1 枚ごとの 1 ポイントの低下を許し、Pi では更新しなかった
 - 良くなったときやサンプルを足した・消したときは `uv run python recognizer/check_accuracy.py --update` で書き直してコミットする（上の表も直す）
 - 2026-10-14 の基準: 23 枚で 552 ポイント中 495（recognizer 0.11.0 で 506。TODO-027）。tv-vegas-open を足して 24 枚で 576 ポイント中 528（TODO-044。Pi で足したサンプルは、CI の x86_64 の結果を `check_accuracy.py` の出力から写した）。結果はサンプルの順序や並列に関係なく同じ（OpenCV の乱数の種をサンプルごとに 0 にしている）。
   上の表の photo2 の 23 は 2026-10-13 の値で、この日のクラウドでは 22。
-  recognizer 0.13.1（TODO-044）で 576 ポイント中 529（tv-vegas-open 22 → 23。ほかは変わらない）
+  recognizer 0.13.1（TODO-044）で 576 ポイント中 529（tv-vegas-open 22 → 23。ほかは変わらない）。
+  recognizer 0.14.0（TODO-046）で 576 ポイント中 518（どの CPU でも同じ。サンプルごとの値は `accuracy_baseline.json`。
+  上の表と下の表のサンプルごとの値は、それより前の版で測ったもの）
 - OpenCV の最適化を全部切る（`cv2.setUseOptimized(False)`）案は採らなかった。5 枚の結果が 1〜4 ポイント変わり、アプリと違う動きを測ることになるため
 - `--app`（PWA と同じに縮める）は CI では測らない。ブラウザとの画素の差で結果が動くため（上の段落）
+
+### CPU で変わらない読み取り（2026-10-15、TODO-046、recognizer 0.14.0）
+
+0.13.1 までは、同じ写真でも x86_64 と Raspberry Pi（aarch64）で読みが違った（GitHub の arm64 の実行機で 24 枚中 4 枚、
+SIMD を SSE2 までに落とした x86_64 で 7 枚）。原因は浮動小数点の端数の扱いで、どれも最後の 1 ビットほどの違いが、しきい値・丸め・最大値の選択で
+大きな違いになっていた:
+
+- OpenCV の浮動小数点の処理（`warpPerspective` の座標、`GaussianBlur`・`Sobel` の float 版、`kmeans`、`getPerspectiveTransform`・`findHomography`）は、
+  使う命令（AVX2・NEON、aarch64 の積和の一体化 FMA）で端数が変わる。OpenCV 5 の `warpPerspective` は 8 ビットの画像でも 805 画素が 1 違った
+- NumPy の BLAS・LAPACK（`@`・`inv`・`polyfit`・1 次元の `norm`）は足す順番が CPU で違い、`cos`・`sin`・`arctan2`・`hypot`・`exp`・`interp` も最後の桁が違いうる
+
+そこで読み取り（`board.py`・`dice.py`・`cube.py`）を、どこでも同じになる計算だけで組み直した（`exact.py`）:
+
+- 画像は 8 ビットか整数のまま扱う（`cvtColor`・`GaussianBlur` は 8 ビット、`Sobel` は 16 ビット整数、範囲の引き伸ばし・箱の和は NumPy の整数）
+- 斜めから真上への写し直しは、元の位置を float64 の 1 演算ずつで出して 1/32 画素に切り、`cv2.remap` の整数の補間で混ぜる（`exact.warp`）
+- 射影変換・直線・逆行列は Python の float か NumPy の 1 演算ずつ（足し算の順番は NumPy が決める）で解く。RANSAC は、外れた点を除いて解き直す最小二乗に替えた
+- k-means は整数で（`exact.kmeans`。四隅の推定で TODO-028 がしたのと同じ）。色相の差は `arctan2` でなく余弦で比べる
+- 段の間で渡す値（四隅、盤の幅、列の位置）は細かい格子に丸め、万一の 1 ビットの違いが次の段に届かないようにした
+
+確かめ方: `recognize(trace=...)` が各段の値のハッシュを残し、`trace_cpu.py check` が全サンプルの各段とを `cpu_reference.json` と比べる。
+GitHub Actions の `cpu-match` が x86_64 と arm64 の両方でこれを走らせる。AVX-512 のあるなし（このクラウド環境）でも同じ。
+recognizer を変えた PR は `uv run python recognizer/trace_cpu.py --update` で基準も書き直す。
+
+決めたこと（2026-10-14、ai1）どおり、一致を精度より優先した。精度の基準は 529 → 518 になった:
+case-dice 19 → 23、set-cube-dice 15 → 17、dark-homeleft 20 → 21、tavli-burl 23 → 24、tv-vegas-open 23 → 24 と良くなり、
+leather-cups 20 → 11（列が 1 つずれる。前から Pi では 9 だった）、travel-case 21 → 16、tavli-red-white 24 → 22、screen2 24 → 22、nardy-midgame 18 → 17、photo4 24 → 23 と悪くなった。
+画素が 1/64 画素ずれるだけで合計が 8 ポイント動くほど、今の読み方は細かい違いに敏感で（TODO-028 でも同じことが分かっている）、悪くなったものの多くはこの揺れの範囲。
+種や値を選んで精度を合わせることはしない（TODO-028 と同じ）。また、駒の山の途中で円が見つからなかった駒をキューブと取り違えないよう、
+山の 2 つの駒の間にある正方形はキューブとしない（`cube.py`）。読み取りの時間は 1 枚あたり 0.5〜1.3 秒（10〜20%）増えた（このクラウド環境）。
 
 ### ネット上のサンプル（2026-10-13、TODO-011）
 
@@ -381,7 +411,9 @@ tv-vegas-open の青い駒は面の真ん中に浮き彫りがあり、縁の色
 - `synth.py` 合成画像の生成（正解付き）
 - `evaluate.py` `*.truth.json` と比較して精度を出す（`--slots` で下の試作の読み方）
 - `check_accuracy.py` 精度が `accuracy_baseline.json` より下がっていないか確かめる（CI の `accuracy`。`--update` で基準を書き直す）
-- `slots.py` 位置ごとに判定する読み方の試作（アプリでは使わない）
+- `exact.py` どの CPU でも同じ結果になる計算（射影変換、写し直し、直線、k-means。TODO-046）
+- `trace_cpu.py` 全サンプルの読み取りが途中の値まで `cpu_reference.json` と同じか確かめる（CI の `cpu-match`。`--update` で基準を書き直す）
+- `slots.py` 位置ごとに判定する読み方の試作（アプリでは使わない。float の計算が残っていて、CPU で結果が変わりうる）
 - `collected.py` Pi の `collected/` を測り直し、読み違いの無い古い組を消す（新しい組が 10 たまるとサーバーが起動する）
 - `../samples/photoN.truth.json` ユーザー提供の写真（photoN.jpg）を目視で読んだ正解と四隅
 - `../samples/commons-*.truth.json` Wikimedia Commons の写真の正解と四隅（出典は `../samples/CREDITS.md`）

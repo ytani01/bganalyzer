@@ -1,7 +1,8 @@
 name: cpu-match
 
-# x86_64 と arm64（Raspberry Pi と同じ aarch64）で、全サンプルの読みが同じかを確かめる（TODO-046）。
-# recognizer/trace_cpu.py が読み取りの途中の値のハッシュと結果を出し、最後のジョブで比べる。
+# x86_64 と arm64（Raspberry Pi と同じ aarch64）の両方で、全サンプルの読み取りが途中の値まで
+# recognizer/cpu_reference.json と同じかを確かめる（TODO-046）。recognizer を変えた PR は
+# `uv run python recognizer/trace_cpu.py --update` で基準を書き直して同じ PR に入れる。
 on:
   pull_request:
     paths: [pyproject.toml, uv.lock, recognizer/**, samples/**, .github/workflows/cpu-match.yml]
@@ -11,7 +12,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  trace:
+  check:
     strategy:
       fail-fast: false
       matrix:
@@ -24,25 +25,11 @@ jobs:
           enable-cache: true
       # gnubg は x86_64 の wheel しかない。読み取りには要らないので入れない
       - run: uv sync --frozen --no-install-package gnubg
-      - run: uv run --no-sync python recognizer/trace_cpu.py > trace-${{ runner.arch }}.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: trace-${{ runner.arch }}
-          path: trace-${{ runner.arch }}.json
-
-  compare:
-    needs: trace
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-      - run: python3 recognizer/trace_cpu.py compare trace-X64.json trace-ARM64.json 2>&1 | tee compare.txt; exit ${PIPESTATUS[0]}
+      - run: uv run --no-sync python recognizer/trace_cpu.py check 2>&1 | tee check.txt; exit ${PIPESTATUS[0]}
         shell: bash
       # 結果を注釈にも出す（ログを開かなくても、PR の画面や API から読める）
       - if: always()
         run: |
-          [ -f compare.txt ] || exit 0
-          body=$(tail -n 60 compare.txt | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
-          echo "::notice title=cpu-match::${body}"
+          [ -f check.txt ] || exit 0
+          body=$(tail -n 40 check.txt | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          echo "::notice title=cpu-match ${{ runner.arch }}::${body}"

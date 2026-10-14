@@ -88,6 +88,10 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
         # (A cube can be taken for a checker too: then the circle is a little smaller than the square.)
         if any(exact.hypot(x - c[0], y - c[1]) < c[2] and c[2] > 0.47 * b["side"] / k for c in circles):
             continue
+        # a square in line between two checkers of a stack is a checker whose circle was missed
+        line = [c[1] for c in circles if abs(c[0] - x) < 0.3 * pitch and abs(c[1] - y) < 1.5 * pitch]
+        if any(v < y for v in line) and any(v > y for v in line):
+            continue
         if any(d["sure"] and exact.hypot(x - d["x"], y - d["y"]) < 0.6 * d["side"] for d in dice):
             continue
         # a die: its pips sit like a face

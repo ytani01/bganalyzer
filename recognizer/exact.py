@@ -277,7 +277,7 @@ def warp(img, M, size, nearest=False):
     if nearest:
         xy = np.stack([np.floor(X + 0.5), np.floor(Y + 0.5)], 2).astype(np.int16)
         return cv2.remap(img, xy, None, cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-    fx, fy = np.floor(X * 32).astype(np.int32), np.floor(Y * 32).astype(np.int32)
+    fx, fy = np.floor(X * 32 + 0.5).astype(np.int32), np.floor(Y * 32 + 0.5).astype(np.int32)   # nearest 1/32, as OpenCV rounds
     xy = np.stack([fx >> 5, fy >> 5], 2).astype(np.int16)
     frac = ((fy & 31) * 32 + (fx & 31)).astype(np.uint16)
     return cv2.remap(img, xy, frac, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
