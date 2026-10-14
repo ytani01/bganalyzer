@@ -186,3 +186,66 @@ def test_scan_lines():
     assert bottom[0][1] == pytest.approx(100) and bottom[1][1] == pytest.approx(56)
     assert top[1][0] == pytest.approx(100 / 12)                                    # under the first column
     assert sum(out["sweep"], []) == pytest.approx([108, 0, 108, 100])
+
+
+# Runs scan.js in Node with a canvas that only records what is drawn, frame by frame (16 ms).
+_SCAN_HARNESS = """
+const path = process.argv[1];
+let now = 0; const queue = [];
+global.performance = { now: () => now };
+global.requestAnimationFrame = (f) => { queue.push(f); return queue.length; };
+global.cancelAnimationFrame = () => {};
+const texts = new Set();
+const ctx = new Proxy({}, { get: (o, k) => k === "measureText" ? () => ({ width: 10 }) : k in o ? o[k] : () => {},
+                            set: (o, k, v) => { o[k] = v; return true; } });
+ctx.fillText = (t) => texts.add(String(t));
+global.document = { createElement: () => ({ getContext: () => ctx, width: 0, height: 0 }) };
+const canvas = { width: 800, height: 400, clientWidth: 800, isConnected: true, offsetParent: {}, getContext: () => ctx };
+const s = require(path);
+async function run(ms) { const end = now + ms; while (now < end) { now += 16; queue.splice(0).forEach((f) => f(now)); await null; } }
+const C = [[5, 5], [795, 5], [795, 395], [5, 395]];
+const frame = { corners: C, columns: [0.04,0.12,0.2,0.28,0.36,0.44,0.56,0.64,0.72,0.8,0.88,0.96], bar: [0.47, 0.53] };
+async function go(mode, events) {
+  const sc = s.start(canvas, { mode, corners: C, reduced: false, prepare: () => (p) => p });
+  const seen = [];
+  await run(300);
+  events.forEach((e) => sc.push(e));   // all at once: they are queued and shown in turn
+  let doneAt = null; const t0 = now;
+  sc.done().then(() => { doneAt = now - t0; });
+  for (let k = 0; k < 2000 && doneAt === null; k++) {
+    await run(16);
+    const st = sc.stage();
+    if (st && seen[seen.length - 1] !== st) seen.push(st);
+  }
+  sc.stop();
+  return { seen, doneAt };
+}
+(async () => {
+  const corners = await go("corners", [
+    { stage: "edges", lines: [[[0, 5], [800, 5]], [[0, 395], [800, 395]]] },
+    { stage: "uprights", lines: [[[5, 5], [5, 395]]] },
+    { stage: "candidates", quads: [C] },
+    { stage: "corners", corners: C }]);
+  s.STAGE_MS.fit = 300;   // one stage made shorter
+  const reading = await go(undefined, [
+    { stage: "fit", ...frame, by: "edges", round: 1 }, { stage: "fit", ...frame, by: "triangles", round: 1 },
+    { stage: "tips", tips: [[10, 10]] }, { stage: "checkers", ...frame, checkers: [[50, 50, 10, "white"]] },
+    { stage: "counts", counts: [{ at: [50, -5], n: 13, side: "black" }] },
+    { stage: "dice", dice: [{ quad: [[400, 180], [420, 180], [420, 200], [400, 200]], value: 5 }] },
+    { stage: "cube", cube: null }]);
+  console.log(JSON.stringify({ corners, reading, texts: [...texts] }));
+})();
+"""
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_overlays_show_stages_in_turn_with_only_numbers():
+    r = subprocess.run(["node", "-e", _SCAN_HARNESS, str(STATIC / "scan.js")], capture_output=True, text=True, check=True)
+    out = json.loads(r.stdout)
+    assert out["corners"]["seen"] == ["edges", "uprights", "candidates", "corners"]
+    assert out["corners"]["doneAt"] == pytest.approx(4000, abs=50)            # 1 s each
+    assert out["reading"]["seen"] == ["fit", "tips", "checkers", "counts", "dice", "cube"]
+    assert out["reading"]["doneAt"] == pytest.approx(2 * 300 + 5 * 1000, abs=80)   # fit made 0.3 s
+    # no words on the photo: only the numbers counted and the dice read (ai1, 2026-10-15)
+    assert out["texts"] and all(t.isdigit() for t in out["texts"])
+    assert set(out["texts"]) == {"13", "5"}
