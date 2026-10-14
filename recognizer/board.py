@@ -41,7 +41,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.11.1"
+__version__ = "0.12.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height

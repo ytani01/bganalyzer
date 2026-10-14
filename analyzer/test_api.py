@@ -430,7 +430,9 @@ def test_cube_is_found_on_a_drawn_board():
 
     lay = Layout(a=430, bar=70)
     H = np.eye(3)
-    for x, y, text, at in ((650, 150, "2", "black"), (650, 500, "64", "centre"), (650, 850, "4", "white")):
+    # on the bar (x 430 to 500): where it lies up or down; in a field: just doubled (TODO-045)
+    for x, y, text, at in ((465, 150, "2", "black"), (465, 500, "64", "centre"), (465, 850, "4", "white"),
+                           (650, 500, "2", "field"), (200, 150, "2", "field")):
         img = np.full((int(lay.h), int(lay.w), 3), (40, 70, 30), np.uint8)
         _draw_cube(img, x, y, 60, text)
         assert cube.read_cube(img, H, lay, 80.0)["at"] == at, text
@@ -474,6 +476,33 @@ def test_api_cube_read_without_dice_is_a_double(monkeypatch):
     a = j["analysis"]
     assert j["cube_read"] == {"at": "white"} and a["on_roll"] == "black"
     assert a["cube"]["question"] == "take" and a["cube"]["taker"] == "white" and a["cube"]["take"] is True
+
+
+def test_api_cube_in_a_field_is_a_double_even_with_dice(monkeypatch):
+    # TODO-045: the cube in a playing field: the side on roll (手前) has just doubled to 2, 奥 takes or
+    # passes, and the dice on the board are left out
+    import cv2
+    import numpy as np
+    import board
+
+    def fake(img, corners, **kw):
+        return Position.start(), {"home": "right", "home_guess": None, "warnings": [], "geometry": None,
+                                  "dice": {"values": [3, 1], "dice": []}, "cube": {"at": "field"}}
+
+    monkeypatch.setattr(board, "recognize", fake)
+    ok, png = cv2.imencode(".png", np.zeros((40, 40, 3), np.uint8))
+    form = {"corners": "0,0,40,0,40,40,0,40", "plies": "0", "on_roll": "white"}
+    for extra in ({}, {"dice": "6,5"}):
+        r = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")}, data=form | extra)
+        assert r.status_code == 200
+        j = r.json()
+        a = j["analysis"]
+        assert j["cube_read"] == {"at": "field"} and j["dice_read"] is None
+        assert a["on_roll"] == "white" and a["cube"]["question"] == "take" and a["cube"]["taker"] == "black"
+    # a cube set by hand comes first: then the dice are used
+    j = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")},
+                    data=form | {"cube_value": "1"}).json()
+    assert j["analysis"]["cube"] is None and j["analysis"]["moves"]
 
 
 def test_api_photo_dice_cancel_a_double_set_by_hand(monkeypatch):

@@ -35,7 +35,7 @@ RECOGNIZER = Path(__file__).resolve().parent.parent / "recognizer"
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.32.0"
+__version__ = "0.33.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -266,10 +266,15 @@ async def analyze_photo(
     # geometry: where the recognizer found the board and its columns (image pixels of the sent image),
     # so the app can line the photo up with the read board.
     # dice_read: the two dice lying in the fields, when the recognizer is sure of them (else null)
-    # cube_read: where the doubling cube lies, {"at": "centre" | "white" | "black"} (its number is not read), or null
+    # cube_read: where the doubling cube lies, {"at": "centre" | "white" | "black" | "field"} (its number is not read), or null
     read = info["dice"]["values"]
     cube = info.get("cube")
     cube_read = cube and {"at": cube["at"]}
+    # a cube in a playing field (TODO-045): the side on roll has just doubled to 2, and the other side
+    # takes or passes. Dice on the board (read or sent) are left out: no one rolls before the answer.
+    field_double = cube_value is None and bool(cube_read) and cube_read["at"] == "field"
+    if field_double:
+        read, d = None, None
     out = {"recognized": pos.to_dict(), "home": info["home"], "home_guess": info["home_guess"], "errors": errors, "warnings": warnings, "geometry": info.get("geometry"),
            "dice_read": read, "cube_read": cube_read}
     if errors:
@@ -283,7 +288,9 @@ async def analyze_photo(
         doubled = False
     if cube_value is None:
         cube_value, cube_owner, doubled = 1, None, False
-        if cube_read and cube_read["at"] != "centre":
+        if field_double:
+            cube_value, cube_owner, doubled = 2, "black" if on_roll == "white" else "white", True
+        elif cube_read and cube_read["at"] != "centre":
             # a cube on one side shows 2 or more (2 when unread); with no dice, it has just been offered there
             cube_value, cube_owner, doubled = 2, cube_read["at"], d is None
             if doubled:
