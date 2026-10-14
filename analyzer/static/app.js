@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.23.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.24.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -40,6 +40,7 @@ const state = {
   fromPhoto: false,
   warnings: [],      // the server's notes on the photo (e.g. taken at a steep angle)
   board: null,       // {points[24], bar_white, bar_black}
+  read: null,        // the board as the recognizer read it, before fixes by hand (same layout as board)
   selected: null,    // point index 0..23, or "bar"
   result: null,
   speech: null,      // the result read aloud (speechText) by the header's 🔊 button
@@ -80,6 +81,7 @@ function show(step) {
     $("to-board").hidden = !(state.fromPhoto && state.board);
     requestAnimationFrame(drawPhoto);
   }
+  if (step === "board") $("export-sample").hidden = !(state.fromPhoto && state.board);
   if (step === "board" || step === "outcome") drawBoard();
   if (step === "photo") renderHistory();
   window.scrollTo(0, 0);
@@ -150,6 +152,7 @@ async function loadPhoto(file) {
     state.file = file;
     state.fromPhoto = true;
     state.board = null;
+    state.read = null;
     state.warnings = [];
     setDice(null);   // the dice of the last position are not this photo's
     setCube(null);
@@ -212,6 +215,7 @@ async function decode(file) {
 
 $("manual").addEventListener("click", () => {
   state.fromPhoto = false;
+  state.read = null;
   state.historyId = null;
   state.warnings = [];
   state.board = { points: START.slice(), bar_white: 0, bar_black: 0 };
@@ -445,6 +449,7 @@ $("recognize").addEventListener("click", async () => {
     state.geometry = g && { ...g, corners: g.corners.map(([x, y]) => [x / scale, y / scale]),
                             bitmap: state.bitmap, from: JSON.stringify(state.corners) };
     state.board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
+    state.read = { points: rec.points.slice(), bar_white: rec.bar_white, bar_black: rec.bar_black };
     state.home = data.home || (state.homePick === "auto" ? "right" : state.homePick);
     state.homeGuess = data.home_guess || null;
     state.selected = null;
@@ -831,10 +836,19 @@ function boardChanged() {
   saveHistory();
 }
 
-$("swap-colours").addEventListener("click", () => {
-  const b = state.board;
+// Swapping colours or sides changes the layout, so the recognizer's reading (state.read) follows.
+function swapColours(b) {
   b.points = b.points.map((n) => -n);
   [b.bar_white, b.bar_black] = [b.bar_black, b.bar_white];
+}
+
+function mirror(b) {
+  b.points = b.points.map((_, i) => b.points[i < 12 ? 11 - i : 35 - i]);
+}
+
+$("swap-colours").addEventListener("click", () => {
+  swapColours(state.board);
+  if (state.read) swapColours(state.read);
   state.bottomColour = 1 - state.bottomColour;
   syncColours();
   boardChanged();
@@ -842,8 +856,8 @@ $("swap-colours").addEventListener("click", () => {
 
 // The board was read with the home on the wrong side: mirror it left to right.
 $("flip-home").addEventListener("click", () => {
-  const b = state.board;
-  b.points = b.points.map((_, i) => b.points[i < 12 ? 11 - i : 35 - i]);
+  mirror(state.board);
+  if (state.read) mirror(state.read);
   state.home = state.home === "right" ? "left" : "right";
   state.homeGuess = null;
   state.selected = null;
@@ -1165,6 +1179,7 @@ function saveHistory() {
     dice: currentDice(),
     cube: currentCube(),
     board: state.board,
+    read: state.read,
     warnings: state.warnings,
   }).catch(() => {});
 }
@@ -1191,6 +1206,7 @@ async function openHistory(id) {
     state.fromPhoto = true;
     state.warnings = e.warnings || [];
     state.board = e.board || null;
+    state.read = e.read || null;
     state.selected = null;
     setDice(e.dice);
     setCube(e.cube || null);
@@ -1246,6 +1262,47 @@ async function renderHistory() {
     ul.append(li);
   }
 }
+
+// ---------------------------------------------------------------- a sample for the recognizer (sample.js)
+// The photo and the board as fixed by hand, as two files (photo + truth.json) to send to the
+// developers so the recognizer can be measured and improved on them. Nothing goes to the server.
+$("export-sample").addEventListener("click", async () => {
+  try {
+    // the stored copy (the size the app sends anyway) with the corners in its pixels, else the photo itself
+    const e = state.historyId && await PhotoHistory.get(state.historyId).catch(() => null);
+    const blob = (e && e.image) || state.file;
+    const s = e && e.image ? state.historyScale : 1;
+    const name = BgSample.baseName(new Date());
+    const ext = blob.type === "image/png" ? "png" : "jpg";
+    const truth = BgSample.truth({
+      image: `${name}.${ext}`,
+      corners: state.corners.map(([x, y]) => [x * s, y * s]),
+      home: state.home, bottomColour: state.bottomColour, board: state.board,
+      dice: currentDice(), cube: currentCube(), read: state.read,
+    });
+    const files = [
+      new File([blob], `${name}.${ext}`, { type: blob.type || "image/jpeg" }),
+      new File([JSON.stringify(truth) + "\n"], `${name}.truth.json`, { type: "application/json" }),
+    ];
+    if (navigator.canShare && navigator.canShare({ files })) {
+      try {
+        await navigator.share({ files, title: "BG Analyzer のサンプル" });
+      } catch (err) {
+        if (err.name !== "AbortError") throw err;
+      }
+      return;
+    }
+    for (const f of files) {   // no share sheet (a PC): download both
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(f);
+      a.download = f.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+  } catch (err) {
+    alert("書き出せませんでした: " + err.message);
+  }
+});
 
 // ---------------------------------------------------------------- colours & init
 function syncColours() {
