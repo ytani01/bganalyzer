@@ -38,7 +38,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.6.2"
+__version__ = "0.7.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -819,7 +819,7 @@ def count_from_circles(circles, lay: Layout, pitch: float):
 
 
 def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
-              a_ratio=None, debug_prefix=None):
+              a_ratio=None, debug_prefix=None, method="circles"):
     """corners: TL, TR, BR, BL of the playing area as seen from the bottom player.
     home: 'left', 'right' or 'auto' (guessed from the checkers; info['home'] says which)."""
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
@@ -872,6 +872,13 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
     runs, bar, cc = count_from_circles(circles, lay, pitch)
+    if method == "slots" and cc is not None:   # experimental (TODO-032): slots.py
+        import slots
+        labf = cv2.GaussianBlur(ground_lab, (0, 0), 1.5)
+        gx = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 1, 0) for i in range(3))
+        gy = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 0, 1) for i in range(3))
+        runs = slots.count_by_slots(ground_lab, gx, gy, board, lay, m, pitch, tri_map, tri_len,
+                                    cc, circles, runs)
     guessed = None
     if home == "auto":   # which way the checkers move: guess from where they stand
         home, margin = home_prior.guess(to_position(runs, bar, bottom_colour, "right").points)
