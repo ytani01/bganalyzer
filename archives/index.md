@@ -4,6 +4,7 @@
 作り直すので、手で直さない。やらないと決めたものは（対応しない）が付いている。
 進行中の項目は [TODO.md](../TODO.md) にある。
 
+- [TODO-041. git の無い環境で `test_version_reports_both_parts_and_commit` が落ちる](todo/TODO-041.%20git%20%E3%81%AE%E7%84%A1%E3%81%84%E7%92%B0%E5%A2%83%E3%81%A7%20%60test_version_reports_both_parts_and_commit%60%20%E3%81%8C%E8%90%BD%E3%81%A1%E3%82%8B.md)
 - [TODO-040. 最初の画面の並べ方（コツを上、3 つのボタンを横並び）](todo/TODO-040.%20%E6%9C%80%E5%88%9D%E3%81%AE%E7%94%BB%E9%9D%A2%E3%81%AE%E4%B8%A6%E3%81%B9%E6%96%B9%EF%BC%88%E3%82%B3%E3%83%84%E3%82%92%E4%B8%8A%E3%80%813%20%E3%81%A4%E3%81%AE%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%A8%AA%E4%B8%A6%E3%81%B3%EF%BC%89.md)
 - [TODO-039. 盤面を読み取っている間に、途中の補助線を写真に重ねて見せる](todo/TODO-039.%20%E7%9B%A4%E9%9D%A2%E3%82%92%E8%AA%AD%E3%81%BF%E5%8F%96%E3%81%A3%E3%81%A6%E3%81%84%E3%82%8B%E9%96%93%E3%81%AB%E3%80%81%E9%80%94%E4%B8%AD%E3%81%AE%E8%A3%9C%E5%8A%A9%E7%B7%9A%E3%82%92%E5%86%99%E7%9C%9F%E3%81%AB%E9%87%8D%E3%81%AD%E3%81%A6%E8%A6%8B%E3%81%9B%E3%82%8B.md)
 - [TODO-038. collected／ の組を自動で測り直し、古い組を消す](todo/TODO-038.%20collected%EF%BC%8F%20%E3%81%AE%E7%B5%84%E3%82%92%E8%87%AA%E5%8B%95%E3%81%A7%E6%B8%AC%E3%82%8A%E7%9B%B4%E3%81%97%E3%80%81%E5%8F%A4%E3%81%84%E7%B5%84%E3%82%92%E6%B6%88%E3%81%99.md)
