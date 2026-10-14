@@ -36,7 +36,7 @@ RECOGNIZER = Path(__file__).resolve().parent.parent / "recognizer"
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.35.0"
+__version__ = "0.36.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -224,7 +224,10 @@ def analyze_endpoint(req: AnalyzeRequest):
 
 
 @app.post("/find-corners")
-async def find_corners_endpoint(image: UploadFile = File(...)):
+async def find_corners_endpoint(
+    image: UploadFile = File(...),
+    stream: bool = Form(False, description="answer as NDJSON lines: each stage of the search as it is done, then the result"),
+):
     """A first guess at the playing area's corners (TL, TR, BR, BL), for the app to show
     before the user adjusts them. corners is null when no board was found."""
     from corners import find_corners  # recognizer (OpenCV); imported lazily
@@ -232,7 +235,12 @@ async def find_corners_endpoint(image: UploadFile = File(...)):
     img = cv2.imdecode(np.frombuffer(await image.read(), np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         raise HTTPException(422, "could not decode image")
-    return {"corners": find_corners(img), "width": img.shape[1], "height": img.shape[0]}
+    size = {"width": img.shape[1], "height": img.shape[0]}
+    if stream:
+        return StreamingResponse(_stream_stages(lambda progress: {"corners": find_corners(img, progress)} | size),
+                                 media_type="application/x-ndjson",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    return {"corners": find_corners(img)} | size
 
 
 @app.post("/analyze-photo")
@@ -275,7 +283,7 @@ async def analyze_photo(
 
 async def _stream_stages(work):
     """Runs work(progress) in a thread and yields NDJSON lines: {"stage": ..., ...} for each stage the
-    recognizer reports, then {"stage": "done", "result": what /analyze-photo returns}, or
+    recognizer reports, then {"stage": "done", "result": what the endpoint returns}, or
     {"stage": "error", "detail": ...} (the status is already 200 by then)."""
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue = asyncio.Queue()

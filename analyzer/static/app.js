@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.35.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.36.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -238,17 +238,39 @@ function defaultCorners() {
   return [[mx, my], [iw - mx, my], [iw - mx, ih - my], [mx, ih - my]];
 }
 
+// The search for the corners shown on the photo as it goes (scan.js), stage by stage; a tap skips it.
+let cornerScan = null;
+
+function startCornerScan() {
+  if (!window.BgScan || currentStep !== "corners") return null;
+  try {
+    const [iw, ih] = imgSize();
+    const reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return BgScan.start(canvas, { mode: "corners", corners: [[0, 0], [iw, 0], [iw, ih], [0, ih]], reduced,
+                                  prepare: () => { drawPhoto(true); return toCanvas; } });
+  } catch (err) {
+    console.warn("no corner search overlay:", err);
+    return null;
+  }
+}
+
 async function guessCorners(file) {
   let corners = null;
+  if (cornerScan) cornerScan.stop();   // the search for the last photo
+  const scan = cornerScan = startCornerScan();
   try {
     const { blob, scale } = await uploadImage();   // the guess is steadier from the larger image
     const fd = new FormData();
     fd.append("image", blob, "board.jpg");
-    const data = await post("find-corners", fd);
+    fd.append("stream", "true");   // each stage of the search as it is done
+    const data = await postStages("find-corners", fd, (ev) => scan && scan.push(scaleGeometry(ev, scale)));
     if (data.corners) corners = data.corners.map(([x, y]) => [x / scale, y / scale]);
+    if (scan && data.streamed && state.file === file) await scan.done();   // every stage shown (or tapped)
   } catch (_) { /* keep the rectangle */ }
+  if (scan) scan.stop();
+  if (cornerScan === scan) cornerScan = null;
   // the user may have moved on to another photo, or started on the corners already
-  if (state.file !== file || state.cornerGuess !== "finding") return;
+  if (state.file !== file || state.cornerGuess !== "finding") { if (state.file === file) drawPhoto(); return; }
   if (state.cornersMoved) state.cornerGuess = "moved";
   else if (corners) [state.corners, state.cornerGuess] = [corners, "found"];
   else state.cornerGuess = "default";
@@ -343,6 +365,9 @@ function toImage(e) {
 }
 
 canvas.addEventListener("pointerdown", (e) => {
+  // a tap while the search is shown stops showing it, and works on the corners as before (the guess,
+  // when it comes, is not put over corners the user has moved)
+  if (cornerScan) { cornerScan.stop(); cornerScan = null; drawPhoto(); }
   if (!view) return;
   const r = canvas.getBoundingClientRect();
   const px = e.clientX - r.left, py = e.clientY - r.top;
@@ -436,6 +461,8 @@ function startScan() {
 }
 
 $("recognize").addEventListener("click", async () => {
+  if (cornerScan) { cornerScan.stop(); cornerScan = null; }   // reading now: the corners as they are
+  if (state.cornerGuess === "finding") state.cornerGuess = "";   // and a guess coming later does not move them
   const scan = startScan();
   busy("盤面を読み取っています…", !!scan);
   const skip = () => scan && scan.skip();
@@ -1034,6 +1061,9 @@ function scaleGeometry(g, scale) {
   if (g.counts) out.counts = g.counts.map((c) => ({ ...c, at: p(c.at) }));
   if (g.dice) out.dice = g.dice.map((d) => ({ ...d, quad: d.quad.map(p) }));
   if (g.cube) out.cube = { ...g.cube, quad: g.cube.quad.map(p) };
+  // the search for the corners (find-corners)
+  if (g.lines) out.lines = g.lines.map((l) => l.map(p));
+  if (g.quads) out.quads = g.quads.map((q) => q.map(p));
   return out;
 }
 
