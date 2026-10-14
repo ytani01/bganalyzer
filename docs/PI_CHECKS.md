@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-028、PI-029、PI-030。** これまでに 27 件を決着させた。
+**残っている項目: PI-029、PI-030。** これまでに 28 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-031`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -93,7 +93,8 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
   `uv run python recognizer/check_corners.py --app` を走らせる。スマホで写真を読み込み、四隅の初期値と、出るまでの時間を見る
 - **期待:** `trace_cpu.py check` が「same as the reference」。`check_corners.py --app` が「within 3.6%: 16, further: 8, not found: 0」。
   1 枚の時間（右の列）はこのクラウド環境で 1.0〜1.8 秒なので、Pi では数倍かかりうる。5 秒を大きく超えるならユーザーに報告する
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-15、3421c7e。`/version` は analyzer 0.35.0・recognizer 0.16.0。`trace_cpu.py check` は「same as the reference: every step of every sample」（終了コード 0）。
+  `check_corners.py --app` は「within 3.6%: 16, further: 8, not found: 0」。1 枚の時間は Pi でも 0.93〜1.77 秒で、5 秒より十分短い。OK
 - [ ] スマホ: ai1 の盤の写真で、四隅の初期値がどれくらい合っているか、出るまで待たされないか（ai1）
 
 ## PI-029. 読み取りの途中経過を段階ごとに 1 秒ずつ見せる（analyzer 0.35.0、recognizer 0.15.0）
@@ -107,18 +108,10 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - **期待:** `board` から `cube` までの 6 行が、認識の進みに合わせて少しずつ届き（Funnel や service worker が最後にまとめていない）、最後に `done`。
   スマホでは、段階ごとに 1 秒ずつ「枠と列を合わせました」「三角形の先」「駒の候補」「数えました（ポイントの外側に数）」「ダイス」「キューブ」が順に出て、
   最後の段階のあとに盤面の画面に進む（タップで飛ばせる）。左下のラベルの先頭が切れていない（TODO-047）
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-15、3421c7e。Pi の上（127.0.0.1:8000）と公開 URL 経由の両方で、`board` → `tips`（+0.0 秒）→ `checkers`（+0.8〜1.0 秒）→ `counts` → `dice`（+1.1〜1.3 秒）→ `cube`（+2.0 秒）→ `done` が
+  認識の進みに合わせて届いた（最初の行まで 3.2〜3.6 秒）。Funnel でまとめられていない。なお `corners` は JSON の配列ではなく `749,234,...` のカンマ区切りで渡す（配列だと 422）。OK
 - [ ] スマホ: 途中経過の見え方と待ち時間（ai1）
 
-## PI-028. Pi の読み取りが途中の値まで基準と同じ（recognizer 0.14.0）
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-15（TODO-046）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.14.0 以降。PI-027 と同じく Pi の上で
-  `uv run python recognizer/trace_cpu.py check` と `uv run python recognizer/check_accuracy.py` を走らせる（基準は更新しない）
-- **期待:** `trace_cpu.py check` が「same as the reference: every step of every sample」で終わる（終了コード 0）。`check_accuracy.py` が 576 ポイント中 518 で、失敗しない（0.13.1 の Pi は 527、x86_64 は 529 だった。0.14.0 からは同じ値になる）。
-  違ったら、出力の「first different step」をユーザーに報告する（その段に、Pi で端数が変わる計算が残っている）
-- [ ] Pi: （結果をここに書く）
 
 ## 完了済み
 
