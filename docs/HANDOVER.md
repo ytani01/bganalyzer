@@ -107,6 +107,8 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
   [PI_CHECKS.md](PI_CHECKS.md) に足す。Pi の上の Claude Code が git pull のあとに読んで確かめ、結果を書き込む（CLAUDE.md）。
   2026-10-13 から TODO.md と同じ決まり（通し番号・担当・`- [ ]`・決着したら `archives/pi/` へ）で管理する（TODO-026）。
 - **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR と main への push で `uv run pytest analyzer` を実行する。
+  `accuracy`（`.github/workflows/accuracy.yml`、TODO-035）は recognizer・samples・依存を変える PR で、認識の精度が
+  `recognizer/accuracy_baseline.json` より下がっていないかを確かめる。
 
 ## 6. ぶつからないための決まり
 

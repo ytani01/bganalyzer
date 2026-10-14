@@ -1,0 +1,22 @@
+name: accuracy
+
+# 認識の精度が recognizer/accuracy_baseline.json より下がったら失敗する（TODO-035）。
+# samples/*.truth.json の全部を recognizer/check_accuracy.py で読む（2 コアで約 70 秒）。
+on:
+  pull_request:
+    paths: [pyproject.toml, uv.lock, recognizer/**, samples/**, .github/workflows/accuracy.yml]
+  push:
+    branches: [main]
+    paths: [pyproject.toml, uv.lock, recognizer/**, samples/**, .github/workflows/accuracy.yml]
+  workflow_dispatch:
+
+jobs:
+  accuracy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run python recognizer/check_accuracy.py

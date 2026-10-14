@@ -57,6 +57,19 @@ JPEG 品質 0.92 で書き出した写真（PWA は長辺 2560px を超える写
 同じ版の OpenCV（5.0.0）でも、Raspberry Pi（aarch64）で測ると leather-cups 9、photo2 22 になる（上の表は x86_64 のクラウド環境の値。
 ダイスを入れる前のコミットでも同じなので、後退ではない。2026-10-13、TODO-017）。recognizer 0.5.1 の leather-cups は Pi で 19。
 
+### CI での確認（2026-10-14、TODO-035）
+
+`check_accuracy.py` が `samples/*.truth.json` の全部（`samples/external` は除く）を読み、サンプルごとの結果を
+`accuracy_baseline.json` と比べる。正しいポイントの数が減る・バーやホームの推定が外れるようになる・ダイスやキューブの読みが
+悪くなる（ok → 読めない → 誤り）と失敗する。GitHub Actions の `accuracy`（`.github/workflows/accuracy.yml`）が、
+recognizer・samples・依存を変える PR と main への push で走らせる。
+
+- 基準は x86_64 で測る（CI とクラウド）。Raspberry Pi の結果では更新しない
+- 良くなったときやサンプルを足した・消したときは `uv run python recognizer/check_accuracy.py --update` で書き直してコミットする（上の表も直す）
+- 2026-10-14 の基準: 23 枚で 552 ポイント中 495。結果はサンプルの順序や並列に関係なく同じ（OpenCV の乱数の種をサンプルごとに 0 にしている）。
+  この日の x86_64 では photo2 は 22（上の表の 23 は 2026-10-13 の値）
+- `--app`（PWA と同じに縮める）は CI では測らない。ブラウザとの画素の差で結果が動くため（上の段落）
+
 ### ネット上のサンプル（2026-10-13、TODO-011）
 
 `samples/commons-*` は Wikimedia Commons の写真（出典は [samples/CREDITS.md](../samples/CREDITS.md)）。
@@ -291,6 +304,7 @@ TODO-024 で足した 4 枚では、diagram-holding が 3.0%、set-cube-dice が
 - `cube.py` キューブの場所
 - `synth.py` 合成画像の生成（正解付き）
 - `evaluate.py` `*.truth.json` と比較して精度を出す（`--slots` で下の試作の読み方）
+- `check_accuracy.py` 精度が `accuracy_baseline.json` より下がっていないか確かめる（CI の `accuracy`。`--update` で基準を書き直す）
 - `slots.py` 位置ごとに判定する読み方の試作（アプリでは使わない）
 - `../samples/photoN.truth.json` ユーザー提供の写真（photoN.jpg）を目視で読んだ正解と四隅
 - `../samples/commons-*.truth.json` Wikimedia Commons の写真の正解と四隅（出典は `../samples/CREDITS.md`）
