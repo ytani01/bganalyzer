@@ -1,7 +1,7 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: なし。** これまでに 27 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-028`。**
+**残っている項目: PI-028。** これまでに 27 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-029`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
 マージしたあと、自宅の Raspberry Pi（公開している本番）でしか確かめられないことの一覧です。
@@ -84,6 +84,16 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
+
+## PI-028. Pi の読み取りが途中の値まで基準と同じ（recognizer 0.14.0）
+
+- **担当:** ai1（Pi の Claude Code）
+- **足した日・PR:** 2026-10-15（TODO-046）
+- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.14.0 以降。PI-027 と同じく Pi の上で
+  `uv run python recognizer/trace_cpu.py check` と `uv run python recognizer/check_accuracy.py` を走らせる（基準は更新しない）
+- **期待:** `trace_cpu.py check` が「same as the reference: every step of every sample」で終わる（終了コード 0）。`check_accuracy.py` が 576 ポイント中 518 で、失敗しない（0.13.1 の Pi は 527、x86_64 は 529 だった。0.14.0 からは同じ値になる）。
+  違ったら、出力の「first different step」をユーザーに報告する（その段に、Pi で端数が変わる計算が残っている）
+- [ ] Pi: （結果をここに書く）
 
 ## 完了済み
 

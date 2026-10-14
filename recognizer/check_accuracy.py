@@ -3,8 +3,7 @@
 Runs evaluate.run on every samples/*.truth.json (not samples/external, which needs the
 network) and compares each sample with accuracy_baseline.json:
 
-  points  correct points out of 24. Each sample may be 1 below its baseline (see below),
-          but the total must not go below the sum of the baselines
+  points  correct points out of 24; must not go down (nor the total)
   bar     the bar checkers read right; must not go from ok to wrong
   home    the guess of the home side; must not go from ok to wrong
   dice    "ok" > "not read" > "WRONG"; must not go down
@@ -13,35 +12,17 @@ network) and compares each sample with accuracy_baseline.json:
   uv run python recognizer/check_accuracy.py            # check (exit 1 on a regression)
   uv run python recognizer/check_accuracy.py --update   # rewrite the baseline with this run
 
-With the SIMD capped below, every x86_64 machine tried reads the same (2026-10-14: the cloud's
-Xeon, GitHub's AMD EPYC 7763 / 9V74 and Xeon 8370C). The 1-point slack per sample is a guard
-against a machine not tried yet; the total stays strict, so a real loss still fails.
-Raspberry Pi (aarch64) differs (recognizer/README.md), so don't update the baseline from a Pi run.
+Since recognizer 0.14.0 (TODO-046) every machine reads every sample the same, bit for bit
+(x86_64 with or without AVX-512, GitHub's arm64 runners, the Raspberry Pi; recognizer/trace_cpu.py
+checks it), so the baseline may be updated on any of them and no slack is needed.
 """
 import glob, json, os, sys
 from concurrent.futures import ProcessPoolExecutor
 
-# Read with the same SIMD code on every x86_64 machine: OpenCV, NumPy and OpenBLAS pick their
-# code by CPU, and AVX-512 machines read some samples 1-4 points differently from AVX2 ones
-# (GitHub Actions gets a different CPU each run). Cap them at AVX2. Set before cv2/numpy load.
-def _has_avx512():
-    try:
-        with open("/proc/cpuinfo") as f:
-            return " avx512f" in f.read()
-    except OSError:
-        return False
-
-
-if _has_avx512():  # OpenCV warns when asked to disable a feature the CPU lacks
-    for var, value in (("OPENCV_CPU_DISABLE", "AVX512-SKX"),
-                       ("NPY_DISABLE_CPU_FEATURES", "X86_V4 AVX512_ICL AVX512_SPR"),
-                       ("OPENBLAS_CORETYPE", "Haswell")):
-        os.environ.setdefault(var, value)
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASELINE = os.path.join(HERE, "accuracy_baseline.json")
 SAMPLES = os.path.join(HERE, "..", "samples")
-SLACK = 1  # points a sample may lose against its baseline (the total may not)
+SLACK = 0  # points a sample may lose against its baseline (was 1 while CPUs read differently)
 RANK = {"dice": ["WRONG", "not read", "ok"], "cube": ["WRONG", "not found", "ok"]}
 
 

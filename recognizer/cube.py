@@ -8,10 +8,13 @@ photo cannot tell, so the analyzer decides it from on_roll). The number on it is
 """
 from __future__ import annotations
 
+import math
+
 import cv2
 import numpy as np
 
 import dice as dice_reader
+import exact
 
 SIDE_MIN, SIDE_MAX = 0.45, 1.15    # cube side / checker diameter
 MARGIN = 2.2                       # how far (checker diameters) to look beyond the playing area, left and right
@@ -59,15 +62,16 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
     Returns dict(at="centre" | "white" | "black" | "field", x, y, side) in canonical coordinates.
     "field": the whole cube lies in a playing field (not on the bar, not beyond the board), where a
     player puts it when doubling (TODO-045)."""
-    corners = cv2.perspectiveTransform(lay.src_pts()[None], H)[0]
-    k = float(np.clip(np.sqrt(cv2.contourArea(corners) / (lay.w * lay.h)), 1, max(1.0, dice_reader.WORK_PITCH / pitch)))
+    corners = exact.apply_h(H, lay.src_pts())
+    k = exact.snap(np.clip(math.sqrt(exact.polygon_area(corners) / (lay.w * lay.h)), 1,
+                           max(1.0, dice_reader.WORK_PITCH / pitch)), 2.0 ** -20)
     mx = MARGIN * pitch
     size = (int((lay.w + 2 * mx) * k), int(lay.h * k))
-    S = np.array([[k, 0, k * mx], [0, k, 0], [0, 0, 1]], np.float64)
-    ground = cv2.warpPerspective(img, S @ np.linalg.inv(H), size, flags=cv2.INTER_AREA)
+    M = exact.mul3([[k, 0, k * mx], [0, k, 0], [0, 0, 1]], exact.inv3(H))   # in Python floats (TODO-046)
+    ground = exact.warp(img, M, size)
     gray = cv2.cvtColor(ground, cv2.COLOR_BGR2GRAY)
     # the part of the view that is in the photo (outside it the warp is black, and its edge a "square")
-    inside = cv2.warpPerspective(np.full(img.shape[:2], 255, np.uint8), S @ np.linalg.inv(H), size, flags=cv2.INTER_NEAREST)
+    inside = exact.warp(np.full(img.shape[:2], 255, np.uint8), M, size, nearest=True)
     inside = cv2.erode(inside, np.ones((3, 3), np.uint8), iterations=3)
     inside[:3], inside[-3:], inside[:, :3], inside[:, -3:] = 0, 0, 0, 0
 
@@ -82,9 +86,13 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
         x, y = b["x"] / k - mx, b["y"] / k
         # not a checker (a stack's checkers can make a square), not a die read by dice.py.
         # (A cube can be taken for a checker too: then the circle is a little smaller than the square.)
-        if any(np.hypot(x - c[0], y - c[1]) < c[2] and c[2] > 0.47 * b["side"] / k for c in circles):
+        if any(exact.hypot(x - c[0], y - c[1]) < c[2] and c[2] > 0.47 * b["side"] / k for c in circles):
             continue
-        if any(d["sure"] and np.hypot(x - d["x"], y - d["y"]) < 0.6 * d["side"] for d in dice):
+        # a square in line between two checkers of a stack is a checker whose circle was missed
+        line = [c[1] for c in circles if abs(c[0] - x) < 0.3 * pitch and abs(c[1] - y) < 1.5 * pitch]
+        if any(v < y for v in line) and any(v > y for v in line):
+            continue
+        if any(d["sure"] and exact.hypot(x - d["x"], y - d["y"]) < 0.6 * d["side"] for d in dice):
             continue
         # a die: its pips sit like a face
         if any(dice_reader._face_value(dice_reader._pips(gray, b, dark, 0.5), b) for dark in (True, False)):
@@ -95,9 +103,9 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
         found.append(b | dict(cx=x, cy=y))
     cubes = []
     for b in sorted(found, key=lambda b: -b["side"]):
-        if any(np.hypot(b["cx"] - c["x"], b["cy"] - c["y"]) < 0.6 * c["side"] for c in cubes):
+        if any(exact.hypot(b["cx"] - c["x"], b["cy"] - c["y"]) < 0.6 * c["side"] for c in cubes):
             continue
-        seen = [o for o in found if np.hypot(b["cx"] - o["cx"], b["cy"] - o["cy"]) < 0.5 * b["side"] / k]
+        seen = [o for o in found if exact.hypot(b["cx"] - o["cx"], b["cy"] - o["cy"]) < 0.5 * b["side"] / k]
         cubes.append(dict(x=round(float(b["cx"]), 1), y=round(float(b["cy"]), 1),
                           side=round(float(b["side"] / k), 1), seen=len(seen)))
     if debug is not None:
