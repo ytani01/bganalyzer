@@ -35,6 +35,12 @@ def test_analyze_photo_returns_geometry():
     cols = g["columns"]
     assert len(cols) == 12 and cols == sorted(cols) and 0 < cols[0] and cols[-1] < 1
     assert cols[5] < g["bar"][0] < g["bar"][1] < cols[6]
+    # for the reading overlay (scan.js): triangle tips and checker circles in image pixels
+    xs, ys = [x for x, _ in t["corners_TL_TR_BR_BL"]], [y for _, y in t["corners_TL_TR_BR_BL"]]
+    assert isinstance(g["tips"], list) and all(min(xs) - 40 < x < max(xs) + 40 and min(ys) - 40 < y < max(ys) + 40 for x, y in g["tips"])
+    ck = g["checkers"]
+    assert ck and all(r > 0 and side in ("white", "black") for _, _, r, side in ck)
+    assert {side for *_, side in ck} == {"white", "black"}
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
@@ -66,3 +72,38 @@ def test_photo_helpers():
     assert out["same"] == [x * 10 + y for y in range(3) for x in range(4)]
     assert out["shifted"] == [10, 20, 30]
     assert out["interp"] == pytest.approx([0, 0.25, 0.75, 1.5])
+
+
+def test_scan_script_is_served_and_cached():
+    assert client.get("/scan.js").status_code == 200
+    assert '<script src="scan.js"></script>' in client.get("/").text
+    assert '"scan.js"' in (STATIC / "sw.js").read_text()
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_scan_lines():
+    script = f"""
+    const s = require({json.dumps(str(STATIC / "scan.js"))});
+    const plain = s.layout(null);
+    const fitted = s.layout({{columns: [0.04, 0.12, 0.2, 0.28, 0.36, 0.44, 0.56, 0.64, 0.72, 0.8, 0.88, 0.96], bar: [0.47, 0.53]}});
+    const L = s.lines([[0, 0], [216, 0], [216, 100], [0, 100]], plain);
+    console.log(JSON.stringify({{ plain, fitted, quad: L.quad, mid: L.mid, bar: L.bar, tris: L.tris, sweep: L.sweep(0.5) }}));
+    """
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    out = json.loads(r.stdout)
+    p = out["plain"]
+    assert len(p["cols"]) == 12 and p["cols"] == sorted(p["cols"])
+    assert p["cols"][5] < p["bar"][0] < p["bar"][1] < p["cols"][6]
+    assert p["bar"][1] - p["bar"][0] == pytest.approx(0.16 * p["bar"][0])   # the bar is 0.16 of a field
+    assert out["fitted"]["cols"][0] == 0.04 and out["fitted"]["pw"] == pytest.approx(0.08)
+    # a rectangle maps straight onto the image: 216 px wide, the board is 2 fields and a bar
+    for (x, y), (qx, qy) in zip(out["quad"], [[0, 0], [216, 0], [216, 100], [0, 100]]):
+        assert x == pytest.approx(qx) and y == pytest.approx(qy)
+    assert [pt[1] for pt in out["mid"]] == pytest.approx([50, 50])
+    assert out["bar"][0][0][0] == pytest.approx(100) and out["bar"][1][0][0] == pytest.approx(116)
+    assert len(out["tris"]) == 24
+    top, bottom = out["tris"][0], out["tris"][1]
+    assert top[0][1] == pytest.approx(0) and top[1][1] == pytest.approx(44)       # tip at 0.44 of the height
+    assert bottom[0][1] == pytest.approx(100) and bottom[1][1] == pytest.approx(56)
+    assert top[1][0] == pytest.approx(100 / 12)                                    # under the first column
+    assert sum(out["sweep"], []) == pytest.approx([108, 0, 108, 100])

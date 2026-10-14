@@ -165,16 +165,23 @@ def test_corners_are_found_on_samples():
     # The app shows these as the starting corners; the user drags them into place.
     # Boards with printed triangles are found; carved ones (photo4) and striped app
     # screens (screen1) may not be, and the app then starts from a rectangle.
+    # tavli-black and tavli-burl: the far row's triangles are cut short (the far
+    # edge is the frame's straight edge beyond them); dark-homeleft and
+    # diagram-prime: only every other triangle is found; travel-case: only the
+    # triangles' straight sides show (TODO-028).
     import cv2
     from corners import find_corners
 
     samples = Path(__file__).resolve().parent.parent / "samples"
-    for name in ("photo2", "photo3", "screen2"):
+    for name, most in (("photo2", 0.035), ("photo3", 0.035), ("screen2", 0.035),
+                       ("commons-tavli-black", 0.035), ("commons-tavli-burl", 0.035),
+                       ("commons-dark-homeleft", 0.035), ("commons-diagram-prime", 0.035),
+                       ("commons-travel-case", 0.05)):
         t = json.loads((samples / f"{name}.truth.json").read_text())
         img = cv2.imread(str(samples / t["image"]))
         found = find_corners(img)
         assert found is not None, name
-        assert _corner_error(found, t["corners_TL_TR_BR_BL"], img.shape) < 0.035, name
+        assert _corner_error(found, t["corners_TL_TR_BR_BL"], img.shape) < most, name
 
 
 def test_corners_are_found_on_synthetic_boards():
@@ -187,7 +194,7 @@ def test_corners_are_found_on_synthetic_boards():
         board_img, c = render_board(random_position(rng), rng, home="right" if k % 2 else "left")
         photo, c = photograph(board_img, c, rng)
         found = find_corners(photo)
-        assert found is not None and _corner_error(found, c, photo.shape) < 0.035, k
+        assert found is not None and _corner_error(found, c, photo.shape) < 0.02, k
 
 
 def test_api_find_corners():
