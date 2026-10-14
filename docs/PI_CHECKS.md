@@ -95,7 +95,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
   Android の Chrome で写真を読み取り、盤面の画面の「精度改善用に書き出す」を押す（古い app.js が残っていたら再読み込み）。
 - **期待:** `/version` が analyzer 0.25.3。2 つの確認が OK。Android の Chrome でエラーが出ず、写真と `.truth.json` の 2 つがダウンロードされる。
 - [ ] Pi: （結果をここに書く）
-- [ ] スマホ: Android の Chrome で 2 つがダウンロードされる（ai1）
+- [ ] スマホ: Android の Chrome で 2 つがダウンロードされる。1 つだけなら、どちらが落ちたかと、許可を求められたかを書く（ai1）
 
 ---
 
