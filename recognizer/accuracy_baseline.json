@@ -12,7 +12,7 @@
  "commons-tavli-black": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "commons-tavli-blue": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "commons-tavli-burl": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
- "commons-tavli-grey": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
+ "commons-tavli-grey": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "commons-tavli-red-brown": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "commons-tavli-red-diamond": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "commons-tavli-red-white": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},

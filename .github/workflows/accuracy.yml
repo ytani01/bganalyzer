@@ -25,5 +25,6 @@ jobs:
       - if: always()
         run: |
           [ -f accuracy.txt ] || exit 0
-          body=$(tail -n 40 accuracy.txt | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          { grep -m1 'model name' /proc/cpuinfo; cat accuracy.txt; } > note.txt
+          body=$(tail -n 40 note.txt | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
           echo "::notice title=accuracy::${body}"
