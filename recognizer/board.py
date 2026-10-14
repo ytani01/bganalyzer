@@ -645,6 +645,8 @@ def column_texture(gx, gy, lay: Layout, m: int, pitch: float):
     for row in ("top", "bottom"):
         for k in range(TEX_DEPTHS):
             dep = pitch * (k + 0.5)
+            if dep > lay.h / 2 - pitch / 2:   # big checkers: this depth is on the other row
+                break
             y = int(m + (dep if row == "top" else lay.h - dep))
             ratio = []
             for c in range(12):
@@ -758,17 +760,16 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     # where the triangle's sides show through there is no checker, unless the circle is
     # in line with ones that are (in an oblique photo, the sides of a stack look like them;
     # a stack: at least two such circles in the column)
-    keep = [s for s in scored if not s[5]]
-    rest = [s for s in scored if s[5]]
+    keep = {i for i, s in enumerate(scored) if not s[5]}
     while True:
-        more = [s for s in rest if any(abs(s[1] - k[1]) < 0.25 * pitch and abs(s[2] - k[2]) < 1.3 * pitch for k in keep)
+        more = {i for i, s in enumerate(scored) if i not in keep
+                and any(abs(s[1] - scored[k][1]) < 0.25 * pitch and abs(s[2] - scored[k][2]) < 1.3 * pitch for k in keep)
                 and sum(abs(s[1] - k[1]) < 0.25 * pitch and (s[2] < lay.h / 2) == (k[2] < lay.h / 2)
-                        for k in scored if not k[5]) >= 2]
+                        for k in scored if not k[5]) >= 2}
         if not more:
             break
-        keep += more
-        rest = [s for s in rest if s not in more]
-    scored = [s[:5] for s in keep]
+        keep |= more
+    scored = [s[:5] for i, s in enumerate(scored) if i in keep]
 
     def clear(cx, cy, out):
         # overlapping checkers of one stack are allowed closer, straight in line
