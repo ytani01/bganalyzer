@@ -100,6 +100,29 @@ def test_move_hops_on_the_board():
     assert run_moves('m.hops(board(START), "white", "5/1")') is None   # no checker there
 
 
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_move_hops_from_steps():
+    # the API's steps, one per die: "22/15" with 5-2 passes 17 (no hit), drawn as two arrows
+    p = [0] * 24
+    p[21], p[16] = 1, 0
+    assert run_moves(f'm.hops(board({p}), "white", [[22, 17], [17, 15]])') == [
+        {"from": 21, "to": 16, "fromLevel": 0, "toLevel": 0, "hit": False},
+        {"from": 16, "to": 14, "fromLevel": 0, "toLevel": 0, "hit": False},
+    ]
+    # "22/17*/15": the hit on the way is on the first hop
+    p[16] = -1
+    assert run_moves(f'm.hops(board({p}), "white", [[22, 17], [17, 15]])')[0]["hit"] is True
+    # from the bar and bearing off, for black
+    p = [0] * 24
+    p[2], p[21] = -1, -2
+    assert run_moves(f'm.hops(board({p}, 0, 1), "black", [[25, 22], [3, 0]])') == [
+        {"from": "bar", "to": 2, "fromLevel": 0, "toLevel": 1, "hit": False},
+        {"from": 21, "to": "off", "fromLevel": 1, "toLevel": 0, "hit": False},
+    ]
+    assert run_moves('m.hops(board(START), "white", [[24, 18, 13]])') is None   # not a pair
+    assert run_moves('m.hops(board(START), "white", [[5, 1]])') is None          # no checker there
+
+
 def test_cube_script_is_served_and_cached():
     assert client.get("/cube.js").status_code == 200
     assert '<script src="cube.js"></script>' in client.get("/").text

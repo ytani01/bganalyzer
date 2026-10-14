@@ -35,7 +35,10 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None):
     if dice is not None:
         found = gnubg.find_best_moves(board, gnubg.cube_info(), ctx, tuple(dice))
         tuples = _complete_moves(gnubg, board, ctx, tuple(dice), found, max_moves)
+        # steps: one [from, to] per die, as gnubg plays them (points by the side on roll,
+        # 25 = bar, 0 = off), so "22/15" can be drawn through the point it passes
         moves = [{"move": gnubg.move_tuple_to_string(t, board),
+                  "steps": [[t[k], t[k + 1]] for k in range(0, len(t), 2)],
                   "equity": round(m["score"], 3)} for t, m in zip(tuples, found)]
     return probs, moves
 

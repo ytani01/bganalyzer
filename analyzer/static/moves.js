@@ -27,8 +27,13 @@ const BgMoves = (() => {
   // [{from: i | "bar", to: i | "off", fromLevel, toLevel, hit}], where a level is the place in the
   // stack (0 = the checker at the edge of the board) the checker leaves from or lands on.
   // null when the move does not fit the board.
+  // move is gnubg's string, or the API's steps ([[from, to], ...], one per die, same numbering):
+  // with steps, "22/15" comes out as the two hops 22/17 and 17/15.
   function hops(board, side, move) {
-    const list = parse(move);
+    const list = Array.isArray(move)
+      ? (move.every((s) => Array.isArray(s) && s.length === 2 && s.every((n) => Number.isInteger(n) && n >= 0 && n <= 25))
+        ? move.map(([from, to]) => ({ from, to })) : null)
+      : parse(move);
     if (!list) return null;
     const sign = side === "white" ? 1 : -1;
     const pts = board.points.slice();
