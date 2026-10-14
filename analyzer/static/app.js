@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.24.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.25.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -16,6 +16,10 @@ const $ = (id) => document.getElementById(id);
 
 function storedPlies() {
   try { return localStorage.getItem("plies") === "3" ? "3" : "2"; } catch (_) { return "2"; }
+}
+
+function storedCollect() {
+  try { return localStorage.getItem("collect") === "on" ? "on" : "off"; } catch (_) { return "off"; }
 }
 
 function analysingText() {
@@ -36,6 +40,7 @@ const state = {
   cubeAt: "centre",  // where the doubling cube lies: "centre", "white" (手前's side) or "black" (cube.js)
   cubeValue: 2,      // the number on it when on a side
   cubeOffered: true, // on a side with no dice: just offered there (take or pass?), not owned
+  collect: storedCollect(),   // "on": keep the photo and the fixed board on the server (sendSample)
   plies: storedPlies(),   // how deep gnubg reads: "2" or "3" (kept on this phone)
   fromPhoto: false,
   warnings: [],      // the server's notes on the photo (e.g. taken at a steep angle)
@@ -952,6 +957,7 @@ $("analyze").addEventListener("click", async () => {
   const errs = boardErrors();
   if (errs.length) { alert(errs.join("\n")); return; }
   if (state.selected !== null) select(state.selected);   // done editing
+  sendSample();
   // The result on hand still fits the board and settings (e.g. worked out when the photo was read): just show it.
   if (state.result && !$("result").classList.contains("stale") &&
       state.resultKey === analysisKey(state.board, state.onRoll, currentDice())) {
@@ -1265,21 +1271,40 @@ async function renderHistory() {
 
 // ---------------------------------------------------------------- a sample for the recognizer (sample.js)
 // The photo and the board as fixed by hand, as two files (photo + truth.json) to send to the
-// developers so the recognizer can be measured and improved on them. Nothing goes to the server.
+// developers so the recognizer can be measured and improved on them; with 「Pi に残す」 on, the
+// same pair goes to the server each time the board is analysed (POST /samples).
+async function sampleOf(name) {
+  // the stored copy (the size the app sends anyway) with the corners in its pixels, else the photo itself
+  const e = state.historyId && await PhotoHistory.get(state.historyId).catch(() => null);
+  const blob = (e && e.image) || state.file;
+  const s = e && e.image ? state.historyScale : 1;
+  const ext = blob.type === "image/png" ? "png" : "jpg";
+  const truth = BgSample.truth({
+    image: `${name}.${ext}`,
+    corners: state.corners.map(([x, y]) => [x * s, y * s]),
+    home: state.home, bottomColour: state.bottomColour, board: state.board,
+    dice: currentDice(), cube: currentCube(), read: state.read,
+  });
+  return { blob, ext, truth };
+}
+
+// Keep this photo and its board on the server, when the user has turned that on. Never in the way.
+async function sendSample() {
+  if (state.collect !== "on" || !state.fromPhoto || !state.board || !state.historyId) return;
+  try {
+    const { blob, ext, truth } = await sampleOf(`user-${state.historyId}`);
+    const fd = new FormData();
+    fd.append("id", state.historyId);
+    fd.append("truth", JSON.stringify(truth));
+    fd.append("image", blob, `${state.historyId}.${ext}`);
+    await post("samples", fd);
+  } catch (_) { /* not kept this time */ }
+}
+
 $("export-sample").addEventListener("click", async () => {
   try {
-    // the stored copy (the size the app sends anyway) with the corners in its pixels, else the photo itself
-    const e = state.historyId && await PhotoHistory.get(state.historyId).catch(() => null);
-    const blob = (e && e.image) || state.file;
-    const s = e && e.image ? state.historyScale : 1;
     const name = BgSample.baseName(new Date());
-    const ext = blob.type === "image/png" ? "png" : "jpg";
-    const truth = BgSample.truth({
-      image: `${name}.${ext}`,
-      corners: state.corners.map(([x, y]) => [x * s, y * s]),
-      home: state.home, bottomColour: state.bottomColour, board: state.board,
-      dice: currentDice(), cube: currentCube(), read: state.read,
-    });
+    const { blob, ext, truth } = await sampleOf(name);
     const files = [
       new File([blob], `${name}.${ext}`, { type: blob.type || "image/jpeg" }),
       new File([JSON.stringify(truth) + "\n"], `${name}.truth.json`, { type: "application/json" }),
@@ -1340,6 +1365,9 @@ $("flip-turn").addEventListener("click", () => {
   if (state.result) $("analyze").click();
 });
 initSeg("photoView", drawBoard);
+initSeg("collect", () => {
+  try { localStorage.setItem("collect", state.collect); } catch (_) { /* private mode */ }
+});
 initSeg("plies", () => {
   try { localStorage.setItem("plies", state.plies); } catch (_) { /* private mode */ }
   if (state.result) $("result").classList.add("stale");
@@ -1358,6 +1386,7 @@ fetch(API ? `${API}/version` : "version")
     const old = v.analyzer !== APP_VERSION;   // an old app.js still cached on this device
     $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + (old ? `（新しい ${v.analyzer} は開き直すと出ます）` : "");
     $("hdr-version").classList.toggle("old", old);
+    $("collect-opt").hidden = $("collect-note").hidden = !v.samples;
     $("version").textContent = `analyzer ${v.analyzer} · recognizer ${v.recognizer}` +
       (v.commit ? ` · ${v.commit}` : "") +
       (v.analyzer !== APP_VERSION ? `（画面は ${APP_VERSION}。開き直すと新しくなります）` : "");

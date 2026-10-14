@@ -431,11 +431,54 @@ def test_api_cube_read_without_dice_is_a_double(monkeypatch):
     assert a["cube"]["question"] == "take" and a["cube"]["taker"] == "white" and a["cube"]["take"] is True
 
 
+def _sample_form(points=None, home="right"):
+    truth = {"image": "x.jpg", "corners_TL_TR_BR_BL": [[0, 0], [10, 0], [10, 10], [0, 10]], "home": home,
+             "bottom_colour": 1, "points": points or [0] * 24, "bar_white": 0, "bar_black": 0}
+    return {"truth": json.dumps(truth)}
+
+
+def test_samples_off_unless_configured(monkeypatch):
+    monkeypatch.delenv("BG_SAMPLES_DIR", raising=False)
+    assert client.get("/version").json()["samples"] is False
+    r = client.post("/samples", data={"id": "1-a", **_sample_form()}, files={"image": ("a.jpg", b"jpg", "image/jpeg")})
+    assert r.status_code == 404
+
+
+def test_samples_saved_and_replaced(monkeypatch, tmp_path):
+    monkeypatch.setenv("BG_SAMPLES_DIR", str(tmp_path))
+    assert client.get("/version").json()["samples"] is True
+    r = client.post("/samples", data={"id": "17-ab", **_sample_form()}, files={"image": ("a.png", b"png1", "image/png")})
+    assert r.status_code == 200 and r.json() == {"saved": "user-17-ab"}
+    # the same photo again (fixed once more, now a JPEG): the earlier pair is replaced
+    pts = [0] * 24
+    pts[5] = 2
+    r = client.post("/samples", data={"id": "17-ab", **_sample_form(pts)}, files={"image": ("a.jpg", b"jpg2", "image/jpeg")})
+    assert r.status_code == 200
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["user-17-ab.jpg", "user-17-ab.truth.json"]
+    t = json.loads((tmp_path / "user-17-ab.truth.json").read_text())
+    assert t["image"] == "user-17-ab.jpg" and t["points"][5] == 2
+    assert (tmp_path / "user-17-ab.jpg").read_bytes() == b"jpg2"
+
+
+def test_samples_rejects_bad_input(monkeypatch, tmp_path):
+    monkeypatch.setenv("BG_SAMPLES_DIR", str(tmp_path))
+    img = {"image": ("a.jpg", b"jpg", "image/jpeg")}
+    assert client.post("/samples", data={"id": "../x", **_sample_form()}, files=img).status_code == 422
+    assert client.post("/samples", data={"id": "1", **_sample_form([0] * 23)}, files=img).status_code == 422
+    assert client.post("/samples", data={"id": "1", **_sample_form(home="up")}, files=img).status_code == 422
+    assert client.post("/samples", data={"id": "1", **_sample_form()},
+                       files={"image": ("a.gif", b"gif", "image/gif")}).status_code == 422
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_4xx_reason_is_logged(caplog):
     # the access log only has the status; the reason goes to the log too, without the input
     with caplog.at_level("WARNING", logger="uvicorn.error"):
         assert client.post("/analyze-photo", files={"image": ("s.png", b"not an image", "image/png")},
                            data={"corners": "1,2,3,4,5,6,7,8"}).status_code == 422
-        assert client.post("/analyze-photo", data={"home": "secret-value"}).status_code == 422
-    assert "POST /analyze-photo -> 422: could not decode image" in caplog.text
-    assert "body.image: Field required" in caplog.text and "secret-value" not in caplog.text
+        assert client.post("/analyze-photo", data={"plies": "secret-value"}).status_code == 422
+        assert client.post("/analyze", json={"position_id": "bad\nFAKE LINE"}).status_code == 422
+    assert "POST /analyze-photo -> 422: 'could not decode image'" in caplog.text
+    assert "body.image: Field required" in caplog.text and "body.plies:" in caplog.text
+    assert "secret-value" not in caplog.text
+    assert "\nFAKE LINE" not in caplog.text and "bad\\nFAKE LINE" in caplog.text
