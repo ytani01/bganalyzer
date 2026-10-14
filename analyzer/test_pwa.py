@@ -27,17 +27,19 @@ def test_history_helpers():
       keep: h.KEEP,
       big: h.fitScale(4000, 3000, 2048),
       small: h.fitScale(1000, 800, 2048),
-      drop: h.idsToDrop([{{id: "a", time: 1}}, {{id: "b", time: 4}}, {{id: "c", time: 3}}, {{id: "d", time: 2}}]),
+      drop: h.idsToDrop([{{id: "a", time: 1}}, {{id: "b", time: 4}}, {{id: "c", time: 3}}, {{id: "d", time: 2}}], 3),
+      dropDefault: h.idsToDrop(Array.from({{length: 12}}, (_, i) => ({{id: "e" + i, time: i}}))),
       none: h.idsToDrop([{{id: "a", time: 1}}, {{id: "b", time: 2}}]),
     }};
     console.log(JSON.stringify(out));
     """
     r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
     out = json.loads(r.stdout)
-    assert out["keep"] == 3
+    assert out["keep"] == 10
     assert out["big"] == pytest.approx(2048 / 4000)
     assert out["small"] == 1
     assert out["drop"] == ["a"]     # the oldest beyond the newest 3
+    assert out["dropDefault"] == ["e1", "e0"]   # by default the newest 10 stay
     assert out["none"] == []
 
 
