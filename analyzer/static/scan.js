@@ -297,7 +297,7 @@
                                              : "▶ ダイスは見つかりません";
       return r.cube ? "▶ キューブ（" + CUBE_AT[r.cube.at] + "）" : "▶ キューブは見つかりません";
     }
-    const CUBE_AT = { centre: "真ん中", white: "手前", black: "奥" };
+    const CUBE_AT = { centre: "真ん中", white: "手前", black: "奥", field: "盤の中＝ダブル" };
 
     function frame(now) {
       if (stopped) return;

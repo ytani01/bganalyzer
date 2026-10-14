@@ -1,7 +1,7 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-025。** これまでに 24 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-026`。**
+**残っている項目: PI-025、PI-026。** これまでに 24 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-027`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
 マージしたあと、自宅の Raspberry Pi（公開している本番）でしか確かめられないことの一覧です。
@@ -85,11 +85,21 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
 
+## PI-026. 盤の中のキューブを「ダブルされたところ」と読む（recognizer 0.13.0、analyzer 0.34.0）
+
+- **担当:** ai1（Pi の Claude Code）
+- **足した日・PR:** 2026-10-14（TODO-045）
+- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.13.0・analyzer 0.34.0。`uv run python recognizer/evaluate.py` か
+  `/analyze-photo` で `samples/tv-vegas-open` を読む（`on_roll=white`）
+- **期待:** `cube_read` が `{"at": "field"}`、`analysis.cube.question` が `take`、`taker` が `black`、`dice_read` が null。
+  ほかのサンプルのキューブの読みは前と同じ（photo3・screen2 など）
+- [ ] Pi: （結果をここに書く）
+
 ## PI-025. 読み取りの演出で駒・ダイス・キューブを約 0.5 秒ずつ見せる（analyzer 0.33.0、recognizer 0.12.0）
 
 - **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
 - **足した日・PR:** 2026-10-14（ユーザーの依頼）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が analyzer 0.33.0・recognizer 0.12.0。`samples/screen1.png` と `samples/screen2.jpg` を `/analyze-photo` に送り、`geometry` の `dice` と `cube` を見る。スマホで、ダイスとキューブの写った写真を読み取る
+- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が analyzer 0.33.0・recognizer 0.12.0 以降。`samples/screen1.png` と `samples/screen2.jpg` を `/analyze-photo` に送り、`geometry` の `dice` と `cube` を見る。スマホで、ダイスとキューブの写った写真を読み取る
 - **期待:** screen1 は `dice` の目が 4 と 2、`cube` は null。screen2 は `dice` の目が 5 と 4、`cube.at` が `"black"`（x86_64 と同じ）。スマホでは、駒の円のあと、ダイスに水色の四角と目、キューブに桃色の四角が順に出て、約 2 秒で盤面の画面に進む（タップで飛ばせる）
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 演出の見え方と長さ（ai1）

@@ -2,8 +2,9 @@
 
 Works like dice.py, on the board seen from straight above, but looks a little beyond the playing
 area too (the cube often waits on the frame or by the side of the board).
-Says where the cube lies: in the middle (no one owns it), or on 手前's (white) or 奥's (black) side.
-The number on it is not read.
+Says where the cube lies: in the middle (no one owns it), on 手前's (white) or 奥's (black) side,
+or in a playing field ("field": just doubled; the side doubled is the one not on roll, which the
+photo cannot tell, so the analyzer decides it from on_roll). The number on it is not read.
 """
 from __future__ import annotations
 
@@ -44,10 +45,20 @@ def _ink(gray, body):
     return best
 
 
+def in_field(lay, c) -> bool:
+    """Whether the whole cube c (canonical x, y, side) lies in one of the two playing fields."""
+    half = c["side"] / 2
+    fields = ((0, lay.a), (lay.a + lay.bar, lay.w))
+    return (half <= c["y"] <= lay.h - half
+            and any(lo + half <= c["x"] <= hi - half for lo, hi in fields))
+
+
 def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
     """The cube near the board, or None. H maps board.py's canonical board (no margin) to the photo.
 
-    Returns dict(at="centre" | "white" | "black", x, y, side) in canonical coordinates."""
+    Returns dict(at="centre" | "white" | "black" | "field", x, y, side) in canonical coordinates.
+    "field": the whole cube lies in a playing field (not on the bar, not beyond the board), where a
+    player puts it when doubling (TODO-045)."""
     corners = cv2.perspectiveTransform(lay.src_pts()[None], H)[0]
     k = float(np.clip(np.sqrt(cv2.contourArea(corners) / (lay.w * lay.h)), 1, max(1.0, dice_reader.WORK_PITCH / pitch)))
     mx = MARGIN * pitch
@@ -102,4 +113,6 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
     c = cubes[0]
     off = c["y"] / lay.h - 0.5
     at = "centre" if abs(off) < MIDDLE else "white" if off > 0 else "black"
+    if in_field(lay, c):
+        at = "field"
     return dict(at=at, x=c["x"], y=c["y"], side=c["side"])
