@@ -95,7 +95,9 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - **期待:** `/find-corners` が `edges` → `uprights` → `candidates` → `corners` → `done` の順に返し、`done` の四隅は `stream` なしと同じ。
   スマホでは、写真を読み込むと走査線のあと「横の縁の候補」「縦の縁の候補」「盤らしい四角形の候補を比べています」「四隅が決まりました」が 1 秒ずつ出てから四隅の点が置かれる（タップで飛ばせる）。
   読み取りでは「四隅を枠の線に合わせました（1・2 回目）」「三角形の並びで四隅を合わせ直しました（1・2 回目）」のあと、PI-029 の段階が続く
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-15、d0ed8b1。`/version` は analyzer 0.36.0・recognizer 0.17.0。`/find-corners` の `stream=true` は `edges` → `uprights`（+0.9 秒）→ `candidates` → `corners`（+0.6 秒）→ `done` の順に届き、
+  `done` の四隅は `stream` なしと同じ（`[[779.5,263.2],[2934.6,133.9],[3269.8,2376.5],[646.0,2507.7]]`）。読み取りの `stream=true` は `fit` が 4 行（合わせ直しの 1・2 回目ずつ）のあと `tips` → `checkers` → `counts` → `dice` → `cube` → `done`。
+  `trace_cpu.py check` は「same as the reference」（終了コード 0）、`check_accuracy.py` は 518/576（基準 518）、`check_corners.py --app` は「within 3.6%: 16, further: 8, not found: 0」で PI-030 と同じ。`pi_ui_check.py` も 5 つとも OK
 - [ ] スマホ: 四隅探しの見え方と、写真を読み込んでから四隅を動かせるまでの待ち時間（ai1）
 
 ## PI-030. 四隅の初期値を新しい作り方で出す（recognizer 0.16.0）
