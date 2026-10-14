@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-014、PI-018。** これまでに 16 件を決着させた。
+**残っている項目: なし。** これまでに 18 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-019`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -84,32 +84,6 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
-
----
-
-## PI-018. 共有に断られても「精度改善用に書き出す」で 2 つがダウンロードされる（analyzer 0.25.3）
-
-- **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
-- **足した日・PR:** 2026-10-14、PR #94（TODO-036）
-- **確かめ方:** 更新のあと `/version` を見て、`tools/pi_ui_check.py export export-denied` を走らせる。
-  Android の Chrome で写真を読み取り、盤面の画面の「精度改善用に書き出す」を押す（古い app.js が残っていたら再読み込み）。
-- **期待:** `/version` が analyzer 0.25.3。2 つの確認が OK。Android の Chrome でエラーが出ず、写真と `.truth.json` の 2 つがダウンロードされる。
-- [x] Pi: 2026-10-14、410ef89。`/version` は analyzer 0.25.3。`pi_ui_check.py export export-denied` が両方 OK（写真と `.truth.json` の 2 つ、盤面とダイスが画面と同じ）。OK
-- [ ] スマホ: Android の Chrome で 2 つがダウンロードされる。1 つだけなら、どちらが落ちたかと、許可を求められたかを書く（ai1）
-
----
-
-## PI-014. 盤面の画面の「精度改善用に書き出す」（analyzer 0.24.0）
-
-- **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
-- **足した日・PR:** 2026-10-14、精度改善用の書き出し（TODO-030）
-- **確かめ方:** 更新のあと `/version` と `/sample.js` を見る。スマホで写真を読み取り、盤面の画面の「精度改善用に書き出す」を押す。
-- **期待:** `/version` が analyzer 0.24.0（かそれ以降）、`/sample.js` が 200。スマホでは共有の画面が開くか（iPhone など）、2 つともダウンロードされ（Android の Chrome）、
-  写真と `.truth.json` の 2 つのファイルを保存したり送ったりできる。
-- [x] Pi: 2026-10-14、d312151。`/version` は analyzer 0.24.0・recognizer 0.6.2、`/sample.js` は 200。OK
-- [x] スマホの代わり: 2026-10-14、701d757（analyzer 0.25.2）。`tools/pi_ui_check.py` の `export`。共有の画面が無いときの動きで、写真と `.truth.json` の 2 つがダウンロードされ、盤面とダイスが画面と同じ。OK
-- [ ] スマホ: iPhone などで共有の画面が開き、2 つのファイルをプロジェクトのチャットに添付できる（ai1）
-  - 2026-10-14、701d757（analyzer 0.25.2）。Android の Chrome で「書き出せませんでした: Permission denied」。Chrome は `.json` を共有できないので `navigator.share` が `NotAllowedError` で断り、ダウンロードにも切り替わらないと見ている（TODO-036）。NG
 
 ---
 
