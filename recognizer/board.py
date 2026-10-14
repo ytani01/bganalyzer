@@ -42,7 +42,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.16.0"
+__version__ = "0.17.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -1026,9 +1026,10 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     """corners: TL, TR, BR, BL of the playing area as seen from the bottom player.
     home: 'left', 'right' or 'auto' (guessed from the checkers; info['home'] says which).
     trace: a list to append (step, hash of its value) to, for finding where two machines part.
-    progress: called as progress(stage, data) when each stage is done ("board", "tips", "checkers",
-    "counts", "dice", "cube"), with the parts of info["geometry"] it found (image pixels), for showing
-    the reading as it goes. It does not change what is read."""
+    progress: called as progress(stage, data) when each stage is done ("fit" four times: the frame
+    fitted to the frame's edges twice, then to the triangles twice; then "tips", "checkers", "counts",
+    "dice", "cube"), with the parts of info["geometry"] it found (image pixels), for showing the
+    reading as it goes. It does not change what is read."""
     emit = progress or (lambda stage, data: None)
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
     _trace(trace, "image", img)
@@ -1045,11 +1046,13 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     # 1. geometry: frame edges, then the printed triangles
     H, quality, lay = refine(img, corners, lay, m)
     _trace(trace, "refine1", [H, quality, lay.a, lay.bar])
+    emit("fit", geometry_frame(H, lay) | dict(by="edges", round=1))
     H, quality, lay = refine(img, exact.apply_h(H, lay.src_pts()), lay, m)
     _trace(trace, "refine2", [H, quality, lay.a, lay.bar])
+    emit("fit", geometry_frame(H, lay) | dict(by="edges", round=2))
     tips = []
     reach = 1.2
-    for _ in range(2):
+    for round_ in range(2):
         size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
         ground = _warp(img, H, m, size)
         _trace(trace, "ground_loop", ground)
@@ -1057,6 +1060,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         _trace(trace, "fit_columns", [lay.a, lay.bar, lay.cols])
         H, lay, tips = refine_tips(img, H, lay, m)
         _trace(trace, "refine_tips", [H, lay.a, lay.bar, lay.cols, tips])
+        emit("fit", geometry_frame(H, lay) | dict(by="triangles", round=round_ + 1))
         if lay.cols is None:
             # fitted to the triangles: from here on only small corrections, as other
             # things on the board can look like triangles too
@@ -1066,7 +1070,6 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     _trace(trace, "ground", ground)
     tips = find_tips(ground, lay, m)
     _trace(trace, "tips", tips)
-    emit("board", geometry_frame(H, lay))
     emit("tips", dict(tips=geometry_tips(tips, H)))
     board = board_colours(ground, lay, m, tips)
     _trace(trace, "board_colours", board)

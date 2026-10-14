@@ -56,9 +56,12 @@ def test_analyze_photo_streams_the_stages():
         res = client.post("/analyze-photo", files={"image": (t["image"], f)}, data=data | {"stream": "true"})
     assert res.status_code == 200 and res.headers["content-type"].startswith("application/x-ndjson")
     events = [json.loads(line) for line in res.text.splitlines()]
-    assert [e["stage"] for e in events] == ["board", "tips", "checkers", "counts", "dice", "cube", "done"]
+    assert [e["stage"] for e in events] == ["fit"] * 4 + ["tips", "checkers", "counts", "dice", "cube", "done"]
+    fits = [e for e in events if e["stage"] == "fit"]
+    assert [(f["by"], f["round"]) for f in fits] == [("edges", 1), ("edges", 2), ("triangles", 1), ("triangles", 2)]
+    assert all(len(f["corners"]) == 4 and len(f["columns"]) == 12 for f in fits)
     by = {e["stage"]: e for e in events}
-    assert len(by["board"]["corners"]) == 4 and len(by["checkers"]["columns"]) == 12
+    assert len(by["checkers"]["columns"]) == 12
     assert sorted(d["value"] for d in by["dice"]["dice"]) == [4, 5] and by["cube"]["cube"]["at"] == "black"
     result = by["done"]["result"]
     assert result["dice_read"] == [5, 4]
@@ -70,6 +73,39 @@ def test_analyze_photo_streams_the_stages():
     with open(SAMPLES / t["image"], "rb") as f:
         plain = client.post("/analyze-photo", files={"image": (t["image"], f)}, data=data).json()
     assert plain["recognized"] == result["recognized"] and plain["geometry"] == result["geometry"]
+    assert fits[-1]["corners"] == result["geometry"]["corners"]   # the last round is where it ended up
+
+
+def test_find_corners_streams_the_stages():
+    with open(SAMPLES / "photo3.jpg", "rb") as f:
+        body = f.read()
+    res = client.post("/find-corners", files={"image": ("photo3.jpg", body)}, data={"stream": "true"})
+    assert res.status_code == 200 and res.headers["content-type"].startswith("application/x-ndjson")
+    events = [json.loads(line) for line in res.text.splitlines()]
+    assert [e["stage"] for e in events] == ["edges", "uprights", "candidates", "corners", "done"]
+    by = {e["stage"]: e for e in events}
+    assert len(by["edges"]["lines"]) >= 2 and by["uprights"]["lines"]
+    assert all(len(line) == 2 for line in by["edges"]["lines"] + by["uprights"]["lines"])
+    quads = by["candidates"]["quads"]
+    assert quads and all(len(q) == 4 for q in quads)
+    result = by["done"]["result"]
+    assert by["corners"]["corners"] == result["corners"]
+    plain = client.post("/find-corners", files={"image": ("photo3.jpg", body)}).json()
+    assert plain == result   # the same as without streaming
+    h, w = plain["height"], plain["width"]
+    assert all(-0.2 * w < x < 1.2 * w and -0.2 * h < y < 1.2 * h for q in quads for x, y in q)   # image pixels
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_stage_times_are_in_one_table():
+    script = f"""
+    const s = require({json.dumps(str(STATIC / "scan.js"))});
+    console.log(JSON.stringify({{ ms: s.STAGE_MS, dflt: s.DEFAULT_STAGE_MS }}));
+    """
+    out = json.loads(subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout)
+    stages = {"edges", "uprights", "candidates", "corners", "fit", "board", "tips", "checkers", "counts", "dice", "cube"}
+    assert set(out["ms"]) == stages
+    assert set(out["ms"].values()) == {1000} and out["dflt"] == 1000   # one second each (2026-10-15)
 
 
 def test_analyze_photo_returns_cube_square():

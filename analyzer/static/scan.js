@@ -1,8 +1,11 @@
-// The reading overlay: while the server reads the board, the board's outline, triangles and bar are
-// drawn over the photo in perspective (from the four corners) with a sweeping scan line. As the
-// server reports each stage of the reading (the frame fitted, the triangle tips, the checkers, the
-// counts, the dice, the cube), it is queued and shown for a second in turn; the reading is over
-// when the last one has been shown. Drawing only: nothing here changes what is read.
+// The overlays on the photo while the server works, stage by stage:
+// - the search for the corners (mode "corners", after a photo is loaded): a scan line across the
+//   photo, then the straight edges found across and upright, the quadrilaterals compared and the corners;
+// - the reading: the board's outline, triangles and bar drawn in perspective from the four corners
+//   with a scan line, then the frame fitted (each round), the triangle tips, the checkers, the
+//   counts, the dice and the cube.
+// Each stage the server reports is queued and shown for its STAGE_MS in turn; the work is over when
+// the last one has been shown. Drawing only: nothing here changes what is found or read.
 // Also loaded by Node in the tests (module.exports): layout() and lines() need no DOM.
 "use strict";
 
@@ -52,7 +55,25 @@
   const ease = (x) => 1 - Math.pow(1 - clamp01(x), 3);
 
   const CYAN = "79, 227, 255", GREEN = "125, 255, 154";
-  const STAGE_MS = 1000;   // how long each stage of the reading stays on screen
+  // How long each stage stays on screen (ms), by the stage's name as the server sends it.
+  // Change a number here to make that stage shorter or longer; a stage not listed gets DEFAULT_STAGE_MS.
+  const DEFAULT_STAGE_MS = 1000;
+  const STAGE_MS = {
+    // the search for the corners, after a photo is loaded (/find-corners)
+    edges: 1000,       // 横の縁（奥と手前）の候補の直線
+    uprights: 1000,    // 縦の縁（左右）の候補の直線
+    candidates: 1000,  // 盤らしい四角形の候補を比べる
+    corners: 1000,     // 四隅が決まる
+    // the reading (/analyze-photo)
+    fit: 1000,         // 四隅の合わせ直し（枠の線で 2 回、三角形の並びで 2 回。1 回ごとに）
+    board: 1000,       // 枠と列（段階を流さないサーバーのとき）
+    tips: 1000,        // 三角形の先
+    checkers: 1000,    // 駒の円
+    counts: 1000,      // ポイントごとの数
+    dice: 1000,        // ダイス
+    cube: 1000,        // キューブ
+  };
+  const stageMs = (stage) => (stage in STAGE_MS ? STAGE_MS[stage] : DEFAULT_STAGE_MS);
 
   // Starts the overlay on canvas. opts:
   //   prepare(): draws the bare photo on the canvas and returns toCanvas([x, y]) (image px -> CSS px)
@@ -80,6 +101,7 @@
       ctx.fillRect(0, 0, canvas.width / d, canvas.height / d);
     }
 
+    const CORNERS = opts.mode === "corners";   // the search for the corners (/find-corners), not the reading
     const guess = lines(opts.corners, layout(null));
     let raf = 0, stopped = false, t0 = performance.now();
 
@@ -190,6 +212,11 @@
     }
 
     function frameWaiting(t) {
+      if (CORNERS) {   // nothing known yet: a scan line across the whole photo
+        if (!opts.reduced) drawSweep(guess, CYAN, (t % 1500) / 1500);
+        label("▶ 盤の四隅を探しています" + (opts.reduced ? "" : dots(t)), CYAN);
+        return;
+      }
       drawBoard(guess, CYAN, { quad: t / 500, tris: (t - 300) / 1000, bar: (t - 900) / 500 });
       drawCorners(guess, CYAN, t);
       if (opts.reduced) { label("▶ 盤面を読み取っています", CYAN); return; }   // a still picture
@@ -198,9 +225,55 @@
     }
     const dots = (t) => ".".repeat(1 + Math.floor(t / 300) % 3);
 
-    // ---- the stages, as the server reports them, each shown for STAGE_MS in turn ----
+    // ---- the stages, as the server reports them, each shown for its STAGE_MS in turn ----
     const FIT = 380;   // the frame moving to where it was fitted
     const AMBER = "255, 176, 0", WHITE = "255, 255, 255", MAGENTA = "255, 102, 230";
+    const YELLOW = "255, 230, 80", BLUE = "90, 170, 255", ORANGE = "255, 120, 70";
+
+    // The search for the corners: the edges found across the photo, the upright ones, the
+    // quadrilaterals compared and the corners, each drawn over the ones before (which fade).
+    function segment([a, b], rgb, alpha, grow, width) {
+      const [x0, y0] = cp(a), [x1, y1] = cp(b);
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x0 + (x1 - x0) * grow, y0 + (y1 - y0) * grow);
+      glow(rgb, alpha, width, 10);
+      ctx.stroke();
+    }
+    function frameCornerStages(now) {
+      const at = (k) => seen[k] && { d: seen[k].data, t: now - seen[k].t0, here: cur && cur.stage === k };
+      ctx.save();
+      const ed = at("edges");
+      if (ed) (ed.d.lines || []).forEach((l, n) =>
+        segment(l, ORANGE, ed.here ? 1 : 0.4, intro(ed.t - n * 0.08 * stageMs("edges"), 0.4 * stageMs("edges")), 2));
+      const up = at("uprights");
+      if (up) {
+        const list = up.d.lines || [], step = 0.5 * stageMs("uprights") / Math.max(list.length, 1);
+        list.forEach((l, n) => segment(l, BLUE, up.here ? 1 : 0.4, intro(up.t - n * step, 0.3 * stageMs("uprights")), 2));
+      }
+      const ca = at("candidates");
+      if (ca) {   // the best last, so it is drawn on top; each one in turn while the stage is on
+        const list = (ca.d.quads || []).slice().reverse(), step = 0.6 * stageMs("candidates") / Math.max(list.length, 1);
+        list.forEach((q, n) => {
+          const a = intro(ca.t - n * step, 150);
+          if (a <= 0) return;
+          const best = n === list.length - 1;
+          path(q, true);
+          glow(YELLOW, a * (ca.here ? (best ? 1 : 0.5) : 0.3), best ? 2.4 : 1.2, best ? 10 : 0);
+          ctx.stroke();
+        });
+      }
+      const co = at("corners");
+      if (co && co.d.corners) {
+        const a = intro(co.t, 300);
+        const L = lines(co.d.corners, layout(null));
+        drawBoard(L, GREEN, { quad: a, tris: 0, bar: 0 });
+        if (a >= 1) drawCorners(L, GREEN, co.t);
+      }
+      ctx.restore();
+      const [text, colour] = caption(now);
+      label(text, colour);
+    }
     const CUBE_AT = { centre: "真ん中", white: "手前", black: "奥", field: "盤の中" };
     const queue = [];            // stages received, not shown yet
     let cur = null;              // the stage on screen: {stage, data, t0}
@@ -212,17 +285,17 @@
     const frameOf = (d) => ({ corners: d.corners, lay: layout(d) });
 
     function next(now) {
-      if (queue.length && (!cur || now - cur.t0 >= STAGE_MS)) {
+      if (queue.length && (!cur || now - cur.t0 >= stageMs(cur.stage))) {
         cur = queue.shift();
         cur.t0 = now;
         seen[cur.stage] = { data: cur.data, t0: now };
-        if (cur.data.corners) {   // board, checkers: the frame (and maybe the columns) found
+        if (!CORNERS && cur.data.corners) {   // fit, board, checkers: the frame (and maybe the columns) found
           frameFrom = frameTo ? currentFrame(now) : { corners: opts.corners, lay: layout(null) };
           frameTo = frameOf(cur.data);
           frameT0 = now;
         }
       }
-      if (onDone && finished && (skipped || (!queue.length && (!cur || now - cur.t0 >= STAGE_MS)))) {
+      if (onDone && finished && (skipped || (!queue.length && (!cur || now - cur.t0 >= stageMs(cur.stage))))) {
         const f = onDone; onDone = null; f();
       }
     }
@@ -268,6 +341,7 @@
     }
 
     function frameStages(now) {
+      if (CORNERS) { frameCornerStages(now); return; }
       const F = currentFrame(now);
       const L = lines(F.corners, F.lay);
       const rgb = F.moving ? CYAN : GREEN;
@@ -288,7 +362,7 @@
       const ck = at("checkers");
       if (ck) {   // checkers: rings that pop in, left to right; fainter once the counts are up
         const list = ck.d.sorted || (ck.d.sorted = (ck.d.checkers || []).slice().sort((a, b) => a[0] - b[0]));
-        const step = 600 / Math.max(list.length, 1), dim = ck.here ? 1 : 0.45;
+        const step = 0.6 * stageMs("checkers") / Math.max(list.length, 1), dim = ck.here ? 1 : 0.45;
         list.forEach(([x, y, rad, side], n) => {
           const a = opts.reduced ? 1 : clamp01((ck.t - n * step) / 160);
           if (a <= 0) return;
@@ -331,10 +405,19 @@
       const t = now - cur.t0, d = cur.data;
       switch (cur.stage) {
         case "board": return ["▶ 枠と列を合わせました", GREEN];
+        case "fit": return [d.by === "edges" ? `▶ 四隅を枠の線に合わせました（${d.round} 回目）`
+                                             : `▶ 三角形の並びで四隅を合わせ直しました（${d.round} 回目）`, t < FIT ? CYAN : GREEN];
+        case "edges": return [`▶ 横の縁の候補 ${(d.lines || []).length} 本`, ORANGE];
+        case "uprights": return [`▶ 縦の縁の候補 ${(d.lines || []).length} 本`, BLUE];
+        case "candidates": {
+          const n = (d.quads || []).length;
+          return [n ? `▶ 盤らしい四角形の候補 ${n} 個を比べています` : "▶ 盤らしい四角形が見つかりません", YELLOW];
+        }
+        case "corners": return ["▶ 四隅が決まりました", GREEN];
         case "tips": return [`▶ 三角形の先 ${(d.tips || []).length} 個`, GREEN];
         case "checkers": {
           const n = (d.checkers || []).length;
-          return [`▶ 駒の候補 ${Math.min(n, opts.reduced ? n : Math.floor(t / (600 / Math.max(n, 1))))} 個`, GREEN];
+          return [`▶ 駒の候補 ${Math.min(n, opts.reduced ? n : Math.floor(t / (0.6 * stageMs("checkers") / Math.max(n, 1))))} 個`, GREEN];
         }
         case "counts": {
           const sum = (side) => (d.counts || []).filter((c) => c.side === side).reduce((s, c) => s + c.n, 0);
@@ -346,7 +429,7 @@
           return [dice.length ? "▶ ダイス " + dice.map((x) => x.value).join("・") : "▶ ダイスは見つかりません", CYAN];
         }
         case "cube": {
-          if (t >= STAGE_MS && !finished) return ["▶ 解析しています" + dots(t), CYAN];
+          if (t >= stageMs("cube") && !finished) return ["▶ 解析しています" + dots(t), CYAN];
           return [d.cube ? `▶ キューブ（${CUBE_AT[d.cube.at] || d.cube.at}）` : "▶ キューブは見つかりません", MAGENTA];
         }
         default: return ["▶ 盤面を読み取っています" + dots(t), CYAN];
@@ -364,10 +447,11 @@
     }
     raf = requestAnimationFrame(frame);
 
-    const STAGE_NAMES = ["board", "tips", "checkers", "counts", "dice", "cube"];
+    const STAGE_NAMES = CORNERS ? ["edges", "uprights", "candidates", "corners"]
+                                : ["fit", "board", "tips", "checkers", "counts", "dice", "cube"];
     return {
       // A stage the recognizer has finished ({stage, ...} as /analyze-photo streams it, in this
-      // image's px): shown for STAGE_MS once the ones before it have had theirs.
+      // image's px): shown for its STAGE_MS once the ones before it have had theirs.
       push(ev) {
         if (stopped || !ev || !STAGE_NAMES.includes(ev.stage)) return;
         const { stage, ...data } = ev;
@@ -401,7 +485,7 @@
     };
   }
 
-  const api = { layout, lines, start, TRI_DEPTH };
+  const api = { layout, lines, start, TRI_DEPTH, STAGE_MS, DEFAULT_STAGE_MS };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.BgScan = api;
 })(this);

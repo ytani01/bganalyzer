@@ -265,14 +265,20 @@ def _move_in(small, quad):
 
 # ---------------------------------------------------------------- the search --
 
-def guess(small):
-    """TL, TR, BR, BL of the playing area in small's pixels (float64 4 x 2), or None."""
+def guess(small, emit=None):
+    """TL, TR, BR, BL of the playing area in small's pixels (float64 4 x 2), or None.
+
+    emit(stage, **arrays): told of each stage of the search, in small's pixels, for showing it as it
+    goes ("edges", "uprights", "candidates"; see find_corners). It does not change what is found."""
+    emit = emit or (lambda stage, **arrays: None)
     h, w = small.shape[:2]
     gx, gy = _gradients(small)
     hl = _h_lines(gx, gy)
+    emit("edges", lines=np.float64([[(0, c), (w, c + w * k / 200)] for k, c, _ in hl]).reshape(-1, 2, 2))
     if len(hl) < 2:
         return None
     up = _Upright(gx, gy)
+    uprights = {}   # each upright line found, over the tallest band it was found in
     raw = []
     for top in hl:
         for bot in hl:
@@ -281,6 +287,9 @@ def guess(small):
                 continue
             band = (int(yt + 0.03 * (yb - yt)), int(yb - 0.03 * (yb - yt)))
             vl = up.lines(max(0, band[0]), min(h, band[1]))
+            for k, c, _ in vl:
+                if (k, c) not in uprights or band[1] - band[0] > uprights[k, c][1] - uprights[k, c][0]:
+                    uprights[k, c] = band
             for i in range(len(vl)):
                 for j in range(i + 1, len(vl)):
                     q = np.float64([_meet(top, vl[i]), _meet(top, vl[j]), _meet(bot, vl[j]), _meet(bot, vl[i])])
@@ -291,8 +300,11 @@ def guess(small):
                     view, _ = _view(small, q, RW // 2, RH // 2, 0)   # a first look at half size
                     if view is not None:
                         raw.append((_structure(view), q))
+    emit("uprights", lines=np.float64([[(c + y0 * k / 200, y0), (c + y1 * k / 200, y1)]
+                                       for (k, c), (y0, y1) in sorted(uprights.items())]).reshape(-1, 2, 2))
     # the best few, each edge moved to the innermost strong edge nearby, scored again
     raw.sort(key=lambda r: -r[0])
+    emit("candidates", quads=np.float64([q for _, q in raw[:REFINE]]).reshape(-1, 4, 2))
     seen, best = set(), None
     for s0, q0 in raw[:REFINE]:
         for q in (q0, _move_in(small, q0)):      # as found, and with the edges moved in
@@ -313,13 +325,26 @@ def guess(small):
     return best[1]
 
 
-def find_corners(img):
-    """TL, TR, BR, BL of the playing area in image pixels, or None if no board was found."""
+def find_corners(img, progress=None):
+    """TL, TR, BR, BL of the playing area in image pixels, or None if no board was found.
+
+    progress(stage, data): called as each stage of the search is done, with what it found in image
+    pixels: "edges" {lines: the far / near edge candidates across the photo}, "uprights" {lines: the
+    left / right edge candidates, over the band between two of those}, "candidates" {quads: the
+    quadrilaterals that looked most like a board at first, best first}, "corners" {corners} (only
+    when a board is found). It does not change what is found."""
     small, s = shrink(img)
-    q = guess(small)
+    emit = None
+    if progress:
+        def emit(stage, **arrays):
+            progress(stage, {k: (np.float64(v) / s).round(1).tolist() for k, v in arrays.items()})
+    q = guess(small, emit)
     if q is None:
         return None
-    return exact.snap(q / s, 0.1).round(1).tolist()
+    corners = exact.snap(q / s, 0.1).round(1).tolist()
+    if progress:
+        progress("corners", {"corners": corners})
+    return corners
 
 
 if __name__ == "__main__":
