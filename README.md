@@ -2,6 +2,8 @@
 
 スマホで撮った実物のバックギャモン盤の写真から局面を読み取り、GNU Backgammon で解析する（勝率・ギャモン率・ピップ数）ためのプロジェクトです。スマホのブラウザで使う PWA から写真を送って解析できます。
 
+**動いているサーバー（自宅の Raspberry Pi）:** https://bg.tail5c266.ts.net/
+
 図の中で点線・「予定」と書いた部分はまだ作っていません。
 
 ## 全体のソフトウェア構成
@@ -155,6 +157,7 @@ flowchart LR
 
 自宅の Raspberry Pi（64bit OS）で `compose.yaml` のアプリを常駐させ、Pi に入れた Tailscale の Funnel で HTTPS を付けて
 `https://<Piの名前>.<tailnet名>.ts.net/bg/` に公開します。費用・ドメイン・ルーターのポート開放は要りません。手順は [docs/raspi.md](docs/raspi.md) にあります。
+いま動いているのは https://bg.tail5c266.ts.net/ です。
 PWA は API を相対パスで呼ぶので、`/bg/` のようなパスの下でも動きます（同じ Pi で別のアプリを別のパスに置ける）。
 gnubg が子プロセスとメインスレッドを必要とするため、サーバーレス関数ではなく常駐するプロセスで動かします。
 `Dockerfile` は x86_64 と arm64 の両方でビルドでき（arm64 では gnubg をソースからビルド）、GitHub Actions の `docker` で両方を確かめています。
