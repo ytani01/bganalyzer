@@ -57,8 +57,9 @@ if __name__ == "__main__":
     # --slots: count by slots (slots.py, experimental) instead of by circles
     app = "--app" in sys.argv
     # --section: count along each point's centre line (section.py, experimental)
-    method = "slots" if "--slots" in sys.argv else "section" if "--section" in sys.argv else "circles"
-    files = [a for a in sys.argv[1:] if a not in ("--app", "--slots", "--section")] or sorted(glob.glob(os.path.join(os.path.dirname(__file__), "..", "samples", "*.truth.json")))
+    # --radial / --radial+hough: find the circles by radial symmetry (radial.py, experimental) instead of / as well as Hough
+    method = next((a[2:] for a in sys.argv if a in ("--slots", "--section", "--radial", "--radial+hough")), "circles")
+    files = [a for a in sys.argv[1:] if not a.startswith("--")] or sorted(glob.glob(os.path.join(os.path.dirname(__file__), "..", "samples", "*.truth.json")))
     for f in files:
         pos, truth, wrong, bar_ok, (home_ok, margin), (dice, want), (cube, cube_want) = run(f, app=app, method=method)
         dice_ok = "ok" if dice == want else "not read" if dice is None else "WRONG"

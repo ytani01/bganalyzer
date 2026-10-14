@@ -42,7 +42,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.18.0"
+__version__ = "0.19.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -745,6 +745,9 @@ def _top_colour(inner):
     return np.float32([np.median(inner[:, 0]), *np.median(sat[:, 1:], 0)])
 
 
+_FINDER = "hough"   # how detect_checkers finds candidates: "hough", or experimentally "radial" or "both"
+
+
 def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=None, tri_len=None, drop_shown=True):
     """Checker tops as circles, scored by edge support and colour.
 
@@ -756,12 +759,18 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     # for circles in the colour channels
     lab8 = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2Lab)
     found = []
-    for ch in (gray, lab8[:, :, 1], lab8[:, :, 2]):
-        ch = cv2.GaussianBlur(_stretch(ch), (0, 0), 2)
-        c = cv2.HoughCircles(ch, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.3, param1=70, param2=HOUGH_VOTES,
-                             minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
+    chans = [cv2.GaussianBlur(_stretch(ch), (0, 0), 2) for ch in (gray, lab8[:, :, 1], lab8[:, :, 2])]
+    if _FINDER != "radial":
+        for ch in chans:
+            c = cv2.HoughCircles(ch, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.3, param1=70, param2=HOUGH_VOTES,
+                                 minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
+            if c is not None:
+                found.append(c[0])
+    if _FINDER != "hough":   # experimental (TODO-032 idea 5): radial.py
+        import radial
+        c = radial.find(chans, r0)
         if c is not None:
-            found.append(c[0])
+            found.append(c)
     if not found:
         return []
     cs = [np.vstack(found)]
@@ -1036,6 +1045,8 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     fitted to the frame's edges twice, then to the triangles twice; then "tips", "checkers", "counts",
     "dice", "cube"), with the parts of info["geometry"] it found (image pixels), for showing the
     reading as it goes. It does not change what is read."""
+    global _FINDER
+    _FINDER = {"radial": "radial", "radial+hough": "both"}.get(method, "hough")
     emit = progress or (lambda stage, data: None)
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
     _trace(trace, "image", img)
