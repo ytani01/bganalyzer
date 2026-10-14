@@ -19,6 +19,7 @@ TODO.md で担当が「引き継ぎ可」の項目は、着手するときに担
 - **途中の PR:** なし。#86（`tools/check_pi.py`）は 2026-10-14 に引き継ぎ先がマージした（引き継ぎ先のクラウドではプロキシで ts.net に届かず、実行は試せなかった）。
 - **次の一手（おすすめ順）:**
   1. TODO-033 は済み（2026-10-14、ユーザーの判断で写真のダイスを優先。analyzer 0.25.2、PI-017）。
+     TODO-035 も済み（2026-10-14、PR #99）。recognizer を変える PR では GitHub Actions の `accuracy` が精度の低下を見る。
   2. TODO-030: ai1 が「Pi に残す」で `collected/` に写真と直した盤面を集めている。たまったら Pi の Claude に
      `evaluate.py` の結果やファイルを出してもらい、しきい値を総当たりで試して良くなる設定を PR で提案するスクリプトを作る
      （本番には自動で反映しない）。50〜100 枚で、ポイントごとの小さなモデルを試す。`samples/` に入れる前に顔・第三者のものを隠す。
@@ -107,6 +108,8 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
   [PI_CHECKS.md](PI_CHECKS.md) に足す。Pi の上の Claude Code が git pull のあとに読んで確かめ、結果を書き込む（CLAUDE.md）。
   2026-10-13 から TODO.md と同じ決まり（通し番号・担当・`- [ ]`・決着したら `archives/pi/` へ）で管理する（TODO-026）。
 - **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR と main への push で `uv run pytest analyzer` を実行する。
+  `accuracy`（`.github/workflows/accuracy.yml`、TODO-035）は recognizer・samples・依存を変える PR で、認識の精度が
+  `recognizer/accuracy_baseline.json` より下がっていないかを確かめる。
 
 ## 6. ぶつからないための決まり
 
