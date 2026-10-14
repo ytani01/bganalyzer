@@ -45,15 +45,59 @@ BAR_WEIGHT = 0.25      # the bar's edges against the frame's in choosing a place
 OUTSIDE = 0.05         # how far beyond the photo a corner may be, against its long side
 
 
+def _kmeans(x, cnt, k, attempts=2, iters=20):
+    """Labels of the int32 points x (n, 3), each counted cnt times, in k clusters
+    (k-means++ starts, the best of `attempts`).
+
+    In integers throughout, so every CPU splits the colours the same way:
+    cv2.kmeans in floats split them differently on x86_64 and the Raspberry Pi,
+    and the corners found with them (TODO-028)."""
+    cnt = cnt.astype(np.int64)
+    rng = np.random.Generator(np.random.PCG64(0))
+
+    def dists(c):
+        return np.stack([((x - cj) ** 2).sum(1) for cj in c], 1)
+
+    def pick(weights):
+        cs = np.cumsum(weights)
+        if cs[-1] == 0:         # every colour is already a centre (a nearly plain image)
+            return x[0]
+        return x[np.searchsorted(cs, rng.integers(cs[-1]), side="right")]
+
+    best = None
+    for _ in range(attempts):
+        c = [pick(cnt)]
+        d = ((x - c[0]) ** 2).sum(1)
+        for _ in range(k - 1):
+            c.append(pick(d * cnt))
+            d = np.minimum(d, ((x - c[-1]) ** 2).sum(1))
+        c = np.array(c)
+        for _ in range(iters):
+            lbl = dists(c).argmin(1)
+            n = np.bincount(lbl, cnt, minlength=k).astype(np.int64)
+            sums = np.stack([np.bincount(lbl, x[:, i] * cnt, minlength=k).astype(np.int64) for i in range(3)], 1)
+            new = np.where(n[:, None] > 0, sums // np.maximum(n, 1)[:, None], c).astype(np.int32)
+            if (new == c).all():
+                break
+            c = new
+        d = dists(c)
+        cost = int((d.min(1) * cnt).sum())
+        if best is None or cost < best[0]:
+            best = (cost, d.argmin(1))
+    return best[1]
+
+
 def find_triangles(small):
     """Narrow triangles among the colour regions: list of (tip, base_mid, base_width)."""
     h, w = small.shape[:2]
-    lab = cv2.cvtColor(cv2.GaussianBlur(small, (0, 0), 1.5), cv2.COLOR_BGR2Lab).astype(np.float32)
-    cv2.setRNGSeed(0)
-    _, lbl, _ = cv2.kmeans((lab * np.float32([0.6, 1, 1])).reshape(-1, 3), CLUSTERS, None,
-                           (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0), 2,
-                           cv2.KMEANS_PP_CENTERS)
-    lbl = lbl.reshape(h, w)
+    lab = cv2.cvtColor(cv2.GaussianBlur(small, (0, 0), 1.5), cv2.COLOR_BGR2Lab)
+    # a photo has far fewer colours than pixels: split each colour once, counted by its pixels.
+    # Lightness weighed 0.6 against the colour; x16 keeps the cluster centres' fractions,
+    # and squared distances stay within int32 (3 * (255 * 5 * 16) ** 2 < 2 ** 31)
+    key = lab.reshape(-1, 3).astype(np.int32) @ np.int32([1 << 16, 1 << 8, 1])
+    keys, inv, cnt = np.unique(key, return_inverse=True, return_counts=True)
+    colours = np.stack([keys >> 16, (keys >> 8) & 255, keys & 255], 1).astype(np.int32)
+    lbl = _kmeans(colours * np.int32([3 * 16, 5 * 16, 5 * 16]), cnt, CLUSTERS)[inv].reshape(h, w)
     out = []
     for k in range(CLUSTERS):
         mask = cv2.morphologyEx((lbl == k).astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
