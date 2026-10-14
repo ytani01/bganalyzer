@@ -2,6 +2,7 @@
 
 `archives/pi/` の一覧（新しい順）。残っている項目は [docs/PI_CHECKS.md](../../docs/PI_CHECKS.md) にある。
 
+- [PI-020. 読み取り中の補助線の演出（analyzer 0.27.0、recognizer 0.9.0）](PI-020.%20%E8%AA%AD%E3%81%BF%E5%8F%96%E3%82%8A%E4%B8%AD%E3%81%AE%E8%A3%9C%E5%8A%A9%E7%B7%9A%E3%81%AE%E6%BC%94%E5%87%BA%EF%BC%88analyzer%200.27.0%E3%80%81recognizer%200.9.0%EF%BC%89.md)
 - [PI-022. 三角形の辺で駒の有無を確かめる読み方が Pi で動く（recognizer 0.11.0）](PI-022.%20%E4%B8%89%E8%A7%92%E5%BD%A2%E3%81%AE%E8%BE%BA%E3%81%A7%E9%A7%92%E3%81%AE%E6%9C%89%E7%84%A1%E3%82%92%E7%A2%BA%E3%81%8B%E3%82%81%E3%82%8B%E8%AA%AD%E3%81%BF%E6%96%B9%E3%81%8C%20Pi%20%E3%81%A7%E5%8B%95%E3%81%8F%EF%BC%88recognizer%200.11.0%EF%BC%89.md)
 - [PI-021. 四隅の推定（recognizer 0.10.0）が Pi でも x86_64 と同じくらい当たる](PI-021.%20%E5%9B%9B%E9%9A%85%E3%81%AE%E6%8E%A8%E5%AE%9A%EF%BC%88recognizer%200.10.0%EF%BC%89%E3%81%8C%20Pi%20%E3%81%A7%E3%82%82%20x86_64%20%E3%81%A8%E5%90%8C%E3%81%98%E3%81%8F%E3%82%89%E3%81%84%E5%BD%93%E3%81%9F%E3%82%8B.md)
 - [PI-019. collected/ を自動で測り直し、古い組を消す（analyzer 0.26.0、recognizer 0.8.0）](PI-019.%20collected%20%E3%82%92%E8%87%AA%E5%8B%95%E3%81%A7%E6%B8%AC%E3%82%8A%E7%9B%B4%E3%81%97%E3%80%81%E5%8F%A4%E3%81%84%E7%B5%84%E3%82%92%E6%B6%88%E3%81%99%EF%BC%88analyzer%200.26.0%E3%80%81recognizer%200.8.0%EF%BC%89.md)
