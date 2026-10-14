@@ -124,6 +124,12 @@ def _pips(gray, body, dark: bool, f: float = 0.5):
     return _spots(spot, s, x0, y0, roi, mask, dark)
 
 
+def _trace(trace, name, v):
+    if trace is not None:
+        from board import _digest
+        trace.append((name, _digest(v)))
+
+
 # pip layouts in face units (-1..1), in a frame aligned with the die
 _LAYOUT = {
     1: [(0, 0)],
@@ -174,7 +180,7 @@ def _face_value(pips, body):
     return n
 
 
-def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
+def read_dice(img, H, lay, pitch: float, circles=(), debug=None, trace=None):
     """Dice in the two fields. H maps board.py's canonical board (no margin) to the photo;
     circles are the checkers found there (x, y, r, ...).
 
@@ -188,8 +194,11 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
     ground = exact.warp(img, exact.mul3(np.diag([k, k, 1.0]), exact.inv3(H)), size)
     gray = cv2.cvtColor(ground, cv2.COLOR_BGR2GRAY)
     lab = cv2.cvtColor(ground, cv2.COLOR_BGR2Lab)
+    _trace(trace, "dice_ground", [k, ground, gray, lab])
     found = []
-    for b in _bodies(gray, pitch * k):
+    bodies = _bodies(gray, pitch * k)
+    _trace(trace, "dice_bodies", [[b["x"], b["y"], b["side"], b["ang"], b["hull"]] for b in bodies])
+    for b in bodies:
         # dark pips on a light face, or light pips on a dark one; each way of finding the pips
         # is one reading (the readings of one place are counted below)
         reads = [(v, dark) for dark in (True, False) for find in (_pips, _pips_level) for f in (0.35, 0.5, 0.65)
@@ -204,6 +213,7 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
         if any(v == 1 or b["side"] / k < 1.6 * c[2] for c in near):
             continue
         found += [b | dict(value=v, dark_pips=dark) for v, _ in reads]
+    _trace(trace, "dice_found", [[b["x"], b["y"], b["side"], b["value"], b["dark_pips"]] for b in found])
     # a real die is found at several brightness levels, nearly always with the same number:
     # one die per place, sure when most readings there agree
     dice = []

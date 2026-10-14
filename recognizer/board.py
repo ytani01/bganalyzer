@@ -1120,7 +1120,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         tips=geometry_tips(tips, H),
         checkers=geometry_checkers(circles, cc, bottom_colour, H))
     info["dice"] = dice_reader.read_dice(img, H, lay, pitch, circles,
-                                         debug=debug_prefix and debug_prefix + "_dice.jpg")
+                                         debug=debug_prefix and debug_prefix + "_dice.jpg", trace=trace)
     _trace(trace, "dice", info["dice"])
     info["cube"] = cube_reader.read_cube(img, H, lay, pitch, circles, info["dice"]["dice"],
                                          debug=debug_prefix and debug_prefix + "_cube.jpg")
