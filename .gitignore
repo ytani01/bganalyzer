@@ -8,5 +8,8 @@ samples/external/*
 !samples/external/*.truth.json
 !samples/external/README.md
 
+# photos and corrected boards the Pi keeps when the app's 「Pi に残す」 is on (compose.yaml)
+/collected/
+
 # screenshots left at the repo root while checking the PWA
 /*.png

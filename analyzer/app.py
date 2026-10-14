@@ -6,13 +6,19 @@ Do not run with --reload or several workers: the gnubg extension is not fork-saf
 """
 from __future__ import annotations
 
+import json
+import logging
 import mimetypes
+import os
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,7 +29,7 @@ from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_positio
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.24.0"
+__version__ = "0.25.1"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -36,6 +42,23 @@ async def lifespan(_app):
 
 app = FastAPI(title="bganalyzer", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+log = logging.getLogger("uvicorn.error")   # uvicorn's access log has the status but not why
+
+
+@app.exception_handler(HTTPException)
+async def log_http_error(request: Request, exc: HTTPException):
+    if 400 <= exc.status_code < 500:
+        # %r: a detail can quote what was sent (a position id); keep it on one line
+        log.warning("%s %s -> %d: %r", request.method, request.url.path, exc.status_code, exc.detail)
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(RequestValidationError)
+async def log_validation_error(request: Request, exc: RequestValidationError):
+    # only where and what, not the input: it can be the photo or the form's values
+    why = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
+    log.warning("%s %s -> 422: %s", request.method, request.url.path, why)
+    return await request_validation_exception_handler(request, exc)
 
 
 class Board(BaseModel):
@@ -107,7 +130,58 @@ def git_commit(git_dir: Path = REPO / ".git") -> str | None:
 def version():
     from board import __version__ as recognizer_version
 
-    return {"analyzer": __version__, "recognizer": recognizer_version, "commit": git_commit()}
+    # samples: whether this server keeps photos sent to /samples (the app shows its switch only then)
+    return {"analyzer": __version__, "recognizer": recognizer_version, "commit": git_commit(),
+            "samples": samples_dir() is not None}
+
+
+# Photos with their corrected boards, kept to measure and improve the recognizer (TODO-030).
+# Off unless BG_SAMPLES_DIR is set (compose.yaml sets it), and the app sends them only when
+# the user turns it on. Each photo is one id: a later send replaces the earlier one.
+SAMPLE_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
+SAMPLE_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
+SAMPLE_MAX_BYTES = 20_000_000
+SAMPLE_MAX_COUNT = 1000   # the app is public (Funnel): don't let anyone fill the Pi's disk
+
+
+def samples_dir() -> Path | None:
+    d = os.environ.get("BG_SAMPLES_DIR")
+    return Path(d) if d else None
+
+
+@app.post("/samples")
+async def save_sample(
+    id: str = Form(..., description="the photo's id on the phone (letters, digits and -)"),
+    truth: str = Form(..., description="the truth.json (sample.js)"),
+    image: UploadFile = File(...),
+):
+    d = samples_dir()
+    if d is None:
+        raise HTTPException(404, "this server does not keep samples")
+    if not SAMPLE_ID.match(id):
+        raise HTTPException(422, "bad id")
+    ext = SAMPLE_TYPES.get(image.content_type or "")
+    if ext is None:
+        raise HTTPException(422, "image must be JPEG or PNG")
+    data = await image.read(SAMPLE_MAX_BYTES + 1)
+    if len(data) > SAMPLE_MAX_BYTES:
+        raise HTTPException(413, "image too large")
+    try:
+        t = json.loads(truth)
+        Board(points=t["points"], bar_white=t["bar_white"], bar_black=t["bar_black"])
+        assert len(t["corners_TL_TR_BR_BL"]) == 4 and t["home"] in ("left", "right")
+    except Exception as e:
+        raise HTTPException(422, "bad truth") from e
+    name = f"user-{id}"
+    t["image"] = f"{name}.{ext}"
+    d.mkdir(parents=True, exist_ok=True)
+    if not (d / f"{name}.truth.json").exists() and sum(1 for _ in d.glob("*.truth.json")) >= SAMPLE_MAX_COUNT:
+        raise HTTPException(507, "the sample folder is full")
+    for old in d.glob(f"{name}.*"):   # a PNG sent before a JPEG of the same photo, etc.
+        old.unlink()
+    (d / t["image"]).write_bytes(data)
+    (d / f"{name}.truth.json").write_text(json.dumps(t, ensure_ascii=False) + "\n")
+    return {"saved": name}
 
 
 @app.post("/analyze")

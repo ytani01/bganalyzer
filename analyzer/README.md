@@ -155,6 +155,13 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 認識で駒数が合わないときは `analysis` が `null` になり、`errors` に理由が入ります（アプリで手修正してから
 `/analyze` を呼ぶ想定）。
 
+### `POST /samples`（multipart）
+
+精度改善用に、写真（`image`、JPEG か PNG）と直した後の盤面（`truth`、`static/sample.js` が作る `samples/*.truth.json` の形）を
+`BG_SAMPLES_DIR` に `user-<id>.*` として保存する。`id` は端末の中の写真の id（英数字と `-`）で、同じ id は上書き。
+`BG_SAMPLES_DIR` を設定していないサーバーでは 404（写真は保存しない）。上限は 1000 組（超えたら 507）。
+PWA は設定の「Pi に残す」がオンのときだけ、「解析する」を押すたびに送る。Pi では `compose.yaml` が `collected/` に置く（[docs/raspi.md](../docs/raspi.md)）。
+
 ### `GET /health`
 
 `{"ok": true}` を返す（Docker の healthcheck 用）。
@@ -162,8 +169,10 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 ### `GET /version`
 
 ```json
-{"analyzer": "0.1.0", "recognizer": "0.1.0", "commit": "7bd7f55"}
+{"analyzer": "0.1.0", "recognizer": "0.1.0", "commit": "7bd7f55", "samples": false}
 ```
+
+`samples` はこのサーバーが `POST /samples` を受けるか（PWA は true のときだけ「Pi に残す」を出す）。
 
 analyzer（この API と PWA）と recognizer のバージョン、動いているコードの git のコミット ID（取れなければ `null`）。
 PWA は画面のいちばん下にこれを出す。上げ方は [CLAUDE.md](../CLAUDE.md) の「バージョン」。

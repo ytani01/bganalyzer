@@ -9,6 +9,11 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    # PWA の設定で「Pi に残す」をオンにしたときだけ、写真と直した盤面がここに入る（TODO-030、docs/raspi.md）
+    environment:
+      - BG_SAMPLES_DIR=/data/samples
+    volumes:
+      - ./collected:/data/samples
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 1m
