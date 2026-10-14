@@ -33,7 +33,8 @@ uv run python tools/check_pi.py          # --all で samples/ の全部
 `samples/` の公開写真 5 枚を `/analyze-photo`（0-ply）に送り、Pi の読み取りが手元と同じか・正解と何点合うかを出す。
 画面は Playwright の Chromium で `/bg/` を開けば見られる。
 クラウドの環境によっては、プロキシが ts.net を通さず `Tunnel connection failed: 403` になる（2026-10-14、引き継ぎ先のアカウントで確認）。
-そのときはクラウドからの確認を飛ばし、Pi の Claude Code に任せる。
+そのときでも、Claude の WebFetch ツールでは GET（`/bg/version` など）が読めることがある（2026-10-14、同じアカウントで確認）。
+POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi の Claude Code に任せる。
 
 クラウドからは**やらない・できない**こと（Pi の Claude Code かユーザーに残す）:
 
