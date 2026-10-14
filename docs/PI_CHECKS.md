@@ -90,7 +90,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 ## PI-019. collected/ を自動で測り直し、古い組を消す（analyzer 0.26.0、recognizer 0.8.0）
 
 - **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-14、TODO-038
+- **足した日・PR:** 2026-10-14、PR #104（TODO-038）
 - **確かめ方:** 更新のあと `/version` を見る。`docker compose exec -T app python recognizer/collected.py /data/samples --force` を走らせ、
   `collected/report.md` を見る。その後、「Pi に残す」で 10 組たまったら、`report.md` が書き直されているか（時刻）を見る。
 - **期待:** `/version` が analyzer 0.26.0・recognizer 0.8.0。report.md に組の数と読み違いが出て、正解の中の文字は出ない。
