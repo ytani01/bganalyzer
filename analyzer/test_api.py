@@ -181,7 +181,7 @@ def _corner_error(found, truth, shape):
 def test_corners_are_found_on_samples():
     # The far / near edges are the strongest straight edges, the left / right ones lines with an edge
     # in nearly every row between them; each edge is moved to the innermost strong edge nearby, and
-    # the quad that frames two rows of twelve triangles best wins (TODO-028, recognizer 0.15.0).
+    # the quad that frames two rows of twelve triangles best wins (TODO-028, recognizer 0.16.0).
     # diagram-prime: the frame with the point numbers is taken (4.7%).
     import cv2
     from corners import find_corners

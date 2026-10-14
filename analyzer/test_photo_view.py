@@ -48,6 +48,30 @@ def test_analyze_photo_returns_geometry():
     assert g["cube"] is None
 
 
+def test_analyze_photo_streams_the_stages():
+    t = json.loads((SAMPLES / "screen2.truth.json").read_text())
+    corners = ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy)
+    data = {"corners": corners, "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0"}
+    with open(SAMPLES / t["image"], "rb") as f:
+        res = client.post("/analyze-photo", files={"image": (t["image"], f)}, data=data | {"stream": "true"})
+    assert res.status_code == 200 and res.headers["content-type"].startswith("application/x-ndjson")
+    events = [json.loads(line) for line in res.text.splitlines()]
+    assert [e["stage"] for e in events] == ["board", "tips", "checkers", "counts", "dice", "cube", "done"]
+    by = {e["stage"]: e for e in events}
+    assert len(by["board"]["corners"]) == 4 and len(by["checkers"]["columns"]) == 12
+    assert sorted(d["value"] for d in by["dice"]["dice"]) == [4, 5] and by["cube"]["cube"]["at"] == "black"
+    result = by["done"]["result"]
+    assert result["dice_read"] == [5, 4]
+    # the counts by the points add up to the board read
+    counts, rec = by["counts"]["counts"], result["recognized"]
+    assert sum(c["n"] for c in counts if c["side"] == "white") == sum(n for n in rec["points"] if n > 0) + rec["bar_white"]
+    assert sum(c["n"] for c in counts if c["side"] == "black") == -sum(n for n in rec["points"] if n < 0) + rec["bar_black"]
+    assert result["geometry"]["counts"] == counts   # the same as without streaming
+    with open(SAMPLES / t["image"], "rb") as f:
+        plain = client.post("/analyze-photo", files={"image": (t["image"], f)}, data=data).json()
+    assert plain["recognized"] == result["recognized"] and plain["geometry"] == result["geometry"]
+
+
 def test_analyze_photo_returns_cube_square():
     t = json.loads((SAMPLES / "screen2.truth.json").read_text())
     corners = [v for xy in t["corners_TL_TR_BR_BL"] for v in xy]

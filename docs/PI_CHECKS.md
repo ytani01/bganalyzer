@@ -1,7 +1,7 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-028、PI-029。** これまでに 27 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-030`。**
+**残っている項目: PI-028、PI-029、PI-030。** これまでに 27 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-031`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
 マージしたあと、自宅の Raspberry Pi（公開している本番）でしか確かめられないことの一覧です。
@@ -85,16 +85,30 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
 
-## PI-029. 四隅の初期値を新しい作り方で出す（recognizer 0.15.0）
+## PI-030. 四隅の初期値を新しい作り方で出す（recognizer 0.16.0）
 
 - **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
 - **足した日・PR:** 2026-10-15（TODO-028）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.15.0 以降。Pi の上で `uv run python recognizer/trace_cpu.py check`（四隅も比べる）と
+- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.16.0 以降。Pi の上で `uv run python recognizer/trace_cpu.py check`（四隅も比べる）と
   `uv run python recognizer/check_corners.py --app` を走らせる。スマホで写真を読み込み、四隅の初期値と、出るまでの時間を見る
 - **期待:** `trace_cpu.py check` が「same as the reference」。`check_corners.py --app` が「within 3.6%: 16, further: 8, not found: 0」。
   1 枚の時間（右の列）はこのクラウド環境で 1.0〜1.8 秒なので、Pi では数倍かかりうる。5 秒を大きく超えるならユーザーに報告する
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: ai1 の盤の写真で、四隅の初期値がどれくらい合っているか、出るまで待たされないか（ai1）
+
+## PI-029. 読み取りの途中経過を段階ごとに 1 秒ずつ見せる（analyzer 0.35.0、recognizer 0.15.0）
+
+- **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
+- **足した日・PR:** 2026-10-15（ユーザーの依頼: 認識はリアルタイムで行い、途中経過は 1 秒ずつキューイングして順に見せ、全部見せ終えたら認識完了）
+- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が analyzer 0.35.0・recognizer 0.15.0 以降。
+  Pi の上とクラウドから（公開 URL 経由）、`samples/photo3.jpg` を `stream=true` で送り、行が届くたびに時刻を付けて見る:
+  `curl -sN -F image=@samples/photo3.jpg -F corners=<photo3.truth.json の四隅> -F home=right -F bottom_colour=1 -F plies=1 -F stream=true <URL>/analyze-photo | while IFS= read -r l; do echo "$(date +%T.%N | cut -c1-12) ${l:0:60}"; done`。
+  スマホで写真を読み取る
+- **期待:** `board` から `cube` までの 6 行が、認識の進みに合わせて少しずつ届き（Funnel や service worker が最後にまとめていない）、最後に `done`。
+  スマホでは、段階ごとに 1 秒ずつ「枠と列を合わせました」「三角形の先」「駒の候補」「数えました（ポイントの外側に数）」「ダイス」「キューブ」が順に出て、
+  最後の段階のあとに盤面の画面に進む（タップで飛ばせる）。左下のラベルの先頭が切れていない（TODO-047）
+- [ ] Pi: （結果をここに書く）
+- [ ] スマホ: 途中経過の見え方と待ち時間（ai1）
 
 ## PI-028. Pi の読み取りが途中の値まで基準と同じ（recognizer 0.14.0）
 

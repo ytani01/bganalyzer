@@ -49,9 +49,12 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
 （認識が見つけた盤の四隅と列の位置）を使い、写真の列を盤面図の列にそろえる。補正は端末の中で行い、写真を追加で送ったり保存したりはしない。
 
 **読み取り中の演出（`static/scan.js`）:** 「盤面を読み取る」を押してから結果が返るまで、四隅から描いた盤の枠・三角形・バーを
-写真に遠近どおりに重ね、走査線を流す。結果が返ったら、枠と列を認識が合わせ直した位置へ動かし、`geometry` の三角形の先を出したあと、
-駒の円・ダイス（四角と目）・キューブ（四角）を約 0.5 秒ずつ順に見せてから盤面の画面に進む
-（全体で約 2 秒、タップで飛ばせる。見つからなかったものは「見つかりません」と出す）。端末が「視差効果を減らす」（prefers-reduced-motion）なら動かさず、補助線を 1 枚描くだけにする。
+写真に遠近どおりに重ね、走査線を流す。サーバーは認識の段階が終わるたびにその結果を送り（`stream=true`）、
+アプリはそれを順に並べて **1 段階 1 秒ずつ** 写真の上に見せる: 枠と列を合わせ直した位置 → 三角形の先 → 駒の円 →
+ポイントごとの数（とホームの向き）→ ダイス（四角と目）→ キューブ（四角）。見つからなかったものは「見つかりません」と出す。
+最後の段階を見せ終えたら読み取りの完了として盤面の画面に進む（解析がまだなら「解析しています」で待つ。タップで飛ばせる）。
+段階を一度に受け取ったとき（流さない古いサーバー、途中でまとめてしまう経路）も、同じ順に 1 秒ずつ見せる。
+端末が「視差効果を減らす」（prefers-reduced-motion）なら動かさず、各段階を止まった絵で見せる。
 写真の上に描くだけで、読み取りの結果は変えない。
 
 - 読み込んだ写真は、最近の 10 枚まで「最近の写真」に残る（`static/history.js`）。写真を選んだ時点で入り、
@@ -146,7 +149,14 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 
 写真から認識（`recognizer/board.py`）して、そのまま解析します。
 フィールド: `image`、`corners`（`x1,y1,…,x4,y4`）、`home`（`left`・`right`・`auto`。既定 `right`）、
-`bottom_colour`（意味は recognizer/README.md と同じ）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）、`cube_value`・`cube_owner`・`doubled`（/analyze と同じ。ただし `dice` を省いて写真からダイスが読めたときは、`doubled` を false にしてチェッカーの手を評価する）。
+`bottom_colour`（意味は recognizer/README.md と同じ）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）、`cube_value`・`cube_owner`・`doubled`（/analyze と同じ。ただし `dice` を省いて写真からダイスが読めたときは、`doubled` を false にしてチェッカーの手を評価する）、
+`stream`（`true` なら下の応答を NDJSON で段階ごとに返す。既定 `false`）。
+
+`stream=true` の応答は `application/x-ndjson` で、1 行に 1 つ、認識の段階が終わるたびに
+`{"stage": "board", corners, columns, bar}`（枠と列）、`{"stage": "tips", tips}`、`{"stage": "checkers", corners, columns, bar, checkers}`、
+`{"stage": "counts", counts, home, home_guess}`、`{"stage": "dice", dice}`、`{"stage": "cube", cube}`（各値は下の `geometry` と同じ形）が来て、
+最後に `{"stage": "done", "result": 下の応答}` が来る。途中で失敗したときは最後が `{"stage": "error", "detail": 理由}`（状態は 200 のまま）。
+認識は別のスレッドで動かすので、送り終わるのは認識と解析が終わったとき。
 
 応答は `{"recognized": 認識結果, "home": "left" か "right", "home_guess": {...} か null, "errors": [...], "warnings": [...], "geometry": {...}, "dice_read": [大, 小] か null, "analysis": 上の /analyze と同じ形}`。
 `dice_read` は写真のフィールドに 2 つのダイスがあって、目を自信を持って読めたときだけ入る（recognizer/README.md の「ダイス」）。
@@ -163,7 +173,9 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 `tips`（見つけた三角形の先 `[x, y]`、画像の画素）、`checkers`（見つけた駒の円 `[x, y, 半径, "white" か "black"]`、画像の画素。
 色は近い方の駒の色で、数は数えた結果と一致するとは限らない。読み取り中の演出に使うだけ）、
 `dice`（自信をもって読めた盤の中のダイス `[{"quad": 四隅, "value": 目}]`、画像の画素）、
-`cube`（見つけたキューブ `{"quad": 四隅, "at": "centre" か "white" か "black"}` か null）。`dice` と `cube` も演出に使うだけ。
+`cube`（見つけたキューブ `{"quad": 四隅, "at": "centre" か "white" か "black" か "field"}` か null）、
+`counts`（ポイントとバーで数えた駒 `[{"at": [x, y], "n": 数, "side": "white" か "black"}]`。`at` はポイントの外側の枠の上、バーはバーの上）。
+`dice`・`cube`・`counts` も演出に使うだけ。
 `warnings` は写真についての注意（日本語の文）。今は、盤を真上から 40° 以上傾けて撮ったときに「斜めから撮った」と出る。
 認識で駒数が合わないときは `analysis` が `null` になり、`errors` に理由が入ります（アプリで手修正してから
 `/analyze` を呼ぶ想定）。

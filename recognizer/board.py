@@ -42,7 +42,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.15.0"
+__version__ = "0.16.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -1022,10 +1022,14 @@ def _trace(trace, name, v):
 
 
 def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
-              a_ratio=None, debug_prefix=None, method="circles", trace=None):
+              a_ratio=None, debug_prefix=None, method="circles", trace=None, progress=None):
     """corners: TL, TR, BR, BL of the playing area as seen from the bottom player.
     home: 'left', 'right' or 'auto' (guessed from the checkers; info['home'] says which).
-    trace: a list to append (step, hash of its value) to, for finding where two machines part."""
+    trace: a list to append (step, hash of its value) to, for finding where two machines part.
+    progress: called as progress(stage, data) when each stage is done ("board", "tips", "checkers",
+    "counts", "dice", "cube"), with the parts of info["geometry"] it found (image pixels), for showing
+    the reading as it goes. It does not change what is read."""
+    emit = progress or (lambda stage, data: None)
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
     _trace(trace, "image", img)
     m = 60
@@ -1062,6 +1066,8 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     _trace(trace, "ground", ground)
     tips = find_tips(ground, lay, m)
     _trace(trace, "tips", tips)
+    emit("board", geometry_frame(H, lay))
+    emit("tips", dict(tips=geometry_tips(tips, H)))
     board = board_colours(ground, lay, m, tips)
     _trace(trace, "board_colours", board)
     pitch = lay.pw * 1.05
@@ -1107,35 +1113,60 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         home, margin = home_prior.guess(to_position(runs, bar, bottom_colour, "right").points)
         guessed = dict(margin=round(float(margin), 1))
     pos = to_position(runs, bar, bottom_colour, home)
+    checkers = geometry_checkers(circles, cc, bottom_colour, H)
+    counts = geometry_counts(runs, bar, bottom_colour, lay, H)
+    emit("checkers", geometry_frame(H, lay) | dict(checkers=checkers))
+    emit("counts", dict(counts=counts, home=home, home_guess=guessed))
     info = dict(home=home, home_guess=guessed, edge_quality=float(quality), tips=len(tips), circles=len(circles),
                 layout=dict(a=float(lay.a), bar=float(lay.bar), h=float(lay.h)), pitch=float(pitch),
                 checker_lab=None if cc is None else cc.round(1).tolist(),
                 board_lab=board.round(1).tolist())
     # Where the playing area and its columns ended up, for showing the photo next to the read board:
     # corners in image pixels (TL TR BR BL), columns and bar edges as fractions of the width.
-    info["geometry"] = dict(
-        corners=exact.apply_h(H, lay.src_pts()).round(1).tolist(),
-        columns=[round(float(lay.col_x(c) / lay.w), 4) for c in range(12)],
-        bar=[round(float(lay.a / lay.w), 4), round(float((lay.a + lay.bar) / lay.w), 4)],
-        tips=geometry_tips(tips, H),
-        checkers=geometry_checkers(circles, cc, bottom_colour, H))
+    info["geometry"] = geometry_frame(H, lay) | dict(tips=geometry_tips(tips, H), checkers=checkers, counts=counts)
     info["dice"] = dice_reader.read_dice(img, H, lay, pitch, circles,
                                          debug=debug_prefix and debug_prefix + "_dice.jpg", trace=trace)
     _trace(trace, "dice", info["dice"])
-    info["cube"] = cube_reader.read_cube(img, H, lay, pitch, circles, info["dice"]["dice"],
-                                         debug=debug_prefix and debug_prefix + "_cube.jpg")
-    _trace(trace, "cube", info["cube"])
     # the dice and the cube found, for the reading overlay too (the dice read with confidence in the
     # fields: the ones dice_read can come from)
     info["geometry"]["dice"] = [dict(quad=geometry_square(d, H), value=d["value"])
                                 for d in info["dice"]["dice"] if d["sure"] and not d["on_bar"]]
+    emit("dice", dict(dice=info["geometry"]["dice"]))
+    info["cube"] = cube_reader.read_cube(img, H, lay, pitch, circles, info["dice"]["dice"],
+                                         debug=debug_prefix and debug_prefix + "_cube.jpg")
+    _trace(trace, "cube", info["cube"])
     cube = info["cube"]
     info["geometry"]["cube"] = cube and dict(quad=geometry_square(cube, H), at=cube["at"])
+    emit("cube", dict(cube=info["geometry"]["cube"]))
     info["tilt_deg"] = round(view_tilt_deg(corners, img.shape), 1)
     info["warnings"] = ["oblique"] if info["tilt_deg"] > OBLIQUE_WARN_DEG else []
     if debug_prefix:
         save_debug(debug_prefix, ground, lay, m, runs, tips, circles)
     return pos, info
+
+
+def geometry_frame(H, lay):
+    """Where the playing area and its columns are: corners in image pixels (TL TR BR BL), columns and
+    bar edges as fractions of the width."""
+    return dict(corners=exact.apply_h(H, lay.src_pts()).round(1).tolist(),
+                columns=[round(float(lay.col_x(c) / lay.w), 4) for c in range(12)],
+                bar=[round(float(lay.a / lay.w), 4), round(float((lay.a + lay.bar) / lay.w), 4)])
+
+
+def geometry_counts(runs, bar, bottom_colour, lay, H):
+    """The checkers counted on each point and on the bar, [{"at": [x, y], "n": n, "side": "white" | "black"}, ...],
+    "at" in image pixels just outside the playing area by the point (on the bar for the bar), for the
+    app's reading overlay."""
+    off = 0.35 * lay.pw
+    marks = [(lay.col_x(c), -off if row == "top" else lay.h + off, n, k)
+             for (c, row), (k, n) in sorted(runs.items()) if n and k is not None]
+    mid = lay.a + lay.bar / 2
+    marks += [(mid, lay.h * (0.62 if k == bottom_colour else 0.38), n, k) for k, n in enumerate(bar) if n]
+    if not marks:
+        return []
+    pts = cv2.perspectiveTransform(np.float32([[x, y] for x, y, *_ in marks])[None], H)[0]
+    return [dict(at=[round(float(x), 1), round(float(y), 1)], n=int(n),
+                 side="white" if k == bottom_colour else "black") for (x, y), (_, _, n, k) in zip(pts, marks)]
 
 
 def geometry_tips(tips, H):
