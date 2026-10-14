@@ -42,7 +42,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.17.0"
+__version__ = "0.17.1"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -56,6 +56,7 @@ PATTERN_SUPPORT = 0.85   # edge support of a checker whose face does not match i
 PATTERN_DISTINCT = 30    # ... and its colour distance from every empty spot
 COS_35 = 0.8191520442889918   # cos(35 degrees)
 BAR_COLOUR_TOL = 0.25    # a checker on the bar: colour distance to its cluster / distance between the clusters
+LONE_COLOUR_TOL = 0.3     # ... and for a single checker on a point (a triangle's base can look like one, TODO-048)
 
 
 @dataclass
@@ -981,8 +982,13 @@ def count_from_circles(circles, lay: Layout, pitch: float):
         if circles[i][4] < LONE_MIN_SCORE or dd[i].min() > BAR_COLOUR_TOL * exact.norm(cc[0] - cc[1]):
             continue
         bar[lbl[i]] += 1
+    sep = exact.norm(cc[0] - cc[1])
     runs = {}
     for key, (n, members) in stacks.items():
+        # a lone checker needs one of the checker colours too: the base of a triangle whose
+        # colour is near a checker's makes a clear circle (tv-vegas-open's red 13 point, TODO-048)
+        if n == 1 and dd[members[0]].min() > LONE_COLOUR_TOL * sep:
+            n = 0
         if not n:
             runs[key] = (None, 0)
             continue
