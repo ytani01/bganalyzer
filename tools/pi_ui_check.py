@@ -27,9 +27,9 @@ delete Navigator.prototype.canShare; delete Navigator.prototype.share;
 """
 
 
-def open_app(browser, collect="off"):
+def open_app(browser):
     page = browser.new_page(viewport={"width": 412, "height": 915}, accept_downloads=True)
-    page.add_init_script(INIT + f"localStorage.setItem('collect', '{collect}');")
+    page.add_init_script(INIT)
     page.alerts = []
     page.on("dialog", lambda d: (page.alerts.append(d.message), d.dismiss()))
     page.goto(URL)
@@ -119,8 +119,9 @@ def check_collect(browser):
     out = []
     for mode in ("off", "on"):
         before = collected()
-        page = open_app(browser, mode)
+        page = open_app(browser)
         read_photo(page)
+        page.click(f'.seg[data-name="collect"] [data-value="{mode}"]')   # 「解析の設定」の下: shown only when the Pi keeps samples
         show_outcome(page)
         page.wait_for_timeout(2000)   # sendSample does not hold up the result
         new = sorted(collected() - before)
