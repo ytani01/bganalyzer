@@ -31,6 +31,10 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <button id="speak" class="act" type="button" aria-label="結果を読み上げる" aria-pressed="false" hidden>🔊</button>
     </div>
   </div>
+  <!-- 2 行目: 四隅の画面で、前に読み取った盤面があるときだけ出す（読み取り直さずに戻れることに気づけるように） -->
+  <div id="hdr-reuse" class="bar2" hidden>
+    <button id="to-board" class="act reuse" type="button">前に読み取った盤面を開く<small>読み取り直さずに、直した所もそのまま</small></button>
+  </div>
   <nav id="steps">
     <span data-step="photo">1 写真</span>
     <span data-step="corners">2 四隅</span>
@@ -65,7 +69,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <div id="history" hidden>
       <h2 class="history-title">最近の写真</h2>
       <ul id="history-list" class="history-list"></ul>
-      <p class="note">選ぶと、盤面を読み取る前の四隅の画面から始まります（四隅や設定はそのまま。読み取った盤面もボタンで開けます）。最近の 3 枚まで、この端末の中だけに残します。</p>
+      <p class="note">選ぶと、盤面を読み取る前の四隅の画面から始まります（四隅や設定はそのまま。読み取った盤面も上の黄色いボタンで開けます）。最近の 3 枚まで、この端末の中だけに残します。</p>
     </div>
     <p class="note">写真はサーバーで読み取るだけで、保存しません。</p>
   </section>
@@ -90,7 +94,6 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
         <button data-value="0">暗い方</button><button data-value="1">明るい方</button>
       </div>
     </div>
-    <button id="to-board" class="button small" hidden>前に読み取った盤面を開く（直した所もそのまま）</button>
   </section>
 
   <!-- 3. 盤面の確認・修正と解析 -->
