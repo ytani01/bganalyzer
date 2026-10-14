@@ -41,7 +41,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.13.0"
+__version__ = "0.13.1"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -51,6 +51,8 @@ LONE_MIN_SCORE = 1.0     # ... and for a single checker with no stack to back it
 STACK_SKEW = 0.25        # max sideways step between neighbouring checkers of a stack / pitch
 GAP_MIN_SCORE = 0.6      # enough for a circle in line between two checkers of a stack
 OUTLINE_SUPPORT = 0.8    # edge support of a checker that has the colour of the spot under it
+PATTERN_SUPPORT = 0.85   # edge support of a checker whose face does not match its rim ...
+PATTERN_DISTINCT = 30    # ... and its colour distance from every empty spot
 BAR_COLOUR_TOL = 0.25    # a checker on the bar: colour distance to its cluster / distance between the clusters
 
 
@@ -751,7 +753,11 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         score = support + 0.012 * min(distinct, 30) + 0.3 * ring_same
         # the colour of an empty spot is fine with a clear outline all round
         # (a white checker on a white triangle in a diagram)
-        if support < 0.2 or ring_same < 0.35 or (distinct < 8 and (support < OUTLINE_SUPPORT or ring_same < 0.6)):
+        # a face with a pattern (an embossed or printed centre) differs from its rim, so the ring
+        # is not the centre's colour: a clear outline all round in a colour no empty spot has is
+        # a checker too (tv-vegas-open, TODO-044)
+        patterned = support >= PATTERN_SUPPORT and distinct >= PATTERN_DISTINCT
+        if support < 0.2 or (ring_same < 0.35 and not patterned) or (distinct < 8 and (support < OUTLINE_SUPPORT or ring_same < 0.6)):
             continue
         if score < GAP_MIN_SCORE:
             continue
