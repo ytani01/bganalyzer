@@ -439,12 +439,40 @@ k-means で分けた 2 つの色の中心までの近い方の距離が、2 つ�
 dark-homeleft の 15、leather-cups の 9・21、rollup-oblique の 2・4・10、photo4 の 22）。
 本番に入れるには、断面の計算を CPU で変わらない形（TODO-046）にする必要がある（TODO-050）。
 
+## 半径を前提に円を探す試作（`radial.py`、TODO-032 の案 5）
+
+射影変換の後は駒の半径がほぼ決まっている（ポイントの幅の半分）。Hough は半径も探し、閉じたはっきりした輪郭が要るので、
+代わりに放射対称変換（Fast Radial Symmetry Transform、Loy と Zelinsky 2003）で中心を探す: 勾配の強い画素（上位 30%）が、
+勾配の向きに半径だけ離れた点に票を入れる（駒は周りより明るいことも暗いこともあるので両側に）。薄い縁でも、駒の縁の票は中心に集まる。
+半径は 0.9・1.0・1.1 倍を試し、票の山（一番高い山の 25% 以上、半径の 1.3 倍以上離れたもの）を候補にする。
+候補の採点（縁・色・`ring_same`）から先は今までと同じ。`board.recognize(..., method="radial")`（Hough の代わり）と
+`method="radial+hough"`（両方の候補）、`evaluate.py --radial` / `--radial+hough` で動く。アプリは今までどおり Hough で探す。
+
+2026-10-15、全 24 枚（576 ポイント）: **Hough 525、放射対称 536、両方 533〜535**。
+
+| サンプル | Hough | 放射対称 |
+|---|---|---|
+| commons-rollup-oblique | 14 | 22 |
+| commons-leather-cups | 12 | 15 |
+| commons-dark-homeleft（円が出にくい焦げ茶の駒、TODO-027） | 22 | 24 |
+| commons-travel-case | 16 | 18 |
+| commons-case-dice・nardy-midgame・set-cube-dice・photo2 | 23・17・17・22 | 1 ずつ下がる |
+
+- 放射対称だけのとき、山のしきい値は 0.25 で 536、0.3 で 534、0.35 で 529。票の厳しさ（ALPHA）と勾配の割合は両方の候補を使う形で振った:
+  ALPHA 2 で 535（1 で 508、3 で 531）、勾配は上位 30% で 535（40% で 534、20% で 523）。
+  `RADIAL_TUNE=ALPHA,勾配の百分位,山のしきい値` で変えられる。
+- 円が出にくい駒（TODO-027）と斜めの写真（rollup-oblique）に効いた。Hough と候補を合わせると、Hough の誤った候補も残るので、放射対称だけより少し悪い。
+- 遅い: このクラウドで 1 枚 5 秒 → 9 秒（`detect_checkers` を 4 回呼び、そのたびに 3 つの色の面で票を数える）。
+- 計算は float（Sobel・GaussianBlur・百分位）で、CPU によって最後の桁が変わりうる。本番に入れるには、整数で数え直し、
+  4 回の呼び出しで票を使い回して速くする必要がある（TODO-051）。
+
 ## ファイル
 
 - `position.py` 盤面モデル、gnubg Position ID（初期配置 `4HPwATDgc/ABMA` で検証済み）、ピップ数
 - `board.py` 認識本体
 - `corners.py` 四隅の推定（アプリの初期値）
 - `section.py` 断面で数える読み方の試作（TODO-032。アプリでは使わない）
+- `radial.py` 半径を前提に円を探す試作（TODO-032。アプリでは使わない）
 - `dice.py` フィールドのダイスの目
 - `cube.py` キューブの場所
 - `synth.py` 合成画像の生成（正解付き）
