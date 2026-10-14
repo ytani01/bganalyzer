@@ -23,6 +23,14 @@ Raspberry Pi differs more (recognizer/README.md), so don't update the baseline f
 import glob, json, os, sys
 from concurrent.futures import ProcessPoolExecutor
 
+# Read with the same SIMD code on every x86_64 machine: OpenCV, NumPy and OpenBLAS pick their
+# code by CPU, and AVX-512 machines read some samples 1-4 points differently from AVX2 ones
+# (GitHub Actions gets a different CPU each run). Cap them at AVX2. Set before cv2/numpy load.
+for var, value in (("OPENCV_CPU_DISABLE", "AVX512-SKX"),
+                   ("NPY_DISABLE_CPU_FEATURES", "X86_V4 AVX512_ICL AVX512_SPR"),
+                   ("OPENBLAS_CORETYPE", "Haswell")):
+    os.environ.setdefault(var, value)
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASELINE = os.path.join(HERE, "accuracy_baseline.json")
 SAMPLES = os.path.join(HERE, "..", "samples")
