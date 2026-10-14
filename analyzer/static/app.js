@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.31.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.32.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -912,6 +912,7 @@ for (const id of ["die1", "die2"]) {
   $(id).addEventListener("change", () => {
     if (state.result) $("result").classList.add("stale");
     $("dice-note").hidden = true;
+    syncRollLabel();
     syncCube();
     if (state.board) drawBoard();
     saveHistory();
@@ -975,7 +976,16 @@ function setDice(dice, fromPhoto = false) {
   $("die1").value = dice ? String(dice[0]) : "";
   $("die2").value = dice ? String(dice[1]) : "";
   $("dice-note").hidden = !fromPhoto;
+  syncRollLabel();
   if (state.board) drawBoard();
+}
+
+// With dice in, the side on roll has already rolled: "振った人", not "次に振る人" (TODO-042).
+function rollWho(dice) {
+  return dice ? "振った" : "次に振る";
+}
+function syncRollLabel() {
+  $("onroll-label").textContent = `${rollWho(currentDice())}人`;
 }
 
 function currentDice() {
@@ -1055,7 +1065,7 @@ function setResult(r, dice) {
       `<tr><td>エクイティ</td><td>${r.equity.white.toFixed(3)}</td><td>${r.equity.black.toFixed(3)}</td></tr>` +
       `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
   }
-  html += r.cube ? cubeHtml(r.cube) : `<p>${pipLine}。次に振るのは${NAME[r.on_roll]}の人。</p>`;
+  html += r.cube ? cubeHtml(r.cube) : `<p>${pipLine}。${rollWho(dice)}のは${NAME[r.on_roll]}の人。</p>`;
   if (r.cube) html += `<p>${pipLine}。</p>`;
   if (r.moves) {
     html += `<h2>最善手（${NAME[r.on_roll]}・ダイス ${dice ? dice.join("-") : ""}）</h2>`;
@@ -1126,7 +1136,7 @@ function speechText(r, dice) {
   } else {
     parts.push(standingToSpeech(r));
   }
-  if (!bestMove) parts.push(`次に振るのは${NAME[r.on_roll]}の人です。`);
+  if (!bestMove) parts.push(`${rollWho(dice)}のは${NAME[r.on_roll]}の人です。`);
   return parts.join("");
 }
 
