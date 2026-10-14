@@ -21,13 +21,6 @@ jobs:
       - run: uv sync --frozen
       - run: uv run python recognizer/check_accuracy.py 2>&1 | tee accuracy.txt; exit ${PIPESTATUS[0]}
         shell: bash
-      # TODO-027 の一時的な調査（調べ終わったら消す）
-      - if: always()
-        run: |
-          git fetch -q --depth 1 origin main && mkdir -p /tmp/main && git archive FETCH_HEAD recognizer samples | tar -x -C /tmp/main
-          d=archives/agents/TODO-027/diag_cube.py
-          uv run python $d /tmp/main/recognizer none
-          for m in none noshown nohidden; do uv run python $d recognizer $m; done
       # 結果を注釈にも出す（ログを開かなくても、PR の画面や API から読める）
       - if: always()
         run: |
