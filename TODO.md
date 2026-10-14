@@ -140,63 +140,55 @@ k-means の結果が乱数の種で大きく変わる（dark-homeleft は種で 
 
 ---
 
-## TODO-042. ダイスが入っているときの「次に振る人」を「振った人」にする
+## TODO-042. ダイスが入っているときは「次に振る人」を「振った人」と出す
 
 - **担当:** ai1
-- **見込み:** main Opus 5.5 / effort medium（実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。`tools/pi_ui_check.py` と Playwright で画面の文言を確かめる）
-- [ ] 「解析の設定」の「次に振る人」のラベルを、ダイスの目を入れたら「振った人」、入れていなければ「次に振る人」に切り替える
-- [ ] 解析の結果の文（`analyzer/static/app.js` の「次に振るのは…の人」）も、ダイスの有無で同じように言い分ける
-- [ ] analyzer/README.md の説明を合わせる。analyzer の版と `APP_VERSION` を上げる
+- **見込み:** main Opus 5.5 / effort medium + reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。Playwright で文言を見る）
 
-ユーザーの指摘（2026-10-14）: ダイスがもう振られているのに「次に振る人」と出るのは分かりにくい。
-言い方はダイスの有無で切り替えると決めた（「手番」に揃える案は採らなかった）。
-「入れ替える」ボタンの説明（「手番を入れ替えます」）と読み上げの文も見直す。
+**問題:** ダイスがもう振られているのに「次に振る人」と出て分かりにくい。
+
+- [ ] 「解析の設定」のラベル・結果の文・読み上げを、ダイスあり「振った人」／なし「次に振る人」で言い分ける
+- [ ] analyzer/README.md を合わせ、analyzer の版と `APP_VERSION` を上げる
 
 ---
 
-## TODO-043. 最善手の矢印を、ダイス 1 つずつの途中の点を通して描く
+## TODO-043. 最善手の矢印を、途中の点を通して描く
 
 - **担当:** ai1
-- **見込み:** main Opus 5.5 / effort medium（実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。Playwright で矢印の経路を確かめる）
-- [ ] API の手（`analyzer/analysis.py`）に、gnubg の手の組（ダイス 1 つずつの from / to）も入れて返す
-- [ ] 盤面図の矢印（`drawMoveArrows`）を、その組の 1 歩ずつで描く（22/15 なら 22→20→15）
-- [ ] analyzer の版と `APP_VERSION` を上げる。analyzer/README.md の説明を合わせる
+- **見込み:** main Opus 5.5 / effort medium + reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。Playwright で矢印を見る）
 
-ユーザーの問い（2026-10-14）: 5-2 の最善手の候補「22/15」の矢印が 22 から 15 へ 1 本で描かれ、
-途中の 17 にある相手のブロットを打つのかどうか分からなかった。
-gnubg は打つ手を「22/17*/15」と書き、打つ所には赤い丸が出る（`h.hit`）。「22/15」は 20 を通る打たない手。
-矢印は手の文字列（`BgMoves.hops`）から作っているので、まとめて書かれた手は途中の点が分からない。
+**問題:** 「22/15」の矢印が 1 本で、途中で打つのか分からない（実際は 20 を通る打たない手。打つ手は「22/17*/15」で赤い丸が出る）。
+
+- [ ] API の手に、ダイス 1 つずつの from / to も入れて返す（`analyzer/analysis.py`）
+- [ ] 矢印をその 1 歩ずつで描く（`drawMoveArrows`）
+- [ ] analyzer/README.md を合わせ、analyzer の版と `APP_VERSION` を上げる
 
 ---
 
-## TODO-044. バーの縁の偽の円のせいで、隣の 1 個だけの駒を見落とす
+## TODO-044. バーの脇の 1 個だけの駒を見落とす
 
 - **担当:** ai1
-- **見込み:** main Opus 5.5 / effort high（原因の確認と実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。`evaluate.py` と `check_accuracy.py` で全サンプルを測る）
-- [ ] 本当に偽の円が本物の円を重なりとして消しているのか、`board.py` の円の選び方で確かめる
-- [ ] バーの上（枠の縁）の円を駒の候補から外す、または重なったときに駒らしい方を残すようにする
-- [ ] 全サンプルで読みが下がらないことを確かめ、recognizer/README.md の精度の表を直す。recognizer の版を上げる
+- **見込み:** main Opus 5.5 / effort high + reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。`evaluate.py` と `check_accuracy.py` で全サンプル）
 
-2026-10-14 にユーザーがスマホで撮った写真（テレビに映った Las Vegas Open の盤、Pi の
-`collected/user-1791983274342-s5dd7x.jpg`。直していない盤面で保存されたので、正解は 6 ポイントに手前の青が 1 個）。
-6 ポイントのいちばん下の青 1 個（バーのすぐ左）に円が付かず、すぐ右のバーの縁の何もない所に円が出ていた。
-円どうしは重ならないように選ぶので、偽の円が先に選ばれて本物が捨てられたと見ている（未確認）。
-`collected/` はリポジトリに入れていないので、サンプルにするならユーザーに確かめてから `samples/` に入れる。
+**問題:** `samples/tv-vegas-open` の 6 ポイントの青 1 個を読まない。すぐ横のバーの縁に偽の円が出ていて、それに消されたと見ている（未確認）。
+
+- [x] 写真をサンプルに入れる（2026-10-14、ユーザーの指示）
+- [ ] 偽の円が本物を消しているのか確かめる（`board.py` の円の選び方）
+- [ ] 直して全サンプルで読みが下がらないことを確かめ、recognizer/README.md と版を上げる
 
 ---
 
 ## TODO-045. 盤の中に置かれたキューブを「ダブルされたところ」と読む
 
 - **担当:** ai1
-- **見込み:** main Opus 5.5 / effort high（設計と実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium。サンプルと PWA の表示を確かめる）
-- [ ] 着手時に決める: 誰がダブルしたことにするか（画面の「次に振る人」を使う、キューブがどちらのフィールド寄りにあるかで決める、など）
-- [ ] `recognizer/cube.py` で、キューブが遊戯面の中（バーや盤の外ではない所）にあれば「ダブルされたところ」とする。数字（2 以上か）も読むかを決める
-- [ ] PWA の表示と analyzer/README.md を合わせ、recognizer と analyzer の版を上げる
+- **見込み:** main Opus 5.5 / effort high + reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium）
 
-TODO-044 と同じ写真。キューブ（2 の面）は右のフィールドの上下の中央の線の上にあり、見つかってはいたが、
-中央の線から盤の高さの 18% 以内なので「真ん中（誰も持っていない）」と読んだ（`MIDDLE`）。
-今の作りは置き場所しか見ないので、中央の線の上では「真ん中」と「ダブルされたところ」を区別できない。
-誰も持っていないキューブは、ふつうバーの上か盤の外に置く。
+**問題:** `samples/tv-vegas-open` のキューブ（2 の面、右のフィールドの真ん中）を「真ん中（誰も持っていない）」と読む。正解は奥がダブルされたところ。
+今は置き場所しか見ないので、中央の線の上では区別できない。
+
+- [ ] 着手時に決める: 誰がダブルしたかをどう決めるか（「次に振る人」を使う、など）と、数字を読むか
+- [ ] `recognizer/cube.py` で、遊戯面の中にあるキューブを「ダブルされたところ」とする
+- [ ] PWA と README を合わせ、recognizer と analyzer の版を上げる
 
 ---
 
