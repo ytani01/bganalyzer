@@ -13,6 +13,7 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000   # API と
 docker build -t bganalyzer . && docker run --rm -p 8000:8000 bganalyzer   # コンテナで起動
 docker compose up -d --build                                     # Raspberry Pi で常駐（docs/raspi.md）
 uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
+uv run python recognizer/check_accuracy.py                       # 認識の精度が基準より下がっていないか（CI の accuracy）
 uv run python tools/check_pi.py                                  # Pi の公開サーバーを外から確かめる
 uv run -q --no-project --with playwright python tools/pi_ui_check.py   # Pi の上で、スマホの代わりに PWA を操作して確かめる
 ```
@@ -49,6 +50,8 @@ analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同
 
 認識を変えたら `recognizer/evaluate.py` で `samples/*.truth.json` と比べ、
 `recognizer/README.md` の「精度」の表を更新する。
+GitHub Actions の `accuracy` は、サンプルごとの結果が `recognizer/accuracy_baseline.json` より悪くなると落ちる。
+良くなったとき・サンプルを足した／消したときは `uv run python recognizer/check_accuracy.py --update` で基準を書き直して同じ PR に入れる（x86_64 で測る。Pi では更新しない）。
 
 ## Raspberry Pi で確かめること
 
@@ -77,5 +80,5 @@ analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
 - **マージ後に Pi で確かめる必要がある変更は、その PR の中で docs/PI_CHECKS.md に項目を足す**
 - **マージの直前に最新の main を取り込み、`uv run pytest analyzer` と GitHub Actions の `test` が
-  両方通ってからマージする。** どちらかが落ちていたらマージしない。
+  両方通ってからマージする（`accuracy` が走った PR はそれも）。** どちらかが落ちていたらマージしない。
   相手の担当の部分とぶつかったら、勝手に直さずユーザーに報告する
