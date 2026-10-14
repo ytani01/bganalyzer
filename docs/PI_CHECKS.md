@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-025、PI-026、PI-027、PI-028。** これまでに 24 件を決着させた。
+**残っている項目: PI-028。** これまでに 27 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-029`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -89,42 +89,11 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 
 - **担当:** ai1（Pi の Claude Code）
 - **足した日・PR:** 2026-10-15（TODO-046）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.14.0 以降。コンテナに `samples/` は入っていないので、つないで走らせる:
-  `docker compose run --rm -v "$PWD/samples:/app/samples:ro" app python recognizer/trace_cpu.py check`
-  （サービス名が違えば compose.yaml に合わせる）。あわせて `... app python recognizer/check_accuracy.py` も走らせる
-- **期待:** `trace_cpu.py check` が「same as the reference: every step of every sample」で終わる（終了コード 0）。`check_accuracy.py` が 576 ポイント中 518 で、失敗しない。
+- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.14.0 以降。PI-027 と同じく Pi の上で
+  `uv run python recognizer/trace_cpu.py check` と `uv run python recognizer/check_accuracy.py` を走らせる（基準は更新しない）
+- **期待:** `trace_cpu.py check` が「same as the reference: every step of every sample」で終わる（終了コード 0）。`check_accuracy.py` が 576 ポイント中 518 で、失敗しない（0.13.1 の Pi は 527、x86_64 は 529 だった。0.14.0 からは同じ値になる）。
   違ったら、出力の「first different step」をユーザーに報告する（その段に、Pi で端数が変わる計算が残っている）
 - [ ] Pi: （結果をここに書く）
-
-## PI-027. 模様のある駒の面を読む（recognizer 0.13.1）
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-15（TODO-044）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.13.1 以降。Pi で `uv run python recognizer/check_accuracy.py` を走らせ（基準は更新しない）、
-  サンプルごとのポイントを前の Pi の値と比べる
-- **期待:** tv-vegas-open の 6 ポイント（手前の 1 個）を読む。ほかのサンプルは前より下がらない（Pi と x86_64 の違いは TODO-046 で揃える）
-- [ ] Pi: （結果をここに書く）
-
-## PI-026. 盤の中のキューブを「ダブルされたところ」と読む（recognizer 0.13.0、analyzer 0.34.0）
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-14（TODO-045）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.13.0・analyzer 0.34.0。`uv run python recognizer/evaluate.py` か
-  `/analyze-photo` で `samples/tv-vegas-open` を読む（`on_roll=white`）
-- **期待:** `cube_read` が `{"at": "field"}`、`analysis.cube.question` が `take`、`taker` が `black`、`dice_read` が null。
-  ほかのサンプルのキューブの読みは前と同じ（photo3・screen2 など）
-- [ ] Pi: （結果をここに書く）
-
-## PI-025. 読み取りの演出で駒・ダイス・キューブを約 0.5 秒ずつ見せる（analyzer 0.33.0、recognizer 0.12.0）
-
-- **担当:** ai1（Pi の Claude Code。スマホでの確認は ai1）
-- **足した日・PR:** 2026-10-14（ユーザーの依頼）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が analyzer 0.33.0・recognizer 0.12.0 以降。`samples/screen1.png` と `samples/screen2.jpg` を `/analyze-photo` に送り、`geometry` の `dice` と `cube` を見る。スマホで、ダイスとキューブの写った写真を読み取る
-- **期待:** screen1 は `dice` の目が 4 と 2、`cube` は null。screen2 は `dice` の目が 5 と 4、`cube.at` が `"black"`（x86_64 と同じ）。スマホでは、駒の円のあと、ダイスに水色の四角と目、キューブに桃色の四角が順に出て、約 2 秒で盤面の画面に進む（タップで飛ばせる）
-- [x] Pi: 2026-10-14、db18668。`/version` は analyzer 0.33.0・recognizer 0.12.0。screen1 は `dice` 4・2、`cube` null。screen2 は `dice` 4・5、`cube.at` `"black"`。OK。
-  ヘッドレスの Chromium（412×915）で screen2 を読み取ると、応答から 0.95 秒で駒の円、1.45 秒でダイスの水色の四角と目、1.8 秒でキューブの桃色の四角が出て、2.44 秒で盤面の画面に進んだ。OK。
-  ただし左下のラベルの先頭が切れる（「ダイス 4・5」が「ゞイス 4・5」、「キューブ（奥）」が「ューブ（奥）」）
-- [ ] スマホ: 演出の見え方と長さ（ai1）
 
 ## 完了済み
 
