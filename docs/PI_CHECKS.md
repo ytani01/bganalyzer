@@ -69,7 +69,7 @@ uv run python tools/check_pi.py          # --all で samples/ の全部
 - **確かめ方:** `git pull && docker compose up -d --build`。`curl -s http://127.0.0.1:8000/version` を見る。
   ユーザーにスマホで、キューブを片側に置いて「ダブルされたところ」にしたまま、ダイスの写った写真を読み取ってもらう。
 - **期待:** `/version` が analyzer 0.25.2。読み取りが 422 にならず、写真のダイスが入って最善手が出る。キューブの説明が「ダイスがあるので、最善手を出します。」になる。
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-14、701d757。`/version` は analyzer 0.25.2・recognizer 0.7.0。`samples/screen1.png` を `doubled=true`・`cube_owner=white`・ダイスなしで送ると 200 になり、写真のダイス 4-2 で最善手 `24/20 13/11` が出た（ダイスの写ったサンプル 10 枚も 422 なし）。OK
 - [ ] スマホ: 上の操作で最善手が出る（ai1）
 
 ---
