@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-019。** これまでに 18 件を決着させた。
+**残っている項目: なし。** これまでに 19 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-020`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -84,19 +84,6 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
-
----
-
-## PI-019. collected/ を自動で測り直し、古い組を消す（analyzer 0.26.0、recognizer 0.8.0）
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-14、PR #104（TODO-038）
-- **確かめ方:** 更新のあと `/version` を見る。`docker compose exec -T app python recognizer/collected.py /data/samples --force` を走らせ、
-  `collected/report.md` を見る。その後、「Pi に残す」で 10 組たまったら、`report.md` が書き直されているか（時刻）を見る。
-- **期待:** `/version` が analyzer 0.26.0・recognizer 0.8.0。report.md に組の数と読み違いが出て、正解の中の文字は出ない。
-  読み違いの無い組が 50 以下なら何も消えない。10 組たまると、サーバーが自動で測り直す
-- [x] Pi: 2026-10-14、66ca3e0。`/version` は analyzer 0.26.0・recognizer 0.8.0。`--force` で `measured`、report.md は「組: 1、読み違いのある組 1」（ai1 の組のポイント 5）で、正解の中の文字は出ていない。何も消えていない。report.md の時刻はコンテナの UTC。OK
-- [ ] 10 組たまったとき: report.md が自動で書き直される（ai1 が使ってたまったら）
 
 ---
 
