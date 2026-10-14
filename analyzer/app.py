@@ -35,7 +35,7 @@ RECOGNIZER = Path(__file__).resolve().parent.parent / "recognizer"
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.28.0"
+__version__ = "0.29.1"
 
 REPO = Path(__file__).resolve().parent.parent
 
