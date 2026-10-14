@@ -161,6 +161,7 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 `BG_SAMPLES_DIR` に `user-<id>.*` として保存する。`id` は端末の中の写真の id（英数字と `-`）で、同じ id は上書き。
 `BG_SAMPLES_DIR` を設定していないサーバーでは 404（写真は保存しない）。上限は 1000 組（超えたら 507）。
 PWA は設定の「Pi に残す」がオンのときだけ、「解析する」を押すたびに送る。Pi では `compose.yaml` が `collected/` に置く（[docs/raspi.md](../docs/raspi.md)）。
+保存したあと、前に測ってから新しい組が 10 たまっていれば、`recognizer/collected.py` を子プロセスで起動して測り直し、読み違いの無い古い組を消す（新しい 50 組は残す。結果は `report.md`）。
 
 ### `GET /health`
 

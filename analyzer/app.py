@@ -11,6 +11,8 @@ import logging
 import mimetypes
 import os
 import re
+import subprocess
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -27,9 +29,13 @@ from pydantic import BaseModel, Field
 from analysis import (DEFAULT_PLIES, MAX_PLIES, Position, analyze, parse_position, shutdown,
                       summary_ja)
 
+import collected   # recognizer/collected.py: analysis puts recognizer/ on sys.path
+
+RECOGNIZER = Path(__file__).resolve().parent.parent / "recognizer"
+
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.25.3"
+__version__ = "0.26.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -181,7 +187,24 @@ async def save_sample(
         old.unlink()
     (d / t["image"]).write_bytes(data)
     (d / f"{name}.truth.json").write_text(json.dumps(t, ensure_ascii=False) + "\n")
+    measure_collected(d)
     return {"saved": name}
+
+
+_measuring: subprocess.Popen | None = None
+
+
+def measure_collected(d: Path) -> None:
+    """When enough new pairs came, measure them again in a child process (recognizer/collected.py)."""
+    global _measuring
+    if (_measuring and _measuring.poll() is None) or len(collected.new_pairs(d)) < collected.NEW:
+        return
+    try:   # at the lowest priority: the API in the same container comes first; why it failed goes to measure.log
+        with open(d / "measure.log", "w") as err:
+            _measuring = subprocess.Popen(["nice", "-n", "19", sys.executable, str(RECOGNIZER / "collected.py"), str(d)],
+                                          stdout=subprocess.DEVNULL, stderr=err)
+    except OSError as e:   # the pair is saved: not measuring this time is no reason to fail the request
+        log.warning("could not measure collected/ again: %r", e)
 
 
 @app.post("/analyze")
