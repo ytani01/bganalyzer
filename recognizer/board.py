@@ -41,7 +41,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.11.1"
+__version__ = "0.12.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -1017,6 +1017,12 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
                                          debug=debug_prefix and debug_prefix + "_dice.jpg")
     info["cube"] = cube_reader.read_cube(img, H, lay, pitch, circles, info["dice"]["dice"],
                                          debug=debug_prefix and debug_prefix + "_cube.jpg")
+    # the dice and the cube found, for the reading overlay too (the dice read with confidence in the
+    # fields: the ones dice_read can come from)
+    info["geometry"]["dice"] = [dict(quad=geometry_square(d, H), value=d["value"])
+                                for d in info["dice"]["dice"] if d["sure"] and not d["on_bar"]]
+    cube = info["cube"]
+    info["geometry"]["cube"] = cube and dict(quad=geometry_square(cube, H), at=cube["at"])
     info["tilt_deg"] = round(view_tilt_deg(corners, img.shape), 1)
     info["warnings"] = ["oblique"] if info["tilt_deg"] > OBLIQUE_WARN_DEG else []
     if debug_prefix:
@@ -1029,6 +1035,14 @@ def geometry_tips(tips, H):
     if not tips:
         return []
     pts = np.float32([[t[2], t[3]] for t in tips])
+    return cv2.perspectiveTransform(pts[None], H)[0].astype(np.float64).round(1).tolist()
+
+
+def geometry_square(d, H):
+    """A die or the cube (x, y, side in canonical coordinates) as its square in image pixels,
+    [[x, y] TL TR BR BL] (for the app's reading overlay)."""
+    x, y, h = d["x"], d["y"], d["side"] / 2
+    pts = np.float32([[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]])
     return cv2.perspectiveTransform(pts[None], H)[0].astype(np.float64).round(1).tolist()
 
 
