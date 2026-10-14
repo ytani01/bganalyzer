@@ -36,6 +36,7 @@ import numpy as np
 
 import cube as cube_reader
 import dice as dice_reader
+import exact
 import home_prior
 from position import Position
 
@@ -53,6 +54,7 @@ GAP_MIN_SCORE = 0.6      # enough for a circle in line between two checkers of a
 OUTLINE_SUPPORT = 0.8    # edge support of a checker that has the colour of the spot under it
 PATTERN_SUPPORT = 0.85   # edge support of a checker whose face does not match its rim ...
 PATTERN_DISTINCT = 30    # ... and its colour distance from every empty spot
+COS_35 = 0.8191520442889918   # cos(35 degrees)
 BAR_COLOUR_TOL = 0.25    # a checker on the bar: colour distance to its cluster / distance between the clusters
 
 
@@ -83,12 +85,28 @@ class Layout:
         return np.float32([(0, 0), (self.w, 0), (self.w, self.h), (0, self.h)])
 
 
+def _snap_layout(lay: Layout) -> Layout:
+    """lay with its widths and columns on a 1/256-pixel grid (a step's result handed on, TODO-046)."""
+    q = 1 / 256
+    return Layout(a=exact.snap(lay.a, q), bar=exact.snap(lay.bar, q), h=lay.h,
+                  cols=None if lay.cols is None else [exact.snap(c, q) for c in lay.cols])
+
+
+def _warp(img, H, m, size):
+    """The photo seen from straight above: canonical (with margin m) <- image through H.
+    The matrix is worked out in Python floats, the pixels in integers (exact.warp)."""
+    M = exact.mul3([[1, 0, m], [0, 1, m], [0, 0, 1]], exact.inv3(H))
+    return exact.warp(img, M, size)
+
+
 # ---------------------------------------------------------------- geometry --
 
 def _edge_gradients(lab):
-    """Contrast across horizontal and across vertical edges, for _edge_points."""
-    return {"h": cv2.blur(np.abs(np.diff(lab, axis=0)).sum(2), (15, 1)),
-            "v": cv2.blur(np.abs(np.diff(lab, axis=1)).sum(2), (1, 15))}
+    """Contrast across horizontal and across vertical edges, for _edge_points.
+    lab: 8-bit; in integers (the sum over 15 pixels, 15 times the mean that was used before)."""
+    lab = lab.astype(np.int32)
+    return {"h": exact.box_sum(np.abs(np.diff(lab, axis=0)).sum(2), 15, 1),
+            "v": exact.box_sum(np.abs(np.diff(lab, axis=1)).sum(2), 1, 15)}
 
 
 def _edge_points(grads, axis, pos, lo, hi, win, step=4):
@@ -106,7 +124,7 @@ def _edge_points(grads, axis, pos, lo, hi, win, step=4):
                 continue
             col = g[y0:y1, x]
             k = int(np.argmax(col))
-            if col[k] > 6:
+            if col[k] > 6 * 15:
                 pts.append((x, y0 + k + 0.5, col[k]))
     else:
         for y in range(int(lo), int(hi), step):
@@ -115,7 +133,7 @@ def _edge_points(grads, axis, pos, lo, hi, win, step=4):
                 continue
             row = g[y, x0:x1]
             k = int(np.argmax(row))
-            if row[k] > 6:
+            if row[k] > 6 * 15:
                 pts.append((x0 + k + 0.5, y, row[k]))
     return np.array(pts, np.float64)
 
@@ -143,8 +161,8 @@ def _ransac_line(pts, axis, tol=3.0, iters=300, max_slope=0.035):
     if best is None:
         return None
     inl = best[1]
-    p, q = np.polyfit(t[inl], u[inl], 1)
-    return p, q, inl.mean()
+    p, q = exact.polyfit1(t[inl], u[inl])
+    return float(p), float(q), float(inl.mean())
 
 
 def refine(img, corners, lay: Layout, m: int):
@@ -153,11 +171,10 @@ def refine(img, corners, lay: Layout, m: int):
     Returns the canonical->image homography, a quality score and the layout
     (field / bar widths re-estimated from the found edges).
     """
-    H0 = cv2.getPerspectiveTransform(lay.src_pts(), np.float32(corners))
-    Sh = np.array([[1, 0, m], [0, 1, m], [0, 0, 1]], np.float64)
+    H0 = exact.homography(lay.src_pts(), np.float64(corners))
     size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
-    warp = cv2.warpPerspective(img, Sh @ np.linalg.inv(H0), size, flags=cv2.INTER_AREA)
-    lab = cv2.GaussianBlur(cv2.cvtColor(warp, cv2.COLOR_BGR2Lab).astype(np.float32), (0, 0), 1.5)
+    warp = _warp(img, H0, m, size)
+    lab = cv2.GaussianBlur(cv2.cvtColor(warp, cv2.COLOR_BGR2Lab), (0, 0), 1.5)   # 8-bit: the same on every CPU
     grads = _edge_gradients(lab)
     win = 0.06 * lay.h
     xs = [m, m + lay.a, m + lay.a + lay.bar, m + lay.w]
@@ -174,7 +191,7 @@ def refine(img, corners, lay: Layout, m: int):
         lines[name] = _ransac_line(_edge_points(grads, "v", pos, *ys, win if name in ("L", "R") else lay.bar * 0.45), "v")
     if any(lines[k] is None for k in ("top", "bot", "L", "R")):
         return H0, 0.0, lay
-    quality = float(np.mean([v[2] for v in lines.values() if v is not None]))
+    quality = exact.snap(np.mean([v[2] for v in lines.values() if v is not None]), 1e-6)
 
     def meet(hl, vl):
         ph, qh = hl[:2]   # y = ph*x + qh
@@ -185,7 +202,7 @@ def refine(img, corners, lay: Layout, m: int):
     found = {v: [meet(lines["top"], lines[v]), meet(lines["bot"], lines[v])]
              for v in ("L", "BL", "BR", "R") if lines[v] is not None}
     xmid = {v: (p[0][0] + p[1][0]) / 2 - m for v, p in found.items()}
-    hgt = np.mean([p[1][1] - p[0][1] for p in found.values()])
+    hgt = float(np.mean([p[1][1] - p[0][1] for p in found.values()]))
     s = lay.h / hgt
     names = ["L", "R"]
     new = None
@@ -202,36 +219,48 @@ def refine(img, corners, lay: Layout, m: int):
         ratio = lay.bar / lay.a
         a = width / (2 + ratio)
         new = Layout(a=a, bar=a * ratio, h=lay.h)
+    new = _snap_layout(new)
     xs2 = {"L": 0, "BL": new.a, "BR": new.a + new.bar, "R": new.w}
     dst = np.float64([(xs2[v], y) for v in names for y in (0, new.h)])
     src = np.float64([p for v in names for p in found[v]]) - m
-    img_pts = cv2.perspectiveTransform(src[None], H0)[0]
-    H, _ = cv2.findHomography(dst, img_pts)
-    return H / H[2, 2], quality, new
+    img_pts = exact.apply_h(H0, src)
+    H = exact.homography(dst, img_pts)
+    if H is None:
+        return H0, 0.0, lay
+    return exact.snap_h(H, new.w, new.h), quality, new
 
 
 def camera_from_h(H, shape, f_default=0.75):
-    """Focal length (principal point at centre) and pose from a plane homography."""
+    """Focal length (principal point at centre) and pose from a plane homography.
+    In Python floats (the same on every CPU, TODO-046)."""
+    import math
     hh, ww = shape[:2]
     cx, cy = ww / 2, hh / 2
-    T = np.array([[1, 0, -cx], [0, 1, -cy], [0, 0, 1]])
-    G = T @ H
-    h1, h2 = G[:, 0], G[:, 1]
+    G = exact.mul3([[1, 0, -cx], [0, 1, -cy], [0, 0, 1]], H)
+    h1, h2 = [float(v) for v in G[:, 0]], [float(v) for v in G[:, 1]]
     f2 = -(h1[0] * h2[0] + h1[1] * h2[1]) / (h1[2] * h2[2]) if abs(h1[2] * h2[2]) > 1e-12 else -1
-    f = np.sqrt(f2) if f2 > 0 else f_default * max(ww, hh)
+    f = math.sqrt(f2) if f2 > 0 else f_default * max(ww, hh)
     if not (0.4 * max(ww, hh) < f < 2.0 * max(ww, hh)):
         f = f_default * max(ww, hh)  # near top-down: f is unobservable but also irrelevant
     K = np.array([[f, 0, cx], [0, f, cy], [0, 0, 1]])
-    B = np.linalg.inv(K) @ H
-    lam = (np.linalg.norm(B[:, 0]) + np.linalg.norm(B[:, 1])) / 2
-    r1 = B[:, 0] / np.linalg.norm(B[:, 0])
-    r2 = B[:, 1] - r1 * (r1 @ B[:, 1])
-    r2 /= np.linalg.norm(r2)
-    r3 = np.cross(r1, r2)
-    t = B[:, 2] / lam
-    if r3 @ t > 0:
-        r3 = -r3
-    return K, r1, r2, r3, t
+    B = exact.mul3(exact.inv3(K), H)
+    b1, b2, b3 = ([float(v) for v in B[:, i]] for i in range(3))
+
+    def dot(u, v):
+        return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]
+
+    n1, n2 = math.sqrt(dot(b1, b1)), math.sqrt(dot(b2, b2))
+    lam = (n1 + n2) / 2
+    r1 = [v / n1 for v in b1]
+    k = dot(r1, b2)
+    r2 = [b - a * k for a, b in zip(r1, b2)]
+    n = math.sqrt(dot(r2, r2))
+    r2 = [v / n for v in r2]
+    r3 = [r1[1] * r2[2] - r1[2] * r2[1], r1[2] * r2[0] - r1[0] * r2[2], r1[0] * r2[1] - r1[1] * r2[0]]
+    t = [v / lam for v in b3]
+    if dot(r3, t) > 0:
+        r3 = [-v for v in r3]
+    return K, np.array(r1), np.array(r2), np.array(r3), np.array(t)
 
 
 def view_tilt_deg(corners, shape) -> float:
@@ -240,9 +269,10 @@ def view_tilt_deg(corners, shape) -> float:
     From the tapped corners alone. Steep views (photo1, ~70 degrees) hide and
     shift checkers behind the frame and each other, and read badly.
     """
-    H = cv2.getPerspectiveTransform(np.float32([(0, 0), (1, 0), (1, 1), (0, 1)]), np.float32(corners))
+    import math
+    H = exact.homography(np.float64([(0, 0), (1, 0), (1, 1), (0, 1)]), np.float64(corners))
     _, _, _, r3, _ = camera_from_h(H, shape)
-    return float(np.degrees(np.arccos(min(1.0, abs(r3[2])))))
+    return math.degrees(math.acos(min(1.0, abs(float(r3[2])))))
 
 
 OBLIQUE_WARN_DEG = 40   # samples: top-down shots 0-23 degrees, photo1 69
@@ -277,8 +307,8 @@ def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
                 # near their tips the triangles are narrow peaks; the bar, the frame
                 # and a stack of checkers (about one pitch wide) are plateaus, so
                 # score peaks, not just colour
-                on = np.interp(c, xs, prof)
-                side = (np.interp(c - 0.5 * pw, xs, prof) + np.interp(c + 0.5 * pw, xs, prof)) / 2
+                on = exact.interp(c, xs, prof)
+                side = (exact.interp(c - 0.5 * pw, xs, prof) + exact.interp(c + 0.5 * pw, xs, prof)) / 2
                 sc = (on - side).sum()
                 if best is None or sc > best[0]:
                     best = (sc, c - m)
@@ -288,8 +318,8 @@ def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
             # no visible triangles (e.g. engraved, same colour as the field):
             # keep the even spacing from the frame edges
             best = (best[0], f0 + lay.a / 2 + (np.arange(6) - 2.5) * lay.pw)
-        cols += list(best[1])
-    return Layout(a=lay.a, bar=lay.bar, h=lay.h, cols=cols)
+        cols += [float(v) for v in best[1]]
+    return _snap_layout(Layout(a=lay.a, bar=lay.bar, h=lay.h, cols=cols))
 
 
 def fit_columns_to_checkers(lay: Layout, circles) -> Layout:
@@ -315,7 +345,9 @@ def fit_columns_to_checkers(lay: Layout, circles) -> Layout:
             d = np.abs(xs[:, None] - c[None, :])
             near = d.min(1)
             used = len(set(d.argmin(1)[near < 0.25 * lay.pw]))
-            return np.exp(-(near / (0.12 * lay.pw)) ** 2).sum(), used
+            z2 = (near / (0.12 * lay.pw)) ** 2
+            # exp(-z2) without libm's exp (its last bit differs by CPU): 1 / its Taylor series
+            return (1 / (1 + z2 * (1 + z2 * (1 / 2 + z2 * (1 / 6 + z2 / 24))))).sum(), used
 
         best = None
         for base in (cur, even):
@@ -327,8 +359,8 @@ def fit_columns_to_checkers(lay: Layout, circles) -> Layout:
                     if best is None or sc > best[0] + 1e-6:
                         best = (sc, used, c)
         if best[1] >= 2 and best[0] > score(cur)[0] + 0.5:
-            cols[6 * f:6 * f + 6] = list(best[2])
-    return Layout(a=lay.a, bar=lay.bar, h=lay.h, cols=cols)
+            cols[6 * f:6 * f + 6] = [float(v) for v in best[2]]
+    return _snap_layout(Layout(a=lay.a, bar=lay.bar, h=lay.h, cols=cols))
 
 
 def _run_at(line, k0, max_off):
@@ -359,8 +391,8 @@ def find_tips(ground_bgr, lay: Layout, m: int):
     pixel of depth, base the distance from the tip to where the triangle ends
     (None when not found; short when a checker stands on the point).
     """
-    lab = cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab).astype(np.float32)
-    lab = cv2.GaussianBlur(lab, (0, 0), 1.5)
+    # blurred in 8 bits (OpenCV's fixed point: the same on every CPU), then as floats
+    lab = cv2.GaussianBlur(cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab), (0, 0), 1.5).astype(np.float32)
     plain = _plain_colour(lab, lay, m)
     tri = np.linalg.norm(lab - plain, axis=2) > 28
     tips = []
@@ -390,8 +422,8 @@ def find_tips(ground_bgr, lay: Layout, m: int):
                 continue
             d = np.array(data, np.float64)
             for _ in range(4):                       # trimmed fit of width vs depth
-                p = np.polyfit(d[:, 0], d[:, 1], 1)
-                res = np.abs(np.polyval(p, d[:, 0]) - d[:, 1])
+                p = exact.polyfit1(d[:, 0], d[:, 1])
+                res = np.abs(exact.polyval1(p, d[:, 0]) - d[:, 1])
                 keep = res <= max(2.5, 2 * np.median(res))
                 if keep.sum() < 15:
                     break
@@ -401,8 +433,8 @@ def find_tips(ground_bgr, lay: Layout, m: int):
                 continue
             # where the sides would meet; triangles with blunt or rounded ends stop short of it
             tip_depth = min(-p[1] / p[0], d[:, 0].max() + 0.02 * lay.h)
-            px = np.polyfit(d[:, 0], d[:, 2], 1)
-            tip_x = np.polyval(px, tip_depth)
+            px = exact.polyfit1(d[:, 0], d[:, 2])
+            tip_x = float(exact.polyval1(px, tip_depth))
             tip_y = m + tip_depth if row == "top" else m + lay.h - tip_depth
             # triangle length in this image = depth at which width reaches one pitch
             length = -lay.pw / p[0]
@@ -424,23 +456,23 @@ def _triangle_base(lab, plain, lay, m, img_y, p, px, d, tip_depth):
     """
     depths = d[:, 0]
     sel = (depths > tip_depth - 0.6 * (tip_depth - depths.min())) & (depths < tip_depth - 0.1 * (tip_depth - depths.min()))
-    pts = [lab[img_y(dd), int(round(np.polyval(px, dd)))] for dd in depths[sel]] if sel.sum() >= 5 else []
+    pts = [lab[img_y(dd), int(round(float(exact.polyval1(px, dd))))] for dd in depths[sel]] if sel.sum() >= 5 else []
     if not len(pts):
         return None
     col = np.median(np.array(pts), 0)
-    thr = max(15.0, 0.45 * float(np.linalg.norm(col - plain)))
+    thr = max(15.0, 0.45 * exact.norm(col - plain))
     miss, last = 0, None
     for depth in range(int(depths.min()), -int(m), -1):
         y = img_y(depth)
         if not 0 <= y < lab.shape[0]:
             return None
-        xc = np.polyval(px, depth)
+        xc = float(exact.polyval1(px, depth))
         x0, x1 = int(xc - 0.7 * lay.pw), int(xc + 0.7 * lay.pw)
         if x0 < 0 or x1 > lab.shape[1]:
             return None
         own = np.linalg.norm(lab[y, x0:x1] - col, axis=1) < thr
         w, _ = _run_at(own, xc - x0, 0.15 * lay.pw)
-        pred = np.polyval(p, depth)
+        pred = float(exact.polyval1(p, depth))
         if 0.6 * pred - 3 < w < 1.35 * pred + 3:
             last, miss = depth, 0
         else:
@@ -454,9 +486,8 @@ def _triangle_base(lab, plain, lay, m, img_y, p, px, d, tip_depth):
 
 def refine_tips(img, H, lay: Layout, m: int):
     """Re-fit the ground homography to the detected triangles (tips + sides)."""
-    Sh = np.array([[1, 0, m], [0, 1, m], [0, 0, 1]], np.float64)
     size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
-    ground = cv2.warpPerspective(img, Sh @ np.linalg.inv(H), size, flags=cv2.INTER_AREA)
+    ground = _warp(img, H, m, size)
     tips = find_tips(ground, lay, m)
     rows = {r for _, r, *_ in tips}
     if len(tips) < 6 or rows != {"top", "bottom"}:
@@ -480,7 +511,7 @@ def refine_tips(img, H, lay: Layout, m: int):
     pw = (lay.col_x(5) - lay.col_x(0) + lay.col_x(11) - lay.col_x(6)) / 10
     bar = lay.col_x(6) - lay.col_x(5) - pw
     s = lay.h / field_h
-    new = Layout(a=6 * pw * s, bar=max(bar * s, 1.0), h=lay.h)
+    new = _snap_layout(Layout(a=6 * pw * s, bar=max(bar * s, 1.0), h=lay.h))
     # tips lie on two straight lines across the board
     D = s * np.median([y - tb for _, r, _, y, *_ in tips if r == "top"] +
                       [bb - y for _, r, _, y, *_ in tips if r == "bottom"])
@@ -496,11 +527,12 @@ def refine_tips(img, H, lay: Layout, m: int):
             for k in ((0,) if f == 0 else (-1, 1)):
                 obs.append((ox + k * half_o, oy))
                 ideal.append((new.col_x(c) + k * half_i, iy))
-    img_pts = cv2.perspectiveTransform(np.float64(obs)[None], H)[0]
-    Hn, _ = cv2.findHomography(np.float64(ideal), img_pts, cv2.RANSAC, 0.006 * max(img.shape[:2]))
+    img_pts = exact.apply_h(H, np.float64(obs))
+    # (was cv2.findHomography with RANSAC: least squares that drops the far points, the same on every CPU)
+    Hn = exact.homography_robust(np.float64(ideal), img_pts, 0.006 * max(img.shape[:2]))
     if Hn is None:
         return H, lay, tips
-    return Hn / Hn[2, 2], new, tips
+    return exact.snap_h(Hn, new.w, new.h), new, tips
 
 
 def _row_bases(tips, row):
@@ -557,7 +589,8 @@ def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None):
     px = np.vstack(px)
     px = px[~np.isnan(px).any(1)]
     px = px[np.linalg.norm(px - plain, axis=1) > 25] if (np.linalg.norm(px - plain, axis=1) > 25).sum() > 10 else px
-    _, _, tri = cv2.kmeans(px, 2, None, (cv2.TERM_CRITERIA_EPS, 20, 0.5), 3, cv2.KMEANS_PP_CENTERS)
+    # in integers (Lab of 8-bit pixels are whole numbers): cv2.kmeans differs by CPU
+    _, tri = exact.kmeans(px.astype(np.int32), 2)
     # frame: the strip just outside the near (bottom) edge of the field
     frames = [np.nanmedian(lab[int(m + lay.h + m * 0.3):int(m + lay.h + m * 0.8),
                             int(m):int(m + lay.w)].reshape(-1, 3), 0)]
@@ -608,20 +641,25 @@ def triangle_colour_map(board, lay, m, tips, ground_lab):
     return {(c, r): (c + (r == "bottom") + off) % 2 for c in range(12) for r in ("top", "bottom")}
 
 
+# cos and sin of 64 directions round a circle, snapped (libm's last bit differs by CPU)
+_COS64 = exact.snap(np.cos(np.linspace(0, 2 * np.pi, 64, endpoint=False)), 2.0 ** -40)
+_SIN64 = exact.snap(np.sin(np.linspace(0, 2 * np.pi, 64, endpoint=False)), 2.0 ** -40)
+
+
 def _edge_support(gx, gy, x, y, r):
-    """Fraction of a circle's perimeter with a strong, radial colour edge."""
+    """Fraction of a circle's perimeter with a strong, radial colour edge (gx, gy: integer gradients)."""
     best = 0.0
-    th = np.linspace(0, 2 * np.pi, 64, endpoint=False)
     for rr in np.linspace(r * 0.85, r * 1.1, 6):
-        px = (x + rr * np.cos(th)).astype(int)
-        py = (y + rr * np.sin(th)).astype(int)
+        px = (x + rr * _COS64).astype(int)
+        py = (y + rr * _SIN64).astype(int)
         ok = (px >= 0) & (px < gx.shape[1]) & (py >= 0) & (py < gx.shape[0])
         if ok.sum() < 32:
             continue
-        vx, vy, t = gx[py[ok], px[ok]], gy[py[ok], px[ok]], th[ok]
-        mag = np.hypot(vx, vy) + 1e-6
-        radial = np.abs(vx * np.cos(t) + vy * np.sin(t)) / mag
-        best = max(best, float(((mag > 40) & (radial > 0.7)).sum() / len(th)))
+        vx = gx[py[ok], px[ok]].astype(np.float64)
+        vy = gy[py[ok], px[ok]].astype(np.float64)
+        mag = np.sqrt(vx * vx + vy * vy) + 1e-6
+        radial = np.abs(vx * _COS64[ok] + vy * _SIN64[ok]) / mag
+        best = max(best, float(((mag > 40) & (radial > 0.7)).sum() / len(_COS64)))
     return best
 
 
@@ -681,10 +719,27 @@ def _slot_of(cx, cy, lay: Layout, pitch: float):
     return c, row, k
 
 
+def _stretch(ch):
+    """An 8-bit channel stretched to 0..255 (cv2.normalize NORM_MINMAX, in integers)."""
+    lo, hi = int(ch.min()), int(ch.max())
+    if hi == lo:
+        return np.zeros_like(ch)
+    return (((ch.astype(np.int32) - lo) * 510 + (hi - lo)) // (2 * (hi - lo))).astype(np.uint8)
+
+
+def _lab_gradients(bgr):
+    """Lab blurred in 8 bits (as float32) and its Sobel gradients summed over the channels (int32).
+    Before TODO-046 the blur and the gradients were in floats, which round differently by CPU."""
+    lab = cv2.GaussianBlur(cv2.cvtColor(bgr, cv2.COLOR_BGR2Lab), (0, 0), 1.5)
+    gx = sum(cv2.Sobel(lab[:, :, i], cv2.CV_16S, 1, 0).astype(np.int32) for i in range(3))
+    gy = sum(cv2.Sobel(lab[:, :, i], cv2.CV_16S, 0, 1).astype(np.int32) for i in range(3))
+    return lab.astype(np.float32), gx, gy
+
+
 def _top_colour(inner):
     """A checker's colour: brightness from the median, hue from the most saturated half
     (glare makes a red checker look pink; its saturated part stays red)."""
-    chroma = np.hypot(inner[:, 1] - 128, inner[:, 2] - 128)
+    chroma = np.sqrt((inner[:, 1] - 128) ** 2 + (inner[:, 2] - 128) ** 2)
     sat = inner[chroma >= np.percentile(chroma, 50)]
     return np.float32([np.median(inner[:, 0]), *np.median(sat[:, 1:], 0)])
 
@@ -701,7 +756,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     lab8 = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2Lab)
     found = []
     for ch in (gray, lab8[:, :, 1], lab8[:, :, 2]):
-        ch = cv2.GaussianBlur(cv2.normalize(ch, None, 0, 255, cv2.NORM_MINMAX), (0, 0), 2)
+        ch = cv2.GaussianBlur(_stretch(ch), (0, 0), 2)
         c = cv2.HoughCircles(ch, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.3, param1=70, param2=HOUGH_VOTES,
                              minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
         if c is not None:
@@ -709,9 +764,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     if not found:
         return []
     cs = [np.vstack(found)]
-    labf = cv2.GaussianBlur(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2Lab).astype(np.float32), (0, 0), 1.5)
-    gx = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 1, 0) for i in range(3))
-    gy = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 0, 1) for i in range(3))
+    labf, gx, gy = _lab_gradients(img_bgr)
     lab = labf * LAB_W
     Wb = board * LAB_W
     hh, ww = gray.shape
@@ -810,9 +863,7 @@ def add_hidden_stacks(ground_bgr, lay: Layout, m: int, pitch: float, circles):
     triangle is covered from the frame on, in an unbroken line, holds a stack.
     Only where at most one circle was found: next to a stack of circles, a dice
     or a cup covering the triangle would make it longer. Returns circles + the added ones."""
-    labf = cv2.GaussianBlur(cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab).astype(np.float32), (0, 0), 1.5)
-    gx = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 1, 0) for i in range(3))
-    gy = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 0, 1) for i in range(3))
+    labf, gx, gy = _lab_gradients(ground_bgr)
     tex = column_texture(gx, gy, lay, m, pitch)
     lab = labf * LAB_W
     out = list(circles)
@@ -900,23 +951,26 @@ def count_from_circles(circles, lay: Layout, pitch: float):
         keep = list(range(len(circles)))
     raw = np.float32([c[3] for c in circles])
     cols = raw * LAB_W
-    _, _, cc = cv2.kmeans(cols[keep], 2, None, (cv2.TERM_CRITERIA_EPS, 30, 0.1), 5, cv2.KMEANS_PP_CENTERS)
-    cc = cc[np.argsort(cc[:, 0])]          # colour 0 = darker
+    # in integers (quarter units: the colours are medians of whole numbers, L halved): cv2.kmeans differs by CPU
+    _, cc = exact.kmeans(np.round(cols[keep] * 4).astype(np.int32), 2, attempts=5)
+    cc = (cc / 4).astype(np.float32)
+    cc = cc[np.argsort(cc[:, 0], kind="stable")]          # colour 0 = darker
     dd = np.linalg.norm(cols[:, None, :] - cc[None, :, :], axis=2)
     lbl = list(np.argmin(dd, 1))
     # glare washes a coloured checker towards white (red looks pink). When one
     # colour is neutral (white, black) and the other is not, a checker with clear
     # chroma in the coloured one's hue belongs to it, however light it looks
-    chroma = np.hypot(raw[:, 1] - 128, raw[:, 2] - 128)
-    hue = np.arctan2(raw[:, 2] - 128, raw[:, 1] - 128)
+    ca, cb = raw[:, 1].astype(np.float64) - 128, raw[:, 2].astype(np.float64) - 128
+    chroma = np.sqrt(ca * ca + cb * cb)
     cent = cc / LAB_W
-    cchroma = np.hypot(cent[:, 1] - 128, cent[:, 2] - 128)
+    cchroma = np.sqrt((cent[:, 1].astype(np.float64) - 128) ** 2 + (cent[:, 2].astype(np.float64) - 128) ** 2)
     neutral = int(np.argmin(cchroma))
     if cchroma[neutral] < 15 and cchroma[1 - neutral] > 35:
-        chue = np.arctan2(cent[1 - neutral, 2] - 128, cent[1 - neutral, 1] - 128)
-        dh = np.abs((hue - chue + np.pi) % (2 * np.pi) - np.pi)
+        # the hue within 35 degrees of the coloured one's (by the cosine: no libm's arctan, TODO-046)
+        ka, kb = float(cent[1 - neutral, 1]) - 128, float(cent[1 - neutral, 2]) - 128
+        cos_dh = (ca * ka + cb * kb) / (np.maximum(chroma, 1e-9) * float(cchroma[1 - neutral]))
         for i in range(len(lbl)):
-            if lbl[i] == neutral and chroma[i] > 20 and dh[i] < np.radians(35):
+            if lbl[i] == neutral and chroma[i] > 20 and cos_dh[i] > COS_35:
                 lbl[i] = 1 - neutral
     # how sure each colour call is: glare makes some checkers sit between the two
     conf = np.abs(dd[:, 0] - dd[:, 1]) / (dd.sum(1) + 1e-6)
@@ -924,7 +978,7 @@ def count_from_circles(circles, lay: Layout, pitch: float):
     for i in on_bar:
         # hinges, clasps and straps on the bar make circles too: a checker there
         # needs a clear circle and one of the checker colours
-        if circles[i][4] < LONE_MIN_SCORE or dd[i].min() > BAR_COLOUR_TOL * np.linalg.norm(cc[0] - cc[1]):
+        if circles[i][4] < LONE_MIN_SCORE or dd[i].min() > BAR_COLOUR_TOL * exact.norm(cc[0] - cc[1]):
             continue
         bar[lbl[i]] += 1
     runs = {}
@@ -975,25 +1029,25 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
     _trace(trace, "image", img)
     m = 60
-    H0 = cv2.getPerspectiveTransform(np.float32([(0, 0), (1, 0), (1, 1), (0, 1)]), np.float32(corners))
+    corners = exact.snap(np.float64(corners).reshape(4, 2), 1 / 64)
+    H0 = exact.homography(np.float64([(0, 0), (1, 0), (1, 1), (0, 1)]), corners)
     K, *_ = camera_from_h(H0, img.shape)
-    B = np.linalg.inv(K) @ H0
-    aspect = a_ratio or float(np.clip(np.linalg.norm(B[:, 0]) / np.linalg.norm(B[:, 1]), 0.9, 1.4))
+    B = exact.mul3(exact.inv3(K), H0)
+    aspect = a_ratio or exact.snap(np.clip(exact.norm(B[:, 0]) / exact.norm(B[:, 1]), 0.9, 1.4), 1e-6)
     br = bar_ratio or 0.16
     a = aspect * H_CAN / (2 + br)
-    lay = Layout(a=a, bar=a * br)
+    lay = _snap_layout(Layout(a=a, bar=a * br))
     _trace(trace, "start", [H0, K, aspect, a])
     # 1. geometry: frame edges, then the printed triangles
     H, quality, lay = refine(img, corners, lay, m)
     _trace(trace, "refine1", [H, quality, lay.a, lay.bar])
-    H, quality, lay = refine(img, cv2.perspectiveTransform(lay.src_pts()[None], H)[0], lay, m)
+    H, quality, lay = refine(img, exact.apply_h(H, lay.src_pts()), lay, m)
     _trace(trace, "refine2", [H, quality, lay.a, lay.bar])
-    Sh = np.array([[1, 0, m], [0, 1, m], [0, 0, 1]], np.float64)
     tips = []
     reach = 1.2
     for _ in range(2):
         size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
-        ground = cv2.warpPerspective(img, Sh @ np.linalg.inv(H), size, flags=cv2.INTER_AREA)
+        ground = _warp(img, H, m, size)
         _trace(trace, "ground_loop", ground)
         lay = fit_columns(ground, lay, m, reach)
         _trace(trace, "fit_columns", [lay.a, lay.bar, lay.cols])
@@ -1004,7 +1058,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
             # things on the board can look like triangles too
             reach = 0.4
     size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
-    ground = cv2.warpPerspective(img, Sh @ np.linalg.inv(H), size, flags=cv2.INTER_AREA)
+    ground = _warp(img, H, m, size)
     _trace(trace, "ground", ground)
     tips = find_tips(ground, lay, m)
     _trace(trace, "tips", tips)
@@ -1060,7 +1114,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     # Where the playing area and its columns ended up, for showing the photo next to the read board:
     # corners in image pixels (TL TR BR BL), columns and bar edges as fractions of the width.
     info["geometry"] = dict(
-        corners=cv2.perspectiveTransform(lay.src_pts()[None], H)[0].round(1).tolist(),
+        corners=exact.apply_h(H, lay.src_pts()).round(1).tolist(),
         columns=[round(float(lay.col_x(c) / lay.w), 4) for c in range(12)],
         bar=[round(float(lay.a / lay.w), 4), round(float((lay.a + lay.bar) / lay.w), 4)],
         tips=geometry_tips(tips, H),
