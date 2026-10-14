@@ -41,9 +41,8 @@ def _bodies(gray, pitch):
                     continue
                 pts = cv2.findNonZero((lab[y:y + h, x:x + w] == i).astype(np.uint8)) + (x, y)
                 hull = cv2.convexHull(pts)
-                # (minAreaRect works in floats: snapped, so every CPU goes on with the same numbers)
-                (cx, cy), (rw, rh), ang = cv2.minAreaRect(hull)
-                cx, cy, rw, rh, ang = (exact.snap(v, 2.0 ** -20) for v in (cx, cy, rw, rh, ang))
+                # (not cv2.minAreaRect: it works in floats and gives other boxes on other CPUs)
+                (cx, cy), (rw, rh), ang = exact.min_area_rect(hull)
                 side = (rw + rh) / 2
                 if not smin <= side <= smax or max(rw, rh) > 1.3 * min(rw, rh):
                     continue

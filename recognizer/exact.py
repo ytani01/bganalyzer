@@ -281,3 +281,36 @@ def warp(img, M, size, nearest=False):
     xy = np.stack([fx >> 5, fy >> 5], 2).astype(np.int16)
     frac = ((fy & 31) * 32 + (fx & 31)).astype(np.uint16)
     return cv2.remap(img, xy, frac, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+
+
+def min_area_rect(hull):
+    """((cx, cy), (w, h), angle) of the smallest rectangle around the convex hull's points (integers),
+    like cv2.minAreaRect (which works in floats and differs by CPU, TODO-046): one side of it lies on
+    a hull edge. angle: of the side w, in degrees within [0, 90)."""
+    p = np.asarray(hull, np.float64).reshape(-1, 2)
+    if len(p) == 1:
+        return (float(p[0, 0]), float(p[0, 1])), (0.0, 0.0), 0.0
+    x, y = p[:, 0], p[:, 1]
+    best = None
+    for i in range(len(p)):
+        dx, dy = float(p[(i + 1) % len(p), 0] - p[i, 0]), float(p[(i + 1) % len(p), 1] - p[i, 1])
+        n = math.sqrt(dx * dx + dy * dy)
+        if n == 0:
+            continue
+        ux, uy = dx / n, dy / n
+        a = x * ux + y * uy            # along the edge
+        b = y * ux - x * uy            # across it
+        a0, a1, b0, b1 = float(a.min()), float(a.max()), float(b.min()), float(b.max())
+        area = (a1 - a0) * (b1 - b0)
+        if best is None or area < best[0]:
+            best = (area, ux, uy, a0, a1, b0, b1)
+    if best is None:
+        return (float(x[0]), float(y[0])), (0.0, 0.0), 0.0
+    _, ux, uy, a0, a1, b0, b1 = best
+    am, bm = (a0 + a1) / 2, (b0 + b1) / 2
+    cx, cy = am * ux - bm * uy, am * uy + bm * ux
+    w, h = a1 - a0, b1 - b0
+    ang = snap(math.degrees(math.atan2(uy, ux)), 1e-9) % 180.0
+    if ang >= 90.0:
+        ang, w, h = ang - 90.0, h, w
+    return (cx, cy), (w, h), ang
