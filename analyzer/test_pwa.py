@@ -146,10 +146,11 @@ def test_cube_request():
       c.request({{at: "black", value: 4, offered: true}}, "black", [3, 1]),
       c.request({{at: "black", value: 4, offered: false}}, "white", null),
       c.fromRead(null), c.fromRead({{at: "black", value: 3}}),
+      c.fromRead({{at: "field"}}, "white"), c.fromRead({{at: "field"}}, "black"),
     ]));
     """
     r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
-    centre, offered, with_dice, owned, none, odd = json.loads(r.stdout)
+    centre, offered, with_dice, owned, none, odd, field_w, field_b = json.loads(r.stdout)
     assert centre == {"on_roll": "white", "cube_value": 1, "cube_owner": None, "doubled": False}
     # offered to 手前: 奥 doubled, so 奥 is on roll
     assert offered == {"on_roll": "black", "cube_value": 2, "cube_owner": "white", "doubled": True}
@@ -157,6 +158,9 @@ def test_cube_request():
     assert with_dice == {"on_roll": "black", "cube_value": 4, "cube_owner": "black", "doubled": False}
     assert owned["doubled"] is False and owned["on_roll"] == "white"
     assert none["at"] == "centre" and odd == {"at": "black", "value": 2, "offered": True}
+    # in a playing field (TODO-045): the side on roll doubled, so it is offered to the other side
+    assert field_w == {"at": "black", "value": 2, "offered": True}
+    assert field_b == {"at": "white", "value": 2, "offered": True}
 
 
 def test_sample_script_is_served_and_cached():

@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.33.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.34.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -465,7 +465,11 @@ $("recognize").addEventListener("click", async () => {
       setDice(dice, true);
       syncCube();   // with dice, a cube offered by hand no longer waits on take or pass (TODO-033)
     }
-    if (!cubeByHand && data.cube_read) setCube(BgCube.fromRead(data.cube_read), true);   // used by the analysis too
+    if (!cubeByHand && data.cube_read) {   // used by the analysis too
+      // in a playing field: the side on roll has just doubled, and the dice wait (TODO-045)
+      if (data.cube_read.at === "field" && dice) { dice = null; setDice(null); }
+      setCube(BgCube.fromRead(data.cube_read, state.onRoll), true);
+    }
     if (data.analysis) setOnRoll(data.analysis.on_roll);
     const rec = data.recognized;
     state.warnings = data.warnings || [];

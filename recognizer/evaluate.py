@@ -46,6 +46,10 @@ def run(path, debug=None, app=False, method="circles"):
     want = t.get("dice") and sorted(t["dice"], reverse=True)
     # cube: where it lies ({"at": ...}) against the truth's (None when there is no cube)
     cube = info["cube"] and {"at": info["cube"]["at"]}
+    if cube and cube["at"] == "field":
+        # in a playing field: just doubled by the side on roll (the truth's on_roll, else 手前),
+        # so it was offered to the other side (TODO-045)
+        cube = {"at": "black" if t.get("on_roll", "white") == "white" else "white"}
     return pos, truth, wrong, bar_ok, (home == t["home"], margin), (info["dice"]["values"], want), (cube, t.get("cube"))
 
 if __name__ == "__main__":
