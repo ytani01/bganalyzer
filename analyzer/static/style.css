@@ -108,6 +108,7 @@ main { max-width: 720px; margin: 0 auto; padding: 12px 16px 40px; }
   border-radius: 10px;
   padding: 10px 16px;
   font-size: 16px;
+  font-family: inherit;   /* <button> and <label class="button"> look the same */
   cursor: pointer;
   text-align: center;
   display: inline-block;
