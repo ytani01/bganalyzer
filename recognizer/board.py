@@ -719,8 +719,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         # a checker's centre lies inside the field (labels and scores on the frame do not)
         if not (-0.3 * pitch < cx < lay.w + 0.3 * pitch and -0.1 * pitch < cy < lay.h + 0.1 * pitch):
             continue
-        if tex.get(_slot_of(cx, cy, lay, pitch)) == "shown":
-            continue   # the triangle's sides show through: no checker here
+        shown = tex.get(_slot_of(cx, cy, lay, pitch)) == "shown"
         x0, x1, y0, y1 = int(max(x - r, 0)), int(min(x + r + 1, ww)), int(max(y - r, 0)), int(min(y + r + 1, hh))
         d2 = (xx[y0:y1, x0:x1] - x) ** 2 + (yy[y0:y1, x0:x1] - y) ** 2
         patch = lab[y0:y1, x0:x1]
@@ -754,7 +753,22 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
             continue
         if score < GAP_MIN_SCORE:
             continue
-        scored.append((score, cx, cy, r, med / LAB_W))
+        scored.append((score, cx, cy, r, med / LAB_W, shown))
+
+    # where the triangle's sides show through there is no checker, unless the circle is
+    # in line with ones that are (in an oblique photo, the sides of a stack look like them;
+    # a stack: at least two such circles in the column)
+    keep = [s for s in scored if not s[5]]
+    rest = [s for s in scored if s[5]]
+    while True:
+        more = [s for s in rest if any(abs(s[1] - k[1]) < 0.25 * pitch and abs(s[2] - k[2]) < 1.3 * pitch for k in keep)
+                and sum(abs(s[1] - k[1]) < 0.25 * pitch and (s[2] < lay.h / 2) == (k[2] < lay.h / 2)
+                        for k in scored if not k[5]) >= 2]
+        if not more:
+            break
+        keep += more
+        rest = [s for s in rest if s not in more]
+    scored = [s[:5] for s in keep]
 
     def clear(cx, cy, out):
         # overlapping checkers of one stack are allowed closer, straight in line

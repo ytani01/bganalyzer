@@ -92,7 +92,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - **確かめ方:** コンテナの中で `python recognizer/evaluate.py samples/commons-dark-homeleft.truth.json samples/commons-set-cube-dice.truth.json`
   と `python recognizer/evaluate.py /data/samples/user-*.truth.json` を動かす。`/analyze-photo` に photo3 を送って時間を見る。
 - **期待:** `/version` の recognizer が 0.11.0。dark-homeleft 22/24、set-cube-dice 15/24（マージ前に Pi で測った値）。
-  `collected/` の組は直す前（23・15・18）から合計で下がらない（マージ前は 24・14・18）。1 枚の読み取りが PI-002 の時間（6 秒前後）から大きく延びていない。
+  `collected/` の組は直す前（23・19・15・18）から合計で下がらない（マージ前は 24・19・14・18）。1 枚の読み取りが PI-002 の時間（6 秒前後）から大きく延びていない。
 - [ ] Pi:
 
 ---
