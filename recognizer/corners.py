@@ -499,10 +499,27 @@ def _guess(small, rows):
     return quad
 
 
+def shrink(img):
+    """img with its longest side at most WORK_SIDE, and the scale (x, y) it was shrunk by.
+
+    In integers only (halving with pyrDown, then INTER_LINEAR_EXACT), so every CPU
+    gets the same pixels: INTER_AREA works in floats and gave x86_64 and the
+    Raspberry Pi slightly different pixels, and from them different corners (TODO-028)."""
+    h, w = img.shape[:2]
+    s = min(1.0, WORK_SIDE / max(h, w))
+    if s == 1.0:
+        return img, np.array([1.0, 1.0])
+    size = (round(w * s), round(h * s))
+    small = img
+    while small.shape[1] >= 2 * size[0] and small.shape[0] >= 2 * size[1]:
+        small = cv2.pyrDown(small)
+    small = cv2.resize(small, size, interpolation=cv2.INTER_LINEAR_EXACT)
+    return small, np.array([size[0] / w, size[1] / h])
+
+
 def find_corners(img):
     """TL, TR, BR, BL of the playing area in image pixels, or None if no board was found."""
-    s = min(1.0, WORK_SIDE / max(img.shape[:2]))
-    small = cv2.resize(img, None, fx=s, fy=s, interpolation=cv2.INTER_AREA) if s < 1 else img
+    small, s = shrink(img)
     q = guess(small)
     return None if q is None else (q / s).round(1).tolist()
 

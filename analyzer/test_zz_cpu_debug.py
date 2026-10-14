@@ -13,11 +13,10 @@ def h(a):
 def test_debug_hashes():
     samples = Path(__file__).resolve().parent.parent / "samples"
     out = []
-    for name in ("commons-tavli-red-brown", "commons-dark-homeleft"):
+    for name in ("commons-tavli-red-brown", "commons-dark-homeleft", "photo2", "commons-travel-case", "commons-case-dice"):
         t = json.loads((samples / f"{name}.truth.json").read_text())
         img = cv2.imread(str(samples / t["image"]))
-        s = min(1.0, corners.WORK_SIDE / max(img.shape[:2]))
-        small = cv2.resize(img, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
+        small, _ = corners.shrink(img)
         blur = cv2.GaussianBlur(small, (0, 0), 1.5)
         lab = cv2.cvtColor(blur, cv2.COLOR_BGR2Lab)
         tris = corners.find_triangles(small)
