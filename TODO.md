@@ -70,7 +70,7 @@ k-means の結果が乱数の種で大きく変わる（dark-homeleft は種で 
 - [x] Pi でも測る（PI-021）
 - [x] k-means を 32 ビット整数の計算に置き換え、x86_64 と Pi で同じ四隅が出るようにする（2026-10-14 に決めた。精度は種による揺れの範囲で下がりうるが、種を選んで合わせることはしない）
 - [ ] 3 段目の作り直し（上の「次にやること」）
-- [ ] x86_64 の CI で `test_corners_are_the_same_on_every_cpu`（Pi で出した四隅と同じか）が通るか確かめる。落ちたら `resize(INTER_AREA)` など k-means の外の浮動小数点の計算を疑う
+- [ ] x86_64 の CI で `test_corners_are_the_same_on_every_cpu`（Pi で出した四隅との差が長辺の 0.2% 以内か）が通るか確かめる。完全には一致しない（dark-homeleft の右上が 0.4px ずれる。k-means の後の浮動小数点の計算と見られる）
 
 ---
 

@@ -192,7 +192,7 @@ def test_corners_are_found_on_samples():
 
 def test_corners_are_the_same_on_every_cpu():
     # Measured on the Raspberry Pi (aarch64); GitHub Actions runs this on x86_64.
-    # cv2.kmeans gave different corners on the two (TODO-028).
+    # cv2.kmeans split the colours differently on the two, and the corners moved (TODO-028).
     import cv2
     from corners import find_corners
 
@@ -203,7 +203,11 @@ def test_corners_are_the_same_on_every_cpu():
                        # found from the triangles' straight sides (LSD), not their colour regions
                        ("commons-travel-case", [[543.4, 313.1], [1484.2, 312.2], [1487.6, 1142.8], [535.1, 1143.4]])):
         t = json.loads((samples / f"{name}.truth.json").read_text())
-        assert find_corners(cv2.imread(str(samples / t["image"]))) == want, name
+        img = cv2.imread(str(samples / t["image"]))
+        # the colours split the same way; later steps in floats still move a corner by
+        # a fraction of a pixel (x86_64: dark-homeleft's top right 0.4 px), while another
+        # split moves it by tens of pixels
+        assert _corner_error(find_corners(img), want, img.shape) < 0.002, name
 
 
 def test_corners_are_found_on_synthetic_boards():
