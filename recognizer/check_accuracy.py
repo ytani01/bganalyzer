@@ -21,24 +21,11 @@ Raspberry Pi (aarch64) differs (recognizer/README.md), so don't update the basel
 import glob, json, os, sys
 from concurrent.futures import ProcessPoolExecutor
 
-# Read with the same SIMD code on every x86_64 machine: OpenCV, NumPy and OpenBLAS pick their
-# code by CPU, and AVX-512 machines read some samples 1-4 points differently from AVX2 ones
-# (GitHub Actions gets a different CPU each run). Cap them at AVX2. Set before cv2/numpy load.
-def _has_avx512():
-    try:
-        with open("/proc/cpuinfo") as f:
-            return " avx512f" in f.read()
-    except OSError:
-        return False
-
-
-if _has_avx512():  # OpenCV warns when asked to disable a feature the CPU lacks
-    for var, value in (("OPENCV_CPU_DISABLE", "AVX512-SKX"),
-                       ("NPY_DISABLE_CPU_FEATURES", "X86_V4 AVX512_ICL AVX512_SPR"),
-                       ("OPENBLAS_CORETYPE", "Haswell")):
-        os.environ.setdefault(var, value)
-
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+# the same SIMD code on every machine of a kind (AVX2 on x86_64, plain NEON on aarch64); before cv2/numpy load
+import cpu_caps  # noqa: E402,F401
+
 BASELINE = os.path.join(HERE, "accuracy_baseline.json")
 SAMPLES = os.path.join(HERE, "..", "samples")
 SLACK = 1  # points a sample may lose against its baseline (the total may not)

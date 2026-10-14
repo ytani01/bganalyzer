@@ -938,11 +938,42 @@ def count_from_circles(circles, lay: Layout, pitch: float):
     return runs, bar, cent
 
 
+def _digest(v) -> str:
+    """A short hash of v's exact value (arrays: dtype, shape and bytes; else its JSON with exact floats)."""
+    import hashlib
+    def plain(o):
+        if isinstance(o, dict):
+            return sorted((repr(k), plain(x)) for k, x in o.items())
+        if isinstance(o, (list, tuple)):
+            return [plain(x) for x in o]
+        if isinstance(o, np.ndarray):
+            return [o.dtype.str, o.shape, o.tobytes().hex()]
+        if isinstance(o, (np.floating, float)):
+            return float(o).hex()
+        if isinstance(o, np.generic):
+            return o.item()
+        return o
+
+    if isinstance(v, np.ndarray):
+        b = str((v.dtype.str, v.shape)).encode() + np.ascontiguousarray(v).tobytes()
+    else:
+        b = json.dumps(plain(v), default=repr).encode()
+    return hashlib.sha1(b).hexdigest()[:12]
+
+
+def _trace(trace, name, v):
+    """Record a step's value for comparing two machines (TODO-046, recognizer/trace_cpu.py)."""
+    if trace is not None:
+        trace.append((name, _digest(v)))
+
+
 def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
-              a_ratio=None, debug_prefix=None, method="circles"):
+              a_ratio=None, debug_prefix=None, method="circles", trace=None):
     """corners: TL, TR, BR, BL of the playing area as seen from the bottom player.
-    home: 'left', 'right' or 'auto' (guessed from the checkers; info['home'] says which)."""
+    home: 'left', 'right' or 'auto' (guessed from the checkers; info['home'] says which).
+    trace: a list to append (step, hash of its value) to, for finding where two machines part."""
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
+    _trace(trace, "image", img)
     m = 60
     H0 = cv2.getPerspectiveTransform(np.float32([(0, 0), (1, 0), (1, 1), (0, 1)]), np.float32(corners))
     K, *_ = camera_from_h(H0, img.shape)
@@ -951,35 +982,47 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     br = bar_ratio or 0.16
     a = aspect * H_CAN / (2 + br)
     lay = Layout(a=a, bar=a * br)
+    _trace(trace, "start", [H0, K, aspect, a])
     # 1. geometry: frame edges, then the printed triangles
     H, quality, lay = refine(img, corners, lay, m)
+    _trace(trace, "refine1", [H, quality, lay.a, lay.bar])
     H, quality, lay = refine(img, cv2.perspectiveTransform(lay.src_pts()[None], H)[0], lay, m)
+    _trace(trace, "refine2", [H, quality, lay.a, lay.bar])
     Sh = np.array([[1, 0, m], [0, 1, m], [0, 0, 1]], np.float64)
     tips = []
     reach = 1.2
     for _ in range(2):
         size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
         ground = cv2.warpPerspective(img, Sh @ np.linalg.inv(H), size, flags=cv2.INTER_AREA)
+        _trace(trace, "ground_loop", ground)
         lay = fit_columns(ground, lay, m, reach)
+        _trace(trace, "fit_columns", [lay.a, lay.bar, lay.cols])
         H, lay, tips = refine_tips(img, H, lay, m)
+        _trace(trace, "refine_tips", [H, lay.a, lay.bar, lay.cols, tips])
         if lay.cols is None:
             # fitted to the triangles: from here on only small corrections, as other
             # things on the board can look like triangles too
             reach = 0.4
     size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
     ground = cv2.warpPerspective(img, Sh @ np.linalg.inv(H), size, flags=cv2.INTER_AREA)
+    _trace(trace, "ground", ground)
     tips = find_tips(ground, lay, m)
+    _trace(trace, "tips", tips)
     board = board_colours(ground, lay, m, tips)
+    _trace(trace, "board_colours", board)
     pitch = lay.pw * 1.05
     # 2. counting
     ground_lab = cv2.cvtColor(ground, cv2.COLOR_BGR2Lab).astype(np.float32)
     tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
     tri_len = np.median([t[4] for t in tips]) if tips else TRI_DEPTH * lay.h
     # measured with all the circles: which ones show the triangle's sides must not change the size
+    _trace(trace, "tri_map", [tri_map, tri_len])
     circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, drop_shown=False)
+    _trace(trace, "circles1", circles)
     if len(circles) >= 4:   # checkers may be wider than a point: measure them
         pitch = float(2 * np.median([c[2] for c in circles]))
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
+    _trace(trace, "circles2", [pitch, circles])
     if len(circles) >= 4:   # learn the board colours again without the checkers on it
         mask = np.zeros(ground.shape[:2], np.uint8)
         for x, y, r, *_ in circles:
@@ -987,6 +1030,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         board = board_colours(ground, lay, m, tips, mask.astype(bool))
         tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
+    _trace(trace, "circles3", [board, circles])
     lay2 = fit_columns_to_checkers(lay, circles)
     if lay2.cols != lay.cols:
         lay = lay2
@@ -994,7 +1038,9 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len)
     # last, so that the added checkers do not change the measured pitch or the board colours
     circles = add_hidden_stacks(ground, lay, m, pitch, circles)
+    _trace(trace, "circles4", [lay.cols, circles])
     runs, bar, cc = count_from_circles(circles, lay, pitch)
+    _trace(trace, "count", [sorted(runs.items()), bar, cc])
     if method == "slots" and cc is not None:   # experimental (TODO-032): slots.py
         import slots
         labf = cv2.GaussianBlur(ground_lab, (0, 0), 1.5)
@@ -1021,8 +1067,10 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         checkers=geometry_checkers(circles, cc, bottom_colour, H))
     info["dice"] = dice_reader.read_dice(img, H, lay, pitch, circles,
                                          debug=debug_prefix and debug_prefix + "_dice.jpg")
+    _trace(trace, "dice", info["dice"])
     info["cube"] = cube_reader.read_cube(img, H, lay, pitch, circles, info["dice"]["dice"],
                                          debug=debug_prefix and debug_prefix + "_cube.jpg")
+    _trace(trace, "cube", info["cube"])
     # the dice and the cube found, for the reading overlay too (the dice read with confidence in the
     # fields: the ones dice_read can come from)
     info["geometry"]["dice"] = [dict(quad=geometry_square(d, H), value=d["value"])
