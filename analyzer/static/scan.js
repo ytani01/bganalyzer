@@ -194,36 +194,16 @@
       ctx.restore();
     }
 
-    function label(text, rgb) {
-      const d = dpr(), w = canvas.width / d, h = canvas.height / d;
-      ctx.save();
-      ctx.font = "bold 13px ui-monospace, Menlo, monospace";
-      ctx.textAlign = "left";   // whatever was set before (TODO-047: it was cut off when centred)
-      const tw = ctx.measureText(text).width;
-      ctx.fillStyle = "rgba(0, 0, 0, .55)";
-      ctx.fillRect(10, h - 34, tw + 20, 24);
-      ctx.fillStyle = `rgb(${rgb})`;
-      ctx.shadowColor = `rgb(${rgb})`;
-      ctx.shadowBlur = 6;
-      ctx.textBaseline = "middle";
-      ctx.fillText(text, 20, h - 22);
-      ctx.restore();
-      return w;
-    }
-
     function frameWaiting(t) {
       if (CORNERS) {   // nothing known yet: a scan line across the whole photo
         if (!opts.reduced) drawSweep(guess, CYAN, (t % 1500) / 1500);
-        label("▶ 盤の四隅を探しています" + (opts.reduced ? "" : dots(t)), CYAN);
         return;
       }
       drawBoard(guess, CYAN, { quad: t / 500, tris: (t - 300) / 1000, bar: (t - 900) / 500 });
       drawCorners(guess, CYAN, t);
-      if (opts.reduced) { label("▶ 盤面を読み取っています", CYAN); return; }   // a still picture
+      if (opts.reduced) return;   // a still picture
       if (t > 1300) drawSweep(guess, CYAN, ((t - 1300) % 1500) / 1500);
-      label("▶ 盤面を読み取っています" + dots(t), CYAN);
     }
-    const dots = (t) => ".".repeat(1 + Math.floor(t / 300) % 3);
 
     // ---- the stages, as the server reports them, each shown for its STAGE_MS in turn ----
     const FIT = 380;   // the frame moving to where it was fitted
@@ -271,10 +251,7 @@
         if (a >= 1) drawCorners(L, GREEN, co.t);
       }
       ctx.restore();
-      const [text, colour] = caption(now);
-      label(text, colour);
     }
-    const CUBE_AT = { centre: "真ん中", white: "手前", black: "奥", field: "盤の中" };
     const queue = [];            // stages received, not shown yet
     let cur = null;              // the stage on screen: {stage, data, t0}
     let finished = false, skipped = false, onDone = null;
@@ -394,46 +371,9 @@
       const cu = at("cube");
       if (cu && cu.d.cube) {
         const a = intro(cu.t, 200);
-        if (a > 0) drawSquare(cu.d.cube.quad, MAGENTA, a, "キューブ");
+        if (a > 0) drawSquare(cu.d.cube.quad, MAGENTA, a);
       }
       ctx.restore();
-      const [text, colour] = caption(now);
-      label(text, colour);
-    }
-
-    function caption(now) {
-      const t = now - cur.t0, d = cur.data;
-      switch (cur.stage) {
-        case "board": return ["▶ 枠と列を合わせました", GREEN];
-        case "fit": return [d.by === "edges" ? `▶ 四隅を枠の線に合わせました（${d.round} 回目）`
-                                             : `▶ 三角形の並びで四隅を合わせ直しました（${d.round} 回目）`, t < FIT ? CYAN : GREEN];
-        case "edges": return [`▶ 横の縁の候補 ${(d.lines || []).length} 本`, ORANGE];
-        case "uprights": return [`▶ 縦の縁の候補 ${(d.lines || []).length} 本`, BLUE];
-        case "candidates": {
-          const n = (d.quads || []).length;
-          return [n ? `▶ 盤らしい四角形の候補 ${n} 個を比べています` : "▶ 盤らしい四角形が見つかりません", YELLOW];
-        }
-        case "corners": return ["▶ 四隅が決まりました", GREEN];
-        case "tips": return [`▶ 三角形の先 ${(d.tips || []).length} 個`, GREEN];
-        case "checkers": {
-          const n = (d.checkers || []).length;
-          return [`▶ 駒の候補 ${Math.min(n, opts.reduced ? n : Math.floor(t / (0.6 * stageMs("checkers") / Math.max(n, 1))))} 個`, GREEN];
-        }
-        case "counts": {
-          const sum = (side) => (d.counts || []).filter((c) => c.side === side).reduce((s, c) => s + c.n, 0);
-          const home = d.home_guess ? `・ホームは${d.home === "left" ? "左" : "右"}` : "";
-          return [`▶ 数えました 手前 ${sum("white")}・奥 ${sum("black")}${home}`, WHITE];
-        }
-        case "dice": {
-          const dice = d.dice || [];
-          return [dice.length ? "▶ ダイス " + dice.map((x) => x.value).join("・") : "▶ ダイスは見つかりません", CYAN];
-        }
-        case "cube": {
-          if (t >= stageMs("cube") && !finished) return ["▶ 解析しています" + dots(t), CYAN];
-          return [d.cube ? `▶ キューブ（${CUBE_AT[d.cube.at] || d.cube.at}）` : "▶ キューブは見つかりません", MAGENTA];
-        }
-        default: return ["▶ 盤面を読み取っています" + dots(t), CYAN];
-      }
     }
 
     function frame(now) {
@@ -476,6 +416,8 @@
         }
         return this.done();
       },
+      // The stage on screen now (its name), or null before the first one.
+      stage() { return cur ? cur.stage : null; },
       // Skip the rest (a tap): done() resolves as soon as the result is in.
       skip() { skipped = true; },
       stop() {
