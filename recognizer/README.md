@@ -310,6 +310,7 @@ TODO-024 で足した 4 枚では、diagram-holding が 3.0%、set-cube-dice が
 - `evaluate.py` `*.truth.json` と比較して精度を出す（`--slots` で下の試作の読み方）
 - `check_accuracy.py` 精度が `accuracy_baseline.json` より下がっていないか確かめる（CI の `accuracy`。`--update` で基準を書き直す）
 - `slots.py` 位置ごとに判定する読み方の試作（アプリでは使わない）
+- `collected.py` Pi の `collected/` を測り直し、読み違いの無い古い組を消す（新しい組が 10 たまるとサーバーが起動する）
 - `../samples/photoN.truth.json` ユーザー提供の写真（photoN.jpg）を目視で読んだ正解と四隅
 - `../samples/commons-*.truth.json` Wikimedia Commons の写真の正解と四隅（出典は `../samples/CREDITS.md`）
 - `../samples/external/*.truth.json` リポジトリに入れない盤面図の URL と正解（`evaluate.py` が画像を取ってくる）

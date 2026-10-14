@@ -508,3 +508,28 @@ def test_4xx_reason_is_logged(caplog):
     assert "body.image: Field required" in caplog.text and "body.plies:" in caplog.text
     assert "secret-value" not in caplog.text
     assert "\nFAKE LINE" not in caplog.text and "bad\\nFAKE LINE" in caplog.text
+
+
+def test_samples_measured_again_after_ten_new(monkeypatch, tmp_path):
+    # recognizer/collected.py is started once the 10th new pair is saved, not before, and not twice at a time
+    import app as app_module
+    started, done = [], []
+
+    class Running:
+        def __init__(self, args, **kw):
+            started.append(args)
+
+        def poll(self):
+            return 0 if done else None   # None: still running
+
+    monkeypatch.setenv("BG_SAMPLES_DIR", str(tmp_path))
+    monkeypatch.setattr(app_module.subprocess, "Popen", Running)
+    monkeypatch.setattr(app_module, "_measuring", None)
+    for i in range(11):
+        r = client.post("/samples", data={"id": f"n{i}", **_sample_form()}, files={"image": ("a.jpg", b"jpg", "image/jpeg")})
+        assert r.status_code == 200
+        assert len(started) == (0 if i < 9 else 1), i
+    assert started[0][-1] == str(tmp_path) and started[0][-2].endswith("recognizer/collected.py")
+    done.append(1)   # it finished without writing .measured.json: the next save starts it again
+    client.post("/samples", data={"id": "n11", **_sample_form()}, files={"image": ("a.jpg", b"jpg", "image/jpeg")})
+    assert len(started) == 2
