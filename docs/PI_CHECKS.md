@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-013、PI-014、PI-015、PI-016。** これまでに 12 件を決着させた。
+**残っている項目: PI-013、PI-014、PI-015。** これまでに 13 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-017`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -37,17 +37,6 @@
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
-
----
-
-## PI-016. 4xx の理由がコンテナのログに出る（analyzer 0.25.1）
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-14、TODO-031
-- **確かめ方:** 更新のあと `curl -s -F image=@README.md -F corners=1,2,3,4,5,6,7,8 http://127.0.0.1:8000/analyze-photo` を送り、
-  `docker compose logs --since 5m app | rg -- '-> 422'` を見る
-- **期待:** `/version` が analyzer 0.25.1 以上。ログに `POST /analyze-photo -> 422: 'could not decode image'` が出る
-- [ ] Pi: （結果をここに書く）
 
 ---
 
