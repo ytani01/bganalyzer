@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.22.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.23.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -1054,10 +1054,8 @@ function showMove(list, li) {
 // ---------------------------------------------------------------- reading the result aloud
 // The browser's own speech (Web Speech API): free, nothing to set up, and on Android's Chrome
 // it is Google's voice. Nothing is sent to our server.
-const pct = (x) => `${x}パーセント`;
-
+// A short spoken summary, not the numbers: the screen keeps the percentages and pips.
 function speechText(r, dice) {
-  const pips = r.pips;
   const parts = [];
   const bestMove = r.moves && dice;   // read first: it is what the player wants to hear
   if (bestMove) {
@@ -1070,21 +1068,30 @@ function speechText(r, dice) {
     const c = r.cube, word = c.value > 1 ? "リダブル" : "ダブル", take = c.take ? "テイク" : "パス";
     parts.push(c.question === "take"
       ? `${NAME[c.taker]}の人は${take}です。`
-      : c.double ? `${NAME[c.doubler]}の人は${word}です。${word}されたら${take}です。`
-        : `${NAME[c.doubler]}の人はまだ${word}しません。${word}されたら${take}です。`);
+      : c.double ? `${NAME[c.doubler]}の人は${word}、${NAME[c.doubler === "white" ? "black" : "white"]}の人は${take}です。`
+        : `${NAME[c.doubler]}の人はまだ${word}しません。`);
   }
   if (r.game_over) {
     parts.push(`${NAME[r.favourite]}の勝ちで終局しています。`);
   } else {
-    const p = r.probabilities;
-    parts.push(`${NAME[r.favourite]}が有利です。`);
-    parts.push(`勝率は、手前 ${pct(p.white.win)}、奥 ${pct(p.black.win)}。`);
-    parts.push(`ギャモン勝ちは、手前 ${pct(p.white.gammon)}、奥 ${pct(p.black.gammon)}。`);
+    parts.push(standingToSpeech(r));
   }
-  parts.push(`ピップ数は、手前 ${pips.white}、奥 ${pips.black}` +
-    (pips.leader ? `で、${NAME[pips.leader]}が ${pips.difference} ピップ リード。` : `で、同じです。`));
   if (!bestMove) parts.push(`次に振るのは${NAME[r.on_roll]}の人です。`);
   return parts.join("");
+}
+
+// The favourite's winning chance in words; a gammon or a big race lead only when it matters.
+function standingToSpeech(r) {
+  const fav = r.favourite, p = r.probabilities[fav], pips = r.pips;
+  const w = p.win;
+  let s = w >= 90 ? `${NAME[fav]}がほぼ勝ちの局面です。`
+    : w >= 75 ? `${NAME[fav]}がかなり有利です。`
+      : w >= 60 ? `${NAME[fav]}が有利です。`
+        : w >= 53 ? `${NAME[fav]}がやや有利です。`
+          : "ほぼ互角です。";
+  if (w >= 53 && p.gammon >= 25) s += "ギャモン勝ちも十分ありえます。";
+  if (pips.leader && pips.difference >= 20) s += `レースは${NAME[pips.leader]}が大きくリードしています。`;
+  return s;
 }
 
 // "bar/22* 13/8(2) 6/off" -> "バーから22でヒット、13から8を2つ、6から上がり"
