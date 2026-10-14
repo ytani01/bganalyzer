@@ -76,7 +76,8 @@ def compare(base, now):
             worse.append(f"{name}: in the baseline but not in samples/ (run --update if it was removed on purpose)")
             continue
         if name not in base:
-            worse.append(f"{name}: not in the baseline (run --update to add it)")
+            # with this run's result, so a sample added on a Pi can be added from the CI's x86_64 run
+            worse.append(f"{name}: not in the baseline (run --update to add it): {json.dumps(now[name])}")
             continue
         b, n = base[name], now[name]
         for key in ("points", "bar", "home", "dice", "cube"):

@@ -21,5 +21,6 @@
  "photo3": {"points": 24, "bar": true, "home": true, "dice": "not read", "cube": "ok"},
  "photo4": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "screen1": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "not found"},
- "screen2": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"}
+ "screen2": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
+ "tv-vegas-open": {"points": 22, "bar": true, "home": true, "dice": "ok", "cube": "WRONG"}
 }
