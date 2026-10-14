@@ -1,7 +1,8 @@
 """Does this machine read every sample exactly like the others? (TODO-046)
 
 Reads every samples/*.truth.json with recognize(trace=...), which records a hash of each step's
-value, and compares the hashes and the readings with recognizer/cpu_reference.json.
+value, and guesses its corners (corners.find_corners), and compares the hashes, the readings and
+the corners with recognizer/cpu_reference.json.
 The recognizer works only in integers and in float operations that round the same everywhere
 (recognizer/exact.py), so x86_64, GitHub's arm64 runners and the Raspberry Pi must all match it.
 
@@ -27,13 +28,15 @@ def trace_one(path):
     import board
     t = json.load(open(path))
     img = cv2.imread(os.path.join(os.path.dirname(path), t["image"]))
+    import corners
     steps = []
     pos, info = board.recognize(img, t["corners_TL_TR_BR_BL"], home=t["home"], trace=steps)
     cube = info["cube"] and info["cube"]["at"]
     return os.path.basename(path)[:-len(".truth.json")], {
         "steps": [list(s) for s in steps],
         "reading": {"points": pos.points, "bar": [pos.bar_white, pos.bar_black],
-                    "dice": info["dice"]["values"], "cube": cube},
+                    "dice": info["dice"]["values"], "cube": cube,
+                    "corners": corners.find_corners(img)},   # the app's first guess of the corners (TODO-028)
     }
 
 
@@ -71,7 +74,7 @@ def compare(a, b):
             differ += 1
             wrong = [i + 1 for i, (p, q) in enumerate(zip(ra["points"], rb["points"])) if p != q]
             print(f"{name}: reading differs (points {wrong}, bar {ra['bar']} / {rb['bar']}, dice {ra['dice']} / {rb['dice']}, "
-                  f"cube {ra['cube']} / {rb['cube']}); first different step: {first}")
+                  f"cube {ra['cube']} / {rb['cube']}, corners {ra.get('corners')} / {rb.get('corners')}); first different step: {first}")
         elif first is not None:
             print(f"{name}: same reading, first different step: {first}")
     print(f"first different steps: {first_steps}")
