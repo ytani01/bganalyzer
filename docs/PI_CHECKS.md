@@ -101,7 +101,9 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - **足した日・PR:** 2026-10-14（ユーザーの依頼）
 - **確かめ方:** `curl -s http://127.0.0.1:8000/version` が analyzer 0.33.0・recognizer 0.12.0 以降。`samples/screen1.png` と `samples/screen2.jpg` を `/analyze-photo` に送り、`geometry` の `dice` と `cube` を見る。スマホで、ダイスとキューブの写った写真を読み取る
 - **期待:** screen1 は `dice` の目が 4 と 2、`cube` は null。screen2 は `dice` の目が 5 と 4、`cube.at` が `"black"`（x86_64 と同じ）。スマホでは、駒の円のあと、ダイスに水色の四角と目、キューブに桃色の四角が順に出て、約 2 秒で盤面の画面に進む（タップで飛ばせる）
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-14、db18668。`/version` は analyzer 0.33.0・recognizer 0.12.0。screen1 は `dice` 4・2、`cube` null。screen2 は `dice` 4・5、`cube.at` `"black"`。OK。
+  ヘッドレスの Chromium（412×915）で screen2 を読み取ると、応答から 0.95 秒で駒の円、1.45 秒でダイスの水色の四角と目、1.8 秒でキューブの桃色の四角が出て、2.44 秒で盤面の画面に進んだ。OK。
+  ただし左下のラベルの先頭が切れる（「ダイス 4・5」が「ゞイス 4・5」、「キューブ（奥）」が「ューブ（奥）」）
 - [ ] スマホ: 演出の見え方と長さ（ai1）
 
 ## PI-027. 模様のある駒の面を読む（recognizer 0.13.1）
