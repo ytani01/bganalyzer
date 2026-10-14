@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-028、TODO-030、TODO-032、TODO-041。** これまでに 36 件を決着させた。
+**残っている項目: TODO-025、TODO-028、TODO-030、TODO-032。** これまでに 37 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-042`。**
 各項目の最初に **担当**（ai1 か、共同開発者のアカウント名、未定、引き継ぎ可）を書き、着手する前に自分の担当にしてコミットする
 （[docs/HANDOVER.md](docs/HANDOVER.md)）。
@@ -136,17 +136,6 @@ TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま
   円が出ない駒（TODO-027）も読めなかった。詳しくは recognizer/README.md の「位置ごとに判定する読み方の試作」
 - [ ] ai1 の盤の写真が集まったら（TODO-030）、`evaluate.py --slots` でも測る。同じ色の三角形の上の駒で円より当たるなら、
   食い違ったポイントだけ位置ごとの判定を使う形を考える
-
----
-
-## TODO-041. git の無い環境で `test_version_reports_both_parts_and_commit` が落ちる
-
-- **担当:** ai1
-- **見込み:** main Opus 5.5 / effort medium（実装）+ verifier（Sonnet 5.5 / medium。git の有る環境と無い環境で走らせ、壊すと落ちるか）
-- [x] git が無ければ、比べる相手を `git rev-parse` でなく skip にする
-
-Pi で常駐用のイメージを使って `pytest` を走らせると、イメージに git が無いので `FileNotFoundError` で落ちる（2026-10-14）。
-`/version` の `commit` は git を使わず `.git` のファイルから読んでいる（`analyzer/app.py` の `git_commit`）。
 
 ---
 
