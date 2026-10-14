@@ -1,7 +1,7 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: なし。** これまでに 18 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-019`。**
+**残っている項目: PI-019。** これまでに 18 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-020`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
 マージしたあと、自宅の Raspberry Pi（公開している本番）でしか確かめられないことの一覧です。
@@ -86,6 +86,19 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 ```
 
 ---
+
+## PI-019. 四隅の推定（recognizer 0.8.0）が Pi でも x86_64 と同じくらい当たる
+
+- **担当:** ai1（Pi の Claude Code）
+- **足した日・PR:** 2026-10-14（TODO-028）
+- **確かめ方:** Pi の `bganalyzer` フォルダで（コンテナには `samples/` が入っていないので写してから測る）
+  `docker compose cp samples app:/tmp/samples && docker compose exec -T app sh -c 'python recognizer/check_corners.py /tmp/samples/*.truth.json'`。
+  USBGF の盤面図（`samples/external/`、画像は usbgf.org から取る。クラウドからは届かず 0.8.0 では測れていない）も、
+  `docker compose exec -T app sh -c 'python recognizer/evaluate.py /tmp/samples/external/*.truth.json > /dev/null; python recognizer/check_corners.py /tmp/samples/external/*.truth.json'` で測る
+  （evaluate.py が画像を取ってくる）。終わったら `docker compose exec -T app rm -rf /tmp/samples`
+- **期待:** 全 23 枚で x86_64 の値（3.6% 以内 14 枚・それより外 6 枚・見つからない 3 枚、recognizer/README.md の「四隅の推定」）に近い。
+  1 枚 2 秒以内。見つからない写真が x86_64 より多ければ、その名前を書いて TODO-028 に足す
+- [ ] Pi: （結果をここに書く）
 
 ---
 
