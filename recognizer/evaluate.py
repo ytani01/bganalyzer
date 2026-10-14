@@ -56,8 +56,9 @@ if __name__ == "__main__":
     # --app: shrink large photos the way the PWA does before sending them
     # --slots: count by slots (slots.py, experimental) instead of by circles
     app = "--app" in sys.argv
-    method = "slots" if "--slots" in sys.argv else "circles"
-    files = [a for a in sys.argv[1:] if a not in ("--app", "--slots")] or sorted(glob.glob(os.path.join(os.path.dirname(__file__), "..", "samples", "*.truth.json")))
+    # --section: count along each point's centre line (section.py, experimental)
+    method = "slots" if "--slots" in sys.argv else "section" if "--section" in sys.argv else "circles"
+    files = [a for a in sys.argv[1:] if a not in ("--app", "--slots", "--section")] or sorted(glob.glob(os.path.join(os.path.dirname(__file__), "..", "samples", "*.truth.json")))
     for f in files:
         pos, truth, wrong, bar_ok, (home_ok, margin), (dice, want), (cube, cube_want) = run(f, app=app, method=method)
         dice_ok = "ok" if dice == want else "not read" if dice is None else "WRONG"

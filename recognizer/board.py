@@ -42,7 +42,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.17.1"
+__version__ = "0.18.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -1117,6 +1117,11 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         gy = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 0, 1) for i in range(3))
         runs = slots.count_by_slots(ground_lab, gx, gy, board, lay, m, pitch, tri_map, tri_len,
                                     cc, circles, runs)
+    if method == "section" and cc is not None:   # experimental (TODO-032 idea 2): section.py
+        import section
+        _, _, gy8 = _lab_gradients(ground)
+        runs = section.count_by_profile(ground_lab, gy8, board, lay, m, pitch, tri_map, tri_len,
+                                        cc, circles, runs)
     guessed = None
     if home == "auto":   # which way the checkers move: guess from where they stand
         home, margin = home_prior.guess(to_position(runs, bar, bottom_colour, "right").points)
