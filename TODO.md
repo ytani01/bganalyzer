@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-027、TODO-028、TODO-030、TODO-032、TODO-035。** これまでに 30 件を決着させた。
+**残っている項目: TODO-025、TODO-027、TODO-028、TODO-030、TODO-032。** これまでに 31 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-037`。**
 各項目の最初に **担当**（ai1 か、共同開発者のアカウント名、未定、引き継ぎ可）を書き、着手する前に自分の担当にしてコミットする
 （[docs/HANDOVER.md](docs/HANDOVER.md)）。
@@ -144,24 +144,6 @@ TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま
   円が出ない駒（TODO-027）も読めなかった。詳しくは recognizer/README.md の「位置ごとに判定する読み方の試作」
 - [ ] ai1 の盤の写真が集まったら（TODO-030）、`evaluate.py --slots` でも測る。同じ色の三角形の上の駒で円より当たるなら、
   食い違ったポイントだけ位置ごとの判定を使う形を考える
-
----
-
-## TODO-035. 認識の精度が下がったら CI で気づけるようにする
-
-- **担当:** 引き継ぎ先（2026-10-14 着手）
-- [x] `recognizer/evaluate.py` の結果が今の正解数より下がったら、GitHub Actions を失敗させる（`recognizer/check_accuracy.py` と `accuracy_baseline.json`、`.github/workflows/accuracy.yml`）
-
-今の CI（`.github/workflows/test.yml`）は `uv run pytest analyzer` だけで、写真の認識は測っていない。
-`docker.yml` も screen1 を1枚通して解析まで動くかを見るだけで、正解かどうかは見ない。
-認識を変えて精度が下がっても CI は緑のままで、`evaluate.py` を手で走らせないと気づけない。
-
-案: サンプルごとの今の正解数（ポイント・バー・ダイスなど）をファイルに置き、`evaluate.py` の結果が
-それを下回ったら失敗する。上がったときはファイルを更新する（`recognizer/README.md` の「精度」の表と揃える）。
-
-- 全 23 枚の `evaluate.py` は、2026-10-14 にクラウドで約 130 秒。CI に入れられる長さ
-- x86_64 と Raspberry Pi で結果が違うことがある（TODO-028 の四隅など）。CI は x86_64 なので、基準は x86_64 で測る
-- `--app`（PWA と同じように縮めて送る）も測るかは、着手するときに決める
 
 ---
 
