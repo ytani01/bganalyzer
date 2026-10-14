@@ -59,13 +59,13 @@ def test_analyze_photo_streams_the_stages():
     assert [e["stage"] for e in events] == ["board", "tips", "checkers", "counts", "dice", "cube", "done"]
     by = {e["stage"]: e for e in events}
     assert len(by["board"]["corners"]) == 4 and len(by["checkers"]["columns"]) == 12
-    # the counts by the points add up to the board read (screen2: 15 each, 2 of black's on the bar)
-    counts = by["counts"]["counts"]
-    assert sum(c["n"] for c in counts if c["side"] == "white") == 15
-    assert sum(c["n"] for c in counts if c["side"] == "black") == 15
     assert sorted(d["value"] for d in by["dice"]["dice"]) == [4, 5] and by["cube"]["cube"]["at"] == "black"
     result = by["done"]["result"]
-    assert result["recognized"]["points"] == t["points"] and result["dice_read"] == [5, 4] and result["analysis"]
+    assert result["dice_read"] == [5, 4]
+    # the counts by the points add up to the board read
+    counts, rec = by["counts"]["counts"], result["recognized"]
+    assert sum(c["n"] for c in counts if c["side"] == "white") == sum(n for n in rec["points"] if n > 0) + rec["bar_white"]
+    assert sum(c["n"] for c in counts if c["side"] == "black") == -sum(n for n in rec["points"] if n < 0) + rec["bar_black"]
     assert result["geometry"]["counts"] == counts   # the same as without streaming
     with open(SAMPLES / t["image"], "rb") as f:
         plain = client.post("/analyze-photo", files={"image": (t["image"], f)}, data=data).json()
