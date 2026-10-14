@@ -6,6 +6,7 @@
 
 マージしたあと、自宅の Raspberry Pi（公開している本番）でしか確かめられないことの一覧です。
 クラウドの Claude は Pi に入れないので、**Pi の上で動く Claude Code がここを読んで確かめ、結果を書き込みます。**
+外から見えること（版、画面、公開サンプルの読み取り）は、下の「クラウドから確かめられること」でクラウドからも確かめられます。
 
 ## Pi の上の Claude Code がやること
 
@@ -18,6 +19,27 @@
    ユーザーがスマホで見て OK と言ったときも同じ。
 5. 期待と違ったら（遅すぎる・落ちる・値が違う）、ユーザーに報告し、TODO.md に項目を足す。
 6. ブランチを切って PR にし、CLAUDE.md の「共同開発」どおりにマージする（main に直接 push しない）。
+
+## クラウドから確かめられること
+
+Pi のアプリは Tailscale Funnel で https://bg.tail5c266.ts.net/bg/ に公開している（ルートの `/` は 404）。
+クラウドの Claude もここには届くので、**外から見えることはクラウドで先に確かめ、`Pi:` の行に「クラウドから」と書いてよい。**
+
+```bash
+uv run python tools/check_pi.py          # --all で samples/ の全部
+```
+
+`/version`（版とコミット、main からコードが変わっていないか）、静的ファイルが手元と同じか、
+`samples/` の公開写真 5 枚を `/analyze-photo`（0-ply）に送り、Pi の読み取りが手元と同じか・正解と何点合うかを出す。
+画面は Playwright の Chromium で `/bg/` を開けば見られる。
+クラウドの環境によっては、プロキシが ts.net を通さず `Tunnel connection failed: 403` になる（2026-10-14、引き継ぎ先のアカウントで確認）。
+そのときはクラウドからの確認を飛ばし、Pi の Claude Code に任せる。
+
+クラウドからは**やらない・できない**こと（Pi の Claude Code かユーザーに残す）:
+
+- `git pull` と `docker compose up -d --build`（Pi の更新そのもの）、コンテナのログ、`collected/` の中身
+- `/samples` に送ること（Pi に写真が残る）。送ってよいのはリポジトリで公開している `samples/` の写真だけ
+- スマホ実機での操作（カメラ、共有、読み上げ、ホーム画面のアプリ）
 
 ## 項目の足し方
 
@@ -49,7 +71,7 @@
   `docker compose exec app sh -c 'python recognizer/evaluate.py /data/samples/*.truth.json'` を実行する。
 - **期待:** `/version` が analyzer 0.25.0 以上で `"samples": true`。解析したあと `collected/` に `user-*.jpg` と `user-*.truth.json` が 1 組でき、evaluate.py で測れる。
   オフのままなら何も増えない。
-- [ ] Pi: （結果をここに書く）
+- [ ] Pi: 2026-10-14、クラウドから。`/version` は analyzer 0.25.1・`"samples": true`（359d6a5）。`collected/` に入るかは Pi で見る
 - [ ] スマホ: 「解析の設定」の下に「精度の改善」のスイッチが出て、オンにして解析できる（ai1）
 
 ---
