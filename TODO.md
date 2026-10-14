@@ -172,9 +172,9 @@ TODO-012 から分けた。Raspberry Pi で全 23 枚を元の大きさのまま
 | 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5 / medium） |
 
 - **担当:** ai1
-- [ ] `navigator.share` が `AbortError`（利用者が閉じた）以外で失敗したら、2 つのファイルをダウンロードする（`analyzer/static/app.js`）
-- [ ] `tools/pi_ui_check.py` の `export` に、共有が `NotAllowedError` で断る場合を足す
-- [ ] analyzer の版を上げ、docs/PI_CHECKS.md に Android の Chrome で確かめる項目を足す
+- [x] `navigator.share` が `AbortError`（利用者が閉じた）以外で失敗したら、2 つのファイルをダウンロードする（`analyzer/static/app.js`）
+- [x] `tools/pi_ui_check.py` の `export` に、共有が `NotAllowedError` で断る場合を足す
+- [x] analyzer の版を上げ、docs/PI_CHECKS.md に Android の Chrome で確かめる項目を足す
 
 PI-014（2026-10-14）で、Android の Chrome で「書き出せませんでした: Permission denied」になった。
 Chrome は共有できるファイルの種類が決まっていて `.json` は入らないため、写真と `.truth.json` を渡すと

@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.25.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.25.3";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -1313,12 +1313,13 @@ $("export-sample").addEventListener("click", async () => {
     if (navigator.canShare && navigator.canShare({ files })) {
       try {
         await navigator.share({ files, title: "BG Analyzer のサンプル" });
+        return;
       } catch (err) {
-        if (err.name !== "AbortError") throw err;
+        if (err.name === "AbortError") return;   // closed by the user
+        // Chrome on Android refuses a .json (NotAllowedError "Permission denied"): download instead
       }
-      return;
     }
-    for (const f of files) {   // no share sheet (a PC): download both
+    for (const f of files) {   // no share sheet (a PC), or it refused: download both
       const a = document.createElement("a");
       a.href = URL.createObjectURL(f);
       a.download = f.name;
