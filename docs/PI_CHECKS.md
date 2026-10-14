@@ -87,17 +87,16 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 
 ---
 
-## PI-019. collected/ を自動で測り直し、古い組を消す（recognizer/collected.py、tools/collected_cron.sh）
+## PI-019. collected/ を自動で測り直し、古い組を消す（analyzer 0.26.0、recognizer 0.8.0）
 
 - **担当:** ai1（Pi の Claude Code）
 - **足した日・PR:** 2026-10-14、TODO-038
-- **確かめ方:** `docker compose up -d --build` のあと、`docker compose exec -T app python recognizer/collected.py /data/samples --force` を走らせ、
-  `collected/report.md` を見る。crontab に docs/raspi.md の 1 行が入っているかを `crontab -l` で見る。
-  次の日の朝、`~/collected-cron.log` を見る。
-- **期待:** report.md に組の数と読み違いが出る。読み違いの無い組が 50 以下なら何も消えない。ログに `skip:` か `measured` が出る
+- **確かめ方:** 更新のあと `/version` を見る。`docker compose exec -T app python recognizer/collected.py /data/samples --force` を走らせ、
+  `collected/report.md` を見る。その後、「Pi に残す」で 10 組たまったら、`report.md` が書き直されているか（時刻）を見る。
+- **期待:** `/version` が analyzer 0.26.0・recognizer 0.8.0。report.md に組の数と読み違いが出て、正解の中の文字は出ない。
+  読み違いの無い組が 50 以下なら何も消えない。10 組たまると、サーバーが自動で測り直す
 - [ ] Pi: （結果をここに書く）
-
----
+- [ ] 10 組たまったとき: report.md が自動で書き直される（ai1 が使ってたまったら）
 
 ---
 

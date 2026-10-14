@@ -1,77 +1,95 @@
-"""Measure the photos kept with 「Pi に残す」 again, and drop old ones that are read right (docs/raspi.md).
+"""Measure the pairs kept with 「Pi に残す」 again, and drop old ones read right (docs/raspi.md).
 
-    python recognizer/collected.py /data/samples            # in the container (docker compose exec -T app)
-    python recognizer/collected.py /data/samples --force    # measure even without 10 new pairs
+    python recognizer/collected.py /data/samples            # in the container
+    python recognizer/collected.py /data/samples --force    # even without NEW new pairs
 
-Measures only when NEW or more pairs came since the last time. Writes report.md next to the pairs.
-Pairs with a misread are kept (they are what to fix). Pairs read right are kept up to KEEP_RIGHT,
-the newest ones: they tell whether a fix makes others worse. Prints "measured" when it measured.
+The server starts it after saving a pair, when NEW pairs came since the last time (analyzer/app.py).
+Writes report.md next to the pairs. Pairs with a misread are kept (they are what to fix); pairs read
+right are kept up to KEEP_RIGHT, the newest: they tell whether a fix makes others worse.
+Anyone can send a pair (/samples is public), so a truth is used only when its fields have the expected
+types, and no text from it goes into the report: names are the server's (user-<letters, digits, ->).
 """
-import json, os, sys
-from datetime import datetime
+import json, re, sys, time
 from pathlib import Path
-
-import board
-import evaluate
 
 NEW = 10           # measure again after this many new pairs
 KEEP_RIGHT = 50    # pairs read right that are kept, newest first
 STATE = ".measured.json"
 REPORT = "report.md"
+NAME = re.compile(r"user-[A-Za-z0-9-]+\.truth\.json")
+
+
+def names(d):
+    return sorted(p.name for p in Path(d).glob("*.truth.json") if NAME.fullmatch(p.name))
+
+
+def new_pairs(d):
+    """The pairs not measured yet (a pair sent again under the same name is not new)."""
+    try:
+        seen = set(json.loads((Path(d) / STATE).read_text()))
+    except (OSError, ValueError):
+        seen = set()
+    return [n for n in names(d) if n not in seen]
+
+
+def valid(t):
+    """Whether a truth has what evaluate.py reads, with the expected types."""
+    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
+    try:
+        cube = t.get("cube")
+        return (len(t["points"]) == 24 and all(type(n) is int for n in t["points"] + [t["bar_white"], t["bar_black"]])
+                and t["home"] in ("left", "right") and Path(t["image"]).suffix in (".jpg", ".png")
+                and len(t["corners_TL_TR_BR_BL"]) == 4 and all(len(c) == 2 and all(map(num, c)) for c in t["corners_TL_TR_BR_BL"])
+                and (t.get("dice") is None or (len(t["dice"]) == 2 and all(type(n) is int and 1 <= n <= 6 for n in t["dice"])))
+                and (cube is None or (isinstance(cube, dict) and cube.get("at") in ("white", "black", "centre"))))
+    except Exception:
+        return False
 
 
 def misreads(path):
-    """What the recognizer gets wrong on one pair (an empty list: read right)."""
+    """What the recognizer gets wrong on one pair ([]: read right), or None when the truth is not usable."""
+    import evaluate   # cv2 and the recognizer: only when measuring
     try:
+        if not valid(json.loads(path.read_text())):
+            return None
         _, _, wrong, bar_ok, _, (dice, want), (cube, cube_want) = evaluate.run(str(path))
-    except Exception as e:   # a broken pair is kept and shown, not deleted
-        return [f"error: {type(e).__name__}: {e}"]
-    out = [f"point {pt}: truth {a:+d}, read {b:+d}" for pt, a, b in wrong]
-    if not bar_ok:
-        out.append("bar")
-    if dice != want:
-        out.append(f"dice: truth {want}, read {dice}")
-    if cube != cube_want:
-        out.append(f"cube: truth {cube_want and cube_want['at']}, read {cube and cube['at']}")
+    except Exception:
+        return ["読めなかった"]
+    out = [f"ポイント {pt}: 正解 {a:+d}、読み {b:+d}" for pt, a, b in wrong]
+    out += [what for what, ok in (("バー", bar_ok), ("ダイス", dice == want), ("キューブ", cube == cube_want)) if not ok]
     return out
 
 
-def to_delete(results, keep=KEEP_RIGHT):
-    """results: [(name, mtime, misreads)]. The pairs read right beyond the newest `keep`."""
-    right = sorted((r for r in results if not r[2]), key=lambda r: r[1], reverse=True)
-    return [name for name, _, _ in right[keep:]]
+def to_delete(results, mtimes, keep):
+    """The pairs read right beyond the newest `keep`."""
+    right = sorted((n for n, why in results.items() if why == []), key=lambda n: mtimes[n], reverse=True)
+    return right[keep:]
 
 
-def main(d, force=False):
+def measure(d, force=False):
     d = Path(d)
-    truths = sorted(d.glob("*.truth.json"))
-    state = d / STATE
-    seen = set(json.loads(state.read_text())) if state.exists() else set()
-    new = [p.name for p in truths if p.name not in seen]
+    new = new_pairs(d)
     if len(new) < NEW and not force:
-        print(f"skip: {len(new)} new pairs (measure at {NEW})")
-        return
-    results = [(p.name, p.stat().st_mtime, misreads(p)) for p in truths]
-    gone = to_delete(results, KEEP_RIGHT)
-    for name in gone:   # the photo and its truth.json, the way /samples names them
-        for f in d.glob(name.removesuffix(".truth.json") + ".*"):
+        return f"skip: {len(new)} new pairs (measure at {NEW})"
+    results = {n: misreads(d / n) for n in names(d)}
+    gone = to_delete(results, {n: (d / n).stat().st_mtime for n in results}, KEEP_RIGHT)
+    for n in gone:   # the photo and its truth.json, the way /samples names them
+        for f in d.glob(n.removesuffix(".truth.json") + ".*"):
             f.unlink()
-    kept = [r for r in results if r[0] not in gone]
-    wrong = [r for r in kept if r[2]]
-    lines = [f"# collected/ の測り直し（{datetime.now():%Y-%m-%d %H:%M}、recognizer {board.__version__}）", "",
-             f"- 組: {len(results)}（新しい組 {len(new)}）。読み違いの無い組 {len(results) - len(wrong) - len(gone)} を残し、"
-             f"古い {len(gone)} を消した（上限 {KEEP_RIGHT}）",
-             f"- 読み違いのある組: {len(wrong)}", ""]
-    for name, _, why in wrong:
-        lines.append(f"## {name}")
-        lines += [f"- {w}" for w in why] + [""]
-    if gone:
-        lines += ["## 消した組", ""] + [f"- {n}" for n in gone] + [""]
+    left = {n: why for n, why in results.items() if n not in gone}
+    wrong = {n: why for n, why in left.items() if why}
+    bad = [n for n, why in left.items() if why is None]
+    lines = [f"# collected/ の測り直し（{time.strftime('%Y-%m-%d %H:%M')}）", "",
+             f"- 組: {len(left)}（新しい組 {len(new)}）。読み違いのある組 {len(wrong)}、正解の形が違う組 {len(bad)}",
+             f"- 読み違いの無い古い組を {len(gone)} 消した（新しい {KEEP_RIGHT} 組を残す）", ""]
+    for n, why in wrong.items():
+        lines += [f"## {n}", ""] + [f"- {w}" for w in why] + [""]
+    if bad:
+        lines += ["## 正解の形が違う組（測っていない）", ""] + [f"- {n}" for n in bad] + [""]
     (d / REPORT).write_text("\n".join(lines))
-    state.write_text(json.dumps(sorted(r[0] for r in kept)))
-    print("measured")
+    (d / STATE).write_text(json.dumps(sorted(left)))
+    return "measured"
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    main(next(a for a in args if not a.startswith("--")), force="--force" in args)
+    print(measure(sys.argv[1], force="--force" in sys.argv))

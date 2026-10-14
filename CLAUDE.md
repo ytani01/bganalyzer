@@ -79,5 +79,3 @@ analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同
 - **マージの直前に最新の main を取り込み、`uv run pytest analyzer` と GitHub Actions の `test` が
   両方通ってからマージする。** どちらかが落ちていたらマージしない。
   相手の担当の部分とぶつかったら、勝手に直さずユーザーに報告する
-- **例外: Pi の cron が起動する `claude -p`（`tools/collected_cron.sh`）の PR** は、`recognizer/` だけを変え CI が通れば
-  スクリプトが自動でマージし、Pi を更新する（2026-10-14 ai1 が決めた。TODO-038）
