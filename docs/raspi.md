@@ -107,7 +107,7 @@ PWA の「解析の設定」で「Pi に残す」をオンにすると、解析�
 | やること | コマンド（`bganalyzer` フォルダで） |
 |---|---|
 | 何組あるか | `ls collected/*.truth.json \| wc -l` |
-| 今の認識で測る | `docker compose exec app sh -c 'python recognizer/evaluate.py /data/samples/*.truth.json'` |
+| 今の認識で測る | `docker compose exec -T app python recognizer/collected.py /data/samples --force` → `collected/report.md` |
 | 直した所の多い写真を見る | `grep -o '"fixed_points": \[[^]]*\]' collected/*.truth.json` |
 
 ### 自動で測り直す
@@ -125,7 +125,9 @@ flowchart TD
 - 読み違いのある組は直す材料なので消しません。読み違いの無い組は、直したことでほかが悪くならないかを確かめるのに使います。
 - `/samples` は公開で誰でも送れるので、正解の形が違う組は測らず、`report.md` には正解の中の文字を出しません（組の名前はサーバーが付けたもの）。
 - 認識を直すのは、Pi の Claude Code に「collected の report を見て直して」と頼んだときです（自動ではしません）。
-- すぐに測るときは `docker compose exec -T app python recognizer/collected.py /data/samples --force`。
+- すぐに測るときは `docker compose exec -T app python recognizer/collected.py /data/samples --force`。自動の測り直しが落ちたときの理由は `collected/measure.log` に残ります。
+- `collected/` を `recognizer/evaluate.py` で測ると、正解の中の文字がそのまま出て、形の違う組で止まります。`report.md` を使ってください。
+- 測り直しは API と同じコンテナで、いちばん低い優先度（`nice -n 19`）で動きます。
 
 リポジトリの `samples/` へは自動では入れません。公開リポジトリなので、入れる写真は人の顔などが写っていないものを選んで、
 PR で足します（[CLAUDE.md](../CLAUDE.md)）。

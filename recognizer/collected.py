@@ -53,11 +53,10 @@ def misreads(path):
         if not valid(json.loads(path.read_text())):
             return None
         _, _, wrong, bar_ok, _, (dice, want), (cube, cube_want) = evaluate.run(str(path))
+        out = [f"ポイント {pt}: 正解 {a:+d}、読み {b:+d}" for pt, a, b in wrong]
+        return out + [what for what, ok in (("バー", bar_ok), ("ダイス", dice == want), ("キューブ", cube == cube_want)) if not ok]
     except Exception:
         return ["読めなかった"]
-    out = [f"ポイント {pt}: 正解 {a:+d}、読み {b:+d}" for pt, a, b in wrong]
-    out += [what for what, ok in (("バー", bar_ok), ("ダイス", dice == want), ("キューブ", cube == cube_want)) if not ok]
-    return out
 
 
 def to_delete(results, mtimes, keep):

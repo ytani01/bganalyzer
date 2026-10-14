@@ -199,8 +199,12 @@ def measure_collected(d: Path) -> None:
     global _measuring
     if (_measuring and _measuring.poll() is None) or len(collected.new_pairs(d)) < collected.NEW:
         return
-    _measuring = subprocess.Popen([sys.executable, str(RECOGNIZER / "collected.py"), str(d)],
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:   # at the lowest priority: the API in the same container comes first; why it failed goes to measure.log
+        with open(d / "measure.log", "w") as err:
+            _measuring = subprocess.Popen(["nice", "-n", "19", sys.executable, str(RECOGNIZER / "collected.py"), str(d)],
+                                          stdout=subprocess.DEVNULL, stderr=err)
+    except OSError as e:   # the pair is saved: not measuring this time is no reason to fail the request
+        log.warning("could not measure collected/ again: %r", e)
 
 
 @app.post("/analyze")

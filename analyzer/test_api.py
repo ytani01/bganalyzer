@@ -513,14 +513,14 @@ def test_4xx_reason_is_logged(caplog):
 def test_samples_measured_again_after_ten_new(monkeypatch, tmp_path):
     # recognizer/collected.py is started once the 10th new pair is saved, not before, and not twice at a time
     import app as app_module
-    started = []
+    started, done = [], []
 
     class Running:
         def __init__(self, args, **kw):
             started.append(args)
 
         def poll(self):
-            return None   # still running
+            return 0 if done else None   # None: still running
 
     monkeypatch.setenv("BG_SAMPLES_DIR", str(tmp_path))
     monkeypatch.setattr(app_module.subprocess, "Popen", Running)
@@ -530,3 +530,6 @@ def test_samples_measured_again_after_ten_new(monkeypatch, tmp_path):
         assert r.status_code == 200
         assert len(started) == (0 if i < 9 else 1), i
     assert started[0][-1] == str(tmp_path) and started[0][-2].endswith("recognizer/collected.py")
+    done.append(1)   # it finished without writing .measured.json: the next save starts it again
+    client.post("/samples", data={"id": "n11", **_sample_form()}, files={"image": ("a.jpg", b"jpg", "image/jpeg")})
+    assert len(started) == 2
