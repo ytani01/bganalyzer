@@ -43,6 +43,13 @@ def test_history_helpers():
     assert out["none"] == []
 
 
+def test_on_roll_label_follows_the_dice():
+    # TODO-042: the label app.js rewrites ("振った人" with dice in, "次に振る人" without) is there
+    assert '<span class="opt-label" id="onroll-label">次に振る人</span>' in client.get("/").text
+    js = (STATIC / "app.js").read_text()
+    assert 'dice ? "振った" : "次に振る"' in js and "次に振るのは" not in js
+
+
 def test_moves_script_is_served_and_cached():
     assert client.get("/moves.js").status_code == 200
     assert '<script src="moves.js"></script>' in client.get("/").text
