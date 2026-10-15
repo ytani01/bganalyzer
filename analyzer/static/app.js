@@ -730,15 +730,23 @@ function toggleSpeaking() {
   const voices = synth.getVoices().filter((v) => /^ja/i.test(v.lang));
   const voice = voices.find((v) => /google/i.test(v.name)) || voices[0];
   if (voice) u.voice = voice;
-  const label = (on) => {
-    const btn = $("speak");
-    btn.textContent = on ? "■" : "🔊";
-    btn.classList.toggle("on", on);
-    btn.setAttribute("aria-pressed", on);
-  };
-  u.onstart = () => label(true);
-  u.onend = u.onerror = () => label(false);
+  u.onstart = () => speakLabel(true);
+  u.onend = u.onerror = () => speakLabel(false);
   synth.speak(u);
+}
+
+// The button shows a drawn speaker and a word, not the 🔊 emoji: the emoji looks different on each
+// phone and was hard to tell apart. While reading it turns into a stop square and 「止める」.
+const SPEAKER_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor"/>' +
+  '<path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const STOP_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>';
+
+function speakLabel(on) {
+  const btn = $("speak");
+  btn.innerHTML = on ? `${STOP_SVG}止める` : `${SPEAKER_SVG}読み上げ`;
+  btn.setAttribute("aria-label", on ? "読み上げを止める" : "結果を読み上げる");
+  btn.classList.toggle("on", on);
+  btn.setAttribute("aria-pressed", on);
 }
 
 // A photo shared from another app (Android: 共有 → BG Analyzer). sw.js keeps it in a cache on the
@@ -844,6 +852,7 @@ $("result").addEventListener("click", (e) => {   // a row of the best moves: its
   update({ moveShown: Number(li.dataset.k) });
   $("result-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
+speakLabel(false);
 $("speak").addEventListener("click", toggleSpeaking);
 $("export-sample").addEventListener("click", exportSample);
 
