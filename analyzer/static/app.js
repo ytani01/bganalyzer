@@ -2,12 +2,12 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.38.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.38.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const START = [-2, 0, 0, 0, 0, 5, 0, 3, 0, 0, 0, -5, 5, 0, 0, 0, -3, 0, -5, 0, 0, 0, 0, 2];
-const NAME = { white: "手前", black: "奥" };
+const NAME = BgResult.NAME;
 const CORNER_NAMES = ["左上", "右上", "右下", "左下"];
 const SHARE_CACHE = "bganalyzer-share";   // same names as in sw.js
 const SHARE_KEY = "shared-photo";
@@ -48,7 +48,7 @@ const state = {
   read: null,        // the board as the recognizer read it, before fixes by hand (same layout as board)
   selected: null,    // point index 0..23, or "bar"
   result: null,
-  speech: null,      // the result read aloud (speechText) by the header's 🔊 button
+  speech: null,      // the result read aloud (BgResult.speechText) by the header's 🔊 button
   resultKey: null,  // analysisKey() of what the result on screen was worked out for
   moveShown: 0,      // the move in the result's list drawn as arrows on the board
   historyId: null,   // this photo's entry in PhotoHistory (history.js), null if not stored
@@ -1008,12 +1008,8 @@ function setDice(dice, fromPhoto = false) {
   if (state.board) drawBoard();
 }
 
-// With dice in, the side on roll has already rolled: "振った人", not "次に振る人" (TODO-042).
-function rollWho(dice) {
-  return dice ? "振った" : "次に振る";
-}
 function syncRollLabel() {
-  $("onroll-label").textContent = `${rollWho(currentDice())}人`;
+  $("onroll-label").textContent = `${BgResult.rollWho(currentDice())}人`;
 }
 
 function currentDice() {
@@ -1113,10 +1109,6 @@ async function post(path, body, headers) {
   return data;
 }
 
-function esc(s) {
-  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-}
-
 function setResult(r, dice) {
   state.result = r;
   state.resultKey = r ? analysisKey(state.board, state.onRoll, dice || null) : null;   // the board it was worked out for
@@ -1125,62 +1117,13 @@ function setResult(r, dice) {
   const box = $("result");
   box.classList.remove("stale");
   box.hidden = !r;
-  state.speech = r ? speechText(r, dice) : null;
+  state.speech = r ? BgResult.speechText(r, dice) : null;
   syncHeaderActions();
   if (!r) return;
-  const pips = r.pips;
-  const pipLine = pips.leader
-    ? `${NAME[pips.leader]}が ${pips.difference} ピップ リード`
-    : "ピップは同じ";
   stopSpeaking();
-  let html = `<h2>${esc(r.summary)}</h2>`;
-  if (!r.game_over) {
-    const p = r.probabilities;
-    const w = p.white.win, bl = p.black.win;
-    html += `<div class="winbar"><div class="w" style="width:${w}%">手前 ${w}%</div>` +
-      `<div class="b" style="width:${bl}%">奥 ${bl}%</div></div>`;
-    html += `<table><tr><th></th><th>手前</th><th>奥</th></tr>` +
-      `<tr><td>勝率</td><td>${w}%</td><td>${bl}%</td></tr>` +
-      `<tr><td>うちギャモン勝ち</td><td>${p.white.gammon}%</td><td>${p.black.gammon}%</td></tr>` +
-      `<tr><td>うちバックギャモン勝ち</td><td>${p.white.backgammon}%</td><td>${p.black.backgammon}%</td></tr>` +
-      `<tr><td>エクイティ</td><td>${r.equity.white.toFixed(3)}</td><td>${r.equity.black.toFixed(3)}</td></tr>` +
-      `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
-  }
-  html += r.cube ? cubeHtml(r.cube) : `<p>${pipLine}。${rollWho(dice)}のは${NAME[r.on_roll]}の人。</p>`;
-  if (r.cube) html += `<p>${pipLine}。</p>`;
-  if (r.moves) {
-    html += `<h2>最善手（${NAME[r.on_roll]}・ダイス ${dice ? dice.join("-") : ""}）</h2>`;
-    html += r.moves.length
-      ? `<ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>エクイティ ${m.equity.toFixed(3)}</span></li>`).join("")}</ol>` +
-        `<p class="note">番号は${NAME[r.on_roll]}の人から見たポイント番号です。盤面図の矢印は選んだ手です（行をタップで切り替え）。</p>`
-      : "<p>動かせる手がありません。</p>";
-  }
-  html += `<p class="note">gnubg ${r.plies}手読み。勝率とエクイティはキューブなし${r.cube ? "、キューブの判断はマネーゲーム（ジャコビー・ルールあり）" : ""}。` +
-    `Position ID: <code>${esc(r.position_id)}</code></p>`;
-  box.innerHTML = html;
+  box.innerHTML = BgResult.html(r, dice);
   const list = box.querySelector(".moves");
   if (list) list.addEventListener("click", (e) => showMove(list, e.target.closest("li")));
-}
-
-// The cube decision: the answer first, then gnubg's cubeful equities (the doubler's, per cube before the double).
-function cubeHtml(c) {
-  const d = NAME[c.doubler], t = NAME[c.taker];
-  const word = c.value > 1 ? "リダブル" : "ダブル";
-  const take = c.take ? "テイク" : "パス";
-  let html = "<h2>キューブ</h2>";
-  if (c.question === "take") {
-    html += `<p class="answer">${t}の人は <b>${take}</b></p>`;
-    html += `<p>${d}の人の${word}は${c.double ? "正しい" : c.too_good ? "ダブルせずギャモンを狙う方がよい局面" : "早すぎる"}。</p>`;
-  } else {
-    html += `<p class="answer">${d}の人は <b>${c.double ? `${word}する` : c.too_good ? `${word}しない（ギャモン狙い）` : `${word}しない`}</b></p>`;
-    html += `<p>${word}されたら、${t}の人は${take}。</p>`;
-  }
-  const e = c.equity;
-  const row = (name, v) => `<tr><td>${name}</td><td>${v >= 0 ? "+" : ""}${v.toFixed(3)}</td></tr>`;
-  html += `<table><tr><th>${d}の人から見て</th><th>エクイティ</th></tr>` +
-    row(`${word}しない`, e.no_double) + row(`${word}・テイク`, e.double_take) + row(`${word}・パス`, e.double_pass) +
-    `</table><p class="note">gnubg の判断: ${esc(c.proper)}</p>`;
-  return html;
 }
 
 // A row of the best moves was tapped: show that move's arrows on the board.
@@ -1195,60 +1138,6 @@ function showMove(list, li) {
 // ---------------------------------------------------------------- reading the result aloud
 // The browser's own speech (Web Speech API): free, nothing to set up, and on Android's Chrome
 // it is Google's voice. Nothing is sent to our server.
-// A short spoken summary, not the numbers: the screen keeps the percentages and pips.
-function speechText(r, dice) {
-  const parts = [];
-  const bestMove = r.moves && dice;   // read first: it is what the player wants to hear
-  if (!bestMove) {   // without a best move, who rolls next is read first (TODO-052)
-    parts.push(`${rollWho(dice)}のは${NAME[r.on_roll]}の人です。`);
-  } else {
-    const who = `${NAME[r.on_roll]}の人、ダイス ${dice[0]} ${dice[1]}`;
-    parts.push(r.moves.length
-      ? `${who}の最善手は、${moveToSpeech(r.moves[0].move)}。`
-      : `${who}では動かせる手がありません。`);
-  }
-  if (r.cube) {
-    const c = r.cube, word = c.value > 1 ? "リダブル" : "ダブル", take = c.take ? "テイク" : "パス";
-    parts.push(c.question === "take"
-      ? `${NAME[c.taker]}の人は${take}です。`
-      : c.double ? `${NAME[c.doubler]}の人は${word}、${NAME[c.doubler === "white" ? "black" : "white"]}の人は${take}です。`
-        : `${NAME[c.doubler]}の人はまだ${word}しません。`);
-  }
-  if (r.game_over) {
-    parts.push(`${NAME[r.favourite]}の勝ちで終局しています。`);
-  } else {
-    parts.push(standingToSpeech(r));
-  }
-  return parts.join("");
-}
-
-// The favourite's winning chance in words; a gammon or a big race lead only when it matters.
-function standingToSpeech(r) {
-  const fav = r.favourite, p = r.probabilities[fav], pips = r.pips;
-  const w = p.win;
-  let s = w >= 90 ? `${NAME[fav]}がほぼ勝ちの局面です。`
-    : w >= 75 ? `${NAME[fav]}がかなり有利です。`
-      : w >= 60 ? `${NAME[fav]}が有利です。`
-        : w >= 53 ? `${NAME[fav]}がやや有利です。`
-          : "ほぼ互角です。";
-  if (w >= 53 && p.gammon >= 25) s += "ギャモン勝ちも十分ありえます。";
-  if (pips.leader && pips.difference >= 20) s += `レースは${NAME[pips.leader]}が大きくリードしています。`;
-  return s;
-}
-
-// "bar/22* 13/8(2) 6/off" -> "バーから22でヒット、13から8を2つ、6から上がり"
-function moveToSpeech(move) {
-  return move.trim().split(/\s+/).map((step) => {
-    const m = step.match(/^(.*?)(?:\((\d+)\))?$/);
-    const pts = m[1].split("/").map((x) => {
-      const hit = x.endsWith("*");
-      const n = x.replace("*", "").toLowerCase();
-      return (n === "bar" ? "バー" : n === "off" ? "上がり" : n) + (hit ? "でヒット" : "");
-    });
-    return pts.join("から") + (m[2] ? `を${m[2]}つ` : "");
-  }).join("、");
-}
-
 function japaneseVoice() {
   const voices = window.speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
   return voices.find((v) => /google/i.test(v.name)) || voices[0] || null;
@@ -1373,7 +1262,7 @@ async function renderHistory() {
     const text = document.createElement("span");
     const when = new Date(e.time).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
     const done = e.board ? "盤面の読み取りまで" : e.cornersMoved ? "四隅を合わせたところまで" : "写真を選んだところまで";
-    text.innerHTML = `${esc(when)}<span class="sub">${done}</span>`;
+    text.innerHTML = `${BgResult.esc(when)}<span class="sub">${done}</span>`;
     open.append(img, text);
     open.addEventListener("click", () => openHistory(e.id));
     const del = document.createElement("button");
