@@ -1,0 +1,124 @@
+INFO:     Started server process [157246]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8031 (Press CTRL+C to quit)
+INFO:     127.0.0.1:38614 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41808 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41824 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41824 - "GET /style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41832 - "GET /board.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41846 - "GET /board-view.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41860 - "GET /corners-view.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41870 - "GET /api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41886 - "GET /icon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41824 - "GET /photo.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41846 - "GET /cube.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41870 - "GET /scan.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41832 - "GET /history.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41860 - "GET /moves.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41886 - "GET /result.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41824 - "GET /sample.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41846 - "GET /app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41846 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41846 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41846 - "GET /icon.svg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41824 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41832 - "GET /style.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41846 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41846 - "GET /app.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41824 - "GET /board.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41832 - "GET /board-view.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41832 - "GET /corners-view.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41832 - "GET /photo.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41824 - "GET /api.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41846 - "GET /scan.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41832 - "GET /history.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41824 - "GET /moves.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41824 - "GET /cube.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41846 - "GET /result.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41832 - "GET /sample.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41824 - "GET /manifest.webmanifest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41832 - "GET /icon.svg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:41846 - "GET /icon-192.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41824 - "GET /icon-512.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43996 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58496 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58496 - "GET /style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58510 - "GET /board-view.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58500 - "GET /board.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58512 - "GET /corners-view.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58518 - "GET /api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58496 - "GET /photo.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58520 - "GET /icon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58510 - "GET /scan.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58500 - "GET /history.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58512 - "GET /moves.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58518 - "GET /cube.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58520 - "GET /result.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58496 - "GET /sample.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58510 - "GET /app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58510 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58510 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58510 - "GET /icon.svg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58496 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58520 - "GET /style.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58510 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58496 - "GET /board.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58510 - "GET /app.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58510 - "GET /board-view.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58496 - "GET /api.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58510 - "GET /corners-view.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58520 - "GET /photo.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58520 - "GET /scan.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58496 - "GET /moves.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58510 - "GET /history.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58520 - "GET /cube.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58520 - "GET /sample.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58496 - "GET /manifest.webmanifest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58520 - "GET /icon.svg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58510 - "GET /result.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58510 - "GET /icon-192.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58520 - "GET /icon-512.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58528 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58528 - "GET /style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58530 - "GET /board.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58546 - "GET /board-view.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58568 - "GET /api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58578 - "GET /icon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58562 - "GET /corners-view.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58528 - "GET /photo.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58530 - "GET /scan.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58568 - "GET /history.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58546 - "GET /moves.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58578 - "GET /sample.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58562 - "GET /result.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58528 - "GET /cube.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58568 - "GET /app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58568 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58528 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58528 - "GET /icon.svg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58562 - "GET /style.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58528 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58568 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58528 - "GET /app.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58562 - "GET /board.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58528 - "GET /board-view.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58562 - "GET /corners-view.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58562 - "GET /api.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58528 - "GET /scan.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58568 - "GET /photo.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58568 - "GET /history.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58568 - "GET /cube.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58528 - "GET /moves.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58562 - "GET /sample.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58562 - "GET /manifest.webmanifest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58528 - "GET /result.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58568 - "GET /icon.svg HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58568 - "GET /icon-192.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58562 - "GET /icon-512.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58562 - "POST /find-corners HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58562 - "POST /analyze-photo HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [157246]
