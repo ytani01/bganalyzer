@@ -10,7 +10,7 @@ slots hold that colour and the rest are empty. Pick the (colour, n) that
 explains all of the point's slots best.
 
 What an empty slot and a checker look like on this photo is learnt from the
-circle reading (board.count_from_circles); the board colours stand in where it
+circle reading (checkers.count_from_circles); the board colours stand in where it
 has nothing. A slot's evidence is its colour (nearer a checker than the empty
 look) and, a little, the outline of a circle of the known size there.
 
@@ -21,7 +21,9 @@ import os
 
 import numpy as np
 
-from board import LAB_W, Layout, _edge_support
+from checkers import edge_support
+from colours import LAB_W
+from geometry import Layout
 
 EDGE_GAIN = 0.1     # weight of the circle outline against the colour evidence
 EDGE_BASE = 0.4     # outline support of an empty slot when the photo cannot tell
@@ -78,7 +80,7 @@ def count_by_slots(ground_lab, gx, gy, board, lay: Layout, m: int, pitch: float,
                     continue
                 inner = ground_lab[y0:y0 + disk.shape[0], x0:x0 + disk.shape[1]][disk] * LAB_W
                 bg = (tri_map[(c, row)], k) if depth < tri_len else (None, k)
-                feats[(c, row, k)] = (np.median(inner, 0), _edge_support(gx, gy, X, Y, r), bg)
+                feats[(c, row, k)] = (np.median(inner, 0), edge_support(gx, gy, X, Y, r), bg)
     # 2. learn from the circle reading
     empty, full, sup_e, sup_f = {}, {0: [], 1: []}, [], []
     for (c, row, k), (med, sup, bg) in feats.items():

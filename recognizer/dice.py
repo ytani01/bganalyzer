@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 
 import exact
+from tracing import trace as _trace
 
 SIDE_MIN, SIDE_MAX = 0.28, 1.1     # die side / checker diameter
 WORK_PITCH = 120                   # checker diameter (px) to look for dice at
@@ -121,12 +122,6 @@ def _pips(gray, body, dark: bool, f: float = 0.5):
         return []
     spot = ((hat > f * top) & (mask > 0)).astype(np.uint8)
     return _spots(spot, s, x0, y0, roi, mask, dark)
-
-
-def _trace(trace, name, v):
-    if trace is not None:
-        from board import _digest
-        trace.append((name, _digest(v)))
 
 
 # pip layouts in face units (-1..1), in a frame aligned with the die

@@ -446,7 +446,7 @@ PI-032 で足した 2 枚（commons-lg-cube-dice と external の galaxy-cube2-n
 
 ```bash
 uv run python recognizer/tune.py                                       # samples/ だけ（このクラウドで 3 時間ほど）
-uv run python recognizer/tune.py --only photo2,photo3 --params board.STACK_SKEW --steps 0.9,1.1   # 一部だけ
+uv run python recognizer/tune.py --only photo2,photo3 --params checkers.STACK_SKEW --steps 0.9,1.1   # 一部だけ
 ```
 
 Pi での走らせ方は [docs/raspi.md](../docs/raspi.md) の「精度改善用に集めた写真」。
@@ -557,7 +557,12 @@ dark-homeleft の 15、leather-cups の 9・21、rollup-oblique の 2・4・10�
 ## ファイル
 
 - `position.py` 盤面モデル、gnubg Position ID（初期配置 `4HPwATDgc/ABMA` で検証済み）、ピップ数
-- `board.py` 認識本体
+- `board.py` 認識本体（`recognize` が下の段階を順に呼び、数を盤面にする。コマンドラインでも使える）
+- `geometry.py` 遊戯面の位置: 枠の直線と三角形の先端・辺から真上から見た盤への射影変換を合わせる（段階 1・2）。斜め撮影の角度も
+- `colours.py` 盤の色（地・2 色の三角形・枠）と、各ポイントの三角形の色（段階 3）
+- `checkers.py` 駒: 円を探して駒らしさで選ぶ、円にならない山を足す、ポイントとバーごとに数えて 2 色に分ける（段階 4・5）。しきい値もここ
+- `overlay.py` アプリが写真に重ねる読み取りの様子（画像の座標）とデバッグ画像
+- `tracing.py` 各段階の値のハッシュ（`trace_cpu.py` で機械どうしを比べる）
 - `corners.py` 四隅の推定（アプリの初期値）
 - `section.py` 断面で数える読み方の試作（TODO-032。アプリでは使わない）
 - `radial.py` 駒の中心の候補を、半径を前提に放射対称で探す（TODO-051）
