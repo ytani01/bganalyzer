@@ -1,0 +1,163 @@
+# TODO-058 確認報告（PI-041 の画面タイトル、Raspberry Pi）
+
+実施: 2026-10-16、Pi 上。測定スクリプトは `archives/agents/TODO-058/measure.py`、出力は `archives/agents/TODO-058/measure-output.txt`。
+スクリーンショットは `~/tmp/playwright-mcp/todo058-<幅>-<画面>.png`（8 枚）。
+
+## 検証の結果
+
+- `systemctl --user restart bganalyzer` のあと `/version`: `{"analyzer":"0.40.2","recognizer":"0.21.2","commit":"7baf398","samples":true}`（終了コード 0）。期待どおり。
+- 測定スクリプトの終了コード: 0（390px・1000px の両方で 4 画面ずつ完走）。
+
+## 測った値
+
+期待どおりのものは 1 行にまとめる。
+
+- 画面タイトル `#title`: 390px・1000px とも、写真の選択 → 四隅の調整 → 盤面の確認/修正 → 解析結果 の順で一致。
+- 切れ: 8 画面すべて `scrollWidth == clientWidth`（例: 390px 盤面 189/189、1000px 解析結果 844/844）。切れていない。
+- `.app-name` と `#hdr-version` の位置: 8 画面すべて同じ行（top は 8 と 9。差 1px で、判定の 2px 以内）。`#hdr-version` の bottom は `header .bar` の top より上（`verAboveBar: true`）。
+- `#hdr-version`: 8 画面すべて「v0.40.2 · r0.21.2」。待たずに出た（2 秒待ちの再読は不要）。
+- 横のはみ出し: `documentElement.scrollWidth` は幅と一致（390/390、1000/1000）。見えているヘッダーのボタンは右端を越えず（`headerRightOverflow: false`）。
+- ボタンの右端（参考）: 390px では 盤面の画面の「解析する」が right 374、1000px では 984（画面幅 390／1000 の内側）。
+
+食い違い: なし。
+
+## スクリーンショットの目視
+
+8 枚とも、ヘッダーの 1 行目にアプリ名と版、2 行目に画面タイトルと操作ボタンが出ていて、文字の欠けや重なりは見えない。1000px の 2 行目（工程表示）もタイトルと重ならない。デザインは評価していない。
+
+## 確かめられなかったこと・判断が要る点
+
+- 判断が要る点は無し。
+- 実害は未確認。例えば iPhone の実機やスマホの見た目は、このヘッドレス Chromium では確かめていない（PI-041 の「スマホ」の項目は ai1 の担当）。
+- 測ったのは Chromium の描画で、Safari の文字幅とは違うかもしれない。
+- 「同じ行」は top の差 1px で判定した。`.app-name` と `#hdr-version` の文字の並びそのものは目視のみ。
+- 文言の良し悪し、pytest、他の PI 項目は見ていない（指示どおり）。
+- コードは変更していない。
+
+## 追加の確認（コミット 43e4958、手順表示 `#steps` をタイトルと同じ語にした）
+
+実施: 2026-10-16、Pi 上。`systemctl --user restart bganalyzer` のあと `/version` は `{"analyzer":"0.40.2","recognizer":"0.21.2","commit":"43e4958","samples":true}`（期待どおり）。
+測定は `archives/agents/TODO-058/measure.py steps 600 1000 390`（終了コード 0）。出力は `archives/agents/TODO-058/measure-steps-output.txt`。
+スクリーンショットは `~/tmp/playwright-mcp/todo058-steps-<幅>-<画面>.png`（600・1000 の 4 画面ずつ、390 は写真の選択のみ）。
+
+### 測った値
+
+- `#steps span` の文字列（600・1000 の 4 画面とも同じ）: 「1 写真の選択」「2 四隅の調整」「3 盤面の確認/修正」「4 解析結果」。期待どおり。
+- `on` の付いた span（画面ごとに 1 つ）: 写真の選択 → 「1 写真の選択」、四隅 → 「2 四隅の調整」、盤面 → 「3 盤面の確認/修正」、解析結果 → 「4 解析結果」。期待どおり。
+- 4 つが 1 行か: 600・1000 とも各 span の top の差は 0（tops 70.9 が 4 つ）。
+- 右端と横のはみ出し: 600px は最も右の span の right が 434.9〜478.5（画面で変わる）、1000px は 434.9〜478.5。`beyondRight: false`、`docScrollW == innerW`（600/600、1000/1000）。はみ出しなし。
+- 390px: `#steps` は `display: none`（navVisible false、span の top と right はすべて 0）。見えていないことを確かめた。期待どおり。
+- ヘッダーの値（前回と比べる）: タイトル文字列・切れ（scrollWidth == clientWidth）・`.app-name` と版の同じ行・版「v0.40.2 · r0.21.2」・ボタンの位置は、1000px と 390px の前回の値と一致（例: 1000px 盤面のタイトル right 885.3、解析する right 984。390px 写真の選択の titleRect right 366）。600px は前回測っていないので今回の値だけ（タイトル scrollWidth == clientWidth、版は同じ行、はみ出しなし）。変わっていない。
+
+食い違い: なし。
+
+### スクリーンショットの目視
+
+600px 4 枚と 1000px 4 枚、390px 1 枚を見た。文字が欠けたり重なったりしているものはない。「1 写真の選択」などの span も行内に収まっている。600px の 2 行目は「盤面を読み取る」ボタンと重ならない。デザインは評価していない。
+
+### 確かめられなかったこと
+
+- 実害は未確認。Safari など別のブラウザの文字幅では確かめていない。
+- 判断が要る点は無し。
+
+## 追加の確認（2）（コミット c5fb6c0、行頭のアイコンと `.app-name` を 16px の太字に）
+
+実施: 2026-10-16、Pi 上。`systemctl --user restart bganalyzer` のあと `/version` は `{"analyzer":"0.40.2","recognizer":"0.21.2","commit":"c5fb6c0","samples":true}`（期待どおり）。
+測定は `archives/agents/TODO-058/measure.py icon 390 1000`（終了コード 0）。出力は `archives/agents/TODO-058/measure-icon-output.txt`。
+スクリーンショットは `~/tmp/playwright-mcp/todo058-icon-<幅>-<画面>.png`（390・1000 の 4 画面ずつ、計 8 枚）。
+
+### 測った値
+
+- `.app-icon`（8 画面とも同じ）: complete true、naturalWidth 150、表示 20×20px、left 16。`.app-name` より左（leftOfName true）。縦の中心の差 0.0px。期待どおり。
+- `.app-name`: font-size 16px、font-weight 700（bold）。期待どおり。
+- `.app-name` と `#hdr-version` の縦の中心の差: 0px。アイコン・名前・版は同じ行（sameLine true）。
+- `#hdr-version`: 8 画面とも「v0.40.2 · r0.21.2」。scrollWidth 87 == clientWidth 87 で省略（…）なし。期待どおり。
+- 前回の値との比較:
+  - タイトル文字列とタイトルの幅（scrollWidth == clientWidth）: 390px は 350 / 141 / 189 / 234、1000px は 960 / 751 / 799 / 844。前回と一致。切れなし。
+  - 手順表示（1000px）の最も右の right: 434.9 / 449.4 / 464 / 478.5。前回と一致。390px は非表示のまま。
+  - はみ出し: docScrollW == innerW（390/390、1000/1000）、headerRightOverflow false。前回と一致。
+  - 位置の変化（判断の要る変化ではないが、前回と違う）: タイトルの top が 34.1 → 38、ヘッダーのボタンの top が 27.4 → 31.3 に下がった。`.app-name` が 16px になったため行の高さが増えた。ボタンは右端を越えない。
+
+食い違い: なし（位置が下がったのは上の表のとおりで、期待に反する値ではない）。
+
+### スクリーンショットの目視
+
+8 枚とも、行頭のアイコン（小さな盤のような絵）が欠けずに出ていて、「BG Analyzer」「v0.40.2 · r0.21.2」と同じ行に並ぶ。文字やボタンとの重なりは見えない。1000px の手順表示も重ならない。デザインは評価していない。
+
+### 確かめられなかったこと
+
+- 実害は未確認。Safari など別のブラウザでの見え方は確かめていない。
+- アイコンの絵柄が意図どおりかは見ていない（読み込まれ、表示されたことだけを確かめた）。
+- 判断が要る点は無し。
+
+## 追加の確認（3）（コミット 3aecff6、main を取り込み。読み上げボタン `#speak` が絵文字からスピーカーの絵と文字に）
+
+実施: 2026-10-16、Pi 上。`systemctl --user restart bganalyzer` のあと `/version` は `{"analyzer":"0.40.2","recognizer":"0.21.2","commit":"3aecff6","samples":true}`（期待どおり）。
+測定は `archives/agents/TODO-058/measure.py merge 390 1000`（終了コード 0）。出力は `archives/agents/TODO-058/measure-merge-output.txt`。
+スクリーンショットは `~/tmp/playwright-mcp/todo058-merge-<幅>-<画面>.png`（8 枚）。
+
+### 解析結果の画面（重点）
+
+- 390px: `#title`「解析結果」scrollWidth 165 == clientWidth 165（切れなし）。`#speak`（読み上げ）は left 259.3・right 374、`beyondRight: false`。横のはみ出しなし（docScrollW 390 == innerW 390、headerRightOverflow false）。
+- 1000px: `#title`「解析結果」scrollWidth 775 == clientWidth 775（切れなし）。`#speak` は left 869.3・right 984、`beyondRight: false`。横のはみ出しなし（1000 == 1000）。
+- 食い違いの扱い: `#title` の箱の幅が前回より狭くなった（390px で 234 → 165、1000px で 844 → 775）。`#speak` が広くなったぶん、タイトルの箱が縮んだため。文字は切れていない（scrollWidth == clientWidth）。期待に反する値ではないが、前回と同じではない。
+
+### 前回と同じ値（まとめ）
+
+- 写真の選択・四隅の調整・盤面の確認/修正の 3 画面（390・1000 とも）: タイトルの文字と幅（350 / 141 / 189、960 / 751 / 799）、ボタンの位置（top 31.3）、はみ出しなし、版「v0.40.2 · r0.21.2」（省略なし、87 == 87）は前回と一致。
+- `.app-icon`（complete true、naturalWidth 150、20px、同じ行、中心の差 0）と `.app-name`（16px、700）は前回と一致。
+- 手順表示（1000px、最も右の right: 434.9 / 449.4 / 464 / 478.5）は前回と一致。390px は非表示のまま。
+
+### スクリーンショットの目視
+
+390px・1000px の解析結果の画面を見た。アイコン・「BG Analyzer」・版・「戻る」・「解析結果」・「読み上げ」の文字が欠けたり重なったりしていない。読み上げボタンは右端の内側に収まっている。デザインは評価していない。
+
+### 確かめられなかったこと
+
+- 判断が要る点は無し。
+- 実害は未確認。Safari など別のブラウザでの見え方は確かめていない。
+- 読み上げの音声は測っていない（ヘッドレスでは出ない）。
+
+## 追加の確認（4）（コミット 9deba5e。フッターを消し、ヘッダーの `#hdr-version` に commit ID を足す。版が食い違うと注記を折り返す）
+
+実施: 2026-10-16、Pi 上。`systemctl --user restart bganalyzer` のあと `/version` は `{"analyzer":"0.40.2","recognizer":"0.21.2","commit":"9deba5e","samples":true}`（期待どおり）。
+測定は `archives/agents/TODO-058/measure.py commit`（終了コード 0）。出力は `archives/agents/TODO-058/measure-commit-output.txt`。
+食い違いの状態は `page.route("**/version")` で応答の analyzer だけを書き換えた（幅 390px、写真の選択）。
+スクリーンショットは `~/tmp/playwright-mcp/todo058-commit-normal-<幅>.png`（写真の選択）、`todo058-commit-normal-<幅>-outcome.png`（解析結果）、`todo058-commit-old-0.40.1-390.png`、`todo058-commit-old-0.40.3-390.png`。ほかの画面は `todo058-commit-normal-<幅>-<画面>.png`（計 8 枚）。
+
+### A. 普段の状態（analyzer 0.40.2）
+
+- `#hdr-version`: 390px・1000px、写真の選択と解析結果の両方で「v0.40.2 · r0.21.2 · 9deba5e」。期待どおり。
+- 省略: scrollWidth 145 == clientWidth 145、scrollHeight 16 == clientHeight 16（省略なし）。
+- 1 行: 行数 1（Range の行で数えた）。期待どおり。
+- `footer` 要素: 0 個。`#version`: なし。期待どおり。
+- 前回と同じ値（1 行で）: タイトル（390px: 350 / 141 / 189 / 165、1000px: 960 / 751 / 799 / 775、sw == cw、切れなし）、手順表示（1000px の最も右の right 434.9 / 449.4 / 464 / 478.5、390px は非表示）、はみ出し（docScrollW == innerW、ヘッダーのボタンは右端を越えない）、`.app-icon` と `.app-name`（前回と一致）は前回と一致。
+- 解析結果の `#speak`: right 374（390px）、984（1000px）。前回と一致。
+- 新しく見えた値: `#hdr-version` の右端 291.3（390px・1000px とも）。ヘッダーの高さ 76.8（390px）、106.3（1000px、手順表示あり）。`#hdr-version` の下端 26.2、タイトルの top 38。重なりなし。
+
+### B. 食い違いの状態（analyzer を 0.40.1 / 0.40.3 に書き換え、390px、写真の選択）
+
+| 項目 | 0.40.1（古い） | 0.40.3（新しい） |
+|---|---|---|
+| `#hdr-version` の文字列 | 「v0.40.2 · r0.21.2（サーバーは 0.40.1。再起動が必要） · 9deba5e」 | 「v0.40.2 · r0.21.2（新しい 0.40.3 は開き直すと出ます） · 9deba5e」 |
+| `old` クラス | あり | あり |
+| 省略（sw / cw） | 227 / 227（省略なし） | 227 / 227（省略なし） |
+| 高さ（sh / ch） | 31 / 31（全部見えている） | 31 / 31（全部見えている） |
+| 行数 | 2 | 2 |
+| 右端（≤ 390） | 374（ok） | 374（ok） |
+| 下端と、タイトルの top | 39.2 / 48.4（重ならない） | 39.2 / 48.4（重ならない） |
+| ヘッダーの高さ | 87.2 | 87.2 |
+| 横のはみ出し | 390 == 390 | 390 == 390 |
+
+- 注記（「サーバーは 0.40.1。再起動が必要」「新しい 0.40.3 は開き直すと出ます」）とコミット ID（9deba5e）は、どちらも文字列の中に全部入っていて、省かれていない。期待どおり。
+
+### スクリーンショットの目視
+
+- 普段の状態（390px・1000px、写真の選択と解析結果）は、版・commit ID が 1 行に収まり、欠けや重なりはない。
+- 食い違いの状態の 2 枚は、版の行が 2 行に折り返し、注記とコミット ID まで見えている。タイトル「写真の選択」とは重なっていない。
+- 気づいた点（判断は報告だけ）: 折り返しの位置が語の途中になっている（0.40.1 の画面では「再」と「起動が必要」の間、0.40.3 の画面では「開き直」と「すと出ます」の間で切れている）。読めなくはないが、語の途中で切れている。デザインは評価していない。
+
+### 確かめられなかったこと
+
+- 判断が要る点は無し。ただし、折り返しの位置（語の途中で切れる）をどう扱うかは管理者が決める。
+- 実害は未確認。Safari など別のブラウザでの折り返し位置は確かめていない。
