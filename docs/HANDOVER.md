@@ -95,8 +95,9 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
 - **Docker:** 必須ではなくサーバー公開用。`docker build` は ai1 の手元で動作確認済み（2026-10-13）。
   Claude のクラウド環境からは Docker Hub（429）や ghcr（403）、deb.debian.org に届かず試せないので、
   GitHub Actions の `docker`（`.github/workflows/docker.yml`）が x86_64 と arm64 でビルドし、起動して解析まで確かめる。
-  gnubg の PyPI パッケージには arm64 の wheel もソース配布もないので、arm64 では Dockerfile が
-  StonesAndDice/gnubg-pypi の固定したコミットからビルドする。gnubg の版を上げるときはそのコミットも合わせる。
+  gnubg の PyPI パッケージには arm64 の Linux の wheel もソース配布もないので、StonesAndDice/gnubg-pypi の固定したコミットから
+  `.github/workflows/gnubg-wheel.yml` でビルドして Release に置き、`pyproject.toml` が aarch64 のときに使う（TODO-055）。
+  gnubg の版を上げるときはそのコミットと URL も合わせる。
 - **サンプル写真:** photo1（顔が写っていた）はファイルも履歴も削除した（2026-10-13）。screen2 の第三者の投稿は
   盤の画像以外を塗りつぶしてあり、加工前の画像は履歴に残るが、そのままにすると決めた（TODO-003 完了、`archives/todo/`）。
   GitHub 側には photo1 の古いコミットが SHA 指定で取れる形で残っている（完全に消すには Support への依頼が要る）。

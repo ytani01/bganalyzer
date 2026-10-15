@@ -23,9 +23,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      # gnubg は x86_64 の wheel しかない。読み取りには要らないので入れない
-      - run: uv sync --frozen --no-install-package gnubg
-      - run: uv run --no-sync python recognizer/trace_cpu.py check 2>&1 | tee check.txt; exit ${PIPESTATUS[0]}
+      - run: uv sync --frozen
+      - run: uv run python recognizer/trace_cpu.py check 2>&1 | tee check.txt; exit ${PIPESTATUS[0]}
         shell: bash
       # 結果を注釈にも出す（ログを開かなくても、PR の画面や API から読める）
       - if: always()

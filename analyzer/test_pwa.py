@@ -43,20 +43,79 @@ def test_history_helpers():
     assert out["none"] == []
 
 
+def test_result_script_is_served_and_cached():
+    assert client.get("/result.js").status_code == 200
+    html = client.get("/").text
+    assert '<script src="result.js"></script>' in html
+    assert html.index('src="result.js"') < html.index('src="app.js"')   # app.js uses BgResult when it loads
+    assert '"result.js"' in (STATIC / "sw.js").read_text()
+
+
+def _result_js(expr: str):
+    """Evaluate expr in Node with result.js loaded as R."""
+    script = f"const R = require({json.dumps(str(STATIC / "result.js"))}); console.log(JSON.stringify({expr}));"
+    return json.loads(subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout)
+
+
+_RESULT = {
+    "summary": "手前が有利", "game_over": False, "on_roll": "white", "favourite": "white", "plies": 2,
+    "position_id": "4HPwATDgc/ABMA", "pips": {"white": 140, "black": 167, "leader": "white", "difference": 27},
+    "probabilities": {"white": {"win": 80.0, "gammon": 30.0, "backgammon": 1.0},
+                      "black": {"win": 20.0, "gammon": 3.0, "backgammon": 0.1}},
+    "equity": {"white": 0.7, "black": -0.7},
+    "moves": [{"move": "bar/22* 13/8(2) 6/off", "equity": 0.5}], "cube": None,
+}
+
+
 def test_on_roll_label_follows_the_dice():
     # TODO-042: the label app.js rewrites ("振った人" with dice in, "次に振る人" without) is there
     assert '<span class="opt-label" id="onroll-label">次に振る人</span>' in client.get("/").text
-    js = (STATIC / "app.js").read_text()
-    assert 'dice ? "振った" : "次に振る"' in js and "次に振るのは" not in js
+    assert "BgResult.rollWho(currentDice())" in (STATIC / "app.js").read_text()
 
 
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_result_words():
+    out = _result_js("""{
+      who: [R.rollWho([3, 1]), R.rollWho(null)],
+      esc: R.esc('<a href="x">&</a>'),
+      move: R.moveToSpeech("bar/22* 13/8(2) 6/off"),
+    }""")
+    assert out["who"] == ["振った", "次に振る"]
+    assert out["esc"] == "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;"
+    assert out["move"] == "バーから22でヒット、13から8を2つ、6から上がり"
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
 def test_speech_reads_who_rolls_next_first():
     # TODO-052: without a best move, "次に振るのは…" is the first thing read aloud
-    js = (STATIC / "app.js").read_text()
-    body = js[js.index("function speechText("):js.index("function standingToSpeech(")]
-    roller = body.index("のは${NAME[r.on_roll]}の人です。")
-    assert roller < body.index("最善手は") < body.index("if (r.cube)")
-    assert body.count("のは${NAME[r.on_roll]}の人です。") == 1
+    r = json.dumps(_RESULT)
+    out = _result_js(f"""{{
+      noDice: R.speechText({r}, null),
+      dice: R.speechText({r}, [3, 1]),
+      take: R.speechText({{...{r}, moves: null, cube: {{question: "take", doubler: "black", taker: "white", value: 1, take: true, double: true}}}}, null),
+    }}""")
+    assert out["noDice"].startswith("次に振るのは手前の人です。")
+    assert out["noDice"].count("のは手前の人です。") == 1
+    assert out["dice"].startswith("手前の人、ダイス 3 1の最善手は、バーから22でヒット")
+    assert "振るのは" not in out["dice"]
+    assert "かなり有利" in out["dice"] and "ギャモン勝ち" in out["dice"] and "大きくリード" in out["dice"]
+    assert out["take"].startswith("次に振るのは手前の人です。手前の人はテイクです。")
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_result_html():
+    r = json.dumps(_RESULT)
+    cube = {"question": "double", "doubler": "white", "taker": "black", "value": 1, "take": False, "double": True,
+            "too_good": False, "proper": "Double, pass", "equity": {"no_double": 0.5, "double_take": 1.2, "double_pass": 1.0}}
+    out = _result_js(f"""{{
+      moves: R.html({r}, [3, 1]),
+      cube: R.html({{...{r}, moves: null, cube: {json.dumps(cube)}}}, null),
+    }}""")
+    assert '<ol class="moves"><li data-k="0" class="on">bar/22* 13/8(2) 6/off' in out["moves"]
+    assert "最善手（手前・ダイス 3-1）" in out["moves"] and "振ったのは手前の人。" in out["moves"]
+    assert "<h2>キューブ</h2>" in out["cube"] and "手前の人は <b>ダブルする</b>" in out["cube"]
+    assert "ダブルされたら、奥の人はパス。" in out["cube"] and "+1.200" in out["cube"]
+    assert "振るのは" not in out["cube"]   # with the cube decision, the pip line stands alone
 
 
 def test_moves_script_is_served_and_cached():
