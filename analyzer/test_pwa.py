@@ -50,6 +50,15 @@ def test_on_roll_label_follows_the_dice():
     assert 'dice ? "振った" : "次に振る"' in js and "次に振るのは" not in js
 
 
+def test_speech_reads_who_rolls_next_first():
+    # TODO-052: without a best move, "次に振るのは…" is the first thing read aloud
+    js = (STATIC / "app.js").read_text()
+    body = js[js.index("function speechText("):js.index("function standingToSpeech(")]
+    roller = body.index("のは${NAME[r.on_roll]}の人です。")
+    assert roller < body.index("最善手は") < body.index("if (r.cube)")
+    assert body.count("のは${NAME[r.on_roll]}の人です。") == 1
+
+
 def test_moves_script_is_served_and_cached():
     assert client.get("/moves.js").status_code == 200
     assert '<script src="moves.js"></script>' in client.get("/").text
