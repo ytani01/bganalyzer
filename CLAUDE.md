@@ -32,7 +32,7 @@ uv run -q --no-project --with playwright python tools/ui_snapshot.py record a.js
   認識と解析で揃えている
 - 写真はサーバーで処理するだけで保存しない。**例外は PWA の設定で「Pi に残す」をオンにしたときだけ**で、
   そのときは解析するたびに写真と直した盤面を Pi の `collected/` に保存する（`POST /samples`、
-  `BG_SAMPLES_DIR` を設定したサーバーだけ。2026-10-14 ai1 が決めた）。`collected/` はリポジトリに自動では入れない
+  `BG_SAMPLES_DIR` を設定したサーバーだけ。2026-10-14 ユーザーが決めた）。`collected/` はリポジトリに自動では入れない
 - `samples/` の写真と正解の `*.truth.json` はリポジトリに入れて公開している
   （クラウドでも精度を確認できるように）。**人の顔や第三者の投稿は隠してから入れる。**
   screen2 はゲーム盤の画像以外を塗りつぶしてある。写真の大きさと盤の画素は
@@ -42,10 +42,10 @@ uv run -q --no-project --with playwright python tools/ui_snapshot.py record a.js
 ## バージョン
 
 analyzer と recognizer は別々にバージョンを持つ（`analyzer/app.py` と `recognizer/board.py` の `__version__`）。
-API の `/version` と PWA の画面の下に、両方とコミット ID が出る。
+API の `/version` と PWA のヘッダーに、両方とコミット ID が出る。
 **そのディレクトリのコードを変える PR で、その方を上げる**（直しは 0.1.0 → 0.1.1、機能の追加や変更は 0.1.0 → 0.2.0）。
-analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同じにする（端末に古い app.js が残っていると画面の下に出る）。
-ドキュメントやテストだけの変更では上げない。recognizer の測る道具（`evaluate.py`・`check_accuracy.py`・`check_corners.py`・`trace_cpu.py`・`collected.py` の比べ方など）だけの変更でも上げない（アプリの読み取りの結果は変わらないため。2026-10-15 ai1 が決めた）。`pyproject.toml` の version は使わない。
+analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同じにする（端末に古い app.js が残っているとヘッダーに出る）。
+ドキュメントやテストだけの変更では上げない。recognizer の測る道具（`evaluate.py`・`check_accuracy.py`・`check_corners.py`・`trace_cpu.py`・`collected.py` の比べ方など）だけの変更でも上げない（アプリの読み取りの結果は変わらないため。2026-10-15 ユーザーが決めた）。`pyproject.toml` の version は使わない。
 
 ## 精度の確認
 
@@ -75,12 +75,13 @@ GitHub Actions の `cpu-match` が x86_64 と arm64 でそれと同じかを確�
 ## タスク管理
 
 `TODO.md` で管理する（書式は `~/.claude/CLAUDE.md` と `todo-workflow` skill）。
-項目に担当は書かない（2026-10-15 ai1 が決めた）。
+項目に担当は書かない（2026-10-15 ユーザーが決めた）。
 
 ## 共同開発
 
 このリポジトリは、別のアカウントの Claude プロジェクトからも同時に開発する
 （手順は [docs/HANDOVER.md](docs/HANDOVER.md)）。
+文書の「ユーザー」はこのリポジトリの持ち主のこと。`archives/` や古いコミットでは「ai1」と書いてある。
 
 - **方針・進み具合・決まったことはリポジトリに書く。** Claude のプロジェクトのメモは相手から見えない。
   ルールはこの CLAUDE.md、作業は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
