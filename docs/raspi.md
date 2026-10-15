@@ -108,6 +108,7 @@ PWA の「解析の設定」で「Pi に残す」をオンにすると、解析�
 |---|---|
 | 何組あるか | `ls collected/*.truth.json \| wc -l` |
 | 今の認識で測る | `docker compose exec -T app python recognizer/collected.py /data/samples --force` → `collected/report.md` |
+| しきい値を試す（数時間。TODO-030） | `docker compose run --rm --no-deps -v ./samples:/app/samples app python recognizer/tune.py --collected /data/samples --out /data/samples/tune.md` → `collected/tune.md` |
 | 直した所の多い写真を見る | `grep -o '"fixed_points": \[[^]]*\]' collected/*.truth.json` |
 
 ### 自動で測り直す
@@ -127,6 +128,10 @@ flowchart TD
 - 認識を直すのは、Pi の Claude Code に「collected の report を見て直して」と頼んだときです（自動ではしません）。
 - すぐに測るときは `docker compose exec -T app python recognizer/collected.py /data/samples --force`。自動の測り直しが落ちたときの理由は `collected/measure.log` に残ります。
 - `collected/` を `recognizer/evaluate.py` で測ると、正解の中の文字がそのまま出て、形の違う組で止まります。`report.md` を使ってください。
+- **しきい値を試す**（`recognizer/tune.py`）: 認識のしきい値を 1 つずつ 0.8・0.9・1.1・1.2 倍にして、`samples/` と `collected/` の組を全部読み直し、
+  ポイントが増えて、どの組のどの項目も悪くならない設定を `collected/tune.md` に書きます。コードは変えません（採るなら PR で）。
+  全部を読み直すのを 70 回ほど繰り返すので、Pi では数時間かかります。読み取りは止めないので、使わない時間に走らせてください。
+  一部だけ試すときは `--params board.CIRCLE_MIN_SCORE,board.STACK_SKEW --steps 0.9,1.1`。`samples/` は写真ごとコンテナに入らないので、`-v` で渡しています。
 - 測り直しは API と同じコンテナで、いちばん低い優先度（`nice -n 19`）で動きます。
 
 リポジトリの `samples/` へは自動では入れません。公開リポジトリなので、入れる写真は人の顔などが写っていないものを選んで、
