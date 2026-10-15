@@ -10,7 +10,7 @@
 
 ## Pi の上の Claude Code がやること
 
-1. `bganalyzer` フォルダで `git pull` し、`uv sync --frozen && systemctl --user restart bganalyzer` でアプリを更新する（手順の詳細は [raspi.md](raspi.md) の「ふだんの運用」）。PI-040 が残っているあいだは unit がまだ無いので、先に PI-040 の手順で切り替える。
+1. `bganalyzer` フォルダで `git pull` し、`uv sync --frozen && systemctl --user restart bganalyzer` でアプリを更新する（手順の詳細は [raspi.md](raspi.md) の「ふだんの運用」）。
 2. `curl -s http://127.0.0.1:8000/version` が、pull した main の版とコミットになっているか確かめる。
 3. 残っている項目の `- [ ] Pi:` を確かめ、`- [x] Pi: 日付、コミット。測った値。OK か` に書き換える。
    スマホの画面の操作は、まず Pi の上のヘッドレスのブラウザで確かめる（下の「スマホの代わりに確かめる」）。
