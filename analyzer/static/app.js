@@ -1,180 +1,744 @@
 // BG Analyzer PWA: photo -> 4 corners -> recognized board (editable) -> gnubg analysis.
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
+//
+// How it fits together: everything the screens show is in `state`. Nothing changes it but
+// update(patch), which then runs render(): each part of the page is redrawn from the state when
+// what it shows has changed. Event handlers and the flows (reading a photo, analysing) only
+// update the state; they never touch the page themselves. The photo history follows the state too.
+//
+// The other files draw or compute, and know nothing of the state: board.js (the board as data),
+// board-view.js (its picture), corners-view.js (the photo with its corners), result.js (the
+// result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.38.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
-const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
+const APP_VERSION = "0.39.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
-const START = [-2, 0, 0, 0, 0, 5, 0, 3, 0, 0, 0, -5, 5, 0, 0, 0, -3, 0, -5, 0, 0, 0, 0, 2];
 const NAME = BgResult.NAME;
 const CORNER_NAMES = ["左上", "右上", "右下", "左下"];
+const STEPS = ["photo", "corners", "board", "outcome"];
+const STEP_TITLES = { photo: "BG Analyzer", corners: "四隅", board: "盤面・設定", outcome: "結果" };
 const SHARE_CACHE = "bganalyzer-share";   // same names as in sw.js
 const SHARE_KEY = "shared-photo";
 
 const $ = (id) => document.getElementById(id);
+const stored = (key, allowed, fallback) => {
+  try { const v = localStorage.getItem(key); return allowed.includes(v) ? v : fallback; } catch (_) { return fallback; }
+};
+const keep = (key, value) => { try { localStorage.setItem(key, value); } catch (_) { /* private mode */ } };
 
-function storedPlies() {
-  try { return localStorage.getItem("plies") === "3" ? "3" : "2"; } catch (_) { return "2"; }
-}
-
-function storedCollect() {
-  try { return localStorage.getItem("collect") === "on" ? "on" : "off"; } catch (_) { return "off"; }
-}
-
-function analysingText() {
-  return state.plies === "3" ? "3手読みで解析しています（しばらくかかります）…" : "解析しています…";
-}
+// ================================================================ state
 
 const state = {
-  file: null,        // the chosen File
-  bitmap: null,      // decoded image (EXIF orientation applied)
-  corners: [],       // [[x, y], ...] in image pixels, TL TR BR BL
-  cornerGuess: "",   // the starting corners: "finding", "found", "default" (a rectangle), "moved" or "" (tapped)
+  step: "photo",
+  busy: null,          // {text, scanning} while waiting for the server
+  // the photo and where the board is in it
+  photo: null,         // {file, bitmap}: the chosen photo (EXIF orientation applied)
+  fromPhoto: false,    // the board comes from a photo (else it was set up by hand)
+  corners: [],         // [[x, y], ...] in image px, TL TR BR BL
+  cornerGuess: "",     // where the corners came from: "finding", "found", "default" (a rectangle), "moved" or "" (tapped)
   cornersMoved: false,
-  homePick: "auto",  // the choice on the corners screen: "auto" (guess from the checkers), "left" or "right"
-  home: "right",     // the side the board is read and drawn with
-  homeGuess: null,   // how the server guessed home (homePick "auto"): {margin}; null once flipped by hand
-  bottomColour: 1,   // 0 = the darker checkers are 手前's, 1 = the lighter ones
+  dragging: false,     // a finger is on the corners
+  homePick: "auto",    // the choice on the corners screen: "auto" (guess from the checkers), "left" or "right"
+  bottomColour: 1,     // 0 = the darker checkers are 手前's, 1 = the lighter ones
+  geometry: null,      // where the recognizer found the board: {corners (image px), columns, bar (fractions), photo, from}
+  // the board
+  board: null,         // {points[24], bar_white, bar_black} (board.js)
+  read: null,          // the board as the recognizer read it, before fixes by hand
+  home: "right",       // the side 手前's home board is on, as read and drawn
+  homeGuess: null,     // how the server guessed home (homePick "auto"): {margin}; null once flipped by hand
+  warnings: [],        // the server's notes on the photo (e.g. taken at a steep angle)
+  selected: null,      // point index 0..23 or "bar" being edited
+  // what the analysis is asked
   onRoll: "white",
-  cubeAt: "centre",  // where the doubling cube lies: "centre", "white" (手前's side) or "black" (cube.js)
-  cubeValue: 2,      // the number on it when on a side
-  cubeOffered: true, // on a side with no dice: just offered there (take or pass?), not owned
-  collect: storedCollect(),   // "on": keep the photo and the fixed board on the server (sendSample)
-  plies: storedPlies(),   // how deep gnubg reads: "2" or "3" (kept on this phone)
-  fromPhoto: false,
-  warnings: [],      // the server's notes on the photo (e.g. taken at a steep angle)
-  board: null,       // {points[24], bar_white, bar_black}
-  read: null,        // the board as the recognizer read it, before fixes by hand (same layout as board)
-  selected: null,    // point index 0..23, or "bar"
-  result: null,
-  speech: null,      // the result read aloud (BgResult.speechText) by the header's 🔊 button
-  resultKey: null,  // analysisKey() of what the result on screen was worked out for
-  moveShown: 0,      // the move in the result's list drawn as arrows on the board
-  historyId: null,   // this photo's entry in PhotoHistory (history.js), null if not stored
-  historyScale: 1,   // image px -> the stored copy's px
-  photoView: "side", // the photo on the board screen: "side" (next to the board) or "off"
-  geometry: null,    // where the recognizer found the board: {corners (image px), columns, bar (fractions), bitmap, from}
-  rectified: null,   // {bitmap, key, url}: the photo warped onto the board's playing area
+  dice: [0, 0],        // each 1..6, or 0 while not set
+  diceFromPhoto: false,
+  cube: BgCube.fromRead(null),   // {at: "centre" | "white" | "black", value, offered} (cube.js)
+  cubeFromPhoto: false,
+  plies: stored("plies", ["2", "3"], "2"),           // how deep gnubg reads (kept on this phone)
+  // the answer
+  result: null,        // what /analyze returned
+  resultFor: null,     // inputsKey() of what it was worked out for
+  resultDice: null,
+  moveShown: 0,        // the move in the result's list drawn as arrows
+  // settings
+  photoView: "side",   // the photo on the board screen: "side" (next to the board) or "off"
+  collect: stored("collect", ["on", "off"], "off"),  // "on": keep the photo and the fixed board on the server
+  // where the photo is kept on this phone (history.js)
+  historyId: null,
+  historyScale: 1,     // image px -> the stored copy's px
 };
 
-// ---------------------------------------------------------------- steps
-const STEPS = ["photo", "corners", "board", "outcome"];
-const STEP_TITLES = { corners: "四隅", board: "盤面・設定", outcome: "結果" };   // the header's title on a phone, where the step list is hidden
+// Both dice, or null while one is not set.
+const rolled = (s = state) => (s.dice[0] && s.dice[1] ? s.dice.slice() : null);
 
-// The sticky header is as tall as its contents; the board sticks just under it (CSS --hdr-h).
-new ResizeObserver(() => {
-  document.documentElement.style.setProperty("--hdr-h", document.querySelector("header").offsetHeight + "px");
-}).observe(document.querySelector("header"));
-let currentStep = "photo";
+// What an analysis is worked out from (but its depth): a result fits the board while this is the same.
+const inputsKey = (s = state) =>
+  s.board && JSON.stringify([s.board.points, s.board.bar_white, s.board.bar_black, s.onRoll, rolled(s), s.cube]);
+const resultFits = (s = state) => !!s.result && s.resultFor === inputsKey(s);
+const resultStale = (s = state) => !!s.result && (!resultFits(s) || String(s.result.plies) !== s.plies);
 
-function show(step) {
-  currentStep = step;
-  for (const s of document.querySelectorAll("section.step")) s.hidden = s.id !== step;
-  const at = STEPS.indexOf(step);
-  for (const s of document.querySelectorAll("#steps span")) {
-    s.classList.toggle("on", s.dataset.step === step);
-    s.classList.toggle("done", STEPS.indexOf(s.dataset.step) < at);
+function update(patch) {
+  Object.assign(state, patch);
+  // The cube decides who is on roll: a cube just offered waits on the other side's answer.
+  const req = BgCube.request(state.cube, state.onRoll, rolled());
+  if (req.on_roll !== state.onRoll) state.onRoll = req.on_roll;
+  render();
+  persist();
+}
+
+// ================================================================ render
+
+// A part of the page: draw(state) runs when key(state) has changed since it last ran.
+// key returns undefined to leave the part as it is for now.
+const parts = [];
+function part(key, draw) { parts.push({ key, draw, last: {} }); }
+
+function render() {
+  for (const p of parts) {
+    const k = p.key(state);
+    if (k === undefined) continue;
+    const ks = JSON.stringify(k);
+    if (ks === p.last) continue;
+    p.last = ks;
+    p.draw(state);
   }
-  $("back").hidden = step === "photo";
-  $("title").textContent = step === "photo" ? "BG Analyzer" : STEP_TITLES[step];
-  syncHeaderActions();
-  // One history entry stands for "inside the app", so the phone's own back button
-  // (or gesture) comes back here as a popstate instead of leaving the app.
+}
+
+// Draws a part again even though its inputs look the same (the window was resized).
+function redraw(drawFn) { for (const p of parts) if (p.draw === drawFn) p.last = {}; render(); }
+
+// ---- the screen and the header
+part((s) => s.step, (s) => {
+  const at = STEPS.indexOf(s.step);
+  for (const sec of document.querySelectorAll("section.step")) sec.hidden = sec.id !== s.step;
+  for (const sp of document.querySelectorAll("#steps span")) {
+    sp.classList.toggle("on", sp.dataset.step === s.step);
+    sp.classList.toggle("done", STEPS.indexOf(sp.dataset.step) < at);
+  }
+  $("back").hidden = s.step === "photo";
+  $("title").textContent = STEP_TITLES[s.step];
+});
+
+// The header carries the screen's main action (and reading aloud once there is a result), so it
+// can be pressed without scrolling down to the big button.
+part((s) => [s.step, s.fromPhoto && !!s.board, !!s.result], (s) => {
+  $("recognize").hidden = s.step !== "corners";
+  $("hdr-reuse").hidden = !(s.step === "corners" && s.fromPhoto && s.board);
+  $("analyze").hidden = s.step !== "board";
+  $("speak").hidden = !(s.step === "outcome" && s.result && window.speechSynthesis);
+});
+
+// scanning: the reading overlay is drawn on the photo, so the screen is not darkened and the text sits low
+part((s) => s.busy, (s) => {
+  $("busy").hidden = !s.busy;
+  $("busy").classList.toggle("scanning", !!(s.busy && s.busy.scanning));
+  $("busy-text").textContent = s.busy ? s.busy.text : "";
+});
+
+// ---- segmented buttons: each shows the state of its name
+part((s) => [s.homePick, s.bottomColour, s.onRoll, s.cube.at, s.photoView, s.collect, s.plies], (s) => {
+  const value = { homePick: s.homePick, bottomColour: s.bottomColour, onRoll: s.onRoll, cubeAt: s.cube.at,
+                  photoView: s.photoView, collect: s.collect, plies: s.plies };
+  for (const seg of document.querySelectorAll(".seg")) {
+    for (const b of seg.children) b.classList.toggle("on", b.dataset.value === String(value[seg.dataset.name]));
+  }
+});
+
+part((s) => s.bottomColour, (s) => {
+  const light = "#f3efe4", dark = "#3a2a4a";
+  const root = document.documentElement.style;
+  root.setProperty("--white-chk", s.bottomColour ? light : dark);
+  root.setProperty("--black-chk", s.bottomColour ? dark : light);
+  root.setProperty("--white-fg", s.bottomColour ? "#222" : "#fff");
+  root.setProperty("--black-fg", s.bottomColour ? "#fff" : "#222");
+});
+
+// ---- the corners screen
+const cornersView = BgCornersView.create($("photo-canvas"), {
+  photo: () => state.photo && state.photo.bitmap,
+  corners: () => state.corners,
+  onTouch: () => stopOverlay("corners"),   // a tap while the search is shown: on to the corners as they are
+  onChange: (corners, done) => update({ corners, cornersMoved: true, dragging: !done }),
+});
+
+// Not while a finger is on the photo: the text may change height and move the photo under it.
+part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess]), (s) => {
+  const n = s.corners.length;
+  const fit = "点をドラッグして、盤の遊戯面（枠の内側）の四隅 1 左上・2 右上・3 右下・4 左下（手前に座った向き）に合わせてください。";
+  $("corner-help").innerHTML = n < 4
+    ? `手前に座った向きで、盤の遊戯面（枠の内側）の四隅を <b>${n + 1}. ${CORNER_NAMES[n]}</b> の順にタップしてください（左上→右上→右下→左下）。`
+    : s.cornerGuess === "finding" ? "盤の四隅を探しています… " + fit
+    : s.cornerGuess === "found" ? "盤の四隅を自動で置きました。ずれていたら" + fit
+    : s.cornerGuess === "default" ? "盤を自動で見つけられませんでした。" + fit
+    : s.cornerGuess === "moved" ? fit
+    : "四隅が決まりました。ホーム側と駒の色を選んで上の「盤面を読み取る」を押してください。";
+  $("recognize").disabled = n < 4;
+});
+
+// The photo is left alone while scan.js draws on it.
+const drawCorners = () => cornersView.draw();
+part((s) => (s.step !== "corners" || scanning() ? undefined : [photoId(s), s.corners, s.dragging]), drawCorners);
+
+// ---- the board screen
+part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess], (s) => {
+  if (!s.board) return;
+  const { onW, onB, offW, offB } = BgBoard.counts(s.board);
+  const line = (name, on, off) =>
+    `<span${on > 15 ? ' class="bad"' : ""}>${name}: 盤上とバー ${on} 個・上がり ${Math.max(off, 0)} 個</span>`;
+  $("counts").innerHTML = line("手前", onW, offW) + "<br>" + line("奥", onB, offB) +
+    '<br><span class="note">上がった駒は 15 − 盤上 − バー として数えます。読み取りで駒を見落とすと、その分が上がった扱いになります。</span>';
+  const errs = BgBoard.errors(s.board);
+  if (!errs.length && s.fromPhoto && (offW > 0 || offB > 0)) {
+    errs.push(`上がった駒が 手前 ${offW} 個・奥 ${offB} 個 の扱いです。駒の見落としがないか確かめてください。`);
+  }
+  if (s.fromPhoto) errs.unshift(...s.warnings);
+  $("errors").hidden = !errs.length;
+  $("errors").textContent = errs.join(" / ");
+  // which side 手前's home board was read on, and whether it was guessed
+  const side = s.home === "right" ? "右" : "左";
+  const g = s.fromPhoto && s.homeGuess;
+  $("home-note").hidden = !s.fromPhoto;
+  $("home-note").textContent = !g ? `手前の人のホームボードは${side}です。`
+    : Math.abs(g.margin) < 1 ? `駒の並びからはホームボードの左右を決められなかったので、${side}にしています。逆なら「左右を入れ替える」を押してください。`
+    : `駒の並びから、手前の人のホームボードを${side}と推測しました。逆なら「左右を入れ替える」を押してください。`;
+  $("export-sample").hidden = !s.fromPhoto;
+});
+
+part((s) => [s.selected, s.board], (s) => {
+  const at = s.selected, b = s.board;
+  $("editor-buttons").hidden = at === null;
+  $("editor-title").textContent = at === null ? "違う所はポイントやバーをタップして直す（下が手前）"
+    : at === "bar" ? `バー: 手前 ${b.bar_white} 個、奥 ${b.bar_black} 個`
+    : `ポイント ${at + 1}: ` + (b.points[at] === 0 ? "空" : `${b.points[at] > 0 ? "手前" : "奥"}の駒 ${Math.abs(b.points[at])} 個`);
+});
+
+// The pictures of the board: on the board screen (with the photo beside it) and on the result screen.
+part((s) => s.board && [s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube, s.photoView, moveToShow(s),
+                        photoId(s), s.corners, s.geometry && s.geometry.corners], (s) => {
+  if (!s.board) return;
+  const scene = { board: s.board, home: s.home, selected: s.selected, dice: rolled(s), onRoll: s.onRoll,
+                  cube: s.cube, move: moveToShow(s) };
+  const photo = rectifiedPhoto(s);
+  const side = !!photo && s.photoView === "side";
+  $("photo-tools").hidden = !photo;
+  $("photo-wrap").hidden = !side;
+  $("boards").classList.toggle("two", side);
+  if (side) BgBoardView.draw($("photo-svg"), { ...scene, photo }, select);
+  BgBoardView.draw($("board-svg"), scene, select);
+  BgBoardView.draw($("result-svg"), scene, select);   // the result screen's copy (taps are off there by CSS)
+});
+
+// ---- what the analysis is asked
+part((s) => [s.dice, s.diceFromPhoto], (s) => {
+  $("die1").value = s.dice[0] ? String(s.dice[0]) : "";
+  $("die2").value = s.dice[1] ? String(s.dice[1]) : "";
+  $("dice-note").hidden = !s.diceFromPhoto;
+  // with dice in, the side on roll has already rolled: "振った人", not "次に振る人" (TODO-042)
+  $("onroll-label").textContent = `${BgResult.rollWho(rolled(s))}人`;
+});
+
+part((s) => [s.cube, s.cubeFromPhoto, s.onRoll, rolled(s)], (s) => {
+  $("cube-side").hidden = s.cube.at === "centre";
+  $("cube-value").value = String(s.cube.value);
+  $("cube-offered").checked = s.cube.offered;
+  $("cube-note").hidden = !s.cubeFromPhoto;
+  const req = BgCube.request(s.cube, s.onRoll, rolled(s));
+  const roll = NAME[req.on_roll];
+  $("cube-help").textContent = rolled(s)
+    ? "ダイスがあるので、最善手を出します。"
+    : req.doubled
+      ? `${roll}の人が ${req.cube_value} にダブルしたところとして、${NAME[req.cube_owner]}の人がテイクかパスかを判定します。`
+      : req.cube_owner && req.cube_owner !== req.on_roll
+        ? `キューブは${NAME[req.cube_owner]}の人が持っているので、${roll}の人はダブルできません。`
+        : `ダイスが無いので、${roll}の人がダブルすべきかを判定します。`;
+});
+
+// ---- the result
+part((s) => [s.result, s.resultDice], (s) => {
+  const box = $("result");
+  box.hidden = !s.result;
+  if (s.result) box.innerHTML = BgResult.html(s.result, s.resultDice);
+});
+part((s) => [s.result && s.moveShown], (s) => {
+  for (const li of document.querySelectorAll("#result .moves li")) li.classList.toggle("on", Number(li.dataset.k) === s.moveShown);
+});
+part((s) => resultStale(s), (s) => $("result").classList.toggle("stale", resultStale(s)));
+
+// The move picked in the result's list (the best one at first) as arrows, while the result fits the board.
+function moveToShow(s) {
+  const r = s.result;
+  if (!r || !r.moves || !r.moves.length || !resultFits(s)) return null;
+  const m = r.moves[s.moveShown] || r.moves[0];
+  // one arrow per die (the API's steps); results kept from older versions have only the string
+  const hops = (m.steps && BgMoves.hops(s.board, r.on_roll, m.steps)) || BgMoves.hops(s.board, r.on_roll, m.move);
+  return hops ? { hops, mover: r.on_roll } : null;
+}
+
+// ---- the photo of the playing area warped onto the drawn one (photo.js), made once per photo and corners
+let photoSerial = 0;
+const photoIds = new WeakMap();
+function photoId(s) {
+  const b = s.photo && s.photo.bitmap;
+  if (!b) return 0;
+  if (!photoIds.has(b)) photoIds.set(b, ++photoSerial);
+  return photoIds.get(b);
+}
+
+let rectified = null;   // {key, url}
+function rectifiedPhoto(s) {
+  if (!s.fromPhoto || !s.photo || s.corners.length !== 4 || !window.BgPhoto) return null;
+  // The recognizer's refined corners and columns line the photo up best; they hold for the photo and
+  // corners they came from.
+  const g0 = s.geometry;
+  const g = g0 && g0.photo === photoId(s) && g0.from === JSON.stringify(s.corners) ? g0 : null;
+  const key = JSON.stringify([photoId(s), s.corners, g && g.corners]);
+  if (rectified && rectified.key === key) return rectified.url;
+  let url = null;
+  try {
+    const { w, h } = BgBoardView.PLAY;
+    url = BgPhoto.rectify(s.photo.bitmap, g ? g.corners : s.corners, w * 2, h * 2, g && BgBoardView.columnAnchors(g, 2));
+  } catch (err) {
+    console.warn("could not show the photo:", err);
+  }
+  rectified = { key, url };
+  return url;
+}
+
+// ================================================================ the photo history (history.js)
+// Stored on this device only, and kept in step with the state. Failures (no IndexedDB, private
+// mode, storage full) never block the app.
+
+const historyRecord = (s) => {
+  const k = s.historyScale;
+  return { corners: s.corners.map(([x, y]) => [x * k, y * k]), cornerGuess: s.cornerGuess, cornersMoved: s.cornersMoved,
+           homePick: s.homePick, home: s.home, homeGuess: s.homeGuess, bottomColour: s.bottomColour,
+           onRoll: s.onRoll, dice: rolled(s), cube: s.cube, board: s.board, read: s.read, warnings: s.warnings };
+};
+
+let savedRecord = null;
+function persist(force = false) {
+  if (!state.historyId || state.dragging) return;
+  const record = historyRecord(state);
+  const key = JSON.stringify([state.historyId, record]);
+  if (key === savedRecord && !force) return;
+  savedRecord = key;
+  PhotoHistory.update(state.historyId, record).catch(() => {});
+}
+
+let thumbUrls = [];
+let historyShown = 0;   // bumped to list the photos again
+part((s) => (s.step === "photo" ? historyShown : undefined), () => renderHistory());
+
+async function renderHistory() {
+  let entries = [];
+  try { entries = await PhotoHistory.list(); } catch (_) { /* no IndexedDB */ }
+  thumbUrls.forEach((u) => URL.revokeObjectURL(u));
+  thumbUrls = [];
+  const ul = $("history-list");
+  ul.textContent = "";
+  $("history").hidden = !entries.length;
+  for (const e of entries) {
+    const li = document.createElement("li");
+    const open = document.createElement("button");
+    open.className = "open";
+    const img = document.createElement("img");
+    img.alt = "";
+    img.src = URL.createObjectURL(e.thumb);
+    thumbUrls.push(img.src);
+    const text = document.createElement("span");
+    const when = new Date(e.time).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const done = e.board ? "盤面の読み取りまで" : e.cornersMoved ? "四隅を合わせたところまで" : "写真を選んだところまで";
+    text.innerHTML = `${BgResult.esc(when)}<span class="sub">${done}</span>`;
+    open.append(img, text);
+    open.addEventListener("click", () => openHistory(e.id));
+    const del = document.createElement("button");
+    del.className = "button del";
+    del.textContent = "✕";
+    del.setAttribute("aria-label", "この写真を履歴から消す");
+    del.addEventListener("click", () => forgetPhoto(e.id));
+    li.append(open, del);
+    ul.append(li);
+  }
+}
+
+// ================================================================ actions
+
+// The screens, with the phone's back button: one history entry stands for "inside the app", so the
+// phone's back comes back here as a popstate instead of leaving the app.
+function go(step) {
   if (step !== "photo" && !(history.state && history.state.bg)) history.pushState({ bg: true }, "");
-  if (step === "corners") requestAnimationFrame(drawPhoto);
-  if (step === "board") $("export-sample").hidden = !(state.fromPhoto && state.board);
-  if (step === "board" || step === "outcome") drawBoard();
-  if (step === "photo") renderHistory();
+  if (step === "photo") historyShown++;
+  update({ step });
+  if (step === "corners") requestAnimationFrame(() => redraw(drawCorners));   // once the layout has settled
   window.scrollTo(0, 0);
 }
 
-// The header carries the screen's main action (and reading aloud once there is a result),
-// so it can be pressed without scrolling down to the big button.
-function syncHeaderActions() {
-  $("recognize").hidden = currentStep !== "corners";
-  $("hdr-reuse").hidden = !(currentStep === "corners" && state.fromPhoto && state.board);
-  $("analyze").hidden = currentStep !== "board";
-  $("speak").hidden = !(currentStep === "outcome" && state.result && window.speechSynthesis);
-}
-$("speak").addEventListener("click", () => { if (state.speech) toggleSpeaking(state.speech); });
-
-function previousStep() {
-  if (currentStep === "outcome") return "board";
-  return currentStep === "board" && state.fromPhoto ? "corners" : "photo";
-}
+const previousStep = () =>
+  state.step === "outcome" ? "board" : state.step === "board" && state.fromPhoto ? "corners" : "photo";
 
 // Back to the photo screen also uses up the history entry, so the next back leaves the app.
 function goBack() {
   if (previousStep() === "photo" && history.state && history.state.bg) history.back();
-  else show(previousStep());
+  else go(previousStep());
 }
 
-$("back").addEventListener("click", goBack);
-window.addEventListener("popstate", () => {
-  if (!$("busy").hidden) { history.pushState({ bg: true }, ""); return; }   // wait for the server
-  if (currentStep !== "photo") show(previousStep());
-});
-
-// scanning: the reading overlay is drawn on the photo, so the screen is not darkened and the text sits low
-function busy(text, scanning) {
-  $("busy").hidden = !text;
-  $("busy").classList.toggle("scanning", !!(text && scanning));
-  $("busy-text").textContent = text || "";
+async function withBusy(text, work, scanning = false) {
+  update({ busy: { text, scanning } });
+  try { return await work(); } finally { update({ busy: null }); }
 }
 
-// ---------------------------------------------------------------- segmented buttons
-function initSeg(name, onChange) {
-  const seg = document.querySelector(`.seg[data-name="${name}"]`);
-  const sync = () => {
-    for (const b of seg.children) b.classList.toggle("on", b.dataset.value === String(state[name]));
-  };
-  seg.addEventListener("click", (e) => {
-    const v = e.target.dataset && e.target.dataset.value;
-    if (v === undefined) return;
-    state[name] = name === "bottomColour" ? Number(v) : v;
-    sync();
-    if (onChange) onChange();
-    saveHistory();
+function select(at) {
+  update({ selected: state.selected === at ? null : at });
+}
+
+function editBoard(change) {
+  update({ board: change(state.board), read: state.read && change(state.read) });
+}
+
+// Who is on roll; a cube just offered lies on the side of the player doubled, so it goes to the other side.
+function setOnRoll(side) {
+  const offered = BgCube.request(state.cube, state.onRoll, rolled()).doubled;
+  update({ onRoll: side, cube: offered ? { ...state.cube, at: BgBoard.other(side) } : state.cube });
+}
+
+function setDie(k, value) {
+  const dice = state.dice.slice();
+  dice[k] = Number(value) || 0;
+  update({ dice, diceFromPhoto: false });
+}
+
+function setCube(patch) {
+  update({ cube: { ...state.cube, ...patch }, cubeFromPhoto: false });
+}
+
+function setResult(result, dice) {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  update({ result, resultDice: dice || null, resultFor: result ? inputsKey() : null, moveShown: 0 });
+}
+
+// A photo, chosen, shared or reopened, with where it was left (or a fresh start).
+function startPhoto(file, bitmap, kept, historyId, historyScale) {
+  const guess = !kept || !kept.corners || kept.corners.length < 4 || kept.cornerGuess === "finding";
+  update({
+    photo: { file, bitmap }, fromPhoto: true, geometry: null, historyId, historyScale, selected: null,
+    corners: guess ? defaultCorners(bitmap) : kept.corners.map((c) => c.slice()),
+    cornerGuess: guess ? "finding" : kept.cornerGuess || "",
+    cornersMoved: !!(kept && kept.cornersMoved),
+    // entries from before 0.6.0 kept only the side picked
+    homePick: (kept && (kept.homePick || kept.home)) || (kept ? "auto" : state.homePick),
+    home: kept ? kept.home || "right" : state.home,
+    homeGuess: kept ? kept.homeGuess || null : state.homeGuess,
+    bottomColour: kept ? kept.bottomColour ?? 1 : state.bottomColour,
+    onRoll: kept ? kept.onRoll || "white" : state.onRoll,
+    warnings: (kept && kept.warnings) || [],
+    board: (kept && kept.board) || null,
+    read: (kept && kept.read) || null,
+    dice: (kept && kept.dice) || [0, 0], diceFromPhoto: false,   // the dice of the last position are not this photo's
+    cube: (kept && kept.cube) || BgCube.fromRead(null), cubeFromPhoto: false,
   });
-  sync();
-  return sync;
-}
-
-// ---------------------------------------------------------------- step 1: photo
-for (const id of ["camera", "file"]) {
-  $(id).addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    e.target.value = "";
-    if (file) loadPhoto(file);
-  });
+  setResult(null);
+  persist(true);   // now the most recent
+  go("corners");
+  if (guess) guessCorners(file);
 }
 
 async function loadPhoto(file) {
-  busy("写真を読み込んでいます…");
-  try {
-    state.bitmap = await decode(file);
-    state.file = file;
-    state.fromPhoto = true;
-    state.board = null;
-    state.read = null;
-    state.warnings = [];
-    setDice(null);   // the dice of the last position are not this photo's
-    setCube(null);
-    setResult(null);
-    // start from a rectangle at once, and replace it with the server's guess when that comes
-    state.corners = defaultCorners();
-    state.cornerGuess = "finding";
-    state.cornersMoved = false;
-    await addToHistory(file);
-    updateCornerUi();
-    show("corners");
-    guessCorners(file);
-  } catch (err) {
-    alert("写真を開けませんでした: " + err.message);
-  } finally {
-    busy();
+  await withBusy("写真を読み込んでいます…", async () => {
+    try {
+      const bitmap = await decode(file);
+      let id = null, scale = 1;
+      try {
+        const [w, h] = imageSize(bitmap);
+        ({ id, scale } = await PhotoHistory.add(file, bitmap, w, h));
+      } catch (_) { /* not stored */ }
+      startPhoto(file, bitmap, null, id, scale);
+    } catch (err) {
+      alert("写真を開けませんでした: " + err.message);
+    }
+  });
+}
+
+async function openHistory(id) {
+  await withBusy("写真を読み込んでいます…", async () => {
+    try {
+      const e = await PhotoHistory.get(id);
+      if (!e) { historyShown++; render(); return; }
+      startPhoto(e.image, await decode(e.image), e, id, 1);   // the stored copy is now the photo
+    } catch (err) {
+      alert("写真を開けませんでした: " + err.message);
+    }
+  });
+}
+
+async function forgetPhoto(id) {
+  if (!confirm("この写真を履歴から消しますか？")) return;
+  if (state.historyId === id) state.historyId = null;
+  try { await PhotoHistory.remove(id); } catch (_) { /* already gone */ }
+  historyShown++;
+  render();
+}
+
+function setUpByHand() {
+  update({ fromPhoto: false, read: null, historyId: null, warnings: [], board: BgBoard.start(), selected: null });
+  setResult(null);
+  go("board");
+}
+
+// ================================================================ flows with the server
+
+const imageSize = (b) => [b.width || b.naturalWidth, b.height || b.naturalHeight];
+
+// The rectangle the corners start from while (or if) the board can't be found.
+function defaultCorners(bitmap) {
+  const [iw, ih] = imageSize(bitmap);
+  const mx = iw * 0.1, my = ih * 0.1;
+  return [[mx, my], [iw - mx, my], [iw - mx, ih - my], [mx, ih - my]];
+}
+
+async function decode(file) {
+  if (window.createImageBitmap) {
+    try { return await createImageBitmap(file, { imageOrientation: "from-image" }); } catch (_) { /* fall back */ }
   }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return img;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// The photo as sent: large photos are scaled down (the corners and the answer's pixels with them).
+async function uploadImage() {
+  const { file, bitmap } = state.photo;
+  const [iw, ih] = imageSize(bitmap);
+  if (Math.max(iw, ih) <= SEND_AS_IS_MAX) return { blob: file, scale: 1 };
+  const scale = Math.min(1, UPLOAD_MAX / Math.max(iw, ih));
+  const c = document.createElement("canvas");
+  c.width = Math.round(iw * scale);
+  c.height = Math.round(ih * scale);
+  c.getContext("2d").drawImage(bitmap, 0, 0, c.width, c.height);
+  return { blob: await new Promise((res) => c.toBlob(res, "image/jpeg", 0.92)), scale };
+}
+
+// What the server finds, shown on the photo as it goes (scan.js), stage by stage: the search for
+// the corners, or the reading of the board. One at a time; a tap skips the stages still to come.
+let overlay = null;   // {kind: "corners" | "reading", scan}
+const scanning = () => !!overlay;
+
+// The overlay of this kind over the photo, or null when it can't run (then the app just waits).
+function startOverlay(kind, corners) {
+  stopOverlay();
+  if (!window.BgScan || state.step !== "corners") return null;
+  try {
+    const reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const scan = BgScan.start($("photo-canvas"), { mode: kind === "corners" ? "corners" : undefined, corners, reduced,
+                                                   prepare: () => { cornersView.draw(true); return cornersView.toCanvas; } });
+    overlay = { kind, scan };
+    return overlay;
+  } catch (err) {
+    console.warn("no overlay on the photo:", err);
+    return null;
+  }
+}
+
+// Stops the overlay (only one of this kind, if given) and shows the corners again.
+function stopOverlay(kind) {
+  if (!overlay || (kind && overlay.kind !== kind)) return;
+  overlay.scan.stop();
+  overlay = null;
+  redraw(drawCorners);
+}
+
+async function guessCorners(file) {
+  const [iw, ih] = imageSize(state.photo.bitmap);
+  const mine = startOverlay("corners", [[0, 0], [iw, 0], [iw, ih], [0, ih]]);   // (the search for the last photo stops)
+  let corners = null;
+  try {
+    const { blob, scale } = await uploadImage();   // the guess is steadier from the larger image
+    const fd = new FormData();
+    fd.append("image", blob, "board.jpg");
+    const data = await BgApi.postStages("find-corners", fd, (ev) => mine && mine.scan.push(BgApi.scaleGeometry(ev, scale)));
+    if (data.corners) corners = data.corners.map(([x, y]) => [x / scale, y / scale]);
+    if (mine && data.streamed && state.photo.file === file) await mine.scan.done();   // every stage shown (or tapped)
+  } catch (_) { /* keep the rectangle */ }
+  if (overlay === mine) stopOverlay();
+  // the user may have moved on to another photo, or started on the corners already
+  if (state.photo.file !== file || state.cornerGuess !== "finding") return;
+  if (state.cornersMoved) update({ cornerGuess: "moved" });
+  else if (corners) update({ corners, cornerGuess: "found" });
+  else update({ cornerGuess: "default" });
+  redraw(drawCorners);
+}
+
+async function recognize() {
+  stopOverlay("corners");   // reading now: the corners as they are
+  if (state.cornerGuess === "finding") update({ cornerGuess: "" });   // and a guess coming later does not move them
+  $("photo-canvas").scrollIntoView({ block: "nearest" });
+  const mine = startOverlay("reading", state.corners.map((p) => p.slice()));
+  const skip = () => mine && mine.scan.skip();
+  $("busy").addEventListener("click", skip);
+  try {
+    await withBusy("盤面を読み取っています…", async () => {
+      const { blob, scale } = await uploadImage();
+      let dice = rolled();
+      const cubeByHand = state.cube.at !== "centre";   // else the server uses the cube it reads (if any)
+      const req = BgCube.request(state.cube, state.onRoll, dice);
+      const fd = new FormData();
+      fd.append("image", blob, "board.jpg");
+      fd.append("corners", state.corners.flat().map((v) => (v * scale).toFixed(1)).join(","));
+      fd.append("home", state.homePick);
+      fd.append("bottom_colour", String(state.bottomColour));
+      fd.append("on_roll", req.on_roll);
+      if (dice) fd.append("dice", dice.join(","));
+      if (cubeByHand) {
+        fd.append("cube_value", String(req.cube_value));
+        fd.append("cube_owner", req.cube_owner);
+        fd.append("doubled", String(req.doubled));
+      }
+      fd.append("plies", state.plies);
+      const data = await BgApi.postStages("analyze-photo", fd, (ev) => mine && mine.scan.push(BgApi.scaleGeometry(ev, scale)));
+      // what was read from the photo goes in as if set by hand (the analysis used it too), marked as read
+      const patch = {};
+      if (!dice && data.dice_read) {
+        dice = data.dice_read;
+        Object.assign(patch, { dice: dice.slice(), diceFromPhoto: true });
+      }
+      if (!cubeByHand && data.cube_read) {
+        // in a playing field: the side on roll has just doubled, and the dice wait (TODO-045)
+        if (data.cube_read.at === "field" && dice) { dice = null; Object.assign(patch, { dice: [0, 0], diceFromPhoto: false }); }
+        Object.assign(patch, { cube: BgCube.fromRead(data.cube_read, state.onRoll), cubeFromPhoto: true });
+      }
+      if (data.analysis) patch.onRoll = data.analysis.on_roll;
+      const g = data.geometry;
+      const geometry = g && { ...BgApi.scaleGeometry(g, scale), photo: photoId(state), from: JSON.stringify(state.corners) };
+      // the stages still waiting their turn on the photo (a tap skips them). The reading is done only
+      // when the last one has been shown, so the text stays "盤面を読み取っています…" till then.
+      if (mine) await (data.streamed ? mine.scan.done() : mine.scan.reveal(geometry));
+      const rec = data.recognized;
+      const board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
+      update({ ...patch, geometry, board, read: BgBoard.copy(board), warnings: data.warnings || [],
+               home: data.home || (state.homePick === "auto" ? "right" : state.homePick),
+               homeGuess: data.home_guess || null, selected: null });
+      go("board");
+      setResult(data.analysis, dice);
+    }, !!mine);
+  } catch (err) {
+    alert("読み取りに失敗しました: " + err.message);
+  } finally {
+    $("busy").removeEventListener("click", skip);
+    if (overlay === mine) stopOverlay();   // the corners again, as before reading
+  }
+}
+
+async function analyze() {
+  const errs = BgBoard.errors(state.board);
+  if (errs.length) { alert(errs.join("\n")); return; }
+  update({ selected: null });   // done editing
+  sendSample();
+  // The result on hand still fits the board and settings (e.g. worked out when the photo was read): just show it.
+  if (state.result && !resultStale()) { go("outcome"); return; }
+  const text = state.plies === "3" ? "3手読みで解析しています（しばらくかかります）…" : "解析しています…";
+  await withBusy(text, async () => {
+    try {
+      const dice = rolled();
+      const body = { board: BgBoard.copy(state.board), plies: Number(state.plies), ...BgCube.request(state.cube, state.onRoll, dice) };
+      if (dice) body.dice = dice;
+      setResult(await BgApi.postJson("analyze", body), dice);
+      go("outcome");
+    } catch (err) {
+      alert("解析に失敗しました: " + err.message);
+    }
+  });
+}
+
+// ================================================================ a sample for the recognizer (sample.js)
+// The photo and the board as fixed by hand, as two files (photo + truth.json) to send to the
+// developers so the recognizer can be measured and improved on them; with 「Pi に残す」 on, the
+// same pair goes to the server each time the board is analysed (POST /samples).
+
+async function sampleOf(name) {
+  // the stored copy (the size the app sends anyway) with the corners in its pixels, else the photo itself
+  const e = state.historyId && await PhotoHistory.get(state.historyId).catch(() => null);
+  const blob = (e && e.image) || state.photo.file;
+  const k = e && e.image ? state.historyScale : 1;
+  const ext = blob.type === "image/png" ? "png" : "jpg";
+  const truth = BgSample.truth({
+    image: `${name}.${ext}`, corners: state.corners.map(([x, y]) => [x * k, y * k]),
+    home: state.home, bottomColour: state.bottomColour, board: state.board,
+    dice: rolled(), cube: state.cube, read: state.read,
+  });
+  return { blob, ext, truth };
+}
+
+// Keep this photo and its board on the server, when the user has turned that on. Never in the way.
+async function sendSample() {
+  if (state.collect !== "on" || !state.fromPhoto || !state.board || !state.historyId) return;
+  try {
+    const id = state.historyId;
+    const { blob, ext, truth } = await sampleOf(`user-${id}`);
+    const fd = new FormData();
+    fd.append("id", id);
+    fd.append("truth", JSON.stringify(truth));
+    fd.append("image", blob, `${id}.${ext}`);
+    await BgApi.post("samples", fd);
+  } catch (_) { /* not kept this time */ }
+}
+
+async function exportSample() {
+  try {
+    const name = BgSample.baseName(new Date());
+    const { blob, ext, truth } = await sampleOf(name);
+    const files = [
+      new File([blob], `${name}.${ext}`, { type: blob.type || "image/jpeg" }),
+      new File([JSON.stringify(truth) + "\n"], `${name}.truth.json`, { type: "application/json" }),
+    ];
+    if (navigator.canShare && navigator.canShare({ files })) {
+      try {
+        await navigator.share({ files, title: "BG Analyzer のサンプル" });
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return;   // closed by the user
+        // Chrome on Android refuses a .json (NotAllowedError "Permission denied"): download instead
+      }
+    }
+    for (const f of files) {   // no share sheet (a PC), or it refused: download both
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(f);
+      a.download = f.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+  } catch (err) {
+    alert("書き出せませんでした: " + err.message);
+  }
+}
+
+// ================================================================ reading the result aloud
+// The browser's own speech (Web Speech API): free, nothing to set up, and on Android's Chrome it is
+// Google's voice. Nothing is sent to our server.
+
+function toggleSpeaking() {
+  const synth = window.speechSynthesis;
+  if (!synth || !state.result) return;
+  if (synth.speaking) { synth.cancel(); return; }
+  const u = new SpeechSynthesisUtterance(BgResult.speechText(state.result, state.resultDice));
+  u.lang = "ja-JP";
+  const voices = synth.getVoices().filter((v) => /^ja/i.test(v.lang));
+  const voice = voices.find((v) => /google/i.test(v.name)) || voices[0];
+  if (voice) u.voice = voice;
+  const label = (on) => {
+    const btn = $("speak");
+    btn.textContent = on ? "■" : "🔊";
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", on);
+  };
+  u.onstart = () => label(true);
+  u.onend = u.onerror = () => label(false);
+  synth.speak(u);
 }
 
 // A photo shared from another app (Android: 共有 → BG Analyzer). sw.js keeps it in a cache on the
@@ -203,1210 +767,112 @@ async function loadSharedPhoto() {
   }
 }
 
-async function decode(file) {
-  if (window.createImageBitmap) {
-    try { return await createImageBitmap(file, { imageOrientation: "from-image" }); } catch (_) { /* fall back */ }
-  }
-  const url = URL.createObjectURL(file);
-  try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-    return img;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
+// ================================================================ events: each only asks for a change
 
-$("manual").addEventListener("click", () => {
-  state.fromPhoto = false;
-  state.read = null;
-  state.historyId = null;
-  state.warnings = [];
-  state.board = { points: START.slice(), bar_white: 0, bar_black: 0 };
-  state.selected = null;
-  setResult(null);
-  $("errors").hidden = true;
-  show("board");
-});
-
-// ---------------------------------------------------------------- step 2: corners
-// The rectangle the corners start from while (or if) the board can't be found.
-function defaultCorners() {
-  const [iw, ih] = imgSize();
-  const mx = iw * 0.1, my = ih * 0.1;
-  return [[mx, my], [iw - mx, my], [iw - mx, ih - my], [mx, ih - my]];
-}
-
-// The search for the corners shown on the photo as it goes (scan.js), stage by stage; a tap skips it.
-let cornerScan = null;
-
-function startCornerScan() {
-  if (!window.BgScan || currentStep !== "corners") return null;
-  try {
-    const [iw, ih] = imgSize();
-    const reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    return BgScan.start(canvas, { mode: "corners", corners: [[0, 0], [iw, 0], [iw, ih], [0, ih]], reduced,
-                                  prepare: () => { drawPhoto(true); return toCanvas; } });
-  } catch (err) {
-    console.warn("no corner search overlay:", err);
-    return null;
-  }
-}
-
-async function guessCorners(file) {
-  let corners = null;
-  if (cornerScan) cornerScan.stop();   // the search for the last photo
-  const scan = cornerScan = startCornerScan();
-  try {
-    const { blob, scale } = await uploadImage();   // the guess is steadier from the larger image
-    const fd = new FormData();
-    fd.append("image", blob, "board.jpg");
-    fd.append("stream", "true");   // each stage of the search as it is done
-    const data = await postStages("find-corners", fd, (ev) => scan && scan.push(scaleGeometry(ev, scale)));
-    if (data.corners) corners = data.corners.map(([x, y]) => [x / scale, y / scale]);
-    if (scan && data.streamed && state.file === file) await scan.done();   // every stage shown (or tapped)
-  } catch (_) { /* keep the rectangle */ }
-  if (scan) scan.stop();
-  if (cornerScan === scan) cornerScan = null;
-  // the user may have moved on to another photo, or started on the corners already
-  if (state.file !== file || state.cornerGuess !== "finding") { if (state.file === file) drawPhoto(); return; }
-  if (state.cornersMoved) state.cornerGuess = "moved";
-  else if (corners) [state.corners, state.cornerGuess] = [corners, "found"];
-  else state.cornerGuess = "default";
-  updateCornerUi();
-  drawPhoto();
-  saveHistory();
-}
-
-const canvas = $("photo-canvas");
-let view = null;   // {scale, ox, oy} image px -> canvas css px
-let drag = null;   // {index, pointerId}
-let loupeAt = null;
-
-function imgSize() {
-  const b = state.bitmap;
-  return [b.width || b.naturalWidth, b.height || b.naturalHeight];
-}
-
-function drawPhoto(bare) {
-  if (!state.bitmap || $("corners").hidden) return;
-  const [iw, ih] = imgSize();
-  const cw = canvas.parentElement.clientWidth;
-  const ch = Math.min(window.innerHeight * 0.68, cw * ih / iw);
-  const dpr = window.devicePixelRatio || 1;
-  canvas.style.height = ch + "px";
-  canvas.width = Math.round(cw * dpr);
-  canvas.height = Math.round(ch * dpr);
-  const scale = Math.min(cw / iw, ch / ih);
-  view = { scale, ox: (cw - iw * scale) / 2, oy: (ch - ih * scale) / 2 };
-  const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, cw, ch);
-  ctx.drawImage(state.bitmap, view.ox, view.oy, iw * scale, ih * scale);
-  if (bare === true) return;   // the reading overlay (scan.js) draws on the photo alone
-
-  const pts = state.corners.map(toCanvas);
-  if (pts.length > 1) {
-    ctx.beginPath();
-    pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    if (pts.length === 4) ctx.closePath();
-    ctx.strokeStyle = "#ffcc33";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-  pts.forEach(([x, y], k) => {
-    ctx.beginPath();
-    ctx.arc(x, y, 11, 0, 2 * Math.PI);
-    ctx.fillStyle = "rgba(255, 204, 51, .85)";
-    ctx.fill();
-    ctx.fillStyle = "#000";
-    ctx.font = "bold 13px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(String(k + 1), x, y);
-  });
-  if (loupeAt) drawLoupe(ctx, loupeAt, cw);
-}
-
-// Magnified view of the area under the finger, drawn in the opposite top corner.
-function drawLoupe(ctx, [ix, iy], cw) {
-  const size = 120, zoom = 3;
-  const src = size / (view.scale * zoom);
-  const [cx] = toCanvas([ix, iy]);
-  const x0 = cx < cw / 2 ? cw - size - 8 : 8, y0 = 8;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x0, y0, size, size);
-  ctx.clip();
-  ctx.fillStyle = "#000";
-  ctx.fillRect(x0, y0, size, size);
-  ctx.drawImage(state.bitmap, ix - src / 2, iy - src / 2, src, src, x0, y0, size, size);
-  ctx.restore();
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x0, y0, size, size);
-  ctx.beginPath();
-  ctx.moveTo(x0 + size / 2, y0 + size / 2 - 12); ctx.lineTo(x0 + size / 2, y0 + size / 2 + 12);
-  ctx.moveTo(x0 + size / 2 - 12, y0 + size / 2); ctx.lineTo(x0 + size / 2 + 12, y0 + size / 2);
-  ctx.strokeStyle = "#ffcc33";
-  ctx.stroke();
-}
-
-const toCanvas = ([x, y]) => [view.ox + x * view.scale, view.oy + y * view.scale];
-
-function toImage(e) {
-  const r = canvas.getBoundingClientRect();
-  const [iw, ih] = imgSize();
-  const x = (e.clientX - r.left - view.ox) / view.scale;
-  const y = (e.clientY - r.top - view.oy) / view.scale;
-  return [Math.min(Math.max(x, 0), iw - 1), Math.min(Math.max(y, 0), ih - 1)];
-}
-
-canvas.addEventListener("pointerdown", (e) => {
-  // a tap while the search is shown stops showing it, and works on the corners as before (the guess,
-  // when it comes, is not put over corners the user has moved)
-  if (cornerScan) { cornerScan.stop(); cornerScan = null; drawPhoto(); }
-  if (!view) return;
-  const r = canvas.getBoundingClientRect();
-  const px = e.clientX - r.left, py = e.clientY - r.top;
-  let index = state.corners.findIndex((c) => {
-    const [x, y] = toCanvas(c);
-    return Math.hypot(x - px, y - py) < 28;
-  });
-  if (index < 0) {
-    if (state.corners.length >= 4) return;
-    state.corners.push(toImage(e));
-    index = state.corners.length - 1;
-  }
-  state.cornersMoved = true;
-  drag = { index, pointerId: e.pointerId };
-  canvas.setPointerCapture(e.pointerId);
-  loupeAt = state.corners[index];
-  drawPhoto();
-  e.preventDefault();
-});
-
-canvas.addEventListener("pointermove", (e) => {
-  if (!drag || e.pointerId !== drag.pointerId) return;
-  state.corners[drag.index] = toImage(e);
-  loupeAt = state.corners[drag.index];
-  drawPhoto();
-});
-
-function endDrag(e) {
-  if (!drag || e.pointerId !== drag.pointerId) return;
-  drag = null;
-  loupeAt = null;
-  updateCornerUi();   // after the finger is up: the text above may change height and move the canvas
-  drawPhoto();
-  saveHistory();
-}
-canvas.addEventListener("pointerup", endDrag);
-canvas.addEventListener("pointercancel", endDrag);
-window.addEventListener("resize", drawPhoto);
-
-function updateCornerUi() {
-  const n = state.corners.length;
-  const fit = "点をドラッグして、盤の遊戯面（枠の内側）の四隅 1 左上・2 右上・3 右下・4 左下（手前に座った向き）に合わせてください。";
-  $("corner-help").innerHTML = n < 4
-    ? `手前に座った向きで、盤の遊戯面（枠の内側）の四隅を <b>${n + 1}. ${CORNER_NAMES[n]}</b> の順にタップしてください（左上→右上→右下→左下）。`
-    : state.cornerGuess === "finding" ? "盤の四隅を探しています… " + fit
-    : state.cornerGuess === "found" ? "盤の四隅を自動で置きました。ずれていたら" + fit
-    : state.cornerGuess === "default" ? "盤を自動で見つけられませんでした。" + fit
-    : state.cornerGuess === "moved" ? fit
-    : "四隅が決まりました。ホーム側と駒の色を選んで上の「盤面を読み取る」を押してください。";
-  $("recognize").disabled = n < 4;
-}
-
-$("corner-reset").addEventListener("click", () => {
-  state.corners = [];
-  state.cornerGuess = "";
-  updateCornerUi();
-  drawPhoto();
-  saveHistory();
-});
-
-// Large photos are scaled down before upload; corners are scaled with them.
-function uploadImage() {
-  const [iw, ih] = imgSize();
-  if (Math.max(iw, ih) <= SEND_AS_IS_MAX) return Promise.resolve({ blob: state.file, scale: 1 });
-  return shrink(UPLOAD_MAX);
-}
-
-async function shrink(maxSide) {
-  const [iw, ih] = imgSize();
-  const scale = Math.min(1, maxSide / Math.max(iw, ih));
-  const c = document.createElement("canvas");
-  c.width = Math.round(iw * scale);
-  c.height = Math.round(ih * scale);
-  c.getContext("2d").drawImage(state.bitmap, 0, 0, c.width, c.height);
-  const blob = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.92));
-  return { blob, scale };
-}
-
-// The reading overlay over the photo while the server reads it (scan.js); null when it can't run.
-function startScan() {
-  if (!window.BgScan || state.corners.length !== 4) return null;
-  try {
-    canvas.scrollIntoView({ block: "nearest" });
-    const reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    return BgScan.start(canvas, { corners: state.corners.map((p) => p.slice()), reduced,
-                                  prepare: () => { drawPhoto(true); return toCanvas; } });
-  } catch (err) {
-    console.warn("no reading overlay:", err);
-    return null;
-  }
-}
-
-$("recognize").addEventListener("click", async () => {
-  if (cornerScan) { cornerScan.stop(); cornerScan = null; }   // reading now: the corners as they are
-  if (state.cornerGuess === "finding") state.cornerGuess = "";   // and a guess coming later does not move them
-  const scan = startScan();
-  busy("盤面を読み取っています…", !!scan);
-  const skip = () => scan && scan.skip();
-  $("busy").addEventListener("click", skip);
-  try {
-    const { blob, scale } = await uploadImage();
-    const fd = new FormData();
-    fd.append("image", blob, "board.jpg");
-    fd.append("corners", state.corners.flat().map((v) => (v * scale).toFixed(1)).join(","));
-    fd.append("home", state.homePick);
-    fd.append("bottom_colour", String(state.bottomColour));
-    let dice = currentDice();
-    const cubeReq = BgCube.request(currentCube(), state.onRoll, dice);
-    fd.append("on_roll", cubeReq.on_roll);
-    if (dice) fd.append("dice", dice.join(","));
-    // a cube set by hand goes with the photo; else the server uses the one it reads (if any)
-    const cubeByHand = state.cubeAt !== "centre";
-    if (cubeByHand) {
-      fd.append("cube_value", String(cubeReq.cube_value));
-      fd.append("cube_owner", cubeReq.cube_owner);
-      fd.append("doubled", String(cubeReq.doubled));
-    }
-    fd.append("plies", state.plies);
-    fd.append("stream", "true");   // each stage of the reading as it is done (shown by scan.js)
-    const data = await postStages("analyze-photo", fd, (ev) => scan && scan.push(scaleGeometry(ev, scale)));
-    if (!dice && data.dice_read) {   // read from the photo (the analysis used them too)
-      dice = data.dice_read;
-      setDice(dice, true);
-      syncCube();   // with dice, a cube offered by hand no longer waits on take or pass (TODO-033)
-    }
-    if (!cubeByHand && data.cube_read) {   // used by the analysis too
-      // in a playing field: the side on roll has just doubled, and the dice wait (TODO-045)
-      if (data.cube_read.at === "field" && dice) { dice = null; setDice(null); }
-      setCube(BgCube.fromRead(data.cube_read, state.onRoll), true);
-    }
-    if (data.analysis) setOnRoll(data.analysis.on_roll);
-    const rec = data.recognized;
-    state.warnings = data.warnings || [];
-    const g = data.geometry;
-    state.geometry = g && { ...scaleGeometry(g, scale), bitmap: state.bitmap, from: JSON.stringify(state.corners) };
-    // the stages still waiting their turn on the photo (a tap skips them). The reading is done only
-    // when the last one has been shown, so the text stays "盤面を読み取っています…" till then.
-    if (scan) await (data.streamed ? scan.done() : scan.reveal(state.geometry));
-    state.board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
-    state.read = { points: rec.points.slice(), bar_white: rec.bar_white, bar_black: rec.bar_black };
-    state.home = data.home || (state.homePick === "auto" ? "right" : state.homePick);
-    state.homeGuess = data.home_guess || null;
-    state.selected = null;
-    saveHistory();
-    show("board");
-    setResult(data.analysis, dice);
-  } catch (err) {
-    if (scan) scan.stop();
-    alert("読み取りに失敗しました: " + err.message);
-  } finally {
-    $("busy").removeEventListener("click", skip);
-    if (scan) scan.stop();
-    busy();
-    if (currentStep === "corners") drawPhoto();   // the corners again, as before reading
-  }
-});
-
-// ---------------------------------------------------------------- step 3: board
-const SVG = "http://www.w3.org/2000/svg";
-const B = { x0: 20, y0: 24, y1: 416, pw: 48, bar: 40, r: 20, step: 38, tri: 165 };
-
-function colX(c) {
-  const half = c < 6 ? B.x0 : B.x0 + 6 * B.pw + B.bar;
-  return half + (c % 6) * B.pw + B.pw / 2;
-}
-
-// Column (0..11, left to right) of each row -> point index (0..23) as the bottom player sees the board.
-function pointAt(top, c) {
-  if (state.home === "right") return top ? 12 + c : 11 - c;
-  return top ? 23 - c : c;
-}
-
-function el(name, attrs, parent) {
-  const e = document.createElementNS(SVG, name);
-  for (const k in attrs) {
-    // CSS variables only work through style, not presentation attributes
-    if (String(attrs[k]).startsWith("var(")) e.style.setProperty(k, attrs[k]);
-    else e.setAttribute(k, attrs[k]);
-  }
-  if (parent) parent.appendChild(e);
-  return e;
-}
-
-function checkerFill(side) {
-  return side === "white" ? "var(--white-chk)" : "var(--black-chk)";
-}
-
-function drawStack(svg, x, top, n, side) {
-  const shown = Math.min(n, 5);
-  for (let k = 0; k < shown; k++) {
-    const y = top ? B.y0 + B.r + 1 + k * B.step : B.y1 - B.r - 1 - k * B.step;
-    el("circle", { cx: x, cy: y, r: B.r, fill: checkerFill(side), stroke: "#555", "stroke-width": 1.5, "pointer-events": "none" }, svg);
-    if (k === shown - 1 && n > 5) {
-      const t = el("text", { x, y, class: "stack-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg);
-      t.textContent = n;
-    }
-  }
-}
-
-// The photo of the playing area (TL TR BR BL corners) warped onto the drawn one, made once per photo and corners.
-const PLAY = { x: B.x0, y: B.y0, w: 12 * B.pw + B.bar, h: B.y1 - B.y0 };
-function rectifiedPhoto() {
-  if (!state.fromPhoto || !state.bitmap || state.corners.length !== 4 || !window.BgPhoto) return null;
-  // The recognizer's refined corners and columns line the photo up best; they hold for the photo and corners they came from.
-  const g0 = state.geometry;
-  const g = g0 && g0.bitmap === state.bitmap && g0.from === JSON.stringify(state.corners) ? g0 : null;
-  const key = JSON.stringify([state.corners, g && g.corners]);
-  const r = state.rectified;
-  if (r && r.bitmap === state.bitmap && r.key === key) return r.url;
-  let url = null;
-  try {
-    url = BgPhoto.rectify(state.bitmap, g ? g.corners : state.corners, PLAY.w * 2, PLAY.h * 2, g && columnAnchors(g, 2));
-  } catch (err) {
-    console.warn("could not show the photo:", err);
-  }
-  state.rectified = { bitmap: state.bitmap, key, url };
-  return url;
-}
-
-// [[x on the drawn playing area * zoom, fraction of the photo's width], ...] through the bar edges and
-// the 12 column centres, or just the bar edges if the columns are out of order.
-function columnAnchors(g, zoom) {
-  const half = 6 * B.pw;
-  const bar = [[half * zoom, g.bar[0]], [(half + B.bar) * zoom, g.bar[1]]];
-  const cols = (g.columns || []).map((f, c) => [(colX(c) - B.x0) * zoom, f]);
-  const ends = (mid) => [[0, 0], ...mid, [PLAY.w * zoom, 1]];
-  const increasing = (a) => a.every((p, k) => k === 0 || p[1] > a[k - 1][1]);
-  const full = ends([...cols.slice(0, 6), ...bar, ...cols.slice(6)]);
-  if (cols.length === 12 && increasing(full)) return full;
-  const plain = ends(bar);
-  return increasing(plain) ? plain : null;
-}
-
-function drawBoard() {
-  const photo = rectifiedPhoto();
-  const view = photo ? state.photoView : "off";
-  $("photo-tools").hidden = !photo;
-  $("photo-wrap").hidden = view !== "side";
-  $("boards").classList.toggle("two", view === "side");
-  if (view === "side") drawBoardOn($("photo-svg"), { photo, checkers: false });
-  drawBoardOn($("board-svg"), { photo: null, checkers: true });
-  drawBoardOn($("result-svg"), { photo: null, checkers: true });   // the result screen's copy (taps are off there)
-  drawCounts();
-  drawEditor();
-}
-
-// One board picture: the drawn board with the recognized checkers, or the photo with point numbers
-// (opts.photo, no checkers). Both pictures share the layout, so a tap selects the same point on either.
-function drawBoardOn(svg, opts) {
-  svg.textContent = "";
-  const b = state.board;
-  const xR = B.x0 + 12 * B.pw + B.bar;
-  // The picture widens on the home side for the tray of borne-off checkers, and on the other side
-  // for the doubling cube's place.
-  const vx = -(state.home === "right" ? CUBE.extra : TRAY.extra), vw = 660 + TRAY.extra + CUBE.extra;
-  svg.setAttribute("viewBox", `${vx} 0 ${vw} 440`);
-  el("rect", { x: vx, y: 0, width: vw, height: 440, fill: "var(--card)" }, svg);
-  const fx = Math.min(B.x0, trayX(), cubeX()) - 6, fr = Math.max(xR, trayX() + TRAY.w, cubeX() + CUBE.w) + 6;
-  el("rect", { x: fx, y: B.y0 - 6, width: fr - fx, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
-  el("rect", { x: trayX(), y: B.y0, width: TRAY.w, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
-  if (opts.photo) {
-    el("image", { href: opts.photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
-  } else {
-    el("rect", { x: B.x0, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
-    el("rect", { x: B.x0 + 6 * B.pw + B.bar, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
-  }
-
-  for (const top of [true, false]) {
-    for (let c = 0; c < 12; c++) {
-      const i = pointAt(top, c);
-      const x = colX(c), h = B.pw / 2;
-      const base = top ? B.y0 : B.y1, tip = top ? B.y0 + B.tri : B.y1 - B.tri;
-      if (!opts.photo) el("polygon", { points: `${x - h},${base} ${x + h},${base} ${x},${tip}`, fill: c % 2 ? "var(--tri-b)" : "var(--tri-a)" }, svg);
-      const lbl = el("text", { x, y: top ? 16 : 434, class: "num" }, svg);
-      lbl.textContent = i + 1;
-      const n = b.points[i];
-      if (n && opts.checkers) drawStack(svg, x, top, Math.abs(n), n > 0 ? "white" : "black");
-      if (state.selected === i) {
-        el("rect", { x: x - h + 1, y: top ? B.y0 + 1 : B.y0 + (B.y1 - B.y0) / 2 + 1, width: B.pw - 2, height: (B.y1 - B.y0) / 2 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
-      }
-      const hit = el("rect", { x: x - h, y: top ? B.y0 : B.y0 + (B.y1 - B.y0) / 2, width: B.pw, height: (B.y1 - B.y0) / 2, fill: "transparent", class: "hit" }, svg);
-      hit.addEventListener("click", () => select(i));
-    }
-  }
-
-  // Bar: 奥's checkers in the upper half, 手前's in the lower half.
-  const bx = B.x0 + 6 * B.pw + B.bar / 2;
-  if (b.bar_black && opts.checkers) drawStack(svg, bx, true, b.bar_black, "black");
-  if (b.bar_white && opts.checkers) drawStack(svg, bx, false, b.bar_white, "white");
-  if (!opts.photo) {
-    const barLbl = el("text", { x: bx, y: (B.y0 + B.y1) / 2 + 5, class: "label" }, svg);
-    barLbl.textContent = "バー";
-  }
-  if (state.selected === "bar") {
-    el("rect", { x: bx - B.bar / 2 + 1, y: B.y0 + 1, width: B.bar - 2, height: B.y1 - B.y0 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
-  }
-  const barHit = el("rect", { x: bx - B.bar / 2, y: B.y0, width: B.bar, height: B.y1 - B.y0, fill: "transparent", class: "hit" }, svg);
-  barHit.addEventListener("click", () => select("bar"));
-  if (opts.checkers) drawBorneOff(svg);
-  if (opts.checkers) drawDice(svg);
-  if (opts.checkers) drawCube(svg);
-  if (opts.checkers) drawMoveArrows(svg);
-}
-
-// The tray of borne-off checkers, outside the frame on the home side as on a real board.
-const TRAY = { w: 32, extra: 44 };
-function trayX() {
-  return state.home === "right" ? B.x0 + 12 * B.pw + B.bar + 12 : B.x0 - 12 - TRAY.w;
-}
-
-// Borne-off checkers as thin slabs on their side: 手前's from the bottom, 奥's from the top, with the count.
-function drawBorneOff(svg) {
-  const { offW, offB } = counts();
-  const x = trayX() + 2, w = TRAY.w - 4, hgt = 9, step = 10;
-  for (let [side, n] of [["white", offW], ["black", offB]]) {
-    if (n <= 0) continue;
-    const top = side === "black";
-    n = Math.min(n, 15);
-    for (let k = 0; k < n; k++) {
-      const y = top ? B.y0 + 2 + k * step : B.y1 - 2 - hgt - k * step;
-      el("rect", { x, y, width: w, height: hgt, rx: 2, fill: checkerFill(side), stroke: "#555", "stroke-width": 1, "pointer-events": "none" }, svg);
-    }
-    const t = el("text", { x: trayX() + TRAY.w / 2, y: top ? B.y0 + n * step + 12 : B.y1 - n * step - 12, class: "off-n", "pointer-events": "none" }, svg);
-    t.textContent = n;
-  }
-}
-
-// Column of point index i (0..23) and whether it is in the upper row: the inverse of pointAt.
-function columnOf(i) {
-  const top = i >= 12;
-  if (state.home === "right") return { top, c: top ? i - 12 : 11 - i };
-  return { top, c: top ? 23 - i : i };
-}
-
-// Centre of the checker at level k (0 = by the board's edge) of a stack, as drawStack places it.
-function stackY(top, k) {
-  k = Math.min(k, 4);
-  return top ? B.y0 + B.r + 1 + k * B.step : B.y1 - B.r - 1 - k * B.step;
-}
-
-// Analysis inputs, to tell whether the result on screen still fits the board drawn.
-function analysisKey(board, onRoll, dice) {
-  return JSON.stringify([board.points, board.bar_white, board.bar_black, onRoll, dice, currentCube()]);
-}
-
-// The move picked in the result's list (the best one at first), as arrows on the board.
-function drawMoveArrows(svg) {
-  const r = state.result;
-  if (!r || !r.moves || !r.moves.length || typeof BgMoves === "undefined") return;
-  if (state.resultKey !== analysisKey(state.board, state.onRoll, currentDice())) return;   // board changed since
-  const m = r.moves[state.moveShown] || r.moves[0];
-  // one arrow per die (the API's steps); results kept from older versions have only the string
-  const hops = (m.steps && BgMoves.hops(state.board, r.on_roll, m.steps)) || BgMoves.hops(state.board, r.on_roll, m.move);
-  if (!hops) return;
-  const bx = B.x0 + 6 * B.pw + B.bar / 2;
-  const offX = trayX() + TRAY.w / 2;
-  const g = el("g", { class: "arrows" }, svg);
-  for (const h of hops) {
-    let x0, y0;
-    if (h.from === "bar") {
-      const top = r.on_roll === "black";
-      [x0, y0] = [bx, stackY(top, h.fromLevel)];
-    } else {
-      const { top, c } = columnOf(h.from);
-      [x0, y0] = [colX(c), stackY(top, h.fromLevel)];
-    }
-    let x1, y1;
-    if (h.to === "off") {
-      [x1, y1] = [offX, y0];
-    } else {
-      const { top, c } = columnOf(h.to);
-      [x1, y1] = [colX(c), stackY(top, h.toLevel)];
-    }
-    drawArrow(g, x0, y0, x1, y1);
-    if (h.hit) el("circle", { cx: x1, cy: y1, r: B.r, fill: "none", stroke: "#e53935", "stroke-width": 3 }, g);
-  }
-}
-
-// A gently curved arrow (bent toward the middle of the board, off the checkers in between).
-function drawArrow(g, x0, y0, x1, y1) {
-  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
-  if (len < 1) return;
-  let px = -dy / len, py = dx / len;
-  const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, cy = (B.y0 + B.y1) / 2;
-  if (py * (cy - my) < 0 || (Math.abs(py) < 0.1 && px * (330 - mx) < 0)) { px = -px; py = -py; }
-  const bend = Math.min(40, len * 0.2);
-  const qx = mx + px * bend, qy = my + py * bend;
-  const tx = x1 - qx, ty = y1 - qy, tl = Math.hypot(tx, ty) || 1;
-  const ux = tx / tl, uy = ty / tl, head = 14;
-  const ex = x1 - ux * head, ey = y1 - uy * head;   // the line stops where the head starts
-  const d = `M${x0},${y0} Q${qx},${qy} ${ex},${ey}`;
-  el("path", { d, fill: "none", stroke: "#000", "stroke-opacity": 0.45, "stroke-width": 8, "stroke-linecap": "round" }, g);
-  el("path", { d, fill: "none", stroke: "var(--sel)", "stroke-width": 4, "stroke-linecap": "round" }, g);
-  el("circle", { cx: x0, cy: y0, r: 5, fill: "var(--sel)", stroke: "#0008", "stroke-width": 1.5 }, g);
-  const w = 8;
-  el("polygon", { points: `${x1},${y1} ${ex - uy * w},${ey + ux * w} ${ex + uy * w},${ey - ux * w}`,
-                  fill: "var(--sel)", stroke: "#0008", "stroke-width": 1.5 }, g);
-}
-
-// The dice entered below the board, where the side on roll throws them: in its own right-hand
-// field (手前: the right one in the picture, 奥: the left one), in its checker colour.
-const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
-               4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
-               6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
-function drawDice(svg) {
-  const dice = currentDice();
-  if (!dice) return;
-  const side = state.onRoll, size = 34;
-  const field = side === "white" ? B.x0 + 6 * B.pw + B.bar : B.x0;
-  const cx = field + 3 * B.pw, cy = (B.y0 + B.y1) / 2;
-  dice.forEach((d, k) => {
-    const x = cx + (k ? 6 : -size - 6), y = cy - size / 2;
-    const g = el("g", { class: "die" }, svg);
-    el("rect", { x, y, width: size, height: size, rx: 6, fill: `var(--${side}-chk)`, stroke: "#0006", "stroke-width": 1.5 }, g);
-    for (const [px, py] of PIPS[d]) {
-      el("circle", { cx: x + size / 2 + px * size * 0.27, cy: y + size / 2 + py * size * 0.27, r: size * 0.09, fill: `var(--${side}-fg)` }, g);
-    }
+for (const id of ["camera", "file"]) {
+  $(id).addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (file) loadPhoto(file);
   });
 }
+$("manual").addEventListener("click", setUpByHand);
+$("back").addEventListener("click", goBack);
+window.addEventListener("popstate", () => {
+  if (state.busy) { history.pushState({ bg: true }, ""); return; }   // wait for the server
+  if (state.step !== "photo") go(previousStep());
+});
 
-// The doubling cube by the board's edge away from the trays (as it lies on a real board): half-way
-// up showing 64 while nobody owns it, else at the end of the side it lies on.
-const CUBE = { w: 32, extra: 44 };
-function cubeX() {
-  return state.home === "right" ? B.x0 - 12 - CUBE.w : B.x0 + 12 * B.pw + B.bar + 12;
-}
-
-function drawCube(svg) {
-  const size = 30, x = cubeX() + (CUBE.w - size) / 2;
-  const y = state.cubeAt === "centre" ? (B.y0 + B.y1) / 2 - size / 2 : state.cubeAt === "white" ? B.y1 - size - 2 : B.y0 + 2;
-  const g = el("g", { class: "die" }, svg);
-  el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
-  const t = el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g);
-  t.textContent = state.cubeAt === "centre" ? "64" : String(state.cubeValue);
-}
-
-function counts() {
-  const b = state.board;
-  const onW = b.points.reduce((s, n) => s + Math.max(n, 0), 0) + b.bar_white;
-  const onB = b.points.reduce((s, n) => s + Math.max(-n, 0), 0) + b.bar_black;
-  return { onW, onB, offW: 15 - onW, offB: 15 - onB };
-}
-
-function boardErrors() {
-  const { onW, onB } = counts();
-  const errs = [];
-  if (onW > 15) errs.push(`手前の駒が ${onW} 個あります（15個まで）`);
-  if (onB > 15) errs.push(`奥の駒が ${onB} 個あります（15個まで）`);
-  if (onW === 0 && onB === 0) errs.push("盤に駒がありません");
-  return errs;
-}
-
-function drawCounts() {
-  const { onW, onB, offW, offB } = counts();
-  const part = (name, on, off) => {
-    const bad = on > 15 ? ' class="bad"' : "";
-    return `<span${bad}>${name}: 盤上とバー ${on} 個・上がり ${Math.max(off, 0)} 個</span>`;
-  };
-  $("counts").innerHTML = part("手前", onW, offW) + "<br>" + part("奥", onB, offB) +
-    '<br><span class="note">上がった駒は 15 − 盤上 − バー として数えます。読み取りで駒を見落とすと、その分が上がった扱いになります。</span>';
-  const errs = boardErrors();
-  if (!errs.length && state.fromPhoto && (offW > 0 || offB > 0)) {
-    errs.push(`上がった駒が 手前 ${offW} 個・奥 ${offB} 個 の扱いです。駒の見落としがないか確かめてください。`);
-  }
-  if (state.fromPhoto) errs.unshift(...state.warnings);
-  $("errors").hidden = !errs.length;
-  $("errors").textContent = errs.join(" / ");
-  drawHomeNote();
-}
-
-// Which side the bottom player's home board was read on, and whether it was guessed.
-function drawHomeNote() {
-  const side = state.home === "right" ? "右" : "左";
-  const g = state.fromPhoto && state.homeGuess;
-  $("home-note").hidden = !state.fromPhoto;
-  $("home-note").textContent = !g ? `手前の人のホームボードは${side}です。`
-    : Math.abs(g.margin) < 1 ? `駒の並びからはホームボードの左右を決められなかったので、${side}にしています。逆なら「左右を入れ替える」を押してください。`
-    : `駒の並びから、手前の人のホームボードを${side}と推測しました。逆なら「左右を入れ替える」を押してください。`;
-}
-
-function select(target) {
-  state.selected = state.selected === target ? null : target;
-  drawBoard();
-}
-
-function drawEditor() {
-  const s = state.selected;
-  $("editor-buttons").hidden = s === null;
-  if (s === null) {
-    $("editor-title").textContent = "違う所はポイントやバーをタップして直す（下が手前）";
-    return;
-  }
-  const b = state.board;
-  if (s === "bar") {
-    $("editor-title").textContent = `バー: 手前 ${b.bar_white} 個、奥 ${b.bar_black} 個`;
-  } else {
-    const n = b.points[s];
-    $("editor-title").textContent = `ポイント ${s + 1}: ` +
-      (n === 0 ? "空" : `${n > 0 ? "手前" : "奥"}の駒 ${Math.abs(n)} 個`);
-  }
-}
+$("corner-reset").addEventListener("click", () => update({ corners: [], cornerGuess: "" }));
+$("recognize").addEventListener("click", recognize);
+$("hdr-reuse").addEventListener("click", () => go("board"));
+$("to-board").addEventListener("click", () => go("board"));
 
 $("editor-buttons").addEventListener("click", (e) => {
   const op = e.target.dataset && e.target.dataset.op;
-  if (!op || state.selected === null) return;
-  if (op === "close") { select(state.selected); return; }
-  const b = state.board, s = state.selected;
-  if (s === "bar") {
-    if (op === "w+") b.bar_white++;
-    if (op === "w-") b.bar_white = Math.max(0, b.bar_white - 1);
-    if (op === "b+") b.bar_black++;
-    if (op === "b-") b.bar_black = Math.max(0, b.bar_black - 1);
-    if (op === "clear") b.bar_white = b.bar_black = 0;
-  } else {
-    let n = b.points[s];
-    if (op === "w+") n = Math.max(n, 0) + 1;
-    if (op === "w-" && n > 0) n--;
-    if (op === "b+") n = Math.min(n, 0) - 1;
-    if (op === "b-" && n < 0) n++;
-    if (op === "clear") n = 0;
-    b.points[s] = n;
-  }
-  boardChanged();
+  const at = state.selected;
+  if (!op || at === null) return;
+  if (op === "close") update({ selected: null });
+  else update({ board: BgBoard.edit(state.board, at, op) });
 });
-
-function boardChanged() {
-  if (state.result) $("result").classList.add("stale");
-  drawBoard();
-  saveHistory();
-}
-
-// Swapping colours or sides changes the layout, so the recognizer's reading (state.read) follows.
-function swapColours(b) {
-  b.points = b.points.map((n) => -n);
-  [b.bar_white, b.bar_black] = [b.bar_black, b.bar_white];
-}
-
-function mirror(b) {
-  b.points = b.points.map((_, i) => b.points[i < 12 ? 11 - i : 35 - i]);
-}
-
 $("swap-colours").addEventListener("click", () => {
-  swapColours(state.board);
-  if (state.read) swapColours(state.read);
-  state.bottomColour = 1 - state.bottomColour;
-  syncColours();
-  boardChanged();
+  editBoard(BgBoard.swapColours);
+  update({ bottomColour: 1 - state.bottomColour });
 });
-
 // The board was read with the home on the wrong side: mirror it left to right.
 $("flip-home").addEventListener("click", () => {
-  mirror(state.board);
-  if (state.read) mirror(state.read);
-  state.home = state.home === "right" ? "left" : "right";
-  state.homeGuess = null;
-  state.selected = null;
-  boardChanged();
+  editBoard(BgBoard.mirror);
+  update({ home: state.home === "right" ? "left" : "right", homeGuess: null, selected: null });
 });
-
 $("reset-start").addEventListener("click", () => {
-  if (!confirm("盤面を初期配置に戻しますか？")) return;
-  state.board = { points: START.slice(), bar_white: 0, bar_black: 0 };
-  state.selected = null;
-  boardChanged();
+  if (confirm("盤面を初期配置に戻しますか？")) update({ board: BgBoard.start(), selected: null });
 });
 
-// ---------------------------------------------------------------- analysis
-for (const id of ["die1", "die2"]) {
+for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
   for (let d = 1; d <= 6; d++) $(id).add(new Option(String(d), String(d)));
-  $(id).addEventListener("change", () => {
-    if (state.result) $("result").classList.add("stale");
-    $("dice-note").hidden = true;
-    syncRollLabel();
-    syncCube();
-    if (state.board) drawBoard();
-    saveHistory();
-  });
+  $(id).addEventListener("change", () => setDie(k, $(id).value));
 }
-
-// ---------------------------------------------------------------- the doubling cube (cube.js)
 for (const v of BgCube.VALUES) $("cube-value").add(new Option(String(v), String(v)));
-
-function currentCube() {
-  return { at: state.cubeAt, value: state.cubeValue, offered: state.cubeOffered };
-}
-
-// cube: {at, value, offered}, or null for the middle. fromPhoto: read from the photo, so say so.
-function setCube(cube, fromPhoto = false) {
-  const c = cube || BgCube.fromRead(null);
-  state.cubeAt = c.at;
-  state.cubeValue = c.value;
-  state.cubeOffered = c.offered;
-  $("cube-note").hidden = !fromPhoto;
-  syncCube();
-  if (state.board) drawBoard();
-}
-
-// What the cube asks of the analysis, and the side on roll that follows from it.
-function syncCube() {
-  syncCubeAt();
-  $("cube-side").hidden = state.cubeAt === "centre";
-  $("cube-value").value = String(state.cubeValue);
-  $("cube-offered").checked = state.cubeOffered;
-  const req = BgCube.request(currentCube(), state.onRoll, currentDice());
-  if (req.on_roll !== state.onRoll) setOnRoll(req.on_roll);
-  const roll = NAME[req.on_roll];
-  $("cube-help").textContent = currentDice()
-    ? "ダイスがあるので、最善手を出します。"
-    : req.doubled
-      ? `${roll}の人が ${req.cube_value} にダブルしたところとして、${NAME[req.cube_owner]}の人がテイクかパスかを判定します。`
-      : req.cube_owner && req.cube_owner !== req.on_roll
-        ? `キューブは${NAME[req.cube_owner]}の人が持っているので、${roll}の人はダブルできません。`
-        : `ダイスが無いので、${roll}の人がダブルすべきかを判定します。`;
-}
-
-function cubeChanged() {
-  $("cube-note").hidden = true;
-  syncCube();
-  if (state.result) $("result").classList.add("stale");
-  if (state.board) drawBoard();
-  saveHistory();
-}
-
-$("cube-value").addEventListener("change", () => { state.cubeValue = Number($("cube-value").value); cubeChanged(); });
-$("cube-offered").addEventListener("change", () => { state.cubeOffered = $("cube-offered").checked; cubeChanged(); });
-
-function setOnRoll(side) {
-  state.onRoll = side;
-  syncOnRoll();
-}
-
-// fromPhoto: the dice were read from the photo, so say so (the user checks them)
-function setDice(dice, fromPhoto = false) {
-  $("die1").value = dice ? String(dice[0]) : "";
-  $("die2").value = dice ? String(dice[1]) : "";
-  $("dice-note").hidden = !fromPhoto;
-  syncRollLabel();
-  if (state.board) drawBoard();
-}
-
-function syncRollLabel() {
-  $("onroll-label").textContent = `${BgResult.rollWho(currentDice())}人`;
-}
-
-function currentDice() {
-  const a = $("die1").value, b = $("die2").value;
-  return a && b ? [Number(a), Number(b)] : null;
-}
-
-$("analyze").addEventListener("click", async () => {
-  const errs = boardErrors();
-  if (errs.length) { alert(errs.join("\n")); return; }
-  if (state.selected !== null) select(state.selected);   // done editing
-  sendSample();
-  // The result on hand still fits the board and settings (e.g. worked out when the photo was read): just show it.
-  if (state.result && !$("result").classList.contains("stale") &&
-      state.resultKey === analysisKey(state.board, state.onRoll, currentDice())) {
-    show("outcome");
-    return;
-  }
-  busy(analysingText());
-  try {
-    const dice = currentDice();
-    const body = { board: { ...state.board }, plies: Number(state.plies),
-                   ...BgCube.request(currentCube(), state.onRoll, dice) };
-    if (dice) body.dice = dice;
-    const r = await post("analyze", JSON.stringify(body), { "content-type": "application/json" });
-    setResult(r, dice);
-    show("outcome");
-  } catch (err) {
-    alert("解析に失敗しました: " + err.message);
-  } finally {
-    busy();
-  }
-});
-
-// path is relative ("analyze"), so the app also works under a path such as /bg/.
-// Image px of the sent image -> of the photo (the sent image is scaled by `scale`), for the parts of
-// /analyze-photo's geometry (or of one of its streamed stages) that are in pixels.
-function scaleGeometry(g, scale) {
-  const p = ([x, y]) => [x / scale, y / scale];
-  const out = { ...g };
-  if (g.corners) out.corners = g.corners.map(p);
-  if (g.tips) out.tips = g.tips.map(p);
-  if (g.checkers) out.checkers = g.checkers.map(([x, y, r, side]) => [x / scale, y / scale, r / scale, side]);
-  if (g.counts) out.counts = g.counts.map((c) => ({ ...c, at: p(c.at) }));
-  if (g.dice) out.dice = g.dice.map((d) => ({ ...d, quad: d.quad.map(p) }));
-  if (g.cube) out.cube = { ...g.cube, quad: g.cube.quad.map(p) };
-  // the search for the corners (find-corners)
-  if (g.lines) out.lines = g.lines.map((l) => l.map(p));
-  if (g.quads) out.quads = g.quads.map((q) => q.map(p));
-  return out;
-}
-
-// POST asking for the answer in stages (NDJSON lines, {"stage": ...}): onStage(ev) for each stage of
-// the reading as it arrives, and the result of the last line ({"stage": "done", "result"}), marked
-// streamed. A server that answers with plain JSON (an older one) gives that JSON, unmarked.
-async function postStages(path, body, onStage) {
-  const res = await fetch(API ? `${API}/${path}` : path, { method: "POST", body });
-  const type = res.headers.get("content-type") || "";
-  if (!res.ok || !type.includes("ndjson") || !res.body) {
-    let data = null;
-    try { data = await res.json(); } catch (_) { /* not JSON */ }
-    if (!res.ok) {
-      const d = data && data.detail;
-      throw new Error(typeof d === "string" ? d : `HTTP ${res.status}`);
-    }
-    return data;
-  }
-  const reader = res.body.getReader(), dec = new TextDecoder();
-  let buf = "", result = null;
-  const take = (line) => {
-    if (!line.trim()) return;
-    const ev = JSON.parse(line);
-    if (ev.stage === "error") throw new Error(typeof ev.detail === "string" ? ev.detail : "読み取りに失敗しました");
-    if (ev.stage === "done") result = { ...ev.result, streamed: true };
-    else onStage(ev);
-  };
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let k;
-    while ((k = buf.indexOf("\n")) >= 0) { take(buf.slice(0, k)); buf = buf.slice(k + 1); }
-  }
-  take(buf + dec.decode());
-  if (!result) throw new Error("読み取りの途中で接続が切れました");
-  return result;
-}
-
-async function post(path, body, headers) {
-  const res = await fetch(API ? `${API}/${path}` : path, { method: "POST", body, headers });
-  let data = null;
-  try { data = await res.json(); } catch (_) { /* not JSON */ }
-  if (!res.ok) {
-    const d = data && data.detail;
-    throw new Error(typeof d === "string" ? d : `HTTP ${res.status}`);
-  }
-  return data;
-}
-
-function setResult(r, dice) {
-  state.result = r;
-  state.resultKey = r ? analysisKey(state.board, state.onRoll, dice || null) : null;   // the board it was worked out for
-  state.moveShown = 0;
-  if (state.board) drawBoard();   // the best move's arrows, or none
-  const box = $("result");
-  box.classList.remove("stale");
-  box.hidden = !r;
-  state.speech = r ? BgResult.speechText(r, dice) : null;
-  syncHeaderActions();
-  if (!r) return;
-  stopSpeaking();
-  box.innerHTML = BgResult.html(r, dice);
-  const list = box.querySelector(".moves");
-  if (list) list.addEventListener("click", (e) => showMove(list, e.target.closest("li")));
-}
-
-// A row of the best moves was tapped: show that move's arrows on the board.
-function showMove(list, li) {
-  if (!li) return;
-  state.moveShown = Number(li.dataset.k);
-  for (const x of list.children) x.classList.toggle("on", x === li);
-  drawBoard();
-  $("result-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
-}
-
-// ---------------------------------------------------------------- reading the result aloud
-// The browser's own speech (Web Speech API): free, nothing to set up, and on Android's Chrome
-// it is Google's voice. Nothing is sent to our server.
-function japaneseVoice() {
-  const voices = window.speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
-  return voices.find((v) => /google/i.test(v.name)) || voices[0] || null;
-}
-
-function stopSpeaking() {
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
-}
-
-function toggleSpeaking(text) {
-  const synth = window.speechSynthesis;
-  if (synth.speaking) { synth.cancel(); return; }
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "ja-JP";
-  const voice = japaneseVoice();
-  if (voice) u.voice = voice;
-  const label = (on) => {
-    const btn = $("speak");
-    btn.textContent = on ? "■" : "🔊";
-    btn.classList.toggle("on", on);
-    btn.setAttribute("aria-pressed", on);
-  };
-  u.onstart = () => label(true);
-  u.onend = u.onerror = () => label(false);
-  synth.speak(u);
-}
-if (window.speechSynthesis) window.speechSynthesis.getVoices();   // Chrome loads the voice list lazily
-
-$("to-board").addEventListener("click", () => show("board"));
-
-// ---------------------------------------------------------------- recent photos (history.js)
-// Stored on this device only. Failures (no IndexedDB, private mode, storage full) never block the app.
-async function addToHistory(file) {
-  state.historyId = null;
-  state.historyScale = 1;
-  try {
-    const [w, h] = imgSize();
-    const { id, scale } = await PhotoHistory.add(file, state.bitmap, w, h);
-    state.historyId = id;
-    state.historyScale = scale;
-  } catch (_) { /* not stored */ }
-}
-
-function saveHistory() {
-  if (!state.historyId) return;
-  const s = state.historyScale;
-  PhotoHistory.update(state.historyId, {
-    corners: state.corners.map(([x, y]) => [x * s, y * s]),
-    cornerGuess: state.cornerGuess,
-    cornersMoved: state.cornersMoved,
-    homePick: state.homePick,
-    home: state.home,
-    homeGuess: state.homeGuess,
-    bottomColour: state.bottomColour,
-    onRoll: state.onRoll,
-    dice: currentDice(),
-    cube: currentCube(),
-    board: state.board,
-    read: state.read,
-    warnings: state.warnings,
-  }).catch(() => {});
-}
-
-async function openHistory(id) {
-  busy("写真を読み込んでいます…");
-  try {
-    const e = await PhotoHistory.get(id);
-    if (!e) { renderHistory(); return; }
-    state.bitmap = await decode(e.image);
-    state.file = e.image;
-    state.historyId = id;
-    state.historyScale = 1;   // the stored copy is now the image
-    // corners still being guessed when the photo was left, or never set, are guessed again
-    const guess = !e.corners || e.corners.length < 4 || e.cornerGuess === "finding";
-    state.corners = guess ? defaultCorners() : e.corners.map((c) => c.slice());
-    state.cornerGuess = guess ? "finding" : e.cornerGuess || "";
-    state.cornersMoved = !!e.cornersMoved;
-    state.homePick = e.homePick || e.home || "auto";   // entries from before 0.6.0 kept only the side picked
-    state.home = e.home || "right";
-    state.homeGuess = e.homeGuess || null;
-    state.bottomColour = e.bottomColour ?? 1;
-    state.onRoll = e.onRoll || "white";
-    state.fromPhoto = true;
-    state.warnings = e.warnings || [];
-    state.board = e.board || null;
-    state.read = e.read || null;
-    state.selected = null;
-    setDice(e.dice);
-    setCube(e.cube || null);
-    syncHomePick();
-    syncColours();
-    syncOnRoll();
-    setResult(null);
-    updateCornerUi();
-    saveHistory();   // now the most recent
-    show("corners");   // from before reading the board; the board read before is one button away
-    if (guess) guessCorners(e.image);
-  } catch (err) {
-    alert("写真を開けませんでした: " + err.message);
-  } finally {
-    busy();
-  }
-}
-
-let thumbUrls = [];
-async function renderHistory() {
-  let entries = [];
-  try { entries = await PhotoHistory.list(); } catch (_) { /* no IndexedDB */ }
-  thumbUrls.forEach((u) => URL.revokeObjectURL(u));
-  thumbUrls = [];
-  const ul = $("history-list");
-  ul.textContent = "";
-  $("history").hidden = !entries.length;
-  for (const e of entries) {
-    const li = document.createElement("li");
-    const open = document.createElement("button");
-    open.className = "open";
-    const img = document.createElement("img");
-    img.alt = "";
-    img.src = URL.createObjectURL(e.thumb);
-    thumbUrls.push(img.src);
-    const text = document.createElement("span");
-    const when = new Date(e.time).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    const done = e.board ? "盤面の読み取りまで" : e.cornersMoved ? "四隅を合わせたところまで" : "写真を選んだところまで";
-    text.innerHTML = `${BgResult.esc(when)}<span class="sub">${done}</span>`;
-    open.append(img, text);
-    open.addEventListener("click", () => openHistory(e.id));
-    const del = document.createElement("button");
-    del.className = "button del";
-    del.textContent = "✕";
-    del.setAttribute("aria-label", "この写真を履歴から消す");
-    del.addEventListener("click", async () => {
-      if (!confirm("この写真を履歴から消しますか？")) return;
-      if (state.historyId === e.id) state.historyId = null;
-      try { await PhotoHistory.remove(e.id); } catch (_) { /* already gone */ }
-      renderHistory();
-    });
-    li.append(open, del);
-    ul.append(li);
-  }
-}
-
-// ---------------------------------------------------------------- a sample for the recognizer (sample.js)
-// The photo and the board as fixed by hand, as two files (photo + truth.json) to send to the
-// developers so the recognizer can be measured and improved on them; with 「Pi に残す」 on, the
-// same pair goes to the server each time the board is analysed (POST /samples).
-async function sampleOf(name) {
-  // the stored copy (the size the app sends anyway) with the corners in its pixels, else the photo itself
-  const e = state.historyId && await PhotoHistory.get(state.historyId).catch(() => null);
-  const blob = (e && e.image) || state.file;
-  const s = e && e.image ? state.historyScale : 1;
-  const ext = blob.type === "image/png" ? "png" : "jpg";
-  const truth = BgSample.truth({
-    image: `${name}.${ext}`,
-    corners: state.corners.map(([x, y]) => [x * s, y * s]),
-    home: state.home, bottomColour: state.bottomColour, board: state.board,
-    dice: currentDice(), cube: currentCube(), read: state.read,
-  });
-  return { blob, ext, truth };
-}
-
-// Keep this photo and its board on the server, when the user has turned that on. Never in the way.
-async function sendSample() {
-  if (state.collect !== "on" || !state.fromPhoto || !state.board || !state.historyId) return;
-  try {
-    const { blob, ext, truth } = await sampleOf(`user-${state.historyId}`);
-    const fd = new FormData();
-    fd.append("id", state.historyId);
-    fd.append("truth", JSON.stringify(truth));
-    fd.append("image", blob, `${state.historyId}.${ext}`);
-    await post("samples", fd);
-  } catch (_) { /* not kept this time */ }
-}
-
-$("export-sample").addEventListener("click", async () => {
-  try {
-    const name = BgSample.baseName(new Date());
-    const { blob, ext, truth } = await sampleOf(name);
-    const files = [
-      new File([blob], `${name}.${ext}`, { type: blob.type || "image/jpeg" }),
-      new File([JSON.stringify(truth) + "\n"], `${name}.truth.json`, { type: "application/json" }),
-    ];
-    if (navigator.canShare && navigator.canShare({ files })) {
-      try {
-        await navigator.share({ files, title: "BG Analyzer のサンプル" });
-        return;
-      } catch (err) {
-        if (err.name === "AbortError") return;   // closed by the user
-        // Chrome on Android refuses a .json (NotAllowedError "Permission denied"): download instead
-      }
-    }
-    for (const f of files) {   // no share sheet (a PC), or it refused: download both
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(f);
-      a.download = f.name;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-    }
-  } catch (err) {
-    alert("書き出せませんでした: " + err.message);
-  }
-});
-
-// ---------------------------------------------------------------- colours & init
-function syncColours() {
-  const light = "#f3efe4", dark = "#3a2a4a";
-  const root = document.documentElement.style;
-  root.setProperty("--white-chk", state.bottomColour ? light : dark);
-  root.setProperty("--black-chk", state.bottomColour ? dark : light);
-  root.setProperty("--white-fg", state.bottomColour ? "#222" : "#fff");
-  root.setProperty("--black-fg", state.bottomColour ? "#fff" : "#222");
-  syncBottomColour();
-}
-
-const syncHomePick = initSeg("homePick");
-const syncBottomColour = initSeg("bottomColour", syncColours);
-// A cube just offered lies on the side of the player doubled, so the other one is on roll.
-function cubeFollowsTurn() {
-  if (BgCube.request(currentCube(), state.onRoll, currentDice()).doubled) {
-    state.cubeAt = state.onRoll === "white" ? "black" : "white";
-    syncCube();
-  }
-}
-const syncOnRoll = initSeg("onRoll", () => {
-  cubeFollowsTurn();
-  if (state.result) $("result").classList.add("stale");
-  if (state.board) drawBoard();   // the dice move to the other side
-});
-const syncCubeAt = initSeg("cubeAt", cubeChanged);
+$("cube-value").addEventListener("change", () => setCube({ value: Number($("cube-value").value) }));
+$("cube-offered").addEventListener("change", () => setCube({ offered: $("cube-offered").checked }));
 // The other side to roll; with a result on screen, analyse again for the new side at once.
 $("flip-turn").addEventListener("click", () => {
-  state.onRoll = state.onRoll === "white" ? "black" : "white";
-  syncOnRoll();
-  cubeFollowsTurn();
-  if (state.board) drawBoard();
-  saveHistory();
-  if (state.result) $("analyze").click();
+  setOnRoll(BgBoard.other(state.onRoll));
+  if (state.result) analyze();
 });
-initSeg("photoView", drawBoard);
-initSeg("collect", () => {
-  try { localStorage.setItem("collect", state.collect); } catch (_) { /* private mode */ }
+
+const SEGMENTS = {
+  homePick: (v) => update({ homePick: v }),
+  bottomColour: (v) => update({ bottomColour: Number(v) }),
+  onRoll: setOnRoll,
+  cubeAt: (v) => setCube({ at: v }),
+  photoView: (v) => update({ photoView: v }),
+  collect: (v) => { keep("collect", v); update({ collect: v }); },
+  plies: (v) => { keep("plies", v); update({ plies: v }); },
+};
+for (const seg of document.querySelectorAll(".seg")) {
+  seg.addEventListener("click", (e) => {
+    const v = e.target.dataset && e.target.dataset.value;
+    if (v !== undefined) SEGMENTS[seg.dataset.name](v);
+  });
+}
+
+$("analyze").addEventListener("click", analyze);
+$("result").addEventListener("click", (e) => {   // a row of the best moves: its arrows on the board
+  const li = e.target.closest(".moves li");
+  if (!li) return;
+  update({ moveShown: Number(li.dataset.k) });
+  $("result-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
-initSeg("plies", () => {
-  try { localStorage.setItem("plies", state.plies); } catch (_) { /* private mode */ }
-  if (state.result) $("result").classList.add("stale");
-});
-syncColours();
-syncCube();
-updateCornerUi();
-show("photo");
+$("speak").addEventListener("click", toggleSpeaking);
+$("export-sample").addEventListener("click", exportSample);
+
+window.addEventListener("resize", () => redraw(drawCorners));
+document.addEventListener("visibilitychange", () => persist());
+// The sticky header is as tall as its contents; the board sticks just under it (CSS --hdr-h).
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty("--hdr-h", document.querySelector("header").offsetHeight + "px");
+}).observe(document.querySelector("header"));
+
+// ================================================================ start
+
+go("photo");
+if (window.speechSynthesis) window.speechSynthesis.getVoices();   // Chrome loads the voice list lazily
 
 // Versions, to tell which build is running (e.g. on the Raspberry Pi): small in the header, in full in the footer.
 $("hdr-version").textContent = `v${APP_VERSION}`;
-fetch(API ? `${API}/version` : "version")
-  .then((res) => (res.ok ? res.json() : null))
-  .then((v) => {
-    if (!v) return;
-    const old = v.analyzer !== APP_VERSION;   // an old app.js still cached on this device
-    $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + (old ? `（新しい ${v.analyzer} は開き直すと出ます）` : "");
-    $("hdr-version").classList.toggle("old", old);
-    $("collect-opt").hidden = $("collect-note").hidden = !v.samples;
-    $("version").textContent = `analyzer ${v.analyzer} · recognizer ${v.recognizer}` +
-      (v.commit ? ` · ${v.commit}` : "") +
-      (v.analyzer !== APP_VERSION ? `（画面は ${APP_VERSION}。開き直すと新しくなります）` : "");
-  })
-  .catch(() => {});
+BgApi.version().then((v) => {
+  if (!v) return;
+  const old = v.analyzer !== APP_VERSION;   // an old app.js still cached on this device
+  $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + (old ? `（新しい ${v.analyzer} は開き直すと出ます）` : "");
+  $("hdr-version").classList.toggle("old", old);
+  $("collect-opt").hidden = $("collect-note").hidden = !v.samples;
+  $("version").textContent = `analyzer ${v.analyzer} · recognizer ${v.recognizer}` +
+    (v.commit ? ` · ${v.commit}` : "") + (old ? `（画面は ${APP_VERSION}。開き直すと新しくなります）` : "");
+}).catch(() => {});
 
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
-}
-
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 loadSharedPhoto();
+
+// For checking the app from outside (tools/pi_ui_check.py): the state, and changes made the app's way.
+window.BgApp = { get state() { return state; }, update, rolled };
