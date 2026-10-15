@@ -257,6 +257,9 @@ OBLIQUE_WARN_DEG = 40   # samples: top-down shots 0-23 degrees, photo1 69
 # ---------------------------------------------------------------- triangles --
 
 COL_MIN_SCORE = 1.0
+MAX_GAP = 2.5          # fit_columns: the most points between the fields' innermost columns (bar + 1)
+SHIFT_TIE = 0.6        # ... beyond it a field moved one point in may score this much less
+BAR_GAIN = 0.1         # ... if what it leaves between the fields looks this much more like a bar
 
 
 def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
@@ -275,21 +278,56 @@ def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
     # triangles end before mid-board; frame walls, trays and the bar do not
     prof = np.clip(band.mean(0) - mid.mean(0), 0, None)
     xs = np.arange(len(prof))
-    cols = []
+    fits = []
     for f0 in (0.0, lay.a + lay.bar):
+        centre = m + f0 + lay.a / 2
+        by_shift = {}   # the best fit for each whole number of points the columns moved by
         best = None
         for scale in np.linspace(1 - 0.125 * reach, 1 + 0.125 * reach, 31):
             pw = lay.pw * scale
             for off in np.linspace(-reach, reach, 97) * lay.pw:
-                c = m + f0 + off + lay.a / 2 + (np.arange(6) - 2.5) * pw
+                c = centre + off + (np.arange(6) - 2.5) * pw
                 # near their tips the triangles are narrow peaks; the bar, the frame
                 # and a stack of checkers (about one pitch wide) are plateaus, so
                 # score peaks, not just colour
                 on = exact.interp(c, xs, prof)
                 side = (exact.interp(c - 0.5 * pw, xs, prof) + exact.interp(c + 0.5 * pw, xs, prof)) / 2
                 sc = (on - side).sum()
+                k = int(np.floor(off / lay.pw + 0.5))
+                if k not in by_shift or sc > by_shift[k][0]:
+                    by_shift[k] = (sc, c - m)
                 if best is None or sc > best[0]:
-                    best = (sc, c - m)
+                    best = by_shift[k]
+        fits.append([best, by_shift, [k for k, v in by_shift.items() if v is best][0]])
+    # The bar is at most about one and a half points wide. When the fields' columns leave a wider gap,
+    # a field may have slipped one point outwards: with its innermost triangle hidden under checkers,
+    # five triangles still match, and the hidden one is taken into the bar (TODO-057). Then move the
+    # field one point in if that matches nearly as well, the one that leaves between the fields most
+    # like a bar (not the field's plain colour at mid-board).
+    bar_like = mid.mean(0)
+
+    def bar_score(left, right, pw):
+        lo, hi = int(m + left[5] + 0.5 * pw), int(m + right[0] - 0.5 * pw)
+        return float(bar_like[max(lo, 0):max(hi, lo + 1)].mean()) if hi > lo else 0.0
+    for _ in range(2):
+        (bl, _, _), (br_, _, _) = fits[0], fits[1]
+        pw = ((bl[1][5] - bl[1][0]) + (br_[1][5] - br_[1][0])) / 10
+        if bl[0] < COL_MIN_SCORE or br_[0] < COL_MIN_SCORE or br_[1][0] - bl[1][5] <= MAX_GAP * pw:
+            break
+        moves = []
+        for f, step in ((0, 1), (1, -1)):
+            cur, by_shift, k = fits[f]
+            alt = by_shift.get(k + step)
+            if alt is not None and alt[0] >= cur[0] - SHIFT_TIE:
+                left, right = (alt[1], br_[1]) if f == 0 else (bl[1], alt[1])
+                moves.append((-bar_score(left, right, pw), cur[0] - alt[0], f, alt, k + step))
+        moves = [mv for mv in moves if -mv[0] >= bar_score(bl[1], br_[1], pw) + BAR_GAIN]
+        if not moves:
+            break
+        *_, f, alt, k = min(moves, key=lambda mv: mv[:2])
+        fits[f] = [alt, fits[f][1], k]
+    cols = []
+    for (best, _, _), f0 in zip(fits, (0.0, lay.a + lay.bar)):
         if os.environ.get("BG_DEBUG_COLS"):
             print("fit_columns", f0, round(float(best[0]), 3), file=sys.stderr)
         if best[0] < COL_MIN_SCORE:
