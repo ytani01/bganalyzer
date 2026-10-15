@@ -114,11 +114,11 @@ def test_depth_choice():
 
 
 def test_server_exit_stops_gnubg_helper():
-    import analysis
+    import engine
     with TestClient(app) as c:   # runs the lifespan, like uvicorn does
         assert c.post("/analyze", json={"position_id": START_ID}).status_code == 200
-        helpers = list(analysis._pool._processes.values())
-    assert analysis._pool is None
+        helpers = list(engine._pool._processes.values())
+    assert engine._pool is None
     assert helpers and not any(p.is_alive() for p in helpers)
 
 
@@ -588,7 +588,7 @@ def test_4xx_reason_is_logged(caplog):
 
 def test_samples_measured_again_after_ten_new(monkeypatch, tmp_path):
     # recognizer/collected.py is started once the 10th new pair is saved, not before, and not twice at a time
-    import app as app_module
+    import samples
     started, done = [], []
 
     class Running:
@@ -599,8 +599,8 @@ def test_samples_measured_again_after_ten_new(monkeypatch, tmp_path):
             return 0 if done else None   # None: still running
 
     monkeypatch.setenv("BG_SAMPLES_DIR", str(tmp_path))
-    monkeypatch.setattr(app_module.subprocess, "Popen", Running)
-    monkeypatch.setattr(app_module, "_measuring", None)
+    monkeypatch.setattr(samples.subprocess, "Popen", Running)
+    monkeypatch.setattr(samples, "_measuring", None)
     for i in range(11):
         r = client.post("/samples", data={"id": f"n{i}", **_sample_form()}, files={"image": ("a.jpg", b"jpg", "image/jpeg")})
         assert r.status_code == 200

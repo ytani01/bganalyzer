@@ -19,7 +19,7 @@ flowchart LR
     subgraph server["解析サーバー（Python）"]
         api["analyzer/app.py<br/>HTTP API（FastAPI + uvicorn）"]
         rec["recognizer/<br/>盤面認識（OpenCV）"]
-        ana["analyzer/analysis.py<br/>局面解析"]
+        ana["analyzer/analysis.py<br/>局面解析<br/>（gnubg は engine.py の子プロセス）"]
         gnubg[("GNU Backgammon<br/>（PyPI gnubg パッケージ<br/>ニューラルネット・ベアオフDB同梱）")]
         api --> rec
         api --> ana
@@ -42,7 +42,9 @@ flowchart LR
 flowchart TB
     subgraph analyzer["analyzer/（ステップ2・3）"]
         app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /health, /version<br/>/ で static/ を配信"]
-        analysis["analysis.py<br/>gnubg 呼び出し・確率/エクイティ整形<br/>日本語の要約"]
+        analysis["analysis.py<br/>入力の確認・確率/エクイティ整形<br/>日本語の要約"]
+        engine["engine.py<br/>gnubg 呼び出し（子プロセス）<br/>キューブ判断・手の補完"]
+        samplesapi["samples.py<br/>/samples（Pi に写真を残す）"]
         worker["gnubg 子プロセス<br/>（そのメインスレッドで評価）"]
         test["test_api.py<br/>API のテスト"]
         static["static/<br/>PWA（index.html, app.js,<br/>manifest, Service Worker）"]
@@ -59,9 +61,11 @@ flowchart TB
 
     static -- "fetch" --> app
     app --> analysis
+    app --> samplesapi
     app -- "/analyze-photo のときだけ読み込む" --> board
     analysis --> position
-    analysis -- "ProcessPoolExecutor" --> worker
+    analysis --> engine
+    engine -- "ProcessPoolExecutor" --> worker
     board --> position
     synth --> position
     evaluate --> board
@@ -77,7 +81,9 @@ flowchart TB
 | `recognizer/synth.py`, `evaluate.py` | 精度確認用（合成画像の生成、`samples/*.truth.json` との比較） |
 | `analyzer/app.py` | HTTP API。JSON の盤面または写真を受け取り、認識・解析して返す |
 | `analyzer/static/` | PWA。写真を選ぶ → 四隅の初期値（`/find-corners`）をドラッグで調整（ルーペ付き）→ `/analyze-photo` → 盤面を表示してタップで修正 → `/analyze` → 勝率・ギャモン率・ピップ・最善手を表示。長辺 2560px を超える写真は 2048px に縮めて送る |
-| `analyzer/analysis.py` | gnubg で勝率・ギャモン率・エクイティ・最善手を計算。gnubg はメインスレッド以外で落ちるので専用の子プロセスで動かす |
+| `analyzer/analysis.py` | 入力を確かめ、勝率・ギャモン率・エクイティ・最善手・キューブ判断を API の形に整え、日本語の要約を作る |
+| `analyzer/engine.py` | gnubg の呼び出し。gnubg はメインスレッド以外で落ちるので専用の子プロセスで動かす。キューブ判断（`hint` の表示を読む）と、gnubg が途中で切る手の補完もここ |
+| `analyzer/models.py`, `samples.py` | API のリクエストの型、`POST /samples`（「Pi に残す」の写真の保存と測り直し） |
 
 詳しくは [recognizer/README.md](recognizer/README.md) と [analyzer/README.md](analyzer/README.md) を見てください。
 

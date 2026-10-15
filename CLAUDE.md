@@ -26,7 +26,7 @@ uv run -q --no-project --with playwright python tools/pi_ui_check.py   # Pi の�
   Docker も `uv sync --frozen` で同じ `uv.lock` から入れる
 - **API は `--reload` や複数ワーカーで動かさない。** gnubg はメインスレッド以外で
   評価するとクラッシュするので、解析は専用の子プロセスで行っている
-  （`analyzer/analysis.py`）
+  （`analyzer/engine.py`）
 - **色の呼び方: white = 写真の手前のプレイヤー、black = 奥のプレイヤー。**
   `points[i]` は手前側から見たポイント i+1、正が white、負が black。
   認識と解析で揃えている

@@ -144,7 +144,7 @@ curl -s localhost:8000/analyze -H 'content-type: application/json' \
   `question` は `"double"`（ダブルすべきか）か `"take"`（`doubled: true` のとき。テイクかパスか）。`value` はダブルする前のキューブの数、
   `equity` はダブルする側から見たキューブありのエクイティ（ダブル前のキューブ 1 つ分を単位とする）。`too_good` はダブルせずギャモンを狙う方がよい局面。
   `proper` は gnubg の言葉そのまま。gnubg の Python モジュールにはキューブ判断を返す関数がないので、解析用の子プロセスで gnubg の
-  `hint` コマンドを実行し、表示された文字を読んでいる（`analysis.py` の `_cube_hint`）。
+  `hint` コマンドを実行し、表示された文字を読んでいる（`engine.py` の `_cube_hint`）。
 
 ### `POST /find-corners`（multipart）
 
