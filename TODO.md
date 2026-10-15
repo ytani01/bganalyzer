@@ -122,13 +122,13 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 
 ## TODO-051. 半径を前提に円を探す方法を本番に入れる（TODO-032 の案 5）
 
-- **担当:** 未定
+- **担当:** ai1（2026-10-15、このスレッドで着手）
 - TODO-032 の案 5（`radial.py`、放射対称変換）を試作したところ、Hough の代わりに使うと全サンプルで 525 → 536 になった
   （dark-homeleft 22 → 24、rollup-oblique 14 → 22。case-dice・nardy-midgame・set-cube-dice・photo2 が 1 ずつ下がる）。
-- [ ] 票の計算を CPU で変わらない形にする（Sobel は 16 ビット、票は整数の数と和、ぼかしは整数で。TODO-046）。結果が試作と変わったら測り直す
-- [ ] 速くする（今は 1 枚 5 秒 → 9 秒。`detect_checkers` の 4 回の呼び出しで票の地図を使い回す、半径の 3 段を減らすなど）。Pi で時間を測る
-- [ ] Hough と入れ替え、全サンプルで測って `check_accuracy.py --update`・`trace_cpu.py --update`、recognizer/README.md と版を上げる。
-  TODO-050（断面で 1 個だけの円を確かめる）と合わせたときも測る
+- [x] 票の計算を CPU で変わらない形にする（Sobel は 16 ビット、票は整数の数と和、ぼかしは整数の箱フィルタ 3 回。TODO-046）。試作と同じく 537
+- [x] 速くする（票の地図と山を画像・半径ごとに使い回す。半径を減らすと下がるので 3 段のまま。このクラウドで Hough 7.1 秒 → 10.3 秒）。Pi の時間は PI-035
+- [x] Hough と入れ替え、全サンプルで測って `check_accuracy.py --update`・`trace_cpu.py --update`、recognizer/README.md と版を上げる（recognizer 0.20.0、525 → 537）。
+  TODO-050（断面で 1 個だけの円を確かめる）と合わせたときは TODO-050 で測る
 
 ---
 
