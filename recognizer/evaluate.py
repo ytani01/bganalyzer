@@ -54,6 +54,12 @@ def run(path, debug=None, app=False, method="circles"):
         cube = {"at": "black" if t.get("on_roll", "white") == "white" else "white"}
     return pos, truth, wrong, bar_ok, (home == t["home"], margin), (info["dice"]["values"], want), (cube, cube_want)
 
+def same_cube(cube, cube_want):
+    # no cube in the photo is analysed as a cube in the centre, so count them the same (TODO-053);
+    # a cube read in the centre is still WRONG when the truth has it on one side
+    centre = (None, {"at": "centre"})
+    return cube == cube_want or (cube in centre and cube_want in centre)
+
 if __name__ == "__main__":
     # --app: shrink large photos the way the PWA does before sending them
     # --slots: count by slots (slots.py, experimental) instead of by circles
@@ -65,7 +71,7 @@ if __name__ == "__main__":
     for f in files:
         pos, truth, wrong, bar_ok, (home_ok, margin), (dice, want), (cube, cube_want) = run(f, app=app, method=method)
         dice_ok = "ok" if dice == want else "not read" if dice is None else "WRONG"
-        cube_ok = "ok" if cube == cube_want else "not found" if cube is None else "WRONG"
+        cube_ok = "ok" if same_cube(cube, cube_want) else "not found" if cube is None else "WRONG"
         print(f"{os.path.basename(f)}: {24 - len(wrong)}/24 points correct, bar {'ok' if bar_ok else 'wrong'}, "
               f"home guess {'ok' if home_ok else 'wrong'} ({margin:+.1f}), dice {dice_ok} (read {dice}, truth {want}), "
               f"cube {cube_ok} (read {cube and cube['at']}, truth {cube_want and cube_want['at']})")

@@ -77,7 +77,8 @@ recognizer・samples・依存を変える PR と main への push で走らせ�
   上の表と下の表のサンプルごとの値は、それより前の版で測ったもの）。
   recognizer 0.17.1（TODO-048）で 576 ポイント中 525（下の「1 個だけの駒の色」）。
   recognizer 0.20.0（TODO-051）で 576 ポイント中 537（円を Hough でなく放射対称で探す。下の「半径を前提に円を探す」）。
-  recognizer 0.20.1（PI-032）で 2 枚を足して 26 枚で 624 ポイント中 572（commons-lg-cube-dice 22、commons-wooden-dice 13。ほかは変わらない）
+  recognizer 0.20.1（PI-032）で 2 枚を足して 26 枚で 624 ポイント中 572（commons-lg-cube-dice 22、commons-wooden-dice 13。ほかは変わらない）。
+  TODO-053（recognizer 0.20.1 のまま、evaluate.py だけ）でポイントは変わらず、キューブが見つからないのを正解 centre と一致とするので、commons-lg-cube-dice と commons-rollup-oblique のキューブが ok になった
 - OpenCV の最適化を全部切る（`cv2.setUseOptimized(False)`）案は採らなかった。5 枚の結果が 1〜4 ポイント変わり、アプリと違う動きを測ることになるため
 - `--app`（PWA と同じに縮める）は CI では測らない。ブラウザとの画素の差で結果が動くため（上の段落）
 
@@ -375,6 +376,7 @@ k-means で分けた 2 つの色の中心までの近い方の距離が、2 つ�
    ダブルされたとして、正解の `at` と比べる。
 
 `samples/*.truth.json` の `cube`（`{"at": ...}`、なければキューブなし）が正解。`evaluate.py` が `cube ok / not found / WRONG` を出す。
+見つからないのと真ん中（`centre`）は、解析ではどちらもキューブ 1・真ん中で同じなので、一致として数える（TODO-053。下の表の「見つからない」は、正解が centre なら CI では ok）。
 
 当たり具合（2026-10-13、recognizer 0.6.1。0.6.2 は 2026-10-14 に Raspberry Pi だけで測って同じ。x86_64 では測っていない）:
 
@@ -384,7 +386,7 @@ k-means で分けた 2 つの色の中心までの近い方の距離が、2 つ�
 | commons-diagram-holding（盤面図） | 左の枠の真ん中に 64 | centre（当たり） |
 | screen2（XG の画面） | 左上に 2 | black（当たり） |
 | screen1（アプリ画面） | 右の枠の真ん中に 64（筆記体） | 見つからない（`dice.py` が 64 の字をダイスの目と読む） |
-| commons-rollup-oblique | 右のフィールドに立てたキューブ（斜めの写真で縦長に見える） | 見つからない |
+| commons-rollup-oblique | 右のフィールドに立てたキューブ（斜めの写真で縦長に見える。初期配置なので正解は centre） | 見つからない |
 | commons-set-cube-dice | 左の縁に 2（640x480 の小さな写真） | centre（当たり。0.6.1 から） |
 | tv-vegas-open | 右のフィールドの真ん中に 2（奥がダブルされたところ） | field（当たり。0.13.0 から。0.12.0 までは centre と読んで外れ） |
 | commons-lg-cube-dice（PI-032、0.20.1） | 左のトレイの真ん中に 64（赤い半透明のキューブ） | 見つからない |

@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-053。** これまでに 50 件を決着させた。
+**残っている項目: TODO-025、TODO-030。** これまでに 51 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-054`。**
 各項目の最初に **担当**（ai1 か、共同開発者のアカウント名、未定、引き継ぎ可）を書き、着手する前に自分の担当にしてコミットする
 （[docs/HANDOVER.md](docs/HANDOVER.md)）。
@@ -57,17 +57,6 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 - [ ] `recognizer/evaluate.py` で測り、読み違いを直して `recognizer/README.md` の「精度」を更新する
 - [ ] （TODO-032 から）`evaluate.py --slots` と `--section` でも測る。同じ色の三角形の上の駒（えんじ色の駒と赤い三角形）で円より当たるなら、
   食い違ったポイントだけ位置ごとの判定や断面を使う形を考える
-
----
-
-## TODO-053. キューブが写っていない写真を、真ん中のキューブと同じに数える
-
-- **担当:** ai1
-- **見込み:** main Opus 5.5 / effort medium（実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium）
-- 2026-10-15、collected/ の 16 組を recognizer 0.20.1 で測ると、キューブの食い違いが 12 組。多くはキューブが写っていない写真で、
-  読みは「無し」、正解は PWA の既定の「centre」。解析ではどちらもキューブ 1・真ん中で同じなので、一致として数える（ai1 が決めた）。
-- [ ] `recognizer/evaluate.py` のキューブの比較で、読み無しと正解 centre を一致にする（`collected.py` も同じ比較を使う）
-- [ ] `samples/` で数が変わるなら `check_accuracy.py --update`、recognizer/README.md の「精度」を直す
 
 ---
 
