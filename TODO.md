@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-061、TODO-062、TODO-063、TODO-064。** これまでに 58 件を決着させた。
+**残っている項目: TODO-025、TODO-030、TODO-061、TODO-062、TODO-063。** これまでに 59 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-065`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
@@ -64,20 +64,6 @@
 - [ ] analyzer の版を上げ、PI_CHECKS.md に項目を足す
 
 **無駄を省く工夫:** 色の値は `evaluate` でまとめて読む。画面は代表の 1 枚。バーの上下は同じ `drawStack` なので片側で確かめる
-
-## TODO-064. CI の無駄を減らす
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
-
-ユーザーが決めた（2026-10-16）: 文書だけの PR では `test` を走らせない。`cpu-match` はやめる（`accuracy` と全サンプルの読み取りが重なるため。arm64 は `test` の 1 サンプルで見る）。
-マージ後の main での再実行は残す。
-
-- [x] `test.yml` に `paths-ignore`（`**.md`・`docs/**`・`archives/**`）。CLAUDE.md の「test が通ってからマージ」に文書だけの PR は除くと書く
-- [x] `cpu-match.yml` を消し、文書を直す
-
-**無駄を省く工夫:** ワークフローの確認は PR 1 本で走らせて見る。手元（Pi）で全サンプルを流さない
 
 ---
 
