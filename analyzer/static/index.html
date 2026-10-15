@@ -19,11 +19,11 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 <body>
 <header>
   <!-- アプリ名とバージョン。どの画面でも同じ所に出す -->
-  <div class="brand"><span class="app-name">BG Analyzer</span><span id="hdr-version" class="hdr-version"></span></div>
+  <div class="brand"><img class="app-icon" src="icon.svg" alt="" width="20" height="20"><span class="app-name">BG Analyzer</span><span id="hdr-version" class="hdr-version"></span></div>
   <div class="bar">
     <button id="back" class="back" type="button" aria-label="前の画面に戻る" hidden>‹ 戻る</button>
     <div class="titles">
-      <h1 id="title">写真</h1>
+      <h1 id="title">写真の選択</h1>
     </div>
     <!-- その画面の主な操作。ヘッダーにだけ置き、スクロールしてもいつでも押せる -->
     <div class="actions">
@@ -38,10 +38,10 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <button id="to-board" class="act reuse" type="button">前に読み取った盤面を開く<small>読み取り直さずに、直した所もそのまま</small></button>
   </div>
   <nav id="steps">
-    <span data-step="photo">1 写真</span>
-    <span data-step="corners">2 四隅</span>
-    <span data-step="board">3 盤面・設定</span>
-    <span data-step="outcome">4 結果</span>
+    <span data-step="photo">1 写真の選択</span>
+    <span data-step="corners">2 四隅の調整</span>
+    <span data-step="board">3 盤面の確認/修正</span>
+    <span data-step="outcome">4 解析結果</span>
   </nav>
 </header>
 
@@ -201,8 +201,6 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <div id="result" class="result" hidden></div>
   </section>
 </main>
-
-<footer id="version" class="version"></footer>
 
 <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text"></p></div>
 
