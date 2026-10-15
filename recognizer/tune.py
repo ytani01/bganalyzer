@@ -8,7 +8,7 @@ settings are tried together. Nothing in the code is changed: the report says wha
 goes in as a PR like any other change to the recognizer (CLAUDE.md: the accuracy and CPU baselines).
 
   uv run python recognizer/tune.py                                   # samples/ (not the synthetic copies)
-  uv run python recognizer/tune.py --collected /data/samples         # and the pairs kept with 「Pi に残す」 (on the Pi)
+  uv run python recognizer/tune.py --collected collected             # and the pairs kept with 「Pi に残す」 (on the Pi)
   uv run python recognizer/tune.py --params checkers.CIRCLE_MIN_SCORE,checkers.STACK_SKEW --steps 0.9,1.1
   uv run python recognizer/tune.py --only photo2,photo3 --out tune.md
 

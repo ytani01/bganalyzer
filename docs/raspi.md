@@ -7,7 +7,7 @@
 flowchart LR
     phone["スマホ<br/>PWA"] -- "HTTPS :443" --> ts["Tailscale の中継<br/>（Funnel）"]
     subgraph pi["自宅の Raspberry Pi"]
-        tsd["tailscaled<br/>HTTPS 終端<br/>/bg/ → :8000"] -- "http://127.0.0.1:8000" --> app["app（docker compose）<br/>uvicorn + gnubg"]
+        tsd["tailscaled<br/>HTTPS 終端<br/>/bg/ → :8000"] -- "http://127.0.0.1:8000" --> app["bganalyzer.service（systemd）<br/>uvicorn + gnubg"]
     end
     ts <-- "Pi から外向きの接続だけ" --> tsd
     lan["家の LAN のブラウザ"] -- "http://<PiのIP>:8000" --> app
@@ -33,20 +33,28 @@ flowchart LR
 uname -m
 ```
 
-Docker を入れて、sudo なしで使えるようにします（入れたらログインし直す）。
+[uv](https://docs.astral.sh/uv/) を入れます。Pi を再起動したあとも、ログインしなくてもアプリが動くようにします（systemd のユーザー unit を使うため）。
 
 ```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
+curl -LsSf https://astral.sh/uv/install.sh | sh
+sudo loginctl enable-linger $USER
 ```
+
+`uv` のコマンドが使えるように、入れたらログインし直します。
 
 ## 2. アプリを起動して LAN で確かめる
 
 ```bash
 git clone https://github.com/ytani01/bganalyzer.git
 cd bganalyzer
-docker compose up -d --build
+uv sync --frozen
+mkdir -p ~/.config/systemd/user collected
+sed "s|@DIR@|$PWD|g" bganalyzer.service > ~/.config/systemd/user/bganalyzer.service
+systemctl --user daemon-reload
+systemctl --user enable --now bganalyzer
 ```
+
+`bganalyzer.service` の `@DIR@` をこのフォルダに置き換えて入れます。フォルダを移したら、同じ `sed` からやり直します。
 
 GNU Backgammon（gnubg）の Python パッケージは PyPI に arm64 用が無いので、このリポジトリの Release に置いた wheel を使います
 （`.github/workflows/gnubg-wheel.yml` でビルド。`uv.lock` が指している）。Pi の上でも `uv sync` / `uv run` はクラウドと同じに使えます。
@@ -87,14 +95,14 @@ tailscale funnel status
 
 | やること | コマンド（`bganalyzer` フォルダで） |
 |---|---|
-| 新しい版に更新する | `git pull && docker compose up -d --build` |
+| 新しい版に更新する | `git pull && uv sync --frozen && systemctl --user restart bganalyzer` |
 | 動いている版を見る | `curl http://127.0.0.1:8000/version`（アプリの画面のいちばん下にも出ます） |
-| ログを見る | `docker compose logs -f app` |
-| 止める | `docker compose down` |
+| ログを見る | `journalctl --user -u bganalyzer -f` |
+| 止める | `systemctl --user stop bganalyzer`（Pi を再起動すると、また立ち上がる） |
 | 公開の設定を見る | `tailscale funnel status` |
 
-- Pi を再起動しても、Docker がアプリを自動で立ち上げ直します（`restart: unless-stopped`）。
-- 更新は `main` を pull してビルドし直すだけです。依存が変わっていなければ数分で終わります。
+- Pi を再起動しても、落ちても、systemd がアプリを自動で立ち上げ直します（`Restart=always`）。
+- 更新は `main` を pull して依存を揃え、立ち上げ直すだけです。`bganalyzer.service` が変わったときだけは、「2.」の `sed` から `enable --now` までをやり直し、`systemctl --user restart bganalyzer` します。
 - 更新したら [PI_CHECKS.md](PI_CHECKS.md) の未確認の項目を確かめます（Pi の上の Claude Code に「PI_CHECKS を確かめて」と頼めます）。
 
 ## 精度改善用に集めた写真（`collected/`）
@@ -102,18 +110,17 @@ tailscale funnel status
 PWA の「解析の設定」で「Pi に残す」をオンにすると、解析するたびに写真と直した後の盤面が
 `bganalyzer/collected/` に `user-<id>.jpg` と `user-<id>.truth.json` の組で入ります（同じ写真を直し直すと上書き。上限 1000 組）。
 中身は `samples/*.truth.json` と同じ形で、認識が読んだ盤面（`read`）と直したポイント（`fixed_points`）も入っています。
-コンテナが root で書くので、消すときは `sudo rm` を使います。
 
 | やること | コマンド（`bganalyzer` フォルダで） |
 |---|---|
 | 何組あるか | `ls collected/*.truth.json \| wc -l` |
-| 今の認識で測る | `docker compose exec -T app python recognizer/collected.py /data/samples --force` → `collected/report.md` |
-| しきい値を試す（数時間。TODO-030） | `docker compose run --rm --no-deps -v ./samples:/app/samples app python recognizer/tune.py --collected /data/samples --out /data/samples/tune.md` → `collected/tune.md` |
+| 今の認識で測る | `uv run python recognizer/collected.py collected --force` → `collected/report.md` |
+| しきい値を試す（数時間。TODO-030） | `nice -n 19 uv run python recognizer/tune.py --collected collected --out collected/tune.md` → `collected/tune.md` |
 | 直した所の多い写真を見る | `grep -o '"fixed_points": \[[^]]*\]' collected/*.truth.json` |
 
 ### 自動で測り直す
 
-新しい組が 10 たまると、サーバーが組を保存したあとに `recognizer/collected.py` を走らせます（コンテナの中で、解析は止めません）。
+新しい組が 10 たまると、サーバーが組を保存したあとに `recognizer/collected.py` を走らせます（別のプロセスで、解析は止めません）。
 
 ```mermaid
 flowchart TD
@@ -126,13 +133,13 @@ flowchart TD
 - 読み違いのある組は直す材料なので消しません。読み違いの無い組は、直したことでほかが悪くならないかを確かめるのに使います。
 - `/samples` は公開で誰でも送れるので、正解の形が違う組は測らず、`report.md` には正解の中の文字を出しません（組の名前はサーバーが付けたもの）。
 - 認識を直すのは、Pi の Claude Code に「collected の report を見て直して」と頼んだときです（自動ではしません）。
-- すぐに測るときは `docker compose exec -T app python recognizer/collected.py /data/samples --force`。自動の測り直しが落ちたときの理由は `collected/measure.log` に残ります。
+- すぐに測るときは `uv run python recognizer/collected.py collected --force`。自動の測り直しが落ちたときの理由は `collected/measure.log` に残ります。
 - `collected/` を `recognizer/evaluate.py` で測ると、正解の中の文字がそのまま出て、形の違う組で止まります。`report.md` を使ってください。
 - **しきい値を試す**（`recognizer/tune.py`）: 認識のしきい値を 1 つずつ 0.8・0.9・1.1・1.2 倍にして、`samples/` と `collected/` の組を全部読み直し、
   ポイントが増えて、どの組のどの項目も悪くならない設定を `collected/tune.md` に書きます。コードは変えません（採るなら PR で）。
   全部を読み直すのを 70 回ほど繰り返すので、Pi では数時間かかります。読み取りは止めないので、使わない時間に走らせてください。
-  一部だけ試すときは `--params checkers.CIRCLE_MIN_SCORE,checkers.STACK_SKEW --steps 0.9,1.1`。`samples/` は写真ごとコンテナに入らないので、`-v` で渡しています。
-- 測り直しは API と同じコンテナで、いちばん低い優先度（`nice -n 19`）で動きます。
+  一部だけ試すときは `--params checkers.CIRCLE_MIN_SCORE,checkers.STACK_SKEW --steps 0.9,1.1`。
+- 測り直しは API の子プロセスとして、いちばん低い優先度（`nice -n 19`）で動きます。
 
 リポジトリの `samples/` へは自動では入れません。公開リポジトリなので、入れる写真は人の顔などが写っていないものを選んで、
 PR で足します（[CLAUDE.md](../CLAUDE.md)）。
@@ -160,8 +167,8 @@ sudo tailscale serve --bg --set-path /bg http://127.0.0.1:8000
 
 ## うまくいかないとき
 
-- **ビルドが途中で止まる・Pi が固まる:** メモリ不足の可能性があります。メモリ 1GB の Pi ではスワップを増やすか、Pi 4/5（2GB 以上）を使ってください。
-- **https で開くと 502 になる:** `docker compose ps` で app が動いているか、`curl http://127.0.0.1:8000/health` が `{"ok":true}` を返すかを確かめます。
+- **`uv sync` が途中で止まる・Pi が固まる:** メモリ不足の可能性があります。メモリ 1GB の Pi ではスワップを増やすか、Pi 4/5（2GB 以上）を使ってください。
+- **https で開くと 502 になる:** `systemctl --user status bganalyzer` で動いているか、`curl http://127.0.0.1:8000/health` が `{"ok":true}` を返すかを確かめます。
 - **スマホで開けない:** `tailscale funnel status` で `/bg` がインターネットに公開（Funnel）になっているか確かめます。公開直後は DNS が行き渡るまで数分かかることがあります。
 - **Pi の名前を変えたあと、スマホで `NET::ERR_CERT_COMMON_NAME_INVALID` になる:** 新しい名前が公開 DNS に載っていません
   （`dig +short @1.1.1.1 <Piの名前>.<tailnet名>.ts.net` が何も返さない）。Pi の中から開くと MagicDNS で直接つながるので、Pi からは気づけません。

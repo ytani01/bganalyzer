@@ -1,7 +1,7 @@
 """Measure the pairs kept with 「Pi に残す」 again, and drop old ones read right (docs/raspi.md).
 
-    python recognizer/collected.py /data/samples            # in the container
-    python recognizer/collected.py /data/samples --force    # even without NEW new pairs
+    uv run python recognizer/collected.py collected            # on the Pi
+    uv run python recognizer/collected.py collected --force    # even without NEW new pairs
 
 The server starts it after saving a pair, when NEW pairs came since the last time (analyzer/app.py).
 Writes report.md next to the pairs. Pairs with a misread are kept (they are what to fix); pairs read

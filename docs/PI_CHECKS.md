@@ -1,7 +1,7 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-039。** これまでに 38 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-040`。**
+**残っている項目: PI-039、PI-040。** これまでに 38 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-041`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
 マージしたあと、自宅の Raspberry Pi（公開している本番）でしか確かめられないことの一覧です。
@@ -10,7 +10,7 @@
 
 ## Pi の上の Claude Code がやること
 
-1. `bganalyzer` フォルダで `git pull` し、`docker compose up -d --build` でアプリを更新する（手順の詳細は [raspi.md](raspi.md) の「ふだんの運用」）。
+1. `bganalyzer` フォルダで `git pull` し、`uv sync --frozen && systemctl --user restart bganalyzer` でアプリを更新する（手順の詳細は [raspi.md](raspi.md) の「ふだんの運用」）。PI-040 が残っているあいだは unit がまだ無いので、先に PI-040 の手順で切り替える。
 2. `curl -s http://127.0.0.1:8000/version` が、pull した main の版とコミットになっているか確かめる。
 3. 残っている項目の `- [ ] Pi:` を確かめ、`- [x] Pi: 日付、コミット。測った値。OK か` に書き換える。
    スマホの画面の操作は、まず Pi の上のヘッドレスのブラウザで確かめる（下の「スマホの代わりに確かめる」）。
@@ -25,7 +25,7 @@
 
 Pi の上で、Playwright から `http://127.0.0.1:8000/` の PWA をスマホと同じ画面の大きさで操作する。
 ブラウザは Pi の `/usr/bin/chromium` を使い、Playwright は `uv run --no-project` でその場で入れる
-（Pi では `uv sync` が gnubg で落ちるため、pyproject.toml には入れていない）。
+（pyproject.toml には入れていない）。
 
 ```bash
 uv run -q --no-project --with playwright python tools/pi_ui_check.py           # 全部
@@ -62,7 +62,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 
 クラウドからは**やらない・できない**こと（Pi の Claude Code かユーザーに残す）:
 
-- `git pull` と `docker compose up -d --build`（Pi の更新そのもの）、コンテナのログ、`collected/` の中身
+- `git pull` と `systemctl --user restart bganalyzer`（Pi の更新そのもの）、アプリのログ、`collected/` の中身
 - `/samples` に送ること（Pi に写真が残る）。送ってよいのはリポジトリで公開している `samples/` の写真だけ
 - スマホ実機での操作（カメラ、共有、読み上げ、ホーム画面のアプリ）
 
@@ -84,6 +84,29 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
+
+## PI-040. 常駐を Docker から systemd（bganalyzer.service）に切り替える
+
+- **担当:** ai1（Pi の Claude Code）
+- **足した日・PR:** 2026-10-15（TODO-056）
+- **確かめ方:** `bganalyzer` フォルダで、次を順に行う（`collected/` はコンテナが root で作ったので、持ち主を戻す）。
+
+  ```bash
+  git pull && uv sync --frozen
+  docker rm -f bganalyzer-app-1          # compose.yaml はもう無いので、コンテナを名前で止めて消す
+  sudo chown -R $USER: collected
+  sudo loginctl enable-linger $USER
+  mkdir -p ~/.config/systemd/user
+  sed "s|@DIR@|$PWD|g" bganalyzer.service > ~/.config/systemd/user/bganalyzer.service
+  systemctl --user daemon-reload && systemctl --user enable --now bganalyzer
+  ```
+
+  そのあと `curl -s http://127.0.0.1:8000/version`、`uv run python tools/check_pi.py`（`/bg/` の公開）、
+  `uv run -q --no-project --with playwright python tools/pi_ui_check.py collect`（`collected/` に保存できる）。
+  Pi を再起動して、ログインしないまま `/version` が返ることも確かめる。
+  動いたら Docker のイメージを消す（`docker image rm bganalyzer`）。Docker 自体を消すかは ai1 に聞く
+- **期待:** `/version` が main のコミット、`check_pi.py` が OK、`collect` が OK、再起動のあとも立ち上がる
+- [ ] Pi: （結果をここに書く）
 
 ## PI-039. 作りを変えた PWA（analyzer 0.39.0）がスマホと Pi で前と同じに動く
 

@@ -49,8 +49,8 @@ def check_version(base):
     print(f"Pi: analyzer {v['analyzer']}, recognizer {v['recognizer']}, commit {v['commit']}, samples {v['samples']}")
     print(f"here: analyzer {local_versions()[0]}, recognizer {board.__version__}, commit {git('rev-parse', '--short=7', 'HEAD')}")
     # the docs-only commits after the Pi's don't need an update
-    changed = git("diff", "--name-only", v["commit"], "HEAD", "--", "analyzer", "recognizer", "Dockerfile",
-                  "compose.yaml", "pyproject.toml", "uv.lock")
+    changed = git("diff", "--name-only", v["commit"], "HEAD", "--", "analyzer", "recognizer",
+                  "bganalyzer.service", "pyproject.toml", "uv.lock")
     print("code changed since the Pi's commit:", changed.replace("\n", ", ") if changed else "none")
     return not changed
 
