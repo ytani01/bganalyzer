@@ -70,7 +70,7 @@ _RESULT = {
 def test_on_roll_label_follows_the_dice():
     # TODO-042: the label app.js rewrites ("振った人" with dice in, "次に振る人" without) is there
     assert '<span class="opt-label" id="onroll-label">次に振る人</span>' in client.get("/").text
-    assert "BgResult.rollWho(currentDice())" in (STATIC / "app.js").read_text()
+    assert "BgResult.rollWho(rolled(s))" in (STATIC / "app.js").read_text()
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
@@ -271,3 +271,44 @@ def test_sample_truth():
     p = out["plain"]
     assert p["cube"] == {"at": "centre"} and "cube_value" not in p
     assert "read" not in p and (p["off_white"], p["off_black"]) == (0, 0)
+
+
+def test_app_scripts_are_served_cached_and_loaded_before_app_js():
+    html = client.get("/").text
+    shell = (STATIC / "sw.js").read_text()
+    for name in ("board.js", "board-view.js", "corners-view.js", "api.js"):
+        assert client.get("/" + name).status_code == 200, name
+        assert html.index(f'src="{name}"') < html.index('src="app.js"'), name
+        assert f'"{name}"' in shell, name
+
+
+def _board_js(expr: str):
+    script = f"const B = require({json.dumps(str(STATIC / "board.js"))}); console.log(JSON.stringify({expr}));"
+    return json.loads(subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout)
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_board_model():
+    out = _board_js("""(() => {
+      const s = B.start();
+      const edited = B.edit(B.edit(B.edit(s, 0, "w+"), 0, "w+"), "bar", "b+");
+      return {
+        counts: B.counts(s), edited: [edited.points[0], edited.bar_black, s.points[0]],
+        errors: [B.errors(s), B.errors(B.edit(B.edit(s, 5, "w+"), 6, "w+")), B.errors({points: Array(24).fill(0), bar_white: 0, bar_black: 0})],
+        swapped: B.swapColours(B.edit(s, "bar", "w+")),
+        mirrorTwice: B.mirror(B.mirror(s)).points.join() === s.points.join(),
+        mirrored: B.mirror(s).points.slice(0, 12),
+        inverse: ["left", "right"].every((home) => [true, false].every((top) =>
+          [...Array(12).keys()].every((c) => { const i = B.pointAt(home, top, c), back = B.columnOf(home, i);
+                                               return back.top === top && back.c === c; }))),
+        clear: B.edit(s, 5, "clear").points[5], wMinusOnBlack: B.edit(s, 0, "w-").points[0],
+      };
+    })()""")
+    assert out["counts"] == {"onW": 15, "onB": 15, "offW": 0, "offB": 0}
+    assert out["edited"] == [2, 1, -2]   # "w+" on 奥's checkers starts 手前's stack; the start is not changed
+    assert out["errors"][0] == [] and out["errors"][1] == ["手前の駒が 17 個あります（15個まで）"]
+    assert out["errors"][2] == ["盤に駒がありません"]
+    assert out["swapped"]["points"][5] == -5 and out["swapped"]["bar_black"] == 1 and out["swapped"]["bar_white"] == 0
+    assert out["mirrorTwice"] and out["mirrored"] == [-5, 0, 0, 0, 3, 0, 5, 0, 0, 0, 0, -2]
+    assert out["inverse"]
+    assert out["clear"] == 0 and out["wMinusOnBlack"] == -2

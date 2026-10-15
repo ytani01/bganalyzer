@@ -47,7 +47,7 @@ flowchart TB
         samplesapi["samples.py<br/>/samples（Pi に写真を残す）"]
         worker["gnubg 子プロセス<br/>（そのメインスレッドで評価）"]
         test["test_api.py<br/>API のテスト"]
-        static["static/<br/>PWA（index.html, app.js,<br/>manifest, Service Worker）"]
+        static["static/<br/>PWA（index.html, app.js = state と render,<br/>board.js・board-view.js・corners-view.js・api.js など,<br/>manifest, Service Worker）"]
     end
 
     subgraph recognizer["recognizer/（ステップ1）"]

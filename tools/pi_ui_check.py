@@ -8,14 +8,14 @@ Run it on the Pi, next to the running app (docker compose). The browser is the P
 repository). The "collect" check saves one pair in collected/ and removes it again.
 What it cannot see stays for the phone: the voice itself, iPhone's share sheet, attaching files.
 """
-import json, re, subprocess, sys, tempfile
+import json, os, re, subprocess, sys, tempfile
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
-URL = "http://127.0.0.1:8000/"
-CHROMIUM = "/usr/bin/chromium"
+URL = os.environ.get("BG_URL", "http://127.0.0.1:8000/")          # elsewhere: the app under test
+CHROMIUM = os.environ.get("BG_CHROMIUM", "/usr/bin/chromium")    # elsewhere: a Chromium there
 COLLECTED = ROOT / "collected"
 SAMPLE = "screen1"   # an app screenshot with dice (4-2): read the same every time
 
@@ -47,12 +47,12 @@ def read_photo(page, cube=None):
     """Load the sample, put its corners where the truth has them, and read it."""
     truth = json.loads((ROOT / f"samples/{SAMPLE}.truth.json").read_text())
     page.set_input_files("#file", str(ROOT / "samples" / truth["image"]))
-    page.wait_for_function("state.cornerGuess !== 'finding'", timeout=60000)
+    page.wait_for_function("BgApp.state.cornerGuess !== 'finding'", timeout=60000)
     page.click(f'.seg[data-name="homePick"] [data-value="{truth["home"]}"]')
     page.click(f'.seg[data-name="bottomColour"] [data-value="{truth["bottom_colour"]}"]')
-    page.evaluate("c => { state.corners = c; state.cornersMoved = true; }", truth["corners_TL_TR_BR_BL"])
+    page.evaluate("c => BgApp.update({ corners: c, cornersMoved: true })", truth["corners_TL_TR_BR_BL"])
     if cube:   # a cube set by hand before reading, as when reading again after setting it
-        page.evaluate("c => setCube(c)", cube)
+        page.evaluate("c => BgApp.update({ cube: c })", cube)
     page.click("#recognize")
     page.wait_for_function("!document.querySelector('#board').hidden && document.querySelector('#busy').hidden",
                            timeout=120000)
@@ -68,8 +68,8 @@ def check_double(browser):
     """PI-017: a double set by hand, then a photo with dice: the best move, not 422."""
     page = open_app(browser)
     read_photo(page, {"at": "white", "value": 2, "offered": True})
-    dice = page.evaluate("currentDice()")
-    best = page.evaluate("state.result && state.result.moves && state.result.moves[0] && state.result.moves[0].move")
+    dice = page.evaluate("BgApp.rolled()")
+    best = page.evaluate("(r => r && r.moves && r.moves[0] && r.moves[0].move)(BgApp.state.result)")
     help_ = page.text_content("#cube-help")
     ok = not page.alerts and dice and best and help_ == "ダイスがあるので、最善手を出します。"
     return ok, f"dice={dice} best={best!r} cube-help={help_!r} alerts={page.alerts}"
@@ -105,9 +105,9 @@ def check_export(browser, *scripts):
         names = sorted(files)
         t = next((json.loads(p.read_text()) for n, p in files.items() if n.endswith(".truth.json")), {})
         image = files.get(t.get("image"))
-        board = page.evaluate("state.board.points")
+        board = page.evaluate("BgApp.state.board.points")
         ok = (len(files) == 2 and image and image.stat().st_size > 0 and t["points"] == board
-              and t["dice"] == page.evaluate("currentDice()") and t["home"] == truth["home"])
+              and t["dice"] == page.evaluate("BgApp.rolled()") and t["home"] == truth["home"])
     return ok, f"files={names} points_match={t.get('points') == board} dice={t.get('dice')} alerts={page.alerts}"
 
 
