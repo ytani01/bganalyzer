@@ -106,7 +106,10 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
   Pi を再起動して、ログインしないまま `/version` が返ることも確かめる。
   動いたら Docker のイメージを消す（`docker image rm bganalyzer`）。Docker 自体を消すかは ai1 に聞く
 - **期待:** `/version` が main のコミット、`check_pi.py` が OK、`collect` が OK、再起動のあとも立ち上がる
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-15、05e210c。手順どおり切り替え、`/version` は analyzer 0.39.0・recognizer 0.21.1・05e210c・samples true。
+  `check_pi.py` OK（photo2 20・photo3 24・photo4 22・screen1 24・screen2 23、手元と同じ）。`collect` OK（オフで 0 組、オンで 1 組、24/24、後片付け済み）。
+  イメージ `bganalyzer` は消した。OK
+- [ ] Pi: 再起動して、ログインしないまま `/version` が返るか（`sudo reboot` の直後に、Pi の Claude Code の会話は切れる。次に開いたときに確かめる）
 
 ## PI-039. 作りを変えた PWA（analyzer 0.39.0）がスマホと Pi で前と同じに動く
 
