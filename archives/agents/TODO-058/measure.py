@@ -19,7 +19,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 TRUTH = json.loads((P.ROOT / f"samples/{P.SAMPLE}.truth.json").read_text())
 STEPS = "steps" in sys.argv[1:] or True  # always measure the step list
 WIDTHS = [int(a) for a in sys.argv[1:] if a.isdigit()] or [390, 1000]
-PREFIX = next((f"todo058-{w}" for w in ("steps", "icon", "merge") if w in sys.argv[1:]), "todo058")
+PREFIX = next((f"todo058-{w}" for w in ("steps", "icon", "merge", "commit") if w in sys.argv[1:]), "todo058")
 
 MEASURE_JS = """() => {
   const r = (el) => { const b = el.getBoundingClientRect(); return {top: +b.top.toFixed(1), bottom: +b.bottom.toFixed(1), left: +b.left.toFixed(1), right: +b.right.toFixed(1)}; };
@@ -66,8 +66,11 @@ def measure(page, width, screen):
         page.wait_for_timeout(2000)
         m["verTextAfter2s"] = page.evaluate("document.querySelector('#hdr-version').textContent")
     m["width"], m["screen"] = width, screen
-    if True:
-        page.locator("header").screenshot(path=str(OUT / f"{PREFIX}-{width}-{screen}.png"))
+    name = f"{PREFIX}-{width}-{screen}"
+    if PREFIX == "todo058-commit":   # the normal state of commit 9deba5e: the commit-line checks too
+        m.update(page.evaluate(COMMIT_JS))
+        name = f"todo058-commit-normal-{width}" + ("" if screen == "photo" else f"-{screen}")
+    page.locator("header").screenshot(path=str(OUT / f"{name}.png"))
     print(json.dumps(m, ensure_ascii=False), flush=True)
 
 
@@ -96,8 +99,61 @@ def run(browser, width, full):
     page.close()
 
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path=P.CHROMIUM, args=["--no-sandbox"])
-    for w in WIDTHS:
-        run(browser, w, PREFIX != "todo058-steps" or w != 390)
-    browser.close()
+COMMIT_JS = """() => {
+  const hv = document.querySelector('#hdr-version'), title = document.querySelector('#title'), hdr = document.querySelector('header');
+  const rg = document.createRange(); rg.selectNodeContents(hv);
+  const lineTops = [...new Set([...rg.getClientRects()].map(b => Math.round(b.top)))];
+  const hb = hv.getBoundingClientRect(), tb = title.getBoundingClientRect();
+  return {
+    verText: hv.textContent, verClass: hv.className,
+    verScrollW: hv.scrollWidth, verClientW: hv.clientWidth, verScrollH: hv.scrollHeight, verClientH: hv.clientHeight,
+    verLines: lineTops.length, verTop: +hb.top.toFixed(1), verBottom: +hb.bottom.toFixed(1), verRight: +hb.right.toFixed(1),
+    verRightOk: hb.right <= innerWidth + 0.5, verOverlapsTitle: hb.bottom > tb.top + 0.5, titleTop: +tb.top.toFixed(1),
+    headerH: +hdr.getBoundingClientRect().height.toFixed(1),
+    footerCount: document.querySelectorAll('footer').length, versionEl: !!document.querySelector('#version'),
+    docScrollW: document.documentElement.scrollWidth, innerW: innerWidth,
+  };
+}"""
+
+
+def measure_commit(page, width, screen, state):
+    m = page.evaluate(COMMIT_JS)
+    m.update(width=width, screen=screen, state=state, title=page.evaluate("document.querySelector('#title').textContent"))
+    page.locator("header").screenshot(path=str(OUT / f"todo058-commit-{state}-{width}{'' if screen == 'photo' else '-' + screen}.png"))
+    print(json.dumps(m, ensure_ascii=False), flush=True)
+
+
+def open_commit(browser, width, analyzer=None):
+    page = browser.new_page(viewport={"width": width, "height": 844})
+    page.add_init_script(P.INIT)
+    page.on("dialog", lambda d: d.dismiss())
+    if analyzer:   # the server says another analyzer version than the page's
+        def fake(route):
+            resp = route.fetch(); d = resp.json(); d["analyzer"] = analyzer
+            route.fulfill(response=resp, json=d)
+        page.route("**/version", fake)
+    page.goto(P.URL)
+    page.wait_for_function("document.querySelector('#hdr-version').textContent.trim() !== ''")
+    return page
+
+
+def main(argv):
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=P.CHROMIUM, args=["--no-sandbox"])
+        if "commit" in argv:
+            for w in (390, 1000):   # A: the usual state, all four screens
+                run(browser, w, True)
+            for ana, state in (("0.40.1", "old-0.40.1"), ("0.40.3", "old-0.40.3")):   # B: versions differ
+                page = open_commit(browser, 390, ana)
+                page.wait_for_function("document.querySelector('#hdr-version').classList.contains('old')", timeout=10000)
+                page.wait_for_timeout(300)
+                measure_commit(page, 390, "photo", state)
+                page.close()
+        else:
+            for w in WIDTHS:
+                run(browser, w, PREFIX != "todo058-steps" or w != 390)
+        browser.close()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
