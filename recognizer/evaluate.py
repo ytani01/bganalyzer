@@ -44,13 +44,15 @@ def run(path, debug=None, app=False, method="circles"):
     home, margin = home_prior.guess(read if t["home"] == "right" else home_prior.mirror(read))
     # dice: the pair read with confidence (None when not sure) against the truth's (None when no pair can be read)
     want = t.get("dice") and sorted(t["dice"], reverse=True)
-    # cube: where it lies ({"at": ...}) against the truth's (None when there is no cube)
+    # cube: where it lies ({"at": ...}) against the truth's (None when there is no cube);
+    # the truth's "value" is not read yet, so only "at" is compared
     cube = info["cube"] and {"at": info["cube"]["at"]}
+    cube_want = t.get("cube") and {"at": t["cube"]["at"]}
     if cube and cube["at"] == "field":
         # in a playing field: just doubled by the side on roll (the truth's on_roll, else 手前),
         # so it was offered to the other side (TODO-045)
         cube = {"at": "black" if t.get("on_roll", "white") == "white" else "white"}
-    return pos, truth, wrong, bar_ok, (home == t["home"], margin), (info["dice"]["values"], want), (cube, t.get("cube"))
+    return pos, truth, wrong, bar_ok, (home == t["home"], margin), (info["dice"]["values"], want), (cube, cube_want)
 
 if __name__ == "__main__":
     # --app: shrink large photos the way the PWA does before sending them

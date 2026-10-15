@@ -29,6 +29,12 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 2026-10-15（ai1）: ネットにある写真も探す。クラウドからは Wikimedia Commons に届かないので、Pi の Claude Code に頼んだ
 （[docs/PI_CHECKS.md](docs/PI_CHECKS.md) の PI-032）。ai1 の写真も引き続き待つ。
 
+2026-10-15（PI-032 の結果）: 片側にあるキューブの値ごとの枚数は 2 が 1 枚（`samples/external/galaxy-cube2-near`、Backgammon Galaxy の説明記事。
+盤がかなり斜めで、ケースの左右が同じ平面に無い）、4・8・16 は 0 枚。真ん中の 64 が 1 枚（`commons-lg-cube-dice`）、ダイスだけのものが 1 枚（`commons-wooden-dice`）。
+探したところ: Wikimedia Commons（Backgammon・Doubling cubes などのカテゴリと検索）、Openverse（Flickr などの CC の写真 357 件。ほとんど人が写っている）、
+ダブルの説明ページ、YouTube のサムネイル（ほとんど題字）。X・Facebook はログインが要るので探せず、Unsplash・Pixabay・Pexels は API キーが無いと探せない。
+有望なのは大会の配信（真上から盤を映し、2・4・8 のキューブが片側にある場面が多い）だが、動画からコマを切り出す必要があり、画像をどう扱うかを決めていない。
+
 ---
 
 ## TODO-030. ai1 の盤の写真と直した盤面で、認識の精度を上げる
