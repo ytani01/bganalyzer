@@ -2,6 +2,7 @@
 
 `archives/pi/` の一覧（新しい順）。残っている項目は [docs/PI_CHECKS.md](../../docs/PI_CHECKS.md) にある。
 
+- [PI-040. 常駐を Docker から systemd（bganalyzer.service）に切り替える](PI-040.%20%E5%B8%B8%E9%A7%90%E3%82%92%20Docker%20%E3%81%8B%E3%82%89%20systemd%EF%BC%88bganalyzer.service%EF%BC%89%E3%81%AB%E5%88%87%E3%82%8A%E6%9B%BF%E3%81%88%E3%82%8B.md)
 - [PI-037. 読み取りの途中経過で、四隅の合わせ直しが 0.5 秒ずつ出る（analyzer 0.38.1）](PI-037.%20%E8%AA%AD%E3%81%BF%E5%8F%96%E3%82%8A%E3%81%AE%E9%80%94%E4%B8%AD%E7%B5%8C%E9%81%8E%E3%81%A7%E3%80%81%E5%9B%9B%E9%9A%85%E3%81%AE%E5%90%88%E3%82%8F%E3%81%9B%E7%9B%B4%E3%81%97%E3%81%8C%200.5%20%E7%A7%92%E3%81%9A%E3%81%A4%E5%87%BA%E3%82%8B%EF%BC%88analyzer%200.38.1%EF%BC%89.md)
 - [PI-038. gnubg を Release の wheel から入れても、Pi で動く（TODO-055）](PI-038.%20gnubg%20%E3%82%92%20Release%20%E3%81%AE%20wheel%20%E3%81%8B%E3%82%89%E5%85%A5%E3%82%8C%E3%81%A6%E3%82%82%E3%80%81Pi%20%E3%81%A7%E5%8B%95%E3%81%8F%EF%BC%88TODO-055%EF%BC%89.md)
 - [PI-036. キューブの数字を読む（recognizer 0.21.0、analyzer 0.38.0）](PI-036.%20%E3%82%AD%E3%83%A5%E3%83%BC%E3%83%96%E3%81%AE%E6%95%B0%E5%AD%97%E3%82%92%E8%AA%AD%E3%82%80%EF%BC%88recognizer%200.21.0%E3%80%81analyzer%200.38.0%EF%BC%89.md)

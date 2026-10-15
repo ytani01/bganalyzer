@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-056。** これまでに 53 件を決着させた。
+**残っている項目: TODO-025、TODO-030。** これまでに 54 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-057`。**
 
 ---
@@ -62,21 +62,6 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 - [ ] `recognizer/evaluate.py` で測り、読み違いを直して `recognizer/README.md` の「精度」を更新する
 - [ ] （TODO-032 から）`evaluate.py --slots` と `--section` でも測る。同じ色の三角形の上の駒（えんじ色の駒と赤い三角形）で円より当たるなら、
   食い違ったポイントだけ位置ごとの判定や断面を使う形を考える
-
----
-
-## TODO-056. Docker をやめ、Pi の常駐を uv と systemd にする
-
-|      | main | 担当 |
-|------|------|------|
-| 見込み | Opus 5.5 / effort medium | implementer（Sonnet 5.5 / medium）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
-
-TODO-055 で Pi でも `uv sync` が通るようになるので、Docker は要らなくなる。Docker は残さず消す（2026-10-15 ユーザーが決めた）。
-
-- [x] Pi の常駐を systemd の unit（`uv run uvicorn ...`、自動で再起動、`BG_SAMPLES_DIR` と `collected/`）にし、リポジトリに置く（`bganalyzer.service`。ユーザー unit で、入れるときに `@DIR@` を置き換える）
-- [x] Dockerfile・.dockerignore・compose.yaml・`.github/workflows/docker.yml` を消す。docker の CI が確かめていた「起動して解析まで」は、残る CI か Pi の確認に移す（`test` の CI に、uvicorn を起動して解析・写真認識・`/version` まで試す手順を足した）
-- [x] README・CLAUDE.md・docs/raspi.md・docs/HANDOVER.md・docs/PI_CHECKS.md の Docker の手順を直す（`rg -n -i -e docker -e compose --glob '!archives/**'`）
-- [x] Pi で Docker から systemd へ切り替える手順を PI_CHECKS に足す（`/version`、`/bg/` の公開、`collected/` の保存が続くこと）→ PI-040
 
 ---
 
