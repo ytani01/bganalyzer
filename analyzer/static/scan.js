@@ -57,21 +57,21 @@
   const CYAN = "79, 227, 255", GREEN = "125, 255, 154";
   // How long each stage stays on screen (ms), by the stage's name as the server sends it.
   // Change a number here to make that stage shorter or longer; a stage not listed gets DEFAULT_STAGE_MS.
-  const DEFAULT_STAGE_MS = 1000;
+  const DEFAULT_STAGE_MS = 500;
   const STAGE_MS = {
     // the search for the corners, after a photo is loaded (/find-corners)
-    edges: 1000,       // 横の縁（奥と手前）の候補の直線
-    uprights: 1000,    // 縦の縁（左右）の候補の直線
-    candidates: 1000,  // 盤らしい四角形の候補を比べる
-    corners: 1000,     // 四隅が決まる
+    edges: 500,       // 横の縁（奥と手前）の候補の直線
+    uprights: 500,    // 縦の縁（左右）の候補の直線
+    candidates: 500,  // 盤らしい四角形の候補を比べる
+    corners: 500,     // 四隅が決まる
     // the reading (/analyze-photo)
     fit: 500,          // 四隅の合わせ直し（枠の線で 2 回、三角形の並びで 2 回。1 回ごとに）
-    board: 1000,       // 枠と列（段階を流さないサーバーのとき）
-    tips: 1000,        // 三角形の先
-    checkers: 1000,    // 駒の円
-    counts: 1000,      // ポイントごとの数
-    dice: 1000,        // ダイス
-    cube: 1000,        // キューブ
+    board: 500,       // 枠と列（段階を流さないサーバーのとき）
+    tips: 500,        // 三角形の先
+    checkers: 500,    // 駒の円
+    counts: 500,      // ポイントごとの数
+    dice: 500,        // ダイス
+    cube: 500,        // キューブ
   };
   const stageMs = (stage) => (stage in STAGE_MS ? STAGE_MS[stage] : DEFAULT_STAGE_MS);
 
