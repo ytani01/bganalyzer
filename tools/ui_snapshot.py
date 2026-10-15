@@ -53,7 +53,7 @@ SNAP = """() => {
   }
   const shown = {};
   for (const id of ['back', 'recognize', 'hdr-reuse', 'analyze', 'speak', 'busy', 'errors', 'home-note',
-                    'editor-buttons', 'dice-note', 'cube-note', 'cube-side', 'photo-tools', 'photo-wrap', 'result',
+                    'palette', 'dice-note', 'cube-note', 'cube-side', 'photo-tools', 'photo-wrap', 'result',
                     'export-sample', 'history']) shown[id] = vis(id);
   return {
     step: [...document.querySelectorAll('section.step')].filter((s) => !s.hidden).map((s) => s.id),
@@ -61,6 +61,10 @@ SNAP = """() => {
     cornerHelp: html('corner-help'), recognizeDisabled: vis('recognize') ? el('recognize').disabled : null,
     canvas: vis('photo-canvas') ? hash(el('photo-canvas').toDataURL()) : null,
     counts: html('counts'), errors: txt('errors'), homeNote: txt('home-note'), editor: txt('editor-title'),
+    palette: vis('palette') ? [txt('palette-title'), ...['#palette-side .on', '#palette-counts .on'].map((q) => {
+      const e = document.querySelector(q); return e && (e.dataset.value || e.dataset.n); })] : null,
+    paintSide: vis('paint-side') ? document.querySelector('#paint-side .on')?.dataset.value : null,
+    undo: vis('undo') ? !el('undo').disabled : null,
     cubeHelp: txt('cube-help'), rollLabel: txt('onroll-label'),
     dice: vis('die1') ? [el('die1').value, el('die2').value] : null,
     cube: vis('cube-side') ? [el('cube-value').value, el('cube-offered').checked] : null,
@@ -102,11 +106,26 @@ class Run:
     def seg(self, name, value):
         self.page.click(f'.seg[data-name="{name}"] [data-value="{value}"]')
 
-    def point(self, k, svg="#board-svg"):   # the k-th tap area of a board picture (the last is the bar)
+    def point(self, k, svg="#board-svg"):   # the middle of the k-th tap area of a board picture (24, 25: the bar)
         self.page.locator(f"{svg} .hit").nth(k).click()
 
-    def op(self, o):                        # a button of the board editor
-        self.page.click(f'#editor-buttons [data-op="{o}"]')
+    def tap(self, k, level, svg="#board-svg"):   # level 1..5 from the board's edge of the k-th tap area
+        hit = self.page.locator(f"{svg} .hit").nth(k)
+        top = k < 12 or k == 24                  # 0..11 the upper row, 12..23 the lower, 24/25 the bar's halves
+        f = (level - 0.5) * 38 / 196             # the level's middle, as a fraction of the half
+        box = hit.bounding_box()
+        hit.click(position={"x": box["width"] / 2, "y": box["height"] * (f if top else 1 - f)})
+
+    def number(self, k):                    # the number of the k-th point: empties it
+        self.page.locator("#board-svg .hit-num").nth(k).click()
+
+    def hold(self, k):                      # the palette of the k-th tap area (a right click, as a long press)
+        self.page.locator("#board-svg .hit").nth(k).click(button="right")
+
+    def pick(self, n, side=None):           # in the palette: the colour, then the count
+        if side:
+            self.page.click(f'#palette-side [data-value="{side}"]')
+        self.page.click(f'#palette-counts [data-n="{n}"]')
 
     def choose(self, selector, value):
         self.page.select_option(selector, value)
@@ -128,14 +147,19 @@ def flow_manual(r):
     r.open()
     r.snap("start")
     r.click("#manual"); r.snap("manual")
-    r.point(0); r.snap("select 13")
-    r.op("w+"); r.op("w+"); r.snap("w+ twice")
-    r.op("b+"); r.snap("b+")
-    r.op("b-"); r.op("w-"); r.snap("b- w-")
-    r.point(5); r.op("clear"); r.snap("clear")
-    r.point(17); r.op("close"); r.snap("close")
-    r.page.locator("#board-svg .hit").last.click(); r.op("w+"); r.op("b+"); r.op("b+"); r.snap("bar")
-    r.op("b-"); r.op("clear"); r.point(12); r.point(12); r.snap("bar cleared, select twice")
+    r.tap(0, 2); r.snap("tap level 2 of 13")
+    r.tap(0, 2); r.snap("tap the top checker")
+    r.tap(1, 3); r.snap("tap an empty point")
+    r.click('#paint-side [data-value="black"]'); r.tap(2, 2); r.snap("奥's colour on an empty point")
+    r.tap(18, 5); r.tap(18, 5); r.snap("5th level of 5: two more")
+    r.number(5); r.snap("number: emptied")
+    r.hold(17); r.snap("palette")
+    r.pick(4, "white"); r.snap("palette: 手前 4")
+    r.hold(17); r.click("#palette-close"); r.snap("palette closed")
+    r.hold(17); r.click("#counts"); r.snap("palette closed by a tap outside")
+    r.tap(25, 1); r.tap(24, 2); r.snap("bar")
+    r.hold(24); r.pick(0); r.snap("bar: 奥 0 from the palette")
+    r.click("#undo"); r.click("#undo"); r.snap("undo twice")
     r.click("#swap-colours"); r.snap("swap colours")
     r.click("#flip-home"); r.snap("flip home")
     r.choose("#die1", "3"); r.snap("one die")
@@ -151,7 +175,7 @@ def flow_manual(r):
     r.go("#analyze", "outcome"); r.snap("analysed: cube decision")
     r.click("#speak"); r.snap("read aloud")
     r.go("#back", "board")
-    r.point(0); r.op("w-"); r.op("close"); r.snap("one of 手前's checkers borne off: 手前 leads the race")
+    r.tap(0, 1); r.snap("one of 手前's checkers borne off: 手前 leads the race")
     r.choose("#die1", "6"); r.choose("#die2", "5"); r.snap("dice 6-5: result stale")
     r.go("#analyze", "outcome"); r.snap("analysed: best moves")
     if r.page.locator("#result .moves li").count() > 1:
@@ -174,6 +198,7 @@ def flow_photo(r):
     r.go("#recognize", "board"); r.snap("photo read")
     r.seg("photoView", "off"); r.snap("photo hidden")
     r.seg("photoView", "side"); r.point(3, "#photo-svg"); r.snap("tap on the photo")
+    r.click("#undo"); r.snap("undo the tap")
     r.go("#analyze", "outcome"); r.snap("analysed")
     r.go("#back", "board"); r.go("#back", "corners"); r.snap("back to the corners")
     r.go("#hdr-reuse", "board"); r.snap("board again (header)")
