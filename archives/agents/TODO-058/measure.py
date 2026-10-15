@@ -19,7 +19,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 TRUTH = json.loads((P.ROOT / f"samples/{P.SAMPLE}.truth.json").read_text())
 STEPS = "steps" in sys.argv[1:] or True  # always measure the step list
 WIDTHS = [int(a) for a in sys.argv[1:] if a.isdigit()] or [390, 1000]
-PREFIX = ("todo058-steps" if "steps" in sys.argv[1:] else "todo058-icon" if "icon" in sys.argv[1:] else "todo058")
+PREFIX = next((f"todo058-{w}" for w in ("steps", "icon", "merge") if w in sys.argv[1:]), "todo058")
 
 MEASURE_JS = """() => {
   const r = (el) => { const b = el.getBoundingClientRect(); return {top: +b.top.toFixed(1), bottom: +b.bottom.toFixed(1), left: +b.left.toFixed(1), right: +b.right.toFixed(1)}; };

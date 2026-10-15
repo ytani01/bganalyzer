@@ -89,3 +89,31 @@
 - 実害は未確認。Safari など別のブラウザでの見え方は確かめていない。
 - アイコンの絵柄が意図どおりかは見ていない（読み込まれ、表示されたことだけを確かめた）。
 - 判断が要る点は無し。
+
+## 追加の確認（3）（コミット 3aecff6、main を取り込み。読み上げボタン `#speak` が絵文字からスピーカーの絵と文字に）
+
+実施: 2026-10-16、Pi 上。`systemctl --user restart bganalyzer` のあと `/version` は `{"analyzer":"0.40.2","recognizer":"0.21.2","commit":"3aecff6","samples":true}`（期待どおり）。
+測定は `archives/agents/TODO-058/measure.py merge 390 1000`（終了コード 0）。出力は `archives/agents/TODO-058/measure-merge-output.txt`。
+スクリーンショットは `~/tmp/playwright-mcp/todo058-merge-<幅>-<画面>.png`（8 枚）。
+
+### 解析結果の画面（重点）
+
+- 390px: `#title`「解析結果」scrollWidth 165 == clientWidth 165（切れなし）。`#speak`（読み上げ）は left 259.3・right 374、`beyondRight: false`。横のはみ出しなし（docScrollW 390 == innerW 390、headerRightOverflow false）。
+- 1000px: `#title`「解析結果」scrollWidth 775 == clientWidth 775（切れなし）。`#speak` は left 869.3・right 984、`beyondRight: false`。横のはみ出しなし（1000 == 1000）。
+- 食い違いの扱い: `#title` の箱の幅が前回より狭くなった（390px で 234 → 165、1000px で 844 → 775）。`#speak` が広くなったぶん、タイトルの箱が縮んだため。文字は切れていない（scrollWidth == clientWidth）。期待に反する値ではないが、前回と同じではない。
+
+### 前回と同じ値（まとめ）
+
+- 写真の選択・四隅の調整・盤面の確認/修正の 3 画面（390・1000 とも）: タイトルの文字と幅（350 / 141 / 189、960 / 751 / 799）、ボタンの位置（top 31.3）、はみ出しなし、版「v0.40.2 · r0.21.2」（省略なし、87 == 87）は前回と一致。
+- `.app-icon`（complete true、naturalWidth 150、20px、同じ行、中心の差 0）と `.app-name`（16px、700）は前回と一致。
+- 手順表示（1000px、最も右の right: 434.9 / 449.4 / 464 / 478.5）は前回と一致。390px は非表示のまま。
+
+### スクリーンショットの目視
+
+390px・1000px の解析結果の画面を見た。アイコン・「BG Analyzer」・版・「戻る」・「解析結果」・「読み上げ」の文字が欠けたり重なったりしていない。読み上げボタンは右端の内側に収まっている。デザインは評価していない。
+
+### 確かめられなかったこと
+
+- 判断が要る点は無し。
+- 実害は未確認。Safari など別のブラウザでの見え方は確かめていない。
+- 読み上げの音声は測っていない（ヘッドレスでは出ない）。
