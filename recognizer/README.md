@@ -434,6 +434,22 @@ PI-032 で足した 2 枚（commons-lg-cube-dice と external の galaxy-cube2-n
 本物のキューブの写真が手に入ったら `samples/` に入れて確かめる（`truth.json` の `cube` に `value` を書く。`evaluate.py` が「number ok / not read / WRONG」を出し、
 `check_accuracy.py` が `cube_value` として、片側か盤の中にあるときだけ比べる）。
 
+## しきい値を試す（`tune.py`、TODO-030）
+
+ユーザーの写真（「Pi に残す」で集まった `collected/`）が増えたときに、読み取りのしきい値を直すための道具。
+`PARAMS` の定数（駒の円の点数、山の傾き、色の許し幅、ダイスの目のコントラスト、キューブの真ん中の幅・数字の点数など 17 個）を
+1 つずつ 0.8・0.9・1.1・1.2 倍にして全部のサンプルを読み直し、`check_accuracy.py` と同じ項目（ポイント・バー・ホーム・ダイス・キューブ・キューブの数字）で
+今の設定と比べる。**ポイントが増え、どのサンプルのどの項目も悪くならない**ものだけを候補にし、最後に候補を全部一緒に変えた結果も出す。
+コードは変えない（採るなら定数を変える PR を作り、`check_accuracy.py --update` と `trace_cpu.py --update` を同じ PR に入れる）。
+関数の既定値に使われている定数は、あとから変えても届かないので試さない（表にそう出る）。貼り込んだ `synth-cube-*` は、ポイントが元の写真と二重になるので使わない。
+
+```bash
+uv run python recognizer/tune.py                                       # samples/ だけ（このクラウドで 3 時間ほど）
+uv run python recognizer/tune.py --only photo2,photo3 --params board.STACK_SKEW --steps 0.9,1.1   # 一部だけ
+```
+
+Pi での走らせ方は [docs/raspi.md](../docs/raspi.md) の「精度改善用に集めた写真」。
+
 ## 撮影の傾きの警告
 
 `recognize()` の `info` に `tilt_deg`（タップした四隅から推定した、真上からの傾き。0° が真上）と
