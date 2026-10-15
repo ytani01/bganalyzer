@@ -39,5 +39,6 @@ verifier が Pi のヘッドレスの Chromium で photo2 を読み取り、段�
 ## 分担の振り返り
 
 - verifier は表示時間を測り、ふだんの使い方では fit の 2〜4 回目がサーバー待ちになることを見つけた。main はこれに気づいていなかった
+- CI の pytest で `test_photo_view.py::test_stage_times_are_in_one_table`（表示時間がすべて 1 秒）が落ちた。verifier の pytest は docker のイメージで走らせたので、Node.js が要るこのテストは飛ばされていた（11 skipped）。main がテストを fit 500・他 1000 に直し、1000 に戻すと落ちることを確かめた
 - 見込みどおりの編成。verifier は測り方を 2 回組み直して読み取りを 3 回走らせた
-- 次に `STAGE_MS` だけを変えるときは、依頼に「応答をまとめて届けて STAGE_MS どおりの時間を測る」と「ふだんの応答でも 1 回測る」の 2 つを最初から書く。測り直しの分が減る
+- 次に `STAGE_MS` だけを変えるときは、依頼に「応答をまとめて届けて STAGE_MS どおりの時間を測る」と「ふだんの応答でも 1 回測る」の 2 つを最初から書く。測り直しの分が減る。Pi での pytest は skipped の中身も見させ、Node.js のテストは `--no-project --with` で別に走らせる

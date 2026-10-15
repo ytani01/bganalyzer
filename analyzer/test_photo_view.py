@@ -105,7 +105,8 @@ def test_stage_times_are_in_one_table():
     out = json.loads(subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout)
     stages = {"edges", "uprights", "candidates", "corners", "fit", "board", "tips", "checkers", "counts", "dice", "cube"}
     assert set(out["ms"]) == stages
-    assert set(out["ms"].values()) == {1000} and out["dflt"] == 1000   # one second each (2026-10-15)
+    assert out["ms"]["fit"] == 500   # each round of fitting the corners: half a second (2026-10-15)
+    assert {v for k, v in out["ms"].items() if k != "fit"} == {1000} and out["dflt"] == 1000   # the rest: one second each
 
 
 def test_analyze_photo_returns_cube_square():
