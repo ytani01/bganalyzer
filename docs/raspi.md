@@ -48,8 +48,8 @@ cd bganalyzer
 docker compose up -d --build
 ```
 
-初回のビルドは時間がかかります。GNU Backgammon（gnubg）の Python パッケージには arm64 用のビルド済みのものがないので、
-Dockerfile がソースからビルドします（GitHub の arm64 マシンでは gnubg のビルドが 30 秒ほど。Pi 4 ではその数倍かかる見込み）。2回目以降はキャッシュが効きます。
+GNU Backgammon（gnubg）の Python パッケージは PyPI に arm64 用が無いので、このリポジトリの Release に置いた wheel を使います
+（`.github/workflows/gnubg-wheel.yml` でビルド。`uv.lock` が指している）。Pi の上でも `uv sync` / `uv run` はクラウドと同じに使えます。
 
 起動したら、同じ LAN の PC かスマホで `http://<PiのIP>:8000/` を開いて、写真の解析ができることを確かめます。
 Pi の IP は `hostname -I` でわかります。

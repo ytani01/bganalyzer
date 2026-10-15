@@ -87,7 +87,7 @@ docker build -t bganalyzer .
 docker run --rm -p 8000:8000 bganalyzer     # http://localhost:8000/
 ```
 
-x86_64 と arm64（Raspberry Pi）の両方でビルドできる。arm64 には gnubg の wheel がないので、ソースからビルドする。
+x86_64 と arm64（Raspberry Pi）の両方でビルドできる。arm64 の gnubg は PyPI に wheel がないので、このリポジトリの Release に置いた wheel を使う（`.github/workflows/gnubg-wheel.yml`）。
 自宅の Raspberry Pi で公開する手順は [docs/raspi.md](../docs/raspi.md)（`compose.yaml` と Tailscale Funnel）。PWA は API を相対パスで呼ぶので、`/bg/` のようなパスの下に置いても動く。
 
 ## API
