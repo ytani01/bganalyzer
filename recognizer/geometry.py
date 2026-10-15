@@ -258,6 +258,7 @@ OBLIQUE_WARN_DEG = 40   # samples: top-down shots 0-23 degrees, photo1 69
 
 COL_MIN_SCORE = 1.0
 MAX_GAP = 2.5          # fit_columns: the most points between the fields' innermost columns (bar + 1)
+MIN_GAP = 1.4          # ... and the least (TODO-062)
 SHIFT_TIE = 0.6        # ... beyond it a field moved one point in may score this much less
 BAR_GAIN = 0.1         # ... if what it leaves between the fields looks this much more like a bar
 
@@ -325,6 +326,24 @@ def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
         if not moves:
             break
         *_, f, alt, k = min(moves, key=lambda mv: mv[:2])
+        fits[f] = [alt, fits[f][1], k]
+    # The other way (TODO-062): in photos of a screen a field may slip one point inwards, leaving less
+    # between the fields than any bar. Then move a field one point out, the one that loses least.
+    def placed(f):
+        best = fits[f][0]
+        return best[1] if best[0] >= COL_MIN_SCORE else (0.0, lay.a + lay.bar)[f] + lay.a / 2 + (np.arange(6) - 2.5) * lay.pw
+    for _ in range(2):
+        if placed(1)[0] - placed(0)[5] >= MIN_GAP * lay.pw:
+            break
+        moves = []
+        for f, step in ((0, -1), (1, 1)):
+            cur, by_shift, k = fits[f]
+            alt = by_shift.get(k + step)
+            if cur[0] >= COL_MIN_SCORE and alt is not None:
+                moves.append((cur[0] - alt[0], f, alt, k + step))
+        if not moves:
+            break
+        _, f, alt, k = min(moves, key=lambda mv: mv[:2])
         fits[f] = [alt, fits[f][1], k]
     cols = []
     for (best, _, _), f0 in zip(fits, (0.0, lay.a + lay.bar)):
