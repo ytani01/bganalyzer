@@ -141,7 +141,7 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
 | | 管理するもの | 使う場面 |
 |---|---|---|
 | uv | Python のパッケージ（gnubg、FastAPI、OpenCV など）と Python 本体の版 | 開発用の PC での開発・テスト・起動。これだけで足りる |
-| Docker | OS のライブラリ（gnubg が使う glib など）も含めた実行環境まるごと | Raspberry Pi で動かすとき（arm64 用の gnubg をソースからビルドする）。サーバーに公開するとき |
+| Docker | OS のライブラリ（gnubg が使う glib など）も含めた実行環境まるごと | Raspberry Pi で常駐させるとき。サーバーに公開するとき |
 
 Docker イメージの中でも、Python のパッケージは同じ `uv.lock` から `uv sync --frozen` で入れています。
 
@@ -166,7 +166,7 @@ flowchart LR
 いま動いているのは https://bg.tail5c266.ts.net/bg/ です。
 PWA は API を相対パスで呼ぶので、`/bg/` のようなパスの下でも動きます（同じ Pi で別のアプリを別のパスに置ける）。
 gnubg が子プロセスとメインスレッドを必要とするため、サーバーレス関数ではなく常駐するプロセスで動かします。
-`Dockerfile` は x86_64 と arm64 の両方でビルドでき（arm64 では gnubg をソースからビルド）、GitHub Actions の `docker` で両方を確かめています。
+`Dockerfile` は x86_64 と arm64 の両方でビルドでき（arm64 の gnubg は Release に置いた wheel を使う）、GitHub Actions の `docker` で両方を確かめています。
 PWA を別の静的ホスティングに置く場合は `?api=https://APIのURL` を付けて開けば、その API を呼びます。
 
 ```mermaid

@@ -74,11 +74,11 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 PyPI の gnubg は x86_64 の wheel しか無く、Pi では `uv sync` が落ちる（今は手でビルドして `uv run --no-sync`）。
 x86_64 は今までどおり PyPI の wheel を使う。
 
-- [ ] Dockerfile と同じ gnubg-pypi のコミットから aarch64 の wheel をビルドし、このリポジトリの GitHub Release に置く（GitHub Actions の arm64 マシンで）
-- [ ] `pyproject.toml` の `[tool.uv.sources]` で、aarch64 のときだけその wheel を使う。`uv.lock` を作り直す
-- [ ] Dockerfile の「arm64 ならソースからビルド」を消し、`uv sync --frozen` だけにする
+- [x] Dockerfile と同じ gnubg-pypi のコミットから aarch64 の wheel をビルドし、このリポジトリの GitHub Release に置く（GitHub Actions の arm64 マシンで）
+- [x] `pyproject.toml` の `[tool.uv.sources]` で、aarch64 のときだけその wheel を使う。`uv.lock` を作り直す
+- [x] Dockerfile の「arm64 ならソースからビルド」を消し、`uv sync --frozen` だけにする
 - [ ] Pi で `uv sync` と `uv run pytest analyzer` が `--no-sync` なしで通る。CI（x86_64・arm64）も通る
-- [ ] README・docs/raspi.md・cpu-match.yml の `--no-sync` など、手でビルドする前提の記述を直す
+- [x] README・docs/raspi.md・cpu-match.yml の `--no-sync` など、手でビルドする前提の記述を直す
 
 ---
 

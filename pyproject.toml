@@ -24,3 +24,8 @@ dev = [
 [tool.uv]
 # パッケージとしては配布しない（analyzer/ と recognizer/ をスクリプトとして動かす）
 package = false
+
+[tool.uv.sources]
+# PyPI の gnubg は x86_64 の wheel だけ。aarch64（Raspberry Pi）は .github/workflows/gnubg-wheel.yml で
+# ビルドして Release に置いたものを使う（TODO-055）。他の CPU は PyPI から入れる
+gnubg = { url = "https://github.com/ytani01/bganalyzer/releases/download/gnubg-1.1.0a16/gnubg-1.1.0a16-cp312-cp312-linux_aarch64.whl", marker = "platform_machine == 'aarch64'" }
