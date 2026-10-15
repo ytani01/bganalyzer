@@ -120,6 +120,24 @@ def test_analyze_photo_returns_cube_square():
     assert cube["at"] == "black" and len(cube["quad"]) == 4
     (x0, y0), _, (x2, y2), _ = cube["quad"]
     assert x2 > x0 and y2 > y0   # TL to BR, a square of some size
+    # the number on it (TODO-025): 2, used by the analysis (奥 was offered the cube at 2)
+    assert cube["value"] == 2 and res.json()["cube_read"] == {"at": "black", "value": 2}
+
+
+def test_analyze_photo_reads_the_cube_number():
+    # a cube showing 16 pasted on 奥's side of the user's board (synth_cube.py), in a font the reader never saw
+    t = json.loads((SAMPLES / "synth-cube-photo2-16.truth.json").read_text())
+    corners = [v for xy in t["corners_TL_TR_BR_BL"] for v in xy]
+    with open(SAMPLES / t["image"], "rb") as f:
+        res = client.post("/analyze-photo", files={"image": (t["image"], f)},
+                          data={"corners": ",".join(map(str, corners)), "home": t["home"],
+                                "bottom_colour": str(t["bottom_colour"]), "plies": "0"})
+    assert res.status_code == 200, res.text
+    out = res.json()
+    assert out["cube_read"] == {"at": "black", "value": 16}
+    a = out["analysis"]
+    # no dice: 奥 has just been offered the cube at 16, so 手前 doubled and 奥 takes or passes
+    assert a["on_roll"] == "white" and a["cube"]["question"] == "take" and a["cube"]["value"] == 8   # 8 before the double
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")

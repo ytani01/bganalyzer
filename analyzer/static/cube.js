@@ -21,11 +21,13 @@ const BgCube = (() => {
   }
 
   // The cube as the recognizer read it (null: none seen, so in the middle). "field": it lies in a
-  // playing field, so onRoll has just doubled to 2 and it is offered to the other side (TODO-045).
+  // playing field, so onRoll has just doubled and it is offered to the other side (TODO-045).
+  // Its number is the one read (TODO-025), else 2.
   function fromRead(read, onRoll) {
     if (!read || read.at === "centre") return { at: "centre", value: 2, offered: true };
-    if (read.at === "field") return { at: other(onRoll || "white"), value: 2, offered: true };
-    return { at: read.at, value: VALUES.includes(read.value) ? read.value : 2, offered: true };
+    const value = VALUES.includes(read.value) ? read.value : 2;
+    if (read.at === "field") return { at: other(onRoll || "white"), value, offered: true };
+    return { at: read.at, value, offered: true };
   }
 
   return { VALUES, request, fromRead };

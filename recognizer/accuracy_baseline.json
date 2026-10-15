@@ -23,6 +23,18 @@
  "photo3": {"points": 24, "bar": true, "home": true, "dice": "not read", "cube": "ok"},
  "photo4": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "screen1": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
- "screen2": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
- "tv-vegas-open": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"}
+ "screen2": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok"},
+ "synth-cube-photo2-16": {"points": 22, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
+ "synth-cube-photo2-2": {"points": 22, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
+ "synth-cube-photo2-32": {"points": 20, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "not read", "synthetic": true},
+ "synth-cube-photo2-4": {"points": 21, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
+ "synth-cube-photo2-64": {"points": 20, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
+ "synth-cube-photo2-8": {"points": 22, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
+ "synth-cube-photo4-16": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "not found", "synthetic": true},
+ "synth-cube-photo4-2": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
+ "synth-cube-photo4-32": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "not found", "synthetic": true},
+ "synth-cube-photo4-4": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
+ "synth-cube-photo4-64": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
+ "synth-cube-photo4-8": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
+ "tv-vegas-open": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok"}
 }

@@ -52,7 +52,5 @@
  "off_white": 6,
  "off_black": 6,
  "dice": null,
- "cube": {
-  "at": "black"
- }
+ "cube": {"at": "black", "value": 2}
 }

@@ -444,12 +444,12 @@ def test_api_reads_the_cube_from_the_photo():
     form = {"corners": ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy),
             "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0"}
     j = client.post("/analyze-photo", files={"image": ("s.jpg", jpg.tobytes(), "image/jpeg")}, data=form).json()
-    assert j["cube_read"] == {"at": "black"}
+    assert j["cube_read"] == {"at": "black", "value": 2}   # its number is read too (TODO-025)
     assert j["analysis"]["moves"] and j["analysis"]["cube"] is None    # dice on the board: 奥 owns the cube
     # a cube set by hand comes first
     j = client.post("/analyze-photo", files={"image": ("s.jpg", jpg.tobytes(), "image/jpeg")},
                     data=form | {"cube_value": "1"}).json()
-    assert j["cube_read"] == {"at": "black"} and j["analysis"]["cube"] is None and j["analysis"]["moves"]
+    assert j["cube_read"] == {"at": "black", "value": 2} and j["analysis"]["cube"] is None and j["analysis"]["moves"]
 
 
 def test_api_cube_read_without_dice_is_a_double(monkeypatch):
@@ -467,8 +467,15 @@ def test_api_cube_read_without_dice_is_a_double(monkeypatch):
     form = {"corners": "0,0,40,0,40,40,0,40", "plies": "0", "on_roll": "white"}
     j = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")}, data=form).json()
     a = j["analysis"]
-    assert j["cube_read"] == {"at": "white"} and a["on_roll"] == "black"
+    assert j["cube_read"] == {"at": "white", "value": None} and a["on_roll"] == "black"
     assert a["cube"]["question"] == "take" and a["cube"]["taker"] == "white" and a["cube"]["take"] is True
+    assert a["cube"]["value"] == 1   # not read: taken as 2, so 1 before the double
+    # the number read is used (TODO-025): offered at 8, so 4 before the double
+    monkeypatch.setattr(board, "recognize", lambda img, corners, **kw: (
+        Position.start(), {"home": "right", "home_guess": None, "warnings": [], "geometry": None,
+                           "dice": {"values": None, "dice": []}, "cube": {"at": "white", "value": 8}}))
+    j = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")}, data=form).json()
+    assert j["cube_read"] == {"at": "white", "value": 8} and j["analysis"]["cube"]["value"] == 4
 
 
 def test_api_cube_in_a_field_is_a_double_even_with_dice(monkeypatch):
@@ -490,7 +497,7 @@ def test_api_cube_in_a_field_is_a_double_even_with_dice(monkeypatch):
         assert r.status_code == 200
         j = r.json()
         a = j["analysis"]
-        assert j["cube_read"] == {"at": "field"} and j["dice_read"] is None
+        assert j["cube_read"] == {"at": "field", "value": None} and j["dice_read"] is None
         assert a["on_roll"] == "white" and a["cube"]["question"] == "take" and a["cube"]["taker"] == "black"
     # a cube set by hand comes first: then the dice are used
     j = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")},
