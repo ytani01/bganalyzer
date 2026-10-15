@@ -2,7 +2,7 @@
 // Colours follow the server: white = the player at the bottom of the photo (手前), black = 奥.
 "use strict";
 
-const APP_VERSION = "0.37.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.37.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const API = (new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
@@ -1199,7 +1199,9 @@ function showMove(list, li) {
 function speechText(r, dice) {
   const parts = [];
   const bestMove = r.moves && dice;   // read first: it is what the player wants to hear
-  if (bestMove) {
+  if (!bestMove) {   // without a best move, who rolls next is read first (TODO-052)
+    parts.push(`${rollWho(dice)}のは${NAME[r.on_roll]}の人です。`);
+  } else {
     const who = `${NAME[r.on_roll]}の人、ダイス ${dice[0]} ${dice[1]}`;
     parts.push(r.moves.length
       ? `${who}の最善手は、${moveToSpeech(r.moves[0].move)}。`
@@ -1217,7 +1219,6 @@ function speechText(r, dice) {
   } else {
     parts.push(standingToSpeech(r));
   }
-  if (!bestMove) parts.push(`${rollWho(dice)}のは${NAME[r.on_roll]}の人です。`);
   return parts.join("");
 }
 
