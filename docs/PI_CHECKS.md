@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-036。** これまでに 35 件を決着させた。
+**残っている項目: なし。** これまでに 36 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-037`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -84,19 +84,6 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
-
-## PI-036. キューブの数字を読む（recognizer 0.21.0、analyzer 0.38.0）
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-15（TODO-025）
-- **確かめ方:** `curl -s http://127.0.0.1:8000/version` が recognizer 0.21.0・analyzer 0.38.0 以降。Pi の上で
-  `uv run python recognizer/trace_cpu.py check` と `uv run python recognizer/check_accuracy.py` を走らせる（基準は更新しない）。
-  `/analyze-photo` に `samples/synth-cube-photo2-16.jpg`（四隅は同じ名前の `.truth.json`）を送り、`cube_read` を見る。
-  読み取りの時間（1 枚あたり）が前の版から大きく延びていないかも見る
-- **期待:** `trace_cpu.py check` が「same as the reference」（キューブの数字の読みも途中の値まで x86_64 と同じ）。`check_accuracy.py` が失敗しない
-  （本物のサンプルは 572/624、`cube_value` は screen2・tv-vegas-open と synth-cube の 9 枚が ok）。
-  `cube_read` が `{"at": "black", "value": 16}` で、解析が「奥がテイクかパスか」（ダブル前の数 8）。違ったら出力をユーザーに報告する
-- [ ] Pi: （結果をここに書く）
 
 ## 完了済み
 
