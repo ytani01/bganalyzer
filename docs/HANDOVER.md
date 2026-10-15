@@ -113,6 +113,13 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
   `accuracy`（`.github/workflows/accuracy.yml`、TODO-035）は recognizer・samples・依存を変える PR で、認識の精度が
   `recognizer/accuracy_baseline.json` より下がっていないかを確かめる。
 
+- **ファイルの分け直し（2026-10-15、PR #174・#175・#178。動きは変えていない）:**
+  analyzer は gnubg の呼び出しを `engine.py`、`POST /samples` を `samples.py`、リクエストの型を `models.py` に分けた。
+  PWA は結果の表と読み上げの文を `static/result.js`（`BgResult`）に分けた。
+  recognizer は `board.py` を `geometry.py`（遊戯面の位置）・`colours.py`（盤の色）・`checkers.py`（駒と数え方、しきい値）・
+  `overlay.py`（写真に重ねる読み取りの様子）・`tracing.py` に分け、`board.py` は `recognize` だけにした。
+  **`tune.py` のしきい値の名前は `checkers.CIRCLE_MIN_SCORE` などに変わった**（`COL_MIN_SCORE` だけ `geometry.`）。
+
 ## 6. ぶつからないための決まり
 
 - 新しい作業は TODO.md に項目を足してから始める。TODO.md の項目に担当は書かない（2026-10-15 ai1 が決めた）。
