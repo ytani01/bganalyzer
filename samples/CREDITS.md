@@ -28,6 +28,7 @@ CC BY-SA の写真（とその縮小版）は同じ CC BY-SA で配布します�
 | `commons-wooden-dice.jpg` | [Wooden backgammon (27095563797).jpg](https://commons.wikimedia.org/wiki/File:Wooden_backgammon_(27095563797).jpg) | The Unwinder | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) |
 
 `collected-*` は ai1 が PWA の「Pi に残す」で集めた写真と、スマホで直した盤面です（TODO-030）。人・配信の画面・投稿者・アバター・氏名が写っていた 7 枚は、盤の外を黒く塗りました（写真の大きさと四隅の座標は元のまま）。EXIF は入れていません。
+Las Vegas Open の配信の画面（`collected-2aunci`・`collected-s5dd7x`・`collected-si3vsd`）は、盤の映像を画像のまま残すと ai1 が決めました（2026-10-15。`external/` の URL だけにはしない）。
 photo2〜4 は ai1 が撮った写真、screen1・screen2 はアプリの画面とツイートの画像（盤以外は塗りつぶし）です。
 
 `external/` には、リポジトリに入れられない画像（著作権のある盤面図）の出典 URL と正解だけを置いています。
