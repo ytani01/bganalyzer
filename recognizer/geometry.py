@@ -333,7 +333,9 @@ def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
         best = fits[f][0]
         return best[1] if best[0] >= COL_MIN_SCORE else (0.0, lay.a + lay.bar)[f] + lay.a / 2 + (np.arange(6) - 2.5) * lay.pw
     for _ in range(2):
-        if placed(1)[0] - placed(0)[5] >= MIN_GAP * lay.pw:
+        left, right = placed(0), placed(1)
+        pw = ((left[5] - left[0]) + (right[5] - right[0])) / 10   # the fitted pitch, as for MAX_GAP
+        if right[0] - left[5] >= MIN_GAP * pw:
             break
         moves = []
         for f, step in ((0, -1), (1, 1)):
