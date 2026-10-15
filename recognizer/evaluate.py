@@ -44,21 +44,33 @@ def run(path, debug=None, app=False, method="circles"):
     home, margin = home_prior.guess(read if t["home"] == "right" else home_prior.mirror(read))
     # dice: the pair read with confidence (None when not sure) against the truth's (None when no pair can be read)
     want = t.get("dice") and sorted(t["dice"], reverse=True)
-    # cube: where it lies ({"at": ...}) against the truth's (None when there is no cube);
-    # the truth's "value" is not read yet, so only "at" is compared
-    cube = info["cube"] and {"at": info["cube"]["at"]}
-    cube_want = t.get("cube") and {"at": t["cube"]["at"]}
+    # cube: where it lies and its number ({"at": ..., "value": ...}) against the truth's (None when
+    # there is no cube); same_cube compares where, same_value the number (TODO-025)
+    cube = info["cube"] and {"at": info["cube"]["at"], "value": info["cube"].get("value")}
+    cube_want = t.get("cube") and {"at": t["cube"]["at"], "value": t["cube"].get("value")}
     if cube and cube["at"] == "field":
         # in a playing field: just doubled by the side on roll (the truth's on_roll, else 手前),
         # so it was offered to the other side (TODO-045)
-        cube = {"at": "black" if t.get("on_roll", "white") == "white" else "white"}
+        cube = {"at": "black" if t.get("on_roll", "white") == "white" else "white", "value": cube["value"]}
     return pos, truth, wrong, bar_ok, (home == t["home"], margin), (info["dice"]["values"], want), (cube, cube_want)
 
 def same_cube(cube, cube_want):
-    # no cube in the photo is analysed as a cube in the centre, so count them the same (TODO-053);
-    # a cube read in the centre is still WRONG when the truth has it on one side
-    centre = (None, {"at": "centre"})
-    return cube == cube_want or (cube in centre and cube_want in centre)
+    # where the cube lies. No cube in the photo is analysed as a cube in the centre, so count them
+    # the same (TODO-053); a cube read in the centre is still WRONG when the truth has it on one side
+    at = cube and cube["at"]
+    at_want = cube_want and cube_want["at"]
+    return at == at_want or (at in (None, "centre") and at_want in (None, "centre"))
+
+
+def same_value(cube, cube_want):
+    """The cube's number against the truth's: "ok", "not read" or "WRONG"; None when it does not
+    count (no number in the truth, the cube in the centre, where its number means 1, or the cube
+    not found where the truth has it)."""
+    if not cube_want or cube_want.get("value") is None or cube_want["at"] == "centre":
+        return None
+    if not cube or cube["at"] != cube_want["at"]:
+        return None
+    return "ok" if cube["value"] == cube_want["value"] else "not read" if cube["value"] is None else "WRONG"
 
 if __name__ == "__main__":
     # --app: shrink large photos the way the PWA does before sending them
@@ -72,8 +84,10 @@ if __name__ == "__main__":
         pos, truth, wrong, bar_ok, (home_ok, margin), (dice, want), (cube, cube_want) = run(f, app=app, method=method)
         dice_ok = "ok" if dice == want else "not read" if dice is None else "WRONG"
         cube_ok = "ok" if same_cube(cube, cube_want) else "not found" if cube is None else "WRONG"
+        value_ok = same_value(cube, cube_want)
+        value = f", number {value_ok} (read {cube['value']}, truth {cube_want['value']})" if value_ok else ""
         print(f"{os.path.basename(f)}: {24 - len(wrong)}/24 points correct, bar {'ok' if bar_ok else 'wrong'}, "
               f"home guess {'ok' if home_ok else 'wrong'} ({margin:+.1f}), dice {dice_ok} (read {dice}, truth {want}), "
-              f"cube {cube_ok} (read {cube and cube['at']}, truth {cube_want and cube_want['at']})")
+              f"cube {cube_ok} (read {cube and cube['at']}, truth {cube_want and cube_want['at']}{value})")
         for pt, a, b in wrong:
             print(f"   point {pt:2d}: truth {a:+d}  got {b:+d}")

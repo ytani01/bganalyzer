@@ -8,6 +8,7 @@ network) and compares each sample with accuracy_baseline.json:
   home    the guess of the home side; must not go from ok to wrong
   dice    "ok" > "not read" > "WRONG"; must not go down
   cube    "ok" > "not found" > "WRONG"; must not go down
+  cube_value  the cube's number, where the truth has it on one side: "ok" > "not read" > "WRONG"
 
   uv run python recognizer/check_accuracy.py            # check (exit 1 on a regression)
   uv run python recognizer/check_accuracy.py --update   # rewrite the baseline with this run
@@ -23,7 +24,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BASELINE = os.path.join(HERE, "accuracy_baseline.json")
 SAMPLES = os.path.join(HERE, "..", "samples")
 SLACK = 0  # points a sample may lose against its baseline (was 1 while CPUs read differently)
-RANK = {"dice": ["WRONG", "not read", "ok"], "cube": ["WRONG", "not found", "ok"]}
+RANK = {"dice": ["WRONG", "not read", "ok"], "cube": ["WRONG", "not found", "ok"],
+        "cube_value": ["WRONG", "not read", "ok"]}
 
 
 def measure(path):
@@ -33,13 +35,20 @@ def measure(path):
     import evaluate
     cv2.setRNGSeed(0)  # cv2.kmeans seeds from OpenCV's RNG; make each sample independent of the order
     pos, truth, wrong, bar_ok, (home_ok, _), (dice, want), (cube, cube_want) = evaluate.run(path)
-    return {
+    out = {
         "points": 24 - len(wrong),
         "bar": bar_ok,
         "home": home_ok,
         "dice": "ok" if dice == want else "not read" if dice is None else "WRONG",
         "cube": "ok" if evaluate.same_cube(cube, cube_want) else "not found" if cube is None else "WRONG",
     }
+    value = evaluate.same_value(cube, cube_want)   # only where the truth has the cube's number (TODO-025)
+    if value:
+        out["cube_value"] = value
+    with open(path) as f:
+        if json.load(f).get("synthetic"):   # a cube pasted into one of the other photos: not in the total
+            out["synthetic"] = True
+    return out
 
 
 def measure_all(jobs=None):
@@ -61,7 +70,13 @@ def compare(base, now):
             worse.append(f"{name}: not in the baseline (run --update to add it): {json.dumps(now[name])}")
             continue
         b, n = base[name], now[name]
-        for key in ("points", "bar", "home", "dice", "cube"):
+        for key in ("points", "bar", "home", "dice", "cube", "cube_value"):
+            if key not in b or key not in n:   # the cube's number counts only where the truth has it
+                if key in b:
+                    worse.append(f"{name}: {key} {b[key]} -> (not counted)")
+                elif key in n:
+                    better.append(f"{name}: {key} (not counted) -> {n[key]}")
+                continue
             rank = RANK.get(key)
             bv, nv = (rank.index(b[key]), rank.index(n[key])) if rank else (b[key], n[key])
             msg = f"{name}: {key} {b[key]} -> {n[key]}"
@@ -78,7 +93,9 @@ def compare(base, now):
 
 
 def total(results):
-    return sum(r["points"] for r in results.values()), 24 * len(results)
+    """Points read and points in all, over the real samples (not the synthetic copies)."""
+    real = [r for r in results.values() if not r.get("synthetic")]
+    return sum(r["points"] for r in real), 24 * len(real)
 
 
 def main():
