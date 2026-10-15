@@ -75,7 +75,7 @@ GitHub Actions の `cpu-match` が x86_64 と arm64 でそれと同じかを確�
 ## タスク管理
 
 `TODO.md` で管理する（書式は `~/.claude/CLAUDE.md` と `todo-workflow` skill）。
-各項目には **担当** を書く。担当が自分（このプロジェクトのユーザー）でない項目のファイルは触らない。
+項目に担当は書かない（2026-10-15 ai1 が決めた）。
 
 ## 共同開発
 
@@ -83,10 +83,10 @@ GitHub Actions の `cpu-match` が x86_64 と arm64 でそれと同じかを確�
 （手順は [docs/HANDOVER.md](docs/HANDOVER.md)）。
 
 - **方針・進み具合・決まったことはリポジトリに書く。** Claude のプロジェクトのメモは相手から見えない。
-  ルールはこの CLAUDE.md、作業と担当は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
-- **作業の前に main を pull する。** 着手する TODO の担当を自分にして、先にコミットしておく
+  ルールはこの CLAUDE.md、作業は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
+- **作業の前に main を pull する。**
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
 - **マージ後に Pi で確かめる必要がある変更は、その PR の中で docs/PI_CHECKS.md に項目を足す**
 - **マージの直前に最新の main を取り込み、`uv run pytest analyzer` と GitHub Actions の `test` が
   両方通ってからマージする（`accuracy`・`cpu-match` が走った PR はそれも）。** どちらかが落ちていたらマージしない。
-  相手の担当の部分とぶつかったら、勝手に直さずユーザーに報告する
+  相手の変更とぶつかったら、勝手に直さずユーザーに報告する
