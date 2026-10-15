@@ -92,7 +92,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - **確かめ方:** `uv run -q --no-project --with playwright python tools/pi_ui_check.py`（全部。`collect` も）。
   スマホでは、写真を選ぶ → 四隅をドラッグ（ルーペが出る）→ 読み取り → 盤面をタップで直す → 解析 → 🔊、と、最近の写真から開き直す
 - **期待:** 5 つとも OK。スマホでも前と同じに動く（クラウドでは、前の版と同じ操作をして、見える画面が 52 か所すべて同じことを確かめた）
-- [ ] Pi: （結果をここに書く）
+- [x] Pi: 2026-10-15、22620de（analyzer 0.39.0・recognizer 0.21.1）。`tools/pi_ui_check.py` の 5 つ（double・speech・export・export-denied・collect）がすべて OK。最善手 `24/20 13/11`、読み上げ「手前の人、ダイス 4 2の最善手は、8から4、6から4。ほぼ互角です。」、collect の読み直しは 24/24 で、前の版（PI-013・PI-017）と同じ。OK
 - [ ] スマホ: 四隅のドラッグ、盤面の手直し、最近の写真から開き直す（ai1）
 
 ## 完了済み
