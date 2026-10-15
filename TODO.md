@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-055、TODO-056。** これまでに 52 件を決着させた。
+**残っている項目: TODO-025、TODO-030、TODO-056。** これまでに 53 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-057`。**
 
 ---
@@ -62,23 +62,6 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 - [ ] `recognizer/evaluate.py` で測り、読み違いを直して `recognizer/README.md` の「精度」を更新する
 - [ ] （TODO-032 から）`evaluate.py --slots` と `--section` でも測る。同じ色の三角形の上の駒（えんじ色の駒と赤い三角形）で円より当たるなら、
   食い違ったポイントだけ位置ごとの判定や断面を使う形を考える
-
----
-
-## TODO-055. Pi（aarch64）でも `uv sync` / `uv run` をクラウドと同じに通す
-
-|      | main | 担当 |
-|------|------|------|
-| 見込み | Opus 5.5 / effort medium | implementer（Sonnet 5.5 / medium）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
-
-PyPI の gnubg は x86_64 の wheel しか無く、Pi では `uv sync` が落ちる（今は手でビルドして `uv run --no-sync`）。
-x86_64 は今までどおり PyPI の wheel を使う。
-
-- [x] Dockerfile と同じ gnubg-pypi のコミットから aarch64 の wheel をビルドし、このリポジトリの GitHub Release に置く（GitHub Actions の arm64 マシンで）
-- [x] `pyproject.toml` の `[tool.uv.sources]` で、aarch64 のときだけその wheel を使う。`uv.lock` を作り直す
-- [x] Dockerfile の「arm64 ならソースからビルド」を消し、`uv sync --frozen` だけにする
-- [ ] Pi で `uv sync` と `uv run pytest analyzer` が `--no-sync` なしで通る。CI（x86_64・arm64）も通る
-- [x] README・docs/raspi.md・cpu-match.yml の `--no-sync` など、手でビルドする前提の記述を直す
 
 ---
 
