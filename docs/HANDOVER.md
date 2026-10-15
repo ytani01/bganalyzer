@@ -12,7 +12,7 @@ Claude のプロジェクトのメモ（MEMORY）は、そのプロジェクト�
 ai1 のアカウントの Claude の使用量が上限に近いので、続きを別のアカウントの Claude プロジェクトに引き継ぐ。
 引き継ぎ先は main を pull し、CLAUDE.md・このファイル・TODO.md・docs/PI_CHECKS.md を読んでから続ける。
 
-- **今の状態:** Pi（本番）は analyzer 0.39.0 / recognizer 0.21.2（93285de）で、main と同じ（2026-10-15 に Pi で確認）。アプリは https://bg.tail5c266.ts.net/bg/
+- **今の状態:** Pi（本番）は analyzer 0.39.0 / recognizer 0.21.2（93285de）（2026-10-15 に Pi で確認。今の版は `/bg/version` で見る）。アプリは https://bg.tail5c266.ts.net/bg/
   （`/` は 404、`/bg/version` で版が見られる）。クラウドの Claude からも読み取り専用で確かめられる（アカウントによっては shell から届かず、WebFetch の GET だけ通る）。Pi に書き込む操作
   （「Pi に残す」の保存など）はクラウドから行わない。
 - **途中の PR:** なし。#86（`tools/check_pi.py`）は 2026-10-14 に引き継ぎ先がマージした（引き継ぎ先のクラウドではプロキシで ts.net に届かず、実行は試せなかった）。
