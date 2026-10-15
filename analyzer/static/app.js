@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.40.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.40.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -859,16 +859,32 @@ new ResizeObserver(() => {
 go("photo");
 if (window.speechSynthesis) window.speechSynthesis.getVoices();   // Chrome loads the voice list lazily
 
+// "0.40.0" vs "0.39.0" → 1, equal → 0, older → -1 (numbers compared part by part, not as text).
+function compareVersions(a, b) {
+  const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return Math.sign(d);
+  }
+  return 0;
+}
+
 // Versions, to tell which build is running (e.g. on the Raspberry Pi): small in the header, in full in the footer.
 $("hdr-version").textContent = `v${APP_VERSION}`;
 BgApi.version().then((v) => {
   if (!v) return;
-  const old = v.analyzer !== APP_VERSION;   // an old app.js still cached on this device
-  $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + (old ? `（新しい ${v.analyzer} は開き直すと出ます）` : "");
-  $("hdr-version").classList.toggle("old", old);
+  // The two differ when this device still has an old app.js (reopening fixes it), or when the server
+  // was updated with git pull but not restarted, so it still runs the old code (restarting fixes it).
+  const cmp = compareVersions(v.analyzer, APP_VERSION);
+  const hdrNote = cmp > 0 ? `（新しい ${v.analyzer} は開き直すと出ます）`
+    : cmp < 0 ? `（サーバーは ${v.analyzer}。再起動が必要）` : "";
+  const footNote = cmp > 0 ? `（画面は ${APP_VERSION}。開き直すと新しくなります）`
+    : cmp < 0 ? `（画面は ${APP_VERSION}。サーバーを立ち上げ直すと揃います）` : "";
+  $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + hdrNote;
+  $("hdr-version").classList.toggle("old", cmp !== 0);
   $("collect-opt").hidden = $("collect-note").hidden = !v.samples;
   $("version").textContent = `analyzer ${v.analyzer} · recognizer ${v.recognizer}` +
-    (v.commit ? ` · ${v.commit}` : "") + (old ? `（画面は ${APP_VERSION}。開き直すと新しくなります）` : "");
+    (v.commit ? ` · ${v.commit}` : "") + footNote;
 }).catch(() => {});
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
