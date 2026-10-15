@@ -119,6 +119,10 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
   recognizer は `board.py` を `geometry.py`（遊戯面の位置）・`colours.py`（盤の色）・`checkers.py`（駒と数え方、しきい値）・
   `overlay.py`（写真に重ねる読み取りの様子）・`tracing.py` に分け、`board.py` は `recognize` だけにした。
   **`tune.py` のしきい値の名前は `checkers.CIRCLE_MIN_SCORE` などに変わった**（`COL_MIN_SCORE` だけ `geometry.`）。
+- **PWA の作りを変えた（2026-10-15、analyzer 0.39.0。画面と動きは同じ）:** 状態は `app.js` の `state` 1 つにまとめ、
+  `update(patch)` → `render()` で画面に出す一方向の流れにした（詳しくは analyzer/README.md の「作り」）。
+  盤面のデータは `board.js`、盤面図は `board-view.js`、四隅の写真は `corners-view.js`、通信は `api.js`。
+  `tools/pi_ui_check.py` は `window.BgApp` を使う（`BG_URL`・`BG_CHROMIUM` で Pi 以外でも動く）。
 
 ## 6. ぶつからないための決まり
 
