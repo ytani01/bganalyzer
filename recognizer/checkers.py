@@ -20,7 +20,7 @@ LONE_MIN_SCORE = 1.0     # ... and for a single checker with no stack to back it
 STACK_SKEW = 0.25        # max sideways step between neighbouring checkers of a stack / pitch
 GAP_MIN_SCORE = 0.6      # enough for a circle in line between two checkers of a stack
 OUTLINE_SUPPORT = 0.8    # edge support of a checker that has the colour of the spot under it
-PATTERN_SUPPORT = 0.85   # edge support of a checker whose face does not match its rim ...
+PATTERN_SUPPORT = 0.68   # edge support of a checker whose face does not match its rim ...
 PATTERN_DISTINCT = 30    # ... and its colour distance from every empty spot
 COS_35 = 0.8191520442889918   # cos(35 degrees)
 BAR_COLOUR_TOL = 0.25    # a checker on the bar: colour distance to its cluster / distance between the clusters
@@ -51,7 +51,7 @@ def edge_support(gx, gy, x, y, r):
 
 TEX_MIN = 3.0       # median sideways / up-down edge ratio of a row at which the triangles' sides stand out
 TEX_HIDDEN = 0.35   # a spot below this share of the median is covered
-TEX_SHOWN = 0.7     # ... above this share, the sides show through it
+TEX_SHOWN = 0.84    # ... above this share, the sides show through it
 TEX_DEPTHS = 5      # depths (in checkers from the frame) to look at
 
 
