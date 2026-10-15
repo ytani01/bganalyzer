@@ -13,7 +13,7 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000   # API と
 git pull && uv sync --frozen && systemctl --user restart bganalyzer   # Raspberry Pi の常駐を更新（docs/raspi.md）
 uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
 uv run python recognizer/check_accuracy.py                       # 認識の精度が基準より下がっていないか（CI の accuracy）
-uv run python recognizer/trace_cpu.py check                      # 読み取りが途中の値まで基準と同じか（CI の cpu-match。x86_64 と arm64）
+uv run python recognizer/trace_cpu.py check                      # 読み取りが途中の値まで基準と同じか（全サンプル。CI では走らせない）
 uv run python tools/check_pi.py                                  # Pi の公開サーバーを外から確かめる
 uv run -q --no-project --with playwright python tools/pi_ui_check.py   # Pi の上で、スマホの代わりに PWA を操作して確かめる
 uv run -q --no-project --with playwright python tools/ui_snapshot.py record a.json   # PWA を操作して見える画面を記録（compare a.json b.json で 2 つの版を比べる）
@@ -59,7 +59,7 @@ recognizer のコードは、画像を 8 ビットか整数で扱い、幾何は
 （`warpPerspective`、float の `GaussianBlur`・`Sobel`、`kmeans`、`findHomography`）や NumPy の `@`・`linalg`・`polyfit`・`np.interp`・`cos`・`exp` などを
 読み取りに入れない（CPU によって最後の桁が変わり、読みが変わる）。recognizer を変えた PR は
 `uv run python recognizer/trace_cpu.py --update` で `recognizer/cpu_reference.json` も書き直して同じ PR に入れる。
-GitHub Actions の `cpu-match` が x86_64 と arm64 でそれと同じかを確かめる。
+GitHub Actions の `test` が x86_64 と arm64 で 1 サンプルだけそれと同じかを確かめる（全サンプルの `cpu-match` は TODO-064 でやめた）。
 
 ## Raspberry Pi で確かめること
 
@@ -89,5 +89,5 @@ GitHub Actions の `cpu-match` が x86_64 と arm64 でそれと同じかを確�
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
 - **マージ後に Pi で確かめる必要がある変更は、その PR の中で docs/PI_CHECKS.md に項目を足す**
 - **マージの直前に最新の main を取り込み、`uv run pytest analyzer` と GitHub Actions の `test` が
-  両方通ってからマージする（`accuracy`・`cpu-match` が走った PR はそれも）。** どちらかが落ちていたらマージしない。
+  両方通ってからマージする（`accuracy` が走った PR はそれも。文書だけの PR では `test` は走らないので要らない）。** どちらかが落ちていたらマージしない。
   相手の変更とぶつかったら、勝手に直さずユーザーに報告する

@@ -103,7 +103,8 @@ SIMD を SSE2 までに落とした x86_64 で 7 枚）。原因は浮動小数�
 - 段の間で渡す値（四隅、盤の幅、列の位置）は細かい格子に丸め、万一の 1 ビットの違いが次の段に届かないようにした
 
 確かめ方: `recognize(trace=...)` が各段の値のハッシュを残し、`trace_cpu.py check` が全サンプルの各段とを `cpu_reference.json` と比べる。
-GitHub Actions の `cpu-match` が x86_64 と arm64 の両方でこれを走らせる。AVX-512 のあるなし（このクラウド環境）でも同じ。
+AVX-512 のあるなし（このクラウド環境）でも同じ。GitHub Actions の `cpu-match` が x86_64 と arm64 の両方でこれを走らせていたが、
+TODO-064 でやめた（`accuracy` と全サンプルの読み取りが重なるため）。今は `test` が 1 サンプルだけ x86_64 と arm64 で比べる。
 recognizer を変えた PR は `uv run python recognizer/trace_cpu.py --update` で基準も書き直す。
 
 決めたこと（2026-10-14、ユーザー）どおり、一致を精度より優先した。精度の基準は 529 → 518 になった:
@@ -246,7 +247,7 @@ recognizer 0.16.0（TODO-028）で、三角形の色の領域を探す作り方�
 5. 点数の高い 12 個は、**各辺をその近く（外へ 6%、内へ 5%）の、いちばん内側の強い縁に動かした形**も作り、208x160 で点数をつけ直して、いちばん高いものを答える。
    枠には段や面取りがあり、外側の縁の方が強いことが多い。点数が 0.15 に届かなければ見つからなかったことにする。
 
-すべて整数と、どの CPU でも同じに丸まる計算（`exact.py`）なので、x86_64 と Raspberry Pi で四隅は同じになる（`trace_cpu.py` が全サンプルの四隅も比べる。CI の `cpu-match`）。
+すべて整数と、どの CPU でも同じに丸まる計算（`exact.py`）なので、x86_64 と Raspberry Pi で四隅は同じになる（`trace_cpu.py` が全サンプルの四隅も比べる）。
 時間はこのクラウド環境で 1 枚 1.0〜1.8 秒（0.14.0 までは 0.2〜1.9 秒）。
 
 当たり具合（recognizer 0.16.0。目視の四隅とのずれの最大、写真の長辺に対する割合。全 24 枚）:
@@ -608,7 +609,7 @@ dark-homeleft の 15、leather-cups の 9・21、rollup-oblique の 2・4・10�
 - `check_corners.py` 四隅の推定（`corners.py`）を `samples/*.truth.json` の四隅と比べる
 - `tune.py` しきい値を 1 つずつ変えて、良くなる設定を探す（上の「しきい値を試す」）
 - `exact.py` どの CPU でも同じ結果になる計算（射影変換、写し直し、直線、k-means。TODO-046）
-- `trace_cpu.py` 全サンプルの読み取りが途中の値まで `cpu_reference.json` と同じか確かめる（CI の `cpu-match`。`--update` で基準を書き直す）
+- `trace_cpu.py` 全サンプルの読み取りが途中の値まで `cpu_reference.json` と同じか確かめる（CI では走らせない。`--update` で基準を書き直す）
 - `slots.py` 位置ごとに判定する読み方の試作（アプリでは使わない。float の計算が残っていて、CPU で結果が変わりうる）
 - `collected.py` Pi の `collected/` を測り直し、読み違いの無い古い組を消す（新しい組が 10 たまるとサーバーが起動する）
 - `../samples/photoN.truth.json` ユーザー提供の写真（photoN.jpg）を目視で読んだ正解と四隅

@@ -4,7 +4,8 @@ name: accuracy
 # samples/*.truth.json の全部を recognizer/check_accuracy.py で読む（2 コアで約 70 秒）。
 on:
   pull_request:
-    paths: [pyproject.toml, uv.lock, recognizer/**, samples/**, .github/workflows/accuracy.yml]
+    # recognizer/README.md などの文書だけでは走らせない（TODO-064）
+    paths: [pyproject.toml, uv.lock, recognizer/**, '!recognizer/**.md', samples/**, .github/workflows/accuracy.yml]
   push:
     branches: [main]
     paths: [pyproject.toml, uv.lock, recognizer/**, samples/**, .github/workflows/accuracy.yml]

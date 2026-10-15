@@ -203,7 +203,7 @@ def test_corners_are_found_on_samples():
 def test_corners_are_the_same_on_every_cpu():
     # The corner guess works in integers and in float operations that round the same on every CPU
     # (exact.py), so x86_64 and the Raspberry Pi find these very corners (TODO-028, TODO-046).
-    # GitHub Actions' cpu-match checks all samples on x86_64 and arm64 (recognizer/trace_cpu.py).
+    # recognizer/trace_cpu.py check compares all samples' corners with recognizer/cpu_reference.json.
     import cv2
     from corners import find_corners
 

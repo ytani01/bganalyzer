@@ -64,7 +64,7 @@ def test_kmeans_in_integers():
 
 def test_a_sample_reads_like_the_cpu_reference():
     # every step of the reading, hashed, as recognizer/cpu_reference.json has it (made with
-    # trace_cpu.py --update; GitHub Actions' cpu-match checks all samples on x86_64 and arm64)
+    # trace_cpu.py --update; GitHub Actions' test runs this on x86_64 and arm64; trace_cpu.py check does all samples)
     import cv2
     import board
 

@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # 文書だけの PR では走らせない（TODO-064）。main への push では毎回走る
+    paths-ignore: ['**.md', 'docs/**', 'archives/**']
 
 jobs:
   pytest:
