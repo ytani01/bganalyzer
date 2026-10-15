@@ -45,7 +45,7 @@ analyzer と recognizer は別々にバージョンを持つ（`analyzer/app.py`
 API の `/version` と PWA の画面の下に、両方とコミット ID が出る。
 **そのディレクトリのコードを変える PR で、その方を上げる**（直しは 0.1.0 → 0.1.1、機能の追加や変更は 0.1.0 → 0.2.0）。
 analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同じにする（端末に古い app.js が残っていると画面の下に出る）。
-ドキュメントやテストだけの変更では上げない。`pyproject.toml` の version は使わない。
+ドキュメントやテストだけの変更では上げない。recognizer の測る道具（`evaluate.py`・`check_accuracy.py`・`check_corners.py`・`trace_cpu.py`・`collected.py` の比べ方など）だけの変更でも上げない（アプリの読み取りの結果は変わらないため。2026-10-15 ai1 が決めた）。`pyproject.toml` の version は使わない。
 
 ## 精度の確認
 
