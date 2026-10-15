@@ -42,9 +42,9 @@ import home_prior
 import radial
 from position import Position
 
-# The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
+# The recognizer's version (board.py, position.py, corners.py, dice.py, cube.py and cube_value.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.20.1"
+__version__ = "0.21.0"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -1162,7 +1162,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
                                          debug=debug_prefix and debug_prefix + "_cube.jpg")
     _trace(trace, "cube", info["cube"])
     cube = info["cube"]
-    info["geometry"]["cube"] = cube and dict(quad=geometry_square(cube, H), at=cube["at"])
+    info["geometry"]["cube"] = cube and dict(quad=geometry_square(cube, H), at=cube["at"], value=cube.get("value"))
     emit("cube", dict(cube=info["geometry"]["cube"]))
     info["tilt_deg"] = round(view_tilt_deg(corners, img.shape), 1)
     info["warnings"] = ["oblique"] if info["tilt_deg"] > OBLIQUE_WARN_DEG else []

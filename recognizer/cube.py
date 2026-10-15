@@ -4,7 +4,7 @@ Works like dice.py, on the board seen from straight above, but looks a little be
 area too (the cube often waits on the frame or by the side of the board).
 Says where the cube lies: in the middle (no one owns it), on 手前's (white) or 奥's (black) side,
 or in a playing field ("field": just doubled; the side doubled is the one not on roll, which the
-photo cannot tell, so the analyzer decides it from on_roll). The number on it is not read.
+photo cannot tell, so the analyzer decides it from on_roll), and the number on it (cube_value.py).
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ import math
 import cv2
 import numpy as np
 
+import cube_value
 import dice as dice_reader
 import exact
 
@@ -107,7 +108,7 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
             continue
         seen = [o for o in found if exact.hypot(b["cx"] - o["cx"], b["cy"] - o["cy"]) < 0.5 * b["side"] / k]
         cubes.append(dict(x=round(float(b["cx"]), 1), y=round(float(b["cy"]), 1),
-                          side=round(float(b["side"] / k), 1), seen=len(seen)))
+                          side=round(float(b["side"] / k), 1), seen=len(seen), bodies=seen))
     if debug is not None:
         g = ground.copy()
         for b in found:
@@ -123,4 +124,22 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
     at = "centre" if abs(off) < MIDDLE else "white" if off > 0 else "black"
     if in_field(lay, c):
         at = "field"
-    return dict(at=at, x=c["x"], y=c["y"], side=c["side"])
+    value, reads = read_value(gray, c["bodies"])
+    return dict(at=at, x=c["x"], y=c["y"], side=c["side"], value=value, reads=reads)
+
+
+def read_value(gray, bodies):
+    """The number on the cube, from each outline of it found (at different brightness levels): the one
+    read most often, when at least two outlines read it and it has twice the votes of any other
+    number; else None. Also each reading, for checking."""
+    reads = []
+    for b in bodies:
+        v, top, other = cube_value.read(gray, b["x"], b["y"], b["side"], b["ang"])
+        reads.append((v, round(top, 3), round(other, 3)))
+    votes = [v for v, *_ in reads if v is not None]
+    if not votes:
+        return None, reads
+    best = max(cube_value.VALUES, key=lambda v: (votes.count(v), -v))
+    n = votes.count(best)
+    ok = n >= 2 and all(n >= 2 * votes.count(v) for v in cube_value.VALUES if v != best)
+    return (best if ok else None), reads

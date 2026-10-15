@@ -18,6 +18,7 @@ dependencies = [
 dev = [
     "pytest",
     "httpx",  # fastapi.testclient が使う
+    "pillow>=12.3.0",
 ]
 
 [tool.uv]

@@ -371,7 +371,7 @@
       const cu = at("cube");
       if (cu && cu.d.cube) {
         const a = intro(cu.t, 200);
-        if (a > 0) drawSquare(cu.d.cube.quad, MAGENTA, a);
+        if (a > 0) drawSquare(cu.d.cube.quad, MAGENTA, a, cu.d.cube.value ? String(cu.d.cube.value) : "");   // the number read
       }
       ctx.restore();
     }

@@ -36,7 +36,7 @@ RECOGNIZER = Path(__file__).resolve().parent.parent / "recognizer"
 
 # The analyzer's version (this API, analysis.py and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.37.2"
+__version__ = "0.38.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -322,12 +322,13 @@ def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled)
     # geometry: where the recognizer found the board and its columns (image pixels of the sent image),
     # so the app can line the photo up with the read board.
     # dice_read: the two dice lying in the fields, when the recognizer is sure of them (else null)
-    # cube_read: where the doubling cube lies, {"at": "centre" | "white" | "black" | "field"} (its number is not read), or null
+    # cube_read: where the doubling cube lies and the number on it, {"at": "centre" | "white" | "black" | "field",
+    # "value": 2 .. 64 or null (not read with confidence; always null in the centre, where it means 1)}, or null
     read = info["dice"]["values"]
     cube = info.get("cube")
-    cube_read = cube and {"at": cube["at"]}
-    # a cube in a playing field (TODO-045): the side on roll has just doubled to 2, and the other side
-    # takes or passes. Dice on the board (read or sent) are left out: no one rolls before the answer.
+    cube_read = cube and {"at": cube["at"], "value": None if cube["at"] == "centre" else cube.get("value")}
+    # a cube in a playing field (TODO-045): the side on roll has just doubled (to the number read, else 2),
+    # and the other side takes or passes. Dice on the board (read or sent) are left out: no one rolls before the answer.
     field_double = cube_value is None and bool(cube_read) and cube_read["at"] == "field"
     if field_double:
         read, d = None, None
@@ -344,11 +345,12 @@ def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled)
         doubled = False
     if cube_value is None:
         cube_value, cube_owner, doubled = 1, None, False
+        shown = cube_read and cube_read["value"] or 2   # the number read (TODO-025), else 2
         if field_double:
-            cube_value, cube_owner, doubled = 2, "black" if on_roll == "white" else "white", True
+            cube_value, cube_owner, doubled = shown, "black" if on_roll == "white" else "white", True
         elif cube_read and cube_read["at"] != "centre":
-            # a cube on one side shows 2 or more (2 when unread); with no dice, it has just been offered there
-            cube_value, cube_owner, doubled = 2, cube_read["at"], d is None
+            # a cube on one side shows 2 or more; with no dice, it has just been offered there
+            cube_value, cube_owner, doubled = shown, cube_read["at"], d is None
             if doubled:
                 on_roll = "black" if cube_owner == "white" else "white"
     return out | {"analysis": _run(pos, on_roll, plies, d,
