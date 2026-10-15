@@ -44,7 +44,8 @@ KEYS = ("points", "bar", "home", "dice", "cube", "cube_value")
 def default_args(module):
     """Names of the module's constants used as a default argument somewhere: changing the constant
     afterwards does not reach those functions, so they cannot be tried this way."""
-    src = open(os.path.join(HERE, module + ".py")).read()
+    with open(os.path.join(HERE, module + ".py")) as f:
+        src = f.read()
     out = set()
     for node in ast.walk(ast.parse(src)):
         if isinstance(node, (ast.FunctionDef, ast.Lambda)):
@@ -132,7 +133,8 @@ def main(argv=None):
     steps = [float(s) for s in a.steps.split(",")] if a.steps else list(STEPS)
     files = []
     for f in sorted(glob.glob(os.path.join(SAMPLES, "*.truth.json"))):
-        t = json.load(open(f))
+        with open(f) as fh:
+            t = json.load(fh)
         name = os.path.basename(f).removesuffix(".truth.json")
         if t.get("synthetic") and not (a.only and name in a.only.split(",")):
             continue   # copies of other photos with a cube pasted in: their points count twice
@@ -142,7 +144,9 @@ def main(argv=None):
     if a.collected:
         for n in collected.names(a.collected):
             p = os.path.join(a.collected, n)
-            if collected.valid(json.load(open(p))):
+            with open(p) as fh:
+                ok = collected.valid(json.load(fh))
+            if ok:
                 files.append(p)
     if not files:
         sys.exit("no samples")
