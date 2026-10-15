@@ -68,17 +68,17 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 
 ---
 
-## TODO-054. 四隅の推定を速くする
+## TODO-054. 読み取りの途中経過で、四隅の合わせ直しを 0.5 秒ずつにする
 
 - **担当:** ai1
-- ユーザーの依頼（2026-10-15）: 四隅を決めるパフォーマンスを改善する。速さのこと（当たり具合は変えない）。
-- 今（recognizer 0.21.0、Pi で `check_corners.py --app`）: 1 枚 1.0〜1.7 秒。
-- [ ] `corners.py` のどの段に時間がかかっているかを測る
-- [ ] 遅い段を速くする。全サンプルの四隅は今と同じ（`check_corners.py` と `trace_cpu.py check` で確かめる）。recognizer のパッチ版を上げる
+- ユーザーの依頼（2026-10-15）: スマホで写真を読み込んでから 10 秒以上かかる。
+  四隅の検出の計算は Pi で 1〜1.7 秒で、残りは途中経過を段階ごとに 1 秒ずつ見せている時間（TODO-049）。
+  まず、読み取りの四隅の合わせ直し（4 回）だけを 1 秒から 0.5 秒にする。`corners.py` を速くするのはやめた（待ち時間がほとんど縮まないため）。
+- [ ] `analyzer/static/scan.js` の `STAGE_MS.fit` を 500 にする。analyzer 0.38.1、`sw.js` の `CACHE` も上げる
 
 |      | main | 担当 |
 |------|------|------|
-| 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus / high）+ verifier（Haiku 5.5 / medium） |
+| 見込み | Opus 5.5 / effort medium | main（実装）+ verifier（Haiku 5.5 / medium。Pi のヘッドレスの Chromium で、合わせ直しが 0.5 秒ずつ出るか測る） |
 
 ---
 
