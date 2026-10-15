@@ -1,10 +1,10 @@
 {
 "meta": {
-"machine": "x86_64",
+"machine": "aarch64",
 "recognizer": "0.21.0",
 "opencv": "5.0.0",
 "numpy": "2.5.4",
-"cpu": "SSE SSE2 SSE3 *SSE4.1 *SSE4.2 *AVX *FP16 *AVX2 *AVX512-SKX"
+"cpu": "NEON FP16 *NEON_DOTPROD *NEON_FP16 *NEON_BF16?"
 },
 "samples": {
 "collected-2aunci": {
@@ -694,7 +694,7 @@
 ],
 [
 "cube",
-"3761c1d6ec3e"
+"7e6c26d1fedd"
 ]
 ],
 "reading": {
@@ -1460,7 +1460,7 @@
 ],
 [
 "cube",
-"cd1c57832a9c"
+"e4b8d85641dc"
 ]
 ],
 "reading": {
@@ -1615,7 +1615,7 @@
 ],
 [
 "cube",
-"c8e6f03e5e9d"
+"a87c615ab19c"
 ]
 ],
 "reading": {
@@ -2206,7 +2206,7 @@
 ],
 [
 "cube",
-"01dff3dcac65"
+"c03e0fb746af"
 ]
 ],
 "reading": {
