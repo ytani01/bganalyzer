@@ -42,7 +42,7 @@ from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.17.1"
+__version__ = "0.19.1"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -56,6 +56,7 @@ PATTERN_SUPPORT = 0.85   # edge support of a checker whose face does not match i
 PATTERN_DISTINCT = 30    # ... and its colour distance from every empty spot
 COS_35 = 0.8191520442889918   # cos(35 degrees)
 BAR_COLOUR_TOL = 0.25    # a checker on the bar: colour distance to its cluster / distance between the clusters
+LONE_COLOUR_TOL = 0.3     # ... and for a single checker on a point (a triangle's base can look like one, TODO-048)
 
 
 @dataclass
@@ -744,6 +745,9 @@ def _top_colour(inner):
     return np.float32([np.median(inner[:, 0]), *np.median(sat[:, 1:], 0)])
 
 
+_FINDER = "hough"   # how detect_checkers finds candidates: "hough", or experimentally "radial" or "both"
+
+
 def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=None, tri_len=None, drop_shown=True):
     """Checker tops as circles, scored by edge support and colour.
 
@@ -755,12 +759,18 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     # for circles in the colour channels
     lab8 = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2Lab)
     found = []
-    for ch in (gray, lab8[:, :, 1], lab8[:, :, 2]):
-        ch = cv2.GaussianBlur(_stretch(ch), (0, 0), 2)
-        c = cv2.HoughCircles(ch, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.3, param1=70, param2=HOUGH_VOTES,
-                             minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
+    chans = [cv2.GaussianBlur(_stretch(ch), (0, 0), 2) for ch in (gray, lab8[:, :, 1], lab8[:, :, 2])]
+    if _FINDER != "radial":
+        for ch in chans:
+            c = cv2.HoughCircles(ch, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.3, param1=70, param2=HOUGH_VOTES,
+                                 minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
+            if c is not None:
+                found.append(c[0])
+    if _FINDER != "hough":   # experimental (TODO-032 idea 5): radial.py
+        import radial
+        c = radial.find(chans, r0)
         if c is not None:
-            found.append(c[0])
+            found.append(c)
     if not found:
         return []
     cs = [np.vstack(found)]
@@ -981,8 +991,13 @@ def count_from_circles(circles, lay: Layout, pitch: float):
         if circles[i][4] < LONE_MIN_SCORE or dd[i].min() > BAR_COLOUR_TOL * exact.norm(cc[0] - cc[1]):
             continue
         bar[lbl[i]] += 1
+    sep = exact.norm(cc[0] - cc[1])
     runs = {}
     for key, (n, members) in stacks.items():
+        # a lone checker needs one of the checker colours too: the base of a triangle whose
+        # colour is near a checker's makes a clear circle (tv-vegas-open's red 13 point, TODO-048)
+        if n == 1 and dd[members[0]].min() > LONE_COLOUR_TOL * sep:
+            n = 0
         if not n:
             runs[key] = (None, 0)
             continue
@@ -1030,6 +1045,8 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     fitted to the frame's edges twice, then to the triangles twice; then "tips", "checkers", "counts",
     "dice", "cube"), with the parts of info["geometry"] it found (image pixels), for showing the
     reading as it goes. It does not change what is read."""
+    global _FINDER
+    _FINDER = {"radial": "radial", "radial+hough": "both"}.get(method, "hough")
     emit = progress or (lambda stage, data: None)
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
     _trace(trace, "image", img)
@@ -1111,6 +1128,11 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         gy = sum(cv2.Sobel(labf[:, :, i], cv2.CV_32F, 0, 1) for i in range(3))
         runs = slots.count_by_slots(ground_lab, gx, gy, board, lay, m, pitch, tri_map, tri_len,
                                     cc, circles, runs)
+    if method == "section" and cc is not None:   # experimental (TODO-032 idea 2): section.py
+        import section
+        _, _, gy8 = _lab_gradients(ground)
+        runs = section.count_by_profile(ground_lab, gy8, board, lay, m, pitch, tri_map, tri_len,
+                                        cc, circles, runs)
     guessed = None
     if home == "auto":   # which way the checkers move: guess from where they stand
         home, margin = home_prior.guess(to_position(runs, bar, bottom_colour, "right").points)
