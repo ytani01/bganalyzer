@@ -18,11 +18,12 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 </head>
 <body>
 <header>
+  <!-- アプリ名とバージョン。どの画面でも同じ所に出す -->
+  <div class="brand"><span class="app-name">BG Analyzer</span><span id="hdr-version" class="hdr-version"></span></div>
   <div class="bar">
     <button id="back" class="back" type="button" aria-label="前の画面に戻る" hidden>‹ 戻る</button>
     <div class="titles">
-      <h1 id="title">BG Analyzer</h1>
-      <div id="hdr-version" class="hdr-version"></div>
+      <h1 id="title">写真</h1>
     </div>
     <!-- その画面の主な操作。ヘッダーにだけ置き、スクロールしてもいつでも押せる -->
     <div class="actions">
