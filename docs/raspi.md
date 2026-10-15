@@ -97,7 +97,7 @@ tailscale funnel status
 |---|---|
 | 新しい版に更新する | `git pull && uv sync --frozen && systemctl --user restart bganalyzer` |
 | 動いている版を見る | `curl http://127.0.0.1:8000/version`（アプリの画面のいちばん下にも出ます） |
-| ログを見る | `journalctl --user -u bganalyzer -f` |
+| ログを見る | `journalctl _SYSTEMD_USER_UNIT=bganalyzer.service -f`（`adm` グループに入っていれば sudo は要らない。`journalctl --user` では見えない） |
 | 止める | `systemctl --user stop bganalyzer`（Pi を再起動すると、また立ち上がる） |
 | 公開の設定を見る | `tailscale funnel status` |
 

@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-039、PI-040。** これまでに 38 件を決着させた。
+**残っている項目: PI-039。** これまでに 39 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-041`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -84,32 +84,6 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
-
-## PI-040. 常駐を Docker から systemd（bganalyzer.service）に切り替える
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-15（TODO-056）
-- **確かめ方:** `bganalyzer` フォルダで、次を順に行う（`collected/` はコンテナが root で作ったので、持ち主を戻す）。
-
-  ```bash
-  git pull && uv sync --frozen
-  docker rm -f bganalyzer-app-1          # compose.yaml はもう無いので、コンテナを名前で止めて消す
-  sudo chown -R $USER: collected
-  sudo loginctl enable-linger $USER
-  mkdir -p ~/.config/systemd/user
-  sed "s|@DIR@|$PWD|g" bganalyzer.service > ~/.config/systemd/user/bganalyzer.service
-  systemctl --user daemon-reload && systemctl --user enable --now bganalyzer
-  ```
-
-  そのあと `curl -s http://127.0.0.1:8000/version`、`uv run python tools/check_pi.py`（`/bg/` の公開）、
-  `uv run -q --no-project --with playwright python tools/pi_ui_check.py collect`（`collected/` に保存できる）。
-  Pi を再起動して、ログインしないまま `/version` が返ることも確かめる。
-  動いたら Docker のイメージを消す（`docker image rm bganalyzer`）。Docker 自体を消すかは ai1 に聞く
-- **期待:** `/version` が main のコミット、`check_pi.py` が OK、`collect` が OK、再起動のあとも立ち上がる
-- [x] Pi: 2026-10-15、05e210c。手順どおり切り替え、`/version` は analyzer 0.39.0・recognizer 0.21.1・05e210c・samples true。
-  `check_pi.py` OK（photo2 20・photo3 24・photo4 22・screen1 24・screen2 23、手元と同じ）。`collect` OK（オフで 0 組、オンで 1 組、24/24、後片付け済み）。
-  イメージ `bganalyzer` は消した。OK
-- [ ] Pi: 再起動して、ログインしないまま `/version` が返るか（`sudo reboot` の直後に、Pi の Claude Code の会話は切れる。次に開いたときに確かめる）
 
 ## PI-039. 作りを変えた PWA（analyzer 0.39.0）がスマホと Pi で前と同じに動く
 
