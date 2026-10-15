@@ -6,7 +6,7 @@ needs a clear, closed outline, use the fast radial symmetry transform (Loy and
 Zelinsky 2003): every pixel with a clear gradient votes for the point one radius
 away along its gradient, on both sides (a checker can be lighter or darker than
 what lies around it). The votes of a checker's rim, even a faint one, pile up at
-its centre. Peaks of the votes are the candidates, which board.detect_checkers
+its centre. Peaks of the votes are the candidates, which checkers.detect_checkers
 then scores.
 
 Everything is counted in integers, or in floats only with operations IEEE 754

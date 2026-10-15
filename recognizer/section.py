@@ -17,7 +17,7 @@ then the field). So:
 
 It does not look for circles, so it can read checkers that make none (low
 contrast) and it does not need the lone-checker rules. The checker colours come
-from the circle reading (board.count_from_circles); the empty look from the board
+from the circle reading (checkers.count_from_circles); the empty look from the board
 colours, not from the circle reading, so that the two readings fail apart.
 
 Not used by the app: `evaluate.py --section` compares it with the circles.
@@ -26,7 +26,8 @@ import os
 
 import numpy as np
 
-from board import LAB_W, Layout
+from colours import LAB_W
+from geometry import Layout
 
 STRIP = 0.3         # half width of the strip around the centre line, in checker sizes
 BIAS = 0.3          # evidence a depth needs before it counts as checker (in colour separations)

@@ -131,7 +131,7 @@ flowchart TD
 - **しきい値を試す**（`recognizer/tune.py`）: 認識のしきい値を 1 つずつ 0.8・0.9・1.1・1.2 倍にして、`samples/` と `collected/` の組を全部読み直し、
   ポイントが増えて、どの組のどの項目も悪くならない設定を `collected/tune.md` に書きます。コードは変えません（採るなら PR で）。
   全部を読み直すのを 70 回ほど繰り返すので、Pi では数時間かかります。読み取りは止めないので、使わない時間に走らせてください。
-  一部だけ試すときは `--params board.CIRCLE_MIN_SCORE,board.STACK_SKEW --steps 0.9,1.1`。`samples/` は写真ごとコンテナに入らないので、`-v` で渡しています。
+  一部だけ試すときは `--params checkers.CIRCLE_MIN_SCORE,checkers.STACK_SKEW --steps 0.9,1.1`。`samples/` は写真ごとコンテナに入らないので、`-v` で渡しています。
 - 測り直しは API と同じコンテナで、いちばん低い優先度（`nice -n 19`）で動きます。
 
 リポジトリの `samples/` へは自動では入れません。公開リポジトリなので、入れる写真は人の顔などが写っていないものを選んで、

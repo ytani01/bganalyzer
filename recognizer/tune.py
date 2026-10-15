@@ -9,7 +9,7 @@ goes in as a PR like any other change to the recognizer (CLAUDE.md: the accuracy
 
   uv run python recognizer/tune.py                                   # samples/ (not the synthetic copies)
   uv run python recognizer/tune.py --collected /data/samples         # and the pairs kept with 「Pi に残す」 (on the Pi)
-  uv run python recognizer/tune.py --params board.CIRCLE_MIN_SCORE,board.STACK_SKEW --steps 0.9,1.1
+  uv run python recognizer/tune.py --params checkers.CIRCLE_MIN_SCORE,checkers.STACK_SKEW --steps 0.9,1.1
   uv run python recognizer/tune.py --only photo2,photo3 --out tune.md
 
 Each try reads every sample once, so the whole run is (parameters x steps + 2) readings of all the
@@ -32,9 +32,9 @@ SAMPLES = os.path.join(HERE, "..", "samples")
 
 # module.NAME: constants read when the recognizer runs (not baked into a default argument)
 PARAMS = [
-    "board.CIRCLE_MIN_SCORE", "board.LONE_MIN_SCORE", "board.STACK_SKEW", "board.GAP_MIN_SCORE",
-    "board.OUTLINE_SUPPORT", "board.PATTERN_SUPPORT", "board.PATTERN_DISTINCT", "board.BAR_COLOUR_TOL",
-    "board.LONE_COLOUR_TOL", "board.COL_MIN_SCORE", "board.TEX_MIN", "board.TEX_HIDDEN", "board.TEX_SHOWN",
+    "checkers.CIRCLE_MIN_SCORE", "checkers.LONE_MIN_SCORE", "checkers.STACK_SKEW", "checkers.GAP_MIN_SCORE",
+    "checkers.OUTLINE_SUPPORT", "checkers.PATTERN_SUPPORT", "checkers.PATTERN_DISTINCT", "checkers.BAR_COLOUR_TOL",
+    "checkers.LONE_COLOUR_TOL", "geometry.COL_MIN_SCORE", "checkers.TEX_MIN", "checkers.TEX_HIDDEN", "checkers.TEX_SHOWN",
     "dice.PIP_CONTRAST", "cube.MIDDLE", "cube_value.SCORE_MIN", "cube_value.GAP_MIN",
 ]
 STEPS = (0.8, 0.9, 1.1, 1.2)
