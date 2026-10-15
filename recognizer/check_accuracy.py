@@ -38,7 +38,7 @@ def measure(path):
         "bar": bar_ok,
         "home": home_ok,
         "dice": "ok" if dice == want else "not read" if dice is None else "WRONG",
-        "cube": "ok" if cube == cube_want else "not found" if cube is None else "WRONG",
+        "cube": "ok" if evaluate.same_cube(cube, cube_want) else "not found" if cube is None else "WRONG",
     }
 
 
