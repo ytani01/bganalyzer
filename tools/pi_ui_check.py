@@ -3,7 +3,7 @@
     uv run -q --no-project --with playwright python tools/pi_ui_check.py          # all checks
     uv run -q --no-project --with playwright python tools/pi_ui_check.py collect  # some of them
 
-Run it on the Pi, next to the running app (docker compose). The browser is the Pi's own
+Run it on the Pi, next to the running app (bganalyzer.service). The browser is the Pi's own
 /usr/bin/chromium, so Playwright downloads nothing. It sends only samples/ photos (public in this
 repository). The "collect" check saves one pair in collected/ and removes it again.
 What it cannot see stays for the phone: the voice itself, iPhone's share sheet, attaching files.
@@ -115,8 +115,8 @@ def collected():
     return set(p.name for p in COLLECTED.iterdir()) if COLLECTED.is_dir() else set()
 
 
-def compose(*args):
-    return subprocess.run(["docker", "compose", "exec", "-T", "app", *args], cwd=ROOT,
+def evaluate(path):
+    return subprocess.run([str(ROOT / ".venv/bin/python"), "recognizer/evaluate.py", str(path)], cwd=ROOT,
                           capture_output=True, text=True, timeout=300)
 
 
@@ -137,11 +137,12 @@ def check_collect(browser):
     measured = ""
     if ok:
         t = next(n for n in on_new if n.endswith(".truth.json"))
-        r = compose("sh", "-c", f"python recognizer/evaluate.py /data/samples/{t}")
+        r = evaluate(COLLECTED / t)
         measured = (r.stdout or r.stderr).strip().splitlines()[-1:]
         ok = r.returncode == 0
     if on_new:   # this pair is a test, not a photo to learn from
-        compose("rm", "-f", *(f"/data/samples/{n}" for n in on_new))
+        for n in on_new:
+            (COLLECTED / n).unlink(missing_ok=True)
     return ok, f"off={off_new} on={on_new} evaluate={measured} left={sorted(collected() & set(on_new))}"
 
 

@@ -20,3 +20,20 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen
       - run: uv run pytest analyzer
+      # Pi と同じ起動のしかた（bganalyzer.service）で、起動して解析・写真認識まで通るか（TODO-056）
+      - name: 起動して解析・写真認識を試す
+        run: |
+          .venv/bin/uvicorn app:app --app-dir analyzer --port 8000 --workers 1 > uvicorn.log 2>&1 &
+          for i in $(seq 30); do curl -fs localhost:8000/health && break; sleep 2; done
+          curl -fsS -X POST localhost:8000/analyze -H 'content-type: application/json' \
+            -d '{"position_id": "4HPwATDgc/ABMA"}' | tee analyze.json
+          python3 -c "import json; r = json.load(open('analyze.json')); assert 'summary' in r, r"
+          corners=$(python3 -c "import json; t = json.load(open('samples/screen1.truth.json')); print(','.join(str(v) for p in t['corners_TL_TR_BR_BL'] for v in p))")
+          curl -fsS -X POST localhost:8000/analyze-photo -F image=@samples/screen1.png \
+            -F corners=$corners -F home=left -F bottom_colour=1 | tee photo.json
+          python3 -c "import json; r = json.load(open('photo.json')); assert r['analysis'], r"
+          curl -fs localhost:8000/ | grep -q '<html'
+          curl -fsS localhost:8000/version | tee version.json
+          python3 -c "import json; v = json.load(open('version.json')); assert v['analyzer'] and v['recognizer'] and v['commit'], v"
+      - if: failure()
+        run: cat uvicorn.log || true

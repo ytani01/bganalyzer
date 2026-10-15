@@ -1,6 +1,6 @@
 """POST /samples: photos with their corrected boards, kept to measure and improve the recognizer (TODO-030).
 
-Off unless BG_SAMPLES_DIR is set (compose.yaml sets it), and the app sends them only when the user
+Off unless BG_SAMPLES_DIR is set (bganalyzer.service sets it), and the app sends them only when the user
 turns it on. Each photo is one id: a later send replaces the earlier one. When enough new pairs have
 come, they are measured again in a child process (recognizer/collected.py).
 """
@@ -79,7 +79,7 @@ def measure_collected(d: Path) -> None:
     global _measuring
     if (_measuring and _measuring.poll() is None) or len(collected.new_pairs(d)) < collected.NEW:
         return
-    try:   # at the lowest priority: the API in the same container comes first; why it failed goes to measure.log
+    try:   # at the lowest priority: the API it was started from comes first; why it failed goes to measure.log
         with open(d / "measure.log", "w") as err:
             _measuring = subprocess.Popen(["nice", "-n", "19", sys.executable, str(RECOGNIZER / "collected.py"), str(d)],
                                           stdout=subprocess.DEVNULL, stderr=err)

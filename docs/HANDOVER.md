@@ -92,9 +92,8 @@ ai1 のプロジェクトの指示にも、同じ文面が入っていること�
   色がほぼ同じ（Lab で差 ~8）で、色だけでは区別できない。斜めの写真が一番の弱点なので、真上から撮ってもらう。
 - **公開先は自宅の Raspberry Pi + Tailscale Funnel**（`https://<Pi>.<tailnet>.ts.net/bg/`、無料・ドメイン不要。同じ Pi で別のアプリも別のパスで公開する予定があるので、アプリはパスの下でも動くようにしてある）（手順は [raspi.md](raspi.md)）。2026-10-12 に ai1 が Pi で動くことを確かめた（TODO-002 完了）。
   ホーム画面への追加には HTTPS が必要。サーバーレス関数は不可、ワーカー1つで常駐。
-- **Docker:** 必須ではなくサーバー公開用。`docker build` は ai1 の手元で動作確認済み（2026-10-13）。
-  Claude のクラウド環境からは Docker Hub（429）や ghcr（403）、deb.debian.org に届かず試せないので、
-  GitHub Actions の `docker`（`.github/workflows/docker.yml`）が x86_64 と arm64 でビルドし、起動して解析まで確かめる。
+- **Docker は使わない**（2026-10-15、TODO-056）。Pi も uv で入れ、systemd のユーザー unit（`bganalyzer.service`）で常駐させる。
+  起動して解析まで通るかは、GitHub Actions の `test` が x86_64 と arm64 で確かめる。
   gnubg の PyPI パッケージには arm64 の Linux の wheel もソース配布もないので、StonesAndDice/gnubg-pypi の固定したコミットから
   `.github/workflows/gnubg-wheel.yml` でビルドして Release に置き、`pyproject.toml` が aarch64 のときに使う（TODO-055）。
   gnubg の版を上げるときはそのコミットと URL も合わせる。

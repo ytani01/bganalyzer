@@ -2,7 +2,7 @@ name: gnubg-wheel
 
 # PyPI の gnubg には aarch64（Raspberry Pi）の wheel が無いので、ここでビルドして Release に置く（TODO-055）。
 # pyproject.toml の [tool.uv.sources] が aarch64 のときだけこの wheel を使う。
-# Pi と Docker（どちらも bookworm）で動くように、Docker の実行用と同じ python:3.12-slim-bookworm でビルドする。
+# bookworm 以降の Pi で動くように、python:3.12-slim-bookworm のコンテナでビルドする（アプリは Docker で動かさない。TODO-056）。
 # 版を上げるときは REV を変え、`git tag gnubg-<版> && git push origin gnubg-<版>` してから pyproject.toml の版と URL を直し、`uv lock` する。
 on:
   push:

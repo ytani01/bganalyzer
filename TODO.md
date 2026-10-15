@@ -73,10 +73,10 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 
 TODO-055 で Pi でも `uv sync` が通るようになるので、Docker は要らなくなる。Docker は残さず消す（2026-10-15 ユーザーが決めた）。
 
-- [ ] Pi の常駐を systemd の unit（`uv run uvicorn ...`、自動で再起動、`BG_SAMPLES_DIR` と `collected/`）にし、リポジトリに置く
-- [ ] Dockerfile・.dockerignore・compose.yaml・`.github/workflows/docker.yml` を消す。docker の CI が確かめていた「起動して解析まで」は、残る CI か Pi の確認に移す
-- [ ] README・CLAUDE.md・docs/raspi.md・docs/HANDOVER.md・docs/PI_CHECKS.md の Docker の手順を直す（`rg -n -i -e docker -e compose --glob '!archives/**'`）
-- [ ] Pi で Docker から systemd へ切り替える手順を PI_CHECKS に足す（`/version`、`/bg/` の公開、`collected/` の保存が続くこと）
+- [x] Pi の常駐を systemd の unit（`uv run uvicorn ...`、自動で再起動、`BG_SAMPLES_DIR` と `collected/`）にし、リポジトリに置く（`bganalyzer.service`。ユーザー unit で、入れるときに `@DIR@` を置き換える）
+- [x] Dockerfile・.dockerignore・compose.yaml・`.github/workflows/docker.yml` を消す。docker の CI が確かめていた「起動して解析まで」は、残る CI か Pi の確認に移す（`test` の CI に、uvicorn を起動して解析・写真認識・`/version` まで試す手順を足した）
+- [x] README・CLAUDE.md・docs/raspi.md・docs/HANDOVER.md・docs/PI_CHECKS.md の Docker の手順を直す（`rg -n -i -e docker -e compose --glob '!archives/**'`）
+- [x] Pi で Docker から systemd へ切り替える手順を PI_CHECKS に足す（`/version`、`/bg/` の公開、`collected/` の保存が続くこと）→ PI-040
 
 ---
 

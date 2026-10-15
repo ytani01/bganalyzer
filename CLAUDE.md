@@ -10,8 +10,7 @@
 uv sync                                                          # 依存を .venv に入れる（uv.lock どおり）
 uv run pytest analyzer                                           # テスト
 uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000   # API と PWA（/）の起動
-docker build -t bganalyzer . && docker run --rm -p 8000:8000 bganalyzer   # コンテナで起動
-docker compose up -d --build                                     # Raspberry Pi で常駐（docs/raspi.md）
+git pull && uv sync --frozen && systemctl --user restart bganalyzer   # Raspberry Pi の常駐を更新（docs/raspi.md）
 uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
 uv run python recognizer/check_accuracy.py                       # 認識の精度が基準より下がっていないか（CI の accuracy）
 uv run python recognizer/trace_cpu.py check                      # 読み取りが途中の値まで基準と同じか（CI の cpu-match。x86_64 と arm64）
@@ -23,7 +22,7 @@ uv run -q --no-project --with playwright python tools/pi_ui_check.py   # Pi の�
 
 - **Python の依存は uv で管理する。** 追加・削除は `uv add` / `uv remove`
   （テスト用は `--dev`）で行い、`pyproject.toml` と `uv.lock` を一緒にコミットする。
-  Docker も `uv sync --frozen` で同じ `uv.lock` から入れる
+  Pi も `uv sync --frozen` で同じ `uv.lock` から入れる（Docker は使わない。TODO-056）
 - **API は `--reload` や複数ワーカーで動かさない。** gnubg はメインスレッド以外で
   評価するとクラッシュするので、解析は専用の子プロセスで行っている
   （`analyzer/engine.py`）
@@ -67,7 +66,7 @@ GitHub Actions の `cpu-match` が x86_64 と arm64 でそれと同じかを確�
 **TODO.md と同じ決まり**で管理する（`PI-001` からの通し番号、ファイルの先頭に「残っている項目」と「次の番号」、
 各項目に **担当**、状態は `- [ ]` / `- [x]`、決着したら `archives/pi/` に 1 項目 1 ファイルで移す）。
 **Raspberry Pi の上で作業する Claude Code は、`git pull` のあとに docs/PI_CHECKS.md を読み、**
-**残っている項目を確かめて結果を書き込む**（アプリの更新は `docker compose up -d --build`、詳しくは [docs/raspi.md](docs/raspi.md)）。
+**残っている項目を確かめて結果を書き込む**（アプリの更新は `uv sync --frozen && systemctl --user restart bganalyzer`、詳しくは [docs/raspi.md](docs/raspi.md)）。
 期待と違えばユーザーに報告する。
 公開している https://bg.tail5c266.ts.net/bg/ にはクラウドからも届くので、版・画面・公開サンプルの読み取りは
 **クラウドの Claude が `uv run python tools/check_pi.py` で先に確かめてよい**（やり方とやらないことは docs/PI_CHECKS.md の「クラウドから確かめられること」）。

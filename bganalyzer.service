@@ -1,0 +1,17 @@
+# Raspberry Pi で常駐させる systemd のユーザー unit（手順は docs/raspi.md）。
+# @DIR@ はリポジトリのフォルダ。入れるときに置き換える:
+#   sed "s|@DIR@|$PWD|g" bganalyzer.service > ~/.config/systemd/user/bganalyzer.service
+[Unit]
+Description=bganalyzer (API and PWA)
+
+[Service]
+WorkingDirectory=@DIR@
+# PWA の設定で「Pi に残す」をオンにしたときだけ、写真と直した盤面がここに入る（TODO-030）
+Environment=BG_SAMPLES_DIR=@DIR@/collected
+# gnubg はメインスレッド以外で評価すると落ちるので、ワーカーは1つ・--reload なし
+ExecStart=@DIR@/.venv/bin/uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000 --workers 1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

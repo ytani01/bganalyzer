@@ -153,7 +153,7 @@ def test_version_reports_both_parts_and_commit():
     app_js = (Path(__file__).parent / "static" / "app.js").read_text()
     assert f'const APP_VERSION = "{app_module.__version__}"' in app_js
     assert v["recognizer"] == board.__version__
-    if shutil.which("git") is None:   # the Docker image has no git; git_commit has its own test
+    if shutil.which("git") is None:   # git_commit has its own test
         pytest.skip("git is not installed")
     head = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True,
                           cwd=Path(__file__).parent).stdout.strip()

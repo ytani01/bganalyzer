@@ -86,10 +86,7 @@ def health():
 
 
 def git_commit(git_dir: Path = REPO / ".git") -> str | None:
-    """Short id of the checked-out commit, read from the files (git itself may not be installed).
-
-    The Docker image carries only .git/HEAD and the refs for this (see .dockerignore).
-    """
+    """Short id of the checked-out commit, read from the files (git itself may not be installed)."""
     try:
         head = (git_dir / "HEAD").read_text().strip()
         if head.startswith("ref: "):
