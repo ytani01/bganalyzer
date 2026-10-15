@@ -70,6 +70,8 @@ header .actions { display: flex; gap: 6px; flex: none; }
 .act:active { opacity: .8; }
 .act:disabled { opacity: .45; cursor: default; }
 .act.on { background: transparent; color: var(--accent-fg); }
+.act.speak { display: inline-flex; align-items: center; gap: 4px; }
+.act.speak svg { width: 20px; height: 20px; flex: none; }
 /* The header's second line: reopen the board read before, without reading the photo again. */
 header .bar2 { margin-top: 8px; }
 header .bar2[hidden] { display: none; }

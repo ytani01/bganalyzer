@@ -28,7 +28,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <div class="actions">
       <button id="recognize" class="act" type="button" hidden disabled>盤面を読み取る</button>
       <button id="analyze" class="act" type="button" hidden>解析する</button>
-      <button id="speak" class="act" type="button" aria-label="結果を読み上げる" aria-pressed="false" hidden>🔊</button>
+      <!-- 絵文字の 🔊 は端末によって絵が違い、何のボタンか分かりにくかったので、スピーカーの絵と文字で示す（中身は app.js の speakLabel） -->
+      <button id="speak" class="act speak" type="button" aria-pressed="false" hidden></button>
     </div>
   </div>
   <!-- 2 行目: 四隅の画面で、前に読み取った盤面があるときだけ出す（読み取り直さずに戻れることに気づけるように） -->

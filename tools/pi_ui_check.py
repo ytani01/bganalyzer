@@ -76,7 +76,7 @@ def check_double(browser):
 
 
 def check_speech(browser):
-    """PI-013: what 🔊 reads is a short summary, without percentages or pips."""
+    """PI-013: what the 読み上げ button reads is a short summary, without percentages or pips."""
     page = open_app(browser)
     read_photo(page)
     show_outcome(page)
