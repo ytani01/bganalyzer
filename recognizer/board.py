@@ -50,7 +50,7 @@ from tracing import trace as _trace
 
 # The recognizer's version (the reading code in recognizer/: board.py and the modules it uses, corners.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.21.3"
+__version__ = "0.21.4"
 
 
 def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
