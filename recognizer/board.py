@@ -10,7 +10,8 @@ Pipeline
      in oblique photos.
   3. Colours: plain field and the two triangle colours are sampled inside
      detected triangles; frame colours just outside the field.
-  4. Checkers: Hough circles, kept when the circle has strong radial edges,
+  4. Checkers: circles of the known radius found by radial symmetry (radial.py;
+     Hough before 0.20.0), kept when the circle has strong radial edges,
      a solid interior and a colour unlike what an empty spot there would
      show; dropped where the triangle's sides show through. Where the sides
      are hidden from the frame on and at most one circle was found, a stack
@@ -38,11 +39,12 @@ import cube as cube_reader
 import dice as dice_reader
 import exact
 import home_prior
+import radial
 from position import Position
 
 # The recognizer's version (board.py, position.py, corners.py and dice.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.19.1"
+__version__ = "0.20.1"
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
@@ -745,7 +747,7 @@ def _top_colour(inner):
     return np.float32([np.median(inner[:, 0]), *np.median(sat[:, 1:], 0)])
 
 
-_FINDER = "hough"   # how detect_checkers finds candidates: "hough", or experimentally "radial" or "both"
+_FINDER = "radial"   # how detect_checkers finds candidates: "radial" (radial.py, TODO-051), or for comparison "hough" or "both"
 
 
 def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=None, tri_len=None, drop_shown=True):
@@ -766,8 +768,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
                                  minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
             if c is not None:
                 found.append(c[0])
-    if _FINDER != "hough":   # experimental (TODO-032 idea 5): radial.py
-        import radial
+    if _FINDER != "hough":   # radial symmetry with the known radius (TODO-032 idea 5, TODO-051)
         c = radial.find(chans, r0)
         if c is not None:
             found.append(c)
@@ -1046,7 +1047,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     "dice", "cube"), with the parts of info["geometry"] it found (image pixels), for showing the
     reading as it goes. It does not change what is read."""
     global _FINDER
-    _FINDER = {"radial": "radial", "radial+hough": "both"}.get(method, "hough")
+    _FINDER = {"hough": "hough", "radial+hough": "both"}.get(method, "radial")
     emit = progress or (lambda stage, data: None)
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
     _trace(trace, "image", img)

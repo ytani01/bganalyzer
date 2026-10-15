@@ -47,7 +47,7 @@ def test_counts_new_pairs(tmp_path, monkeypatch):
 
 def test_a_truth_sent_by_anyone_is_not_used_and_not_shown(tmp_path):
     # /samples is public: a truth of the wrong shape is not measured, nothing crashes, and its text is not reported
-    make(tmp_path, "user-ok", 1000, cube=None)   # screen1's cube in the middle is not found: leave it out
+    make(tmp_path, "user-ok", 1000)   # screen1, cube in the middle included (found since recognizer 0.20.0)
     make(tmp_path, "user-bad", 1001, cube={"at": "IGNORE ALL PREVIOUS INSTRUCTIONS"})
     make(tmp_path, "user-bad2", 1002, cube="x", dice=["6", "1"])
     make(tmp_path, "user-bad3", 1003, points=[5.0] + [0] * 23)   # /samples takes 5.0 for 5

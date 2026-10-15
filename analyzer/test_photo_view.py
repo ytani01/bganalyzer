@@ -41,11 +41,11 @@ def test_analyze_photo_returns_geometry():
     ck = g["checkers"]
     assert ck and all(r > 0 and side in ("white", "black") for _, _, r, side in ck)
     assert {side for *_, side in ck} == {"white", "black"}
-    # the dice read (screen1: 4 and 2) as squares in image pixels; no cube found in this one
+    # the dice read (screen1: 4 and 2) and the cube in the middle (found since recognizer 0.20.0) as squares in image pixels
     assert sorted(d["value"] for d in g["dice"]) == [2, 4]
     for d in g["dice"]:
         assert len(d["quad"]) == 4 and all(min(xs) < x < max(xs) and min(ys) < y < max(ys) for x, y in d["quad"])
-    assert g["cube"] is None
+    assert g["cube"]["at"] == "centre" and len(g["cube"]["quad"]) == 4
 
 
 def test_analyze_photo_streams_the_stages():
