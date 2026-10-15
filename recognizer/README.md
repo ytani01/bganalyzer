@@ -573,9 +573,14 @@ dark-homeleft の 15、leather-cups の 9・21、rollup-oblique の 2・4・10�
 - `radial.py` 駒の中心の候補を、半径を前提に放射対称で探す（TODO-051）
 - `dice.py` フィールドのダイスの目
 - `cube.py` キューブの場所
+- `cube_value.py` キューブの数字（`cube_glyphs.png` の字と比べる。字は `make_cube_glyphs.py` で作る）
+- `home_prior.py` 手前の人のホームボードの左右の推測（`home_prior.json` から）
 - `synth.py` 合成画像の生成（正解付き）
+- `synth_cube.py` 数のわかったキューブを写真に貼り込んだ画像（`samples/synth-cube-*`、`cube_value.py` の確認用）
 - `evaluate.py` `*.truth.json` と比較して精度を出す（`--slots` で下の試作の読み方）
 - `check_accuracy.py` 精度が `accuracy_baseline.json` より下がっていないか確かめる（CI の `accuracy`。`--update` で基準を書き直す）
+- `check_corners.py` 四隅の推定（`corners.py`）を `samples/*.truth.json` の四隅と比べる
+- `tune.py` しきい値を 1 つずつ変えて、良くなる設定を探す（上の「しきい値を試す」）
 - `exact.py` どの CPU でも同じ結果になる計算（射影変換、写し直し、直線、k-means。TODO-046）
 - `trace_cpu.py` 全サンプルの読み取りが途中の値まで `cpu_reference.json` と同じか確かめる（CI の `cpu-match`。`--update` で基準を書き直す）
 - `slots.py` 位置ごとに判定する読み方の試作（アプリでは使わない。float の計算が残っていて、CPU で結果が変わりうる）

@@ -72,7 +72,7 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
 
 **写真の上に出す文字は数字だけ**（ポイントごとの数とダイスの目。段階の説明や「見つかりません」などの文字は出さない。ai1、2026-10-15）。
 
-**各段階を見せる長さは `scan.js` の `STAGE_MS` の表で、段階ごとに変えられる**（2026-10-15 の時点ではすべて 1000 ミリ秒）。
+**各段階を見せる長さは `scan.js` の `STAGE_MS` の表で、段階ごとに変えられる**（2026-10-15 の時点では、四隅の合わせ直し `fit` が 1 回 500 ミリ秒、ほかは 1000 ミリ秒）。
 段階を一度に受け取ったとき（流さない古いサーバー、途中でまとめてしまう経路）も、同じ順に表の長さずつ見せる。
 端末が「視差効果を減らす」（prefers-reduced-motion）なら動かさず、各段階を止まった絵で見せる。
 写真の上に描くだけで、読み取りの結果は変えない。
@@ -176,7 +176,7 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 最後に `{"stage": "done", "result": 下の応答}` が来る。途中で失敗したときは最後が `{"stage": "error", "detail": 理由}`（状態は 200 のまま）。
 認識は別のスレッドで動かすので、送り終わるのは認識と解析が終わったとき。
 
-応答は `{"recognized": 認識結果, "home": "left" か "right", "home_guess": {...} か null, "errors": [...], "warnings": [...], "geometry": {...}, "dice_read": [大, 小] か null, "analysis": 上の /analyze と同じ形}`。
+応答は `{"recognized": 認識結果, "home": "left" か "right", "home_guess": {...} か null, "errors": [...], "warnings": [...], "geometry": {...}, "dice_read": [大, 小] か null, "cube_read": {...} か null, "analysis": 上の /analyze と同じ形}`。
 `dice_read` は写真のフィールドに 2 つのダイスがあって、目を自信を持って読めたときだけ入る（recognizer/README.md の「ダイス」）。
 `dice` を送らなかったときは、これで最善手も出す。
 `cube_read` は写真で見つけたキューブの場所と数字 `{"at": "centre" | "white" | "black" | "field", "value": 2〜64 か null}` か `null`
@@ -195,7 +195,7 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 `cube`（見つけたキューブ `{"quad": 四隅, "at": "centre" か "white" か "black" か "field"}` か null）、
 `counts`（ポイントとバーで数えた駒 `[{"at": [x, y], "n": 数, "side": "white" か "black"}]`。`at` はポイントの外側の枠の上、バーはバーの上）。
 `dice`・`cube`・`counts` も演出に使うだけ。
-`warnings` は写真についての注意（日本語の文）。今は、盤を真上から 40° 以上傾けて撮ったときに「斜めから撮った」と出る。
+`warnings` は写真についての注意（日本語の文）。今は、盤を真上から 40° を超えて傾けて撮ったときに「斜めから撮った」と出る。
 認識で駒数が合わないときは `analysis` が `null` になり、`errors` に理由が入ります（アプリで手修正してから
 `/analyze` を呼ぶ想定）。
 
