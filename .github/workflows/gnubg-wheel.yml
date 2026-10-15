@@ -1,0 +1,33 @@
+name: gnubg-wheel
+
+# PyPI の gnubg には aarch64（Raspberry Pi）の wheel が無いので、ここでビルドして Release に置く（TODO-055）。
+# pyproject.toml の [tool.uv.sources] が aarch64 のときだけこの wheel を使う。
+# Pi と Docker（どちらも bookworm）で動くように、Docker の実行用と同じ python:3.12-slim-bookworm でビルドする。
+# 版を上げるときは REV を変え、`git tag gnubg-<版> && git push origin gnubg-<版>` してから pyproject.toml の URL を直す。
+on:
+  push:
+    tags: ['gnubg-*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    env:
+      REPO: https://github.com/StonesAndDice/gnubg-pypi.git
+      REV: 4b3596d882b7769e76e4d3b63125aaaae4afd90e
+    steps:
+      # サブモジュールの URL が ssh なので、https に読み替えて取る
+      - run: |
+          docker run --rm -e REPO -e REV -v "$PWD/wheels:/wheels" python:3.12-slim-bookworm sh -ec '
+            apt-get update
+            apt-get install -y --no-install-recommends build-essential git pkg-config \
+              libglib2.0-dev libreadline-dev libgmp-dev libsqlite3-dev
+            git init -q /tmp/gnubg && cd /tmp/gnubg
+            git fetch -q --depth 1 "$REPO" "$REV" && git checkout -q FETCH_HEAD
+            git -c url."https://github.com/".insteadOf="git@github.com:" submodule update -q --init --recursive --depth 1
+            pip wheel -q --no-deps -w /wheels .'
+      - run: gh release create "$GITHUB_REF_NAME" wheels/*.whl --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME (aarch64)" --notes "gnubg-pypi $REV を python:3.12-slim-bookworm（aarch64）でビルドした wheel。pyproject.toml が aarch64 のときに使う（TODO-055）。"
+        env:
+          GH_TOKEN: ${{ github.token }}
