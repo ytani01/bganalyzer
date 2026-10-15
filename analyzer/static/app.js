@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.41.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.42.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -152,12 +152,12 @@ part((s) => [s.homePick, s.bottomColour, s.onRoll, s.cube.at, s.photoView, s.col
 });
 
 part((s) => s.bottomColour, (s) => {
-  const light = "#f3efe4", dark = "#3a2a4a";
+  const [w, b] = s.bottomColour ? ["light", "dark"] : ["dark", "light"];
   const root = document.documentElement.style;
-  root.setProperty("--white-chk", s.bottomColour ? light : dark);
-  root.setProperty("--black-chk", s.bottomColour ? dark : light);
-  root.setProperty("--white-fg", s.bottomColour ? "#222" : "#fff");
-  root.setProperty("--black-fg", s.bottomColour ? "#fff" : "#222");
+  for (const k of ["chk", "fg", "rim"]) {
+    root.setProperty(`--white-${k}`, `var(--${w}-${k})`);
+    root.setProperty(`--black-${k}`, `var(--${b}-${k})`);
+  }
 });
 
 // ---- the corners screen

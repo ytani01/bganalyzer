@@ -1,0 +1,140 @@
+{
+ "version_api": {
+  "analyzer": "0.42.0",
+  "recognizer": "0.21.4",
+  "commit": "8083c6c",
+  "samples": false
+ },
+ "header_version": "v0.42.0 · r0.21.4 · 8083c6c",
+ "2_colours_before": {
+  "circles (fill / stroke: count)": {
+   "rgb(255, 253, 246) / rgb(51, 51, 51)": 15,
+   "rgb(28, 28, 28) / rgb(216, 216, 216)": 15
+  },
+  "polygon fills: count": {
+   "rgb(201, 143, 74)": 12,
+   "rgb(163, 58, 44)": 12
+  },
+  "rects with felt fill": 3,
+  "rects total": 56
+ },
+ "bar_before": {
+  "white": 0,
+  "black": 0
+ },
+ "3_bar_white_after_level2": {
+  "count": 2,
+  "cy": [
+   191,
+   155
+  ],
+  "fill_stroke": [
+   [
+    "rgb(255, 253, 246)",
+    "rgb(51, 51, 51)"
+   ],
+   [
+    "rgb(255, 253, 246)",
+    "rgb(51, 51, 51)"
+   ]
+  ]
+ },
+ "3_bar_black_after_level1": {
+  "count": 1,
+  "cy": [
+   249
+  ],
+  "fill_stroke": [
+   [
+    "rgb(28, 28, 28)",
+    "rgb(216, 216, 216)"
+   ]
+  ]
+ },
+ "3_bar_white_still": {
+  "count": 2,
+  "cy": [
+   191,
+   155
+  ]
+ },
+ "3_bar_text_stack_n": [],
+ "4_colours_before_swap": {
+  "circles (fill / stroke: count)": {
+   "rgb(255, 253, 246) / rgb(51, 51, 51)": 17,
+   "rgb(28, 28, 28) / rgb(216, 216, 216)": 16,
+   "rgb(34, 34, 34) / none": 6
+  },
+  "polygon fills: count": {
+   "rgb(201, 143, 74)": 12,
+   "rgb(163, 58, 44)": 12
+  },
+  "rects with felt fill": 3,
+  "rects total": 58
+ },
+ "4_bar_before_swap": {
+  "white": [
+   [
+    "rgb(255, 253, 246)",
+    "rgb(51, 51, 51)"
+   ],
+   [
+    "rgb(255, 253, 246)",
+    "rgb(51, 51, 51)"
+   ]
+  ],
+  "black": [
+   [
+    "rgb(28, 28, 28)",
+    "rgb(216, 216, 216)"
+   ]
+  ]
+ },
+ "4_seg": {
+  "current": "1",
+  "clicked": "0"
+ },
+ "4_colours_after_swap": {
+  "circles (fill / stroke: count)": {
+   "rgb(28, 28, 28) / rgb(216, 216, 216)": 17,
+   "rgb(255, 253, 246) / rgb(51, 51, 51)": 16,
+   "rgb(255, 255, 255) / none": 6
+  },
+  "polygon fills: count": {
+   "rgb(201, 143, 74)": 12,
+   "rgb(163, 58, 44)": 12
+  },
+  "rects with felt fill": 3,
+  "rects total": 58
+ },
+ "4_bar_after_swap": {
+  "white": [
+   [
+    "rgb(28, 28, 28)",
+    "rgb(216, 216, 216)"
+   ],
+   [
+    "rgb(28, 28, 28)",
+    "rgb(216, 216, 216)"
+   ]
+  ],
+  "black": [
+   [
+    "rgb(255, 253, 246)",
+    "rgb(51, 51, 51)"
+   ]
+  ]
+ },
+ "checks": {
+  "circles_manual_before_swap_are_light_or_dark": true,
+  "polys_manual_before_swap_are_tri_a_or_b": true,
+  "circles_photo_before_swap_are_light_or_dark": false,
+  "polys_photo_before_swap_are_tri_a_or_b": true,
+  "circles_photo_after_swap_are_light_or_dark": false,
+  "polys_photo_after_swap_are_tri_a_or_b": true,
+  "bar_white_before_is_light": true,
+  "bar_black_before_is_dark": true,
+  "swap_white_bar_light_to_dark": true,
+  "swap_black_bar_dark_to_light": true
+ }
+}

@@ -8,14 +8,22 @@
   --accent-fg: #fff;
   --warn-bg: #fff2d6;
   --warn-fg: #7a4b00;
-  --white-chk: #f3efe4;
-  --black-chk: #3a2a4a;
-  --white-fg: #222;
-  --black-fg: #fff;
-  --felt: #c9a979;
-  --tri-a: #a8322d;
-  --tri-b: #283a66;
-  --frame: #5b3b22;
+  --light-chk: #fffdf6;
+  --dark-chk: #1c1c1c;
+  --light-fg: #222;
+  --dark-fg: #fff;
+  --light-rim: #333;      /* each checker's outline stands out from both points and the bar */
+  --dark-rim: #d8d8d8;
+  --white-chk: var(--light-chk);   /* 手前 and 奥; app.js swaps them with the setting of 手前's colour */
+  --black-chk: var(--dark-chk);
+  --white-fg: var(--light-fg);
+  --black-fg: var(--dark-fg);
+  --white-rim: var(--light-rim);
+  --black-rim: var(--dark-rim);
+  --felt: #2f6b4f;
+  --tri-a: #c98f4a;
+  --tri-b: #a33a2c;
+  --frame: #4a2f1a;
   --sel: #ffcc33;
 }
 @media (prefers-color-scheme: dark) {
@@ -153,7 +161,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .board-wrap svg { -webkit-touch-callout: none; touch-action: manipulation; }
 .board-wrap svg .label { font-size: 13px; fill: #fff; font-weight: bold; text-anchor: middle; }
 .board-wrap svg .num { font-size: 11px; fill: var(--muted); text-anchor: middle; }
-.board-wrap svg .off-n { font-size: 15px; font-weight: bold; fill: #3a2614; text-anchor: middle; dominant-baseline: central; }
+.board-wrap svg .off-n { font-size: 15px; font-weight: bold; fill: #fff; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .stack-n { font-size: 15px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
 .boards { display: grid; gap: 8px; }
 /* Photo and board side by side when there is room; one above the other on a phone. */

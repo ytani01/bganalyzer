@@ -61,7 +61,7 @@ const BgBoard = (() => {
     return out;
   }
 
-  // A tap at `level` (1..5 from the board's edge) of a point or of the bar's half of `side`: the stack
+  // A tap at `level` (1..5 from the board's edge, from the middle on the bar) of a point or of the bar's half of `side`: the stack
   // up to there; on its top checker one fewer; on the 5th level of a stack of 5 or more one more.
   // An empty point takes `side` (the colour last put); a point with checkers keeps theirs.
   function tap(b, at, level, side) {

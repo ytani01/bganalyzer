@@ -28,8 +28,11 @@ const BgBoardView = (() => {
   const cubeX = (home) => (home === "right" ? B.x0 - 12 - CUBE.w : RIGHT + 12);
 
   // Centre of the checker at level k (0 = by the board's edge) of a stack; above 5 they are not drawn.
-  function stackY(top, k) {
+  // On the bar the stacks start by its middle (clear of its label) and go out, a little closer together.
+  const MID = (B.y0 + B.y1) / 2, BAR_GAP = 9, BAR_STEP = 36;
+  function stackY(top, k, bar) {
     k = Math.min(k, 4);
+    if (bar) return top ? MID - BAR_GAP - B.r - k * BAR_STEP : MID + BAR_GAP + B.r + k * BAR_STEP;
     return top ? B.y0 + B.r + 1 + k * B.step : B.y1 - B.r - 1 - k * B.step;
   }
 
@@ -97,24 +100,24 @@ const BgBoardView = (() => {
     }
   }
 
-  // The bar: 奥's checkers in the upper half, 手前's in the lower half.
+  // The bar: 手前's checkers in the upper half, 奥's in the lower half (each stack from the middle).
   function drawBar(svg, { board: b, selected, photo }, onSelect) {
-    if (b.bar_black && !photo) drawStack(svg, BAR_X, true, b.bar_black, "black");
-    if (b.bar_white && !photo) drawStack(svg, BAR_X, false, b.bar_white, "white");
-    if (!photo) el("text", { x: BAR_X, y: (B.y0 + B.y1) / 2 + 5, class: "label" }, svg).textContent = "バー";
+    if (b.bar_black && !photo) drawStack(svg, BAR_X, false, b.bar_black, "black", true);
+    if (b.bar_white && !photo) drawStack(svg, BAR_X, true, b.bar_white, "white", true);
+    if (!photo) el("text", { x: BAR_X, y: MID + 5, class: "label" }, svg).textContent = "バー";
     if (selected === "bar") {
       el("rect", { x: BAR_X - B.bar / 2 + 1, y: B.y0 + 1, width: B.bar - 2, height: B.y1 - B.y0 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
     }
     if (!onSelect) return;
     const half = (B.y1 - B.y0) / 2;
-    for (const top of [true, false]) {   // 奥's half above, 手前's below
+    for (const top of [true, false]) {   // 手前's half above, 奥's below
       bindTap(el("rect", { x: BAR_X - B.bar / 2, y: top ? B.y0 : B.y0 + half, width: B.bar, height: half, fill: "transparent", class: "hit" }, svg),
-              svg, "bar", top, top ? "black" : "white", onSelect);
+              svg, "bar", top, top ? "white" : "black", onSelect);
     }
   }
 
   // A tap area of a point or of the bar's half. onSelect(at, {level, side, hold, x, y}) on lifting the finger
-  // (hold false; level 1..5 from the board's edge, or `fixedLevel`), or once the finger has stayed put for
+  // (hold false; level 1..5 from the board's edge, from the middle on the bar, or `fixedLevel`), or once the finger has stayed put for
   // HOLD_MS, or on a right click (hold true). x, y: where on the screen. A finger that moves is scrolling.
   const HOLD_MS = 450, SLOP = 10;
   function bindTap(rect, svg, at, top, side, onSelect, fixedLevel) {
@@ -124,7 +127,8 @@ const BgBoardView = (() => {
       if (fixedLevel !== undefined) return fixedLevel;
       const m = svg.getScreenCTM();
       const y = m ? new DOMPoint(cx, cy).matrixTransform(m.inverse()).y : 0;
-      return Math.max(1, Math.min(5, Math.floor((top ? y - B.y0 : B.y1 - y) / B.step) + 1));
+      const k = at === "bar" ? ((top ? MID - y : y - MID) - BAR_GAP) / BAR_STEP : (top ? y - B.y0 : B.y1 - y) / B.step;
+      return Math.max(1, Math.min(5, Math.floor(k) + 1));
     };
     const fire = (hold, cx, cy) => onSelect(at, { level: levelAt(cx, cy), side, hold, x: cx, y: cy });
     rect.addEventListener("pointerdown", (e) => {
@@ -147,12 +151,12 @@ const BgBoardView = (() => {
     rect.addEventListener("contextmenu", (e) => { e.preventDefault(); cancel(); fire(true, e.clientX, e.clientY); });
   }
 
-  // Up to 5 checkers of a stack from the board's edge, the count on the last when there are more.
-  function drawStack(svg, x, top, n, side) {
+  // Up to 5 checkers of a stack from the board's edge (the bar's middle), the count on the last when there are more.
+  function drawStack(svg, x, top, n, side, bar) {
     const shown = Math.min(n, 5);
     for (let k = 0; k < shown; k++) {
-      const y = stackY(top, k);
-      el("circle", { cx: x, cy: y, r: B.r, fill: checkerFill(side), stroke: "#555", "stroke-width": 1.5, "pointer-events": "none" }, svg);
+      const y = stackY(top, k, bar);
+      el("circle", { cx: x, cy: y, r: B.r, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2.5, "pointer-events": "none" }, svg);
       if (k === shown - 1 && n > 5) {
         el("text", { x, y, class: "stack-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg).textContent = n;
       }
@@ -169,7 +173,7 @@ const BgBoardView = (() => {
       n = Math.min(n, 15);
       for (let k = 0; k < n; k++) {
         const y = top ? B.y0 + 2 + k * step : B.y1 - 2 - hgt - k * step;
-        el("rect", { x, y, width: w, height: hgt, rx: 2, fill: checkerFill(side), stroke: "#555", "stroke-width": 1, "pointer-events": "none" }, svg);
+        el("rect", { x, y, width: w, height: hgt, rx: 2, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 1.5, "pointer-events": "none" }, svg);
       }
       el("text", { x: trayX(home) + TRAY.w / 2, y: top ? B.y0 + n * step + 12 : B.y1 - n * step - 12, class: "off-n", "pointer-events": "none" }, svg)
         .textContent = n;
@@ -205,7 +209,7 @@ const BgBoardView = (() => {
   // A move as arrows, one per die, with a red ring where a checker is hit.
   function drawMove(svg, { hops, mover }, home) {
     const at = (p, level) => {
-      if (p === "bar") return [BAR_X, stackY(mover === "black", level)];
+      if (p === "bar") return [BAR_X, stackY(mover === "white", level, true)];
       const { top, c } = BgBoard.columnOf(home, p);
       return [colX(c), stackY(top, level)];
     };
