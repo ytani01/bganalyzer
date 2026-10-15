@@ -1,6 +1,6 @@
 # Raspberry Pi で確かめること
 
-**残っている項目: PI-035。** これまでに 34 件を決着させた。
+**残っている項目: なし。** これまでに 35 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る（新しい番号ほど上）。**次の番号は `PI-036`。**
 各項目の最初に **担当** を書く。決まりは [TODO.md](../TODO.md) と同じ（[CLAUDE.md](../CLAUDE.md) の「Raspberry Pi で確かめること」）。
 
@@ -84,20 +84,6 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi �
 - [ ] Pi: （結果をここに書く）
 - [ ] スマホ: 見てもらうこと（ai1）　← スマホでの確認がなければこの行は要らない
 ```
-
-## PI-035. 駒を放射対称で探す読み取り（recognizer 0.20.0）が Pi でも同じに読み、遅すぎない
-
-- **担当:** ai1（Pi の Claude Code）
-- **足した日・PR:** 2026-10-15（TODO-051）
-- **何が変わったか:** 駒の円の候補を Hough でなく放射対称変換（`recognizer/radial.py`）で探すようにした。計算は整数で、x86_64 と arm64 で同じになるようにした（GitHub Actions の `cpu-match` で確認済み）。
-  このクラウドでは 1 枚あたり 7.1 秒 → 10.3 秒と遅くなった
-- **確かめ方:** 更新のあと `/version` が recognizer 0.20.0。`uv run python recognizer/trace_cpu.py check` と `uv run python recognizer/check_accuracy.py`（基準は更新しない）。
-  時間は、同じ 3 枚を前の方法と比べる:
-  `for m in hough circles; do uv run python -c "import time,sys;sys.path.insert(0,'recognizer');import evaluate;t=time.time();[evaluate.run(f'samples/{s}.truth.json',method='$m') for s in ('photo3','commons-rollup-oblique','tv-vegas-open')];print('$m',round((time.time()-t)/3,1))"; done`。
-  あわせて、スマホの代わりに PWA で 1 枚読み取って（`tools/pi_ui_check.py`）、読み取りが終わるまでの時間がふだんと比べてどうか見る
-- **期待:** `trace_cpu.py check` が「same as the reference: every step of every sample」、`check_accuracy.py` が 576 ポイント中 537 で失敗しない。
-  時間は `circles`（新しい方）が `hough` の 1.5 倍くらいまで。2 倍を大きく超える、または PWA で 1 枚 30 秒を超えるようなら、TODO.md に速くする項目を足してユーザーに報告する
-- [ ] Pi: （結果をここに書く）
 
 ## 完了済み
 
