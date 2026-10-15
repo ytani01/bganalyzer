@@ -5,3 +5,5 @@
 - verifier（Haiku 5.5 / medium）: Pi のヘッドレスのブラウザで 4 画面のヘッダーを測る。手順が決まっているので Haiku で足りる
 
 reviewer を先、verifier を後に回す。報告は同じフォルダの `reviewer-report.md`、`verifier-report.md`。
+
+途中で範囲が 2 回広がった（手順表示、アプリ名とアイコン）。どちらも表示の文字と CSS だけで分岐は変わらないので reviewer には回さず、同じ verifier に続けて測らせた（verifier-report.md の「追加の確認」「追加の確認（2）」）。
