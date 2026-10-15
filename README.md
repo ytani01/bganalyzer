@@ -127,9 +127,9 @@ uv か Docker で起動し、PC やスマホ（同じ LAN）のブラウザで `
 http のままでも写真の撮影・解析はできますが、ホーム画面への追加（インストール）とオフライン用の Service Worker は
 HTTPS（または localhost）でしか有効になりません。
 
-開発用の PC（x86_64 の Linux・Windows、Apple Silicon の Mac）なら Docker は要りません。[uv](https://docs.astral.sh/uv/) で依存を入れて起動します
-（`pyproject.toml` と `uv.lock` で版を固定）。Raspberry Pi などの arm64 の Linux では、gnubg の Python パッケージが
-配布されていないので `uv sync` が失敗します。そちらでは Docker（`docker compose up -d --build`）で動かします。
+開発用の PC（x86_64 の Linux・Windows、Apple Silicon の Mac）や Raspberry Pi なら Docker は要りません。[uv](https://docs.astral.sh/uv/) で依存を入れて起動します
+（`pyproject.toml` と `uv.lock` で版を固定）。arm64 の Linux の gnubg は PyPI に無いので、このリポジトリの Release に置いた wheel を使います
+（Python 3.12 と bookworm 以降の glibc が要ります）。
 
 ```bash
 uv sync

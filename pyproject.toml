@@ -6,7 +6,7 @@ readme = "README.md"
 # gnubg の wheel は CPython 3.10〜3.13 だけ（3.14 用はまだない）
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "gnubg>=1.1.0a16",
+    "gnubg==1.1.0a16",  # aarch64 は [tool.uv.sources] の wheel と同じ版に揃える
     "fastapi",
     "uvicorn",
     "python-multipart",
@@ -26,6 +26,6 @@ dev = [
 package = false
 
 [tool.uv.sources]
-# PyPI の gnubg は x86_64 の wheel だけ。aarch64（Raspberry Pi）は .github/workflows/gnubg-wheel.yml で
+# PyPI の gnubg には aarch64 の Linux の wheel が無い。aarch64（Raspberry Pi）は .github/workflows/gnubg-wheel.yml で
 # ビルドして Release に置いたものを使う（TODO-055）。他の CPU は PyPI から入れる
 gnubg = { url = "https://github.com/ytani01/bganalyzer/releases/download/gnubg-1.1.0a16/gnubg-1.1.0a16-cp312-cp312-linux_aarch64.whl", marker = "platform_machine == 'aarch64'" }

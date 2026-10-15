@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-055。** これまでに 52 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-056`。**
+**残っている項目: TODO-025、TODO-030、TODO-055、TODO-056。** これまでに 52 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-057`。**
 
 ---
 
@@ -79,6 +79,21 @@ x86_64 は今までどおり PyPI の wheel を使う。
 - [x] Dockerfile の「arm64 ならソースからビルド」を消し、`uv sync --frozen` だけにする
 - [ ] Pi で `uv sync` と `uv run pytest analyzer` が `--no-sync` なしで通る。CI（x86_64・arm64）も通る
 - [x] README・docs/raspi.md・cpu-match.yml の `--no-sync` など、手でビルドする前提の記述を直す
+
+---
+
+## TODO-056. Docker をやめ、Pi の常駐を uv と systemd にする
+
+|      | main | 担当 |
+|------|------|------|
+| 見込み | Opus 5.5 / effort medium | implementer（Sonnet 5.5 / medium）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
+
+TODO-055 で Pi でも `uv sync` が通るようになるので、Docker は要らなくなる。Docker は残さず消す（2026-10-15 ユーザーが決めた）。
+
+- [ ] Pi の常駐を systemd の unit（`uv run uvicorn ...`、自動で再起動、`BG_SAMPLES_DIR` と `collected/`）にし、リポジトリに置く
+- [ ] Dockerfile・.dockerignore・compose.yaml・`.github/workflows/docker.yml` を消す。docker の CI が確かめていた「起動して解析まで」は、残る CI か Pi の確認に移す
+- [ ] README・CLAUDE.md・docs/raspi.md・docs/HANDOVER.md・docs/PI_CHECKS.md の Docker の手順を直す（`rg -n -i -e docker -e compose --glob '!archives/**'`）
+- [ ] Pi で Docker から systemd へ切り替える手順を PI_CHECKS に足す（`/version`、`/bg/` の公開、`collected/` の保存が続くこと）
 
 ---
 

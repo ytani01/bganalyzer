@@ -61,7 +61,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi" },
-    { name = "gnubg", marker = "platform_machine != 'aarch64'", specifier = ">=1.1.0a16" },
+    { name = "gnubg", marker = "platform_machine != 'aarch64'", specifier = "==1.1.0a16" },
     { name = "gnubg", marker = "platform_machine == 'aarch64'", url = "https://github.com/ytani01/bganalyzer/releases/download/gnubg-1.1.0a16/gnubg-1.1.0a16-cp312-cp312-linux_aarch64.whl" },
     { name = "numpy" },
     { name = "opencv-python-headless" },
