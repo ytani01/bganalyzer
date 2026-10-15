@@ -42,25 +42,34 @@ const BgBoard = (() => {
     return { ...copy(b), points: b.points.map((_, i) => b.points[i < 12 ? 11 - i : 35 - i]) };
   }
 
-  // A button of the editor (op: "w+", "w-", "b+", "b-" or "clear") on a point (0..23) or "bar".
-  function edit(b, at, op) {
+  const LEVELS = 5;   // checkers drawn in a stack; the 5th level of a taller stack carries the count
+
+  // The checkers of `side` on a point (0..23) or on the bar, and the side whose checkers are on a point.
+  function countOf(b, at, side) {
+    if (at === "bar") return side === "white" ? b.bar_white : b.bar_black;
+    const n = b.points[at];
+    return side === "white" ? Math.max(n, 0) : Math.max(-n, 0);
+  }
+  const sideOn = (b, at) => (b.points[at] > 0 ? "white" : b.points[at] < 0 ? "black" : null);
+
+  // n checkers of `side` on a point (the other side's go) or on the bar (the other side's stay).
+  function set(b, at, side, n) {
     const out = copy(b);
-    if (at === "bar") {
-      if (op === "w+") out.bar_white++;
-      if (op === "w-") out.bar_white = Math.max(0, out.bar_white - 1);
-      if (op === "b+") out.bar_black++;
-      if (op === "b-") out.bar_black = Math.max(0, out.bar_black - 1);
-      if (op === "clear") out.bar_white = out.bar_black = 0;
-      return out;
-    }
-    let n = out.points[at];
-    if (op === "w+") n = Math.max(n, 0) + 1;
-    if (op === "w-" && n > 0) n--;
-    if (op === "b+") n = Math.min(n, 0) - 1;
-    if (op === "b-" && n < 0) n++;
-    if (op === "clear") n = 0;
-    out.points[at] = n;
+    n = Math.max(0, Math.min(15, n));
+    if (at === "bar") out[side === "white" ? "bar_white" : "bar_black"] = n;
+    else out.points[at] = side === "white" ? n : -n;
     return out;
+  }
+
+  // A tap at `level` (1..5 from the board's edge) of a point or of the bar's half of `side`: the stack
+  // up to there; on its top checker one fewer; on the 5th level of a stack of 5 or more one more.
+  // An empty point takes `side` (the colour last put); a point with checkers keeps theirs.
+  function tap(b, at, level, side) {
+    if (at !== "bar") side = sideOn(b, at) || side;
+    const n = countOf(b, at, side);
+    level = Math.max(1, Math.min(LEVELS, level));
+    if (level === LEVELS && n >= LEVELS) return set(b, at, side, n + 1);
+    return set(b, at, side, level === n ? n - 1 : level);
   }
 
   // Column (0..11, left to right) of a row -> point index (0..23), as 手前 sees the board with the
@@ -76,7 +85,8 @@ const BgBoard = (() => {
     return { top, c: top ? 23 - i : i };
   }
 
-  return { START, other, start, copy, counts, errors, swapColours, mirror, edit, pointAt, columnOf };
+  return { START, LEVELS, other, start, copy, counts, errors, swapColours, mirror, countOf, sideOn, set, tap,
+           pointAt, columnOf };
 })();
 
 if (typeof module !== "undefined") module.exports = BgBoard;
