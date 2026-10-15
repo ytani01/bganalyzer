@@ -41,7 +41,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph analyzer["analyzer/（ステップ2・3）"]
-        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /health, /version<br/>/ で static/ を配信"]
+        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /find-corners,<br/>/share-target, /health, /version<br/>/ で static/ を配信"]
         analysis["analysis.py<br/>入力の確認・確率/エクイティ整形<br/>日本語の要約"]
         engine["engine.py<br/>gnubg 呼び出し（子プロセス）<br/>キューブ判断・手の補完"]
         samplesapi["samples.py<br/>/samples（Pi に写真を残す）"]
@@ -170,7 +170,7 @@ flowchart LR
     relay <-- "Pi から外向きの接続" --> tsd
 ```
 
-- 写真はサーバーに送って処理するだけで、保存はしません。
+- 写真はサーバーに送って処理するだけで、保存はしません。例外は PWA の設定で「Pi に残す」をオンにしたときで、解析するたびに写真と直した盤面を Pi の `collected/` に保存します（[docs/raspi.md](docs/raspi.md)）。
 - API は CORS を全オリジン許可にしているので、PWA を別ドメインから配信しても呼び出せます。
 
 ## 現状
