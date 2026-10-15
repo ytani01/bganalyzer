@@ -72,7 +72,7 @@ ai1 の盤でキューブを 2・4・8・16 にして片側に置いた写真を
 |---|---|---|
 | 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus / high）+ verifier（Haiku 5.5 / medium） |
 
-- [ ] タイトルを「写真を選ぶ」「四隅を合わせる」「盤面を確かめる」「解析結果」にする（`analyzer/static/app.js` の `STEP_TITLES`）
+- [ ] タイトルを「写真の選択」「四隅の調整」「盤面の確認/修正」「解析結果」にする（文言は 2026-10-16 にユーザーが決めた）（`analyzer/static/app.js` の `STEP_TITLES`）
 - [ ] 幅 390px で、戻るボタンと操作のボタン（「盤面を読み取る」など）と並んでも 1 行に収まるか確かめる。今の空きは 8 文字ほど
 - [ ] analyzer の版を 0.40.1 に上げ、docs/PI_CHECKS.md の PI-041 の期待にある画面の名前を書き換える
 
