@@ -57,11 +57,12 @@
 | 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 
 ユーザーの依頼（2026-10-16）: 青いポイントに黒い駒は見にくい。ほかも見やすい配色に。バーの駒は真ん中あたりから積む。
+決めたこと: 案 C（緑のフェルト・黄土と赤、駒は白と黒）に縁取りを付ける。バーは手前の駒が上半分、奥の駒が下半分（ユーザー、2026-10-16）。
 
-- [ ] 配色を 2〜3 案、画像で見せて選んでもらう（`--felt`・`--white-chk` など）
-- [ ] 選んだ配色にする
-- [ ] バーの駒を真ん中寄りから外側へ積む（`board-view.js` の `drawStack(svg, BAR_X, …)`）
-- [ ] analyzer の版を上げ、PI_CHECKS.md に項目を足す
+- [x] 配色を 2〜3 案、画像で見せて選んでもらう（`--felt`・`--white-chk` など）
+- [x] 選んだ配色にする
+- [x] バーの駒を真ん中寄りから外側へ積む（`board-view.js` の `drawStack(svg, BAR_X, …)`）
+- [x] analyzer の版を上げ、PI_CHECKS.md に項目を足す
 
 **無駄を省く工夫:** 色の値は `evaluate` でまとめて読む。画面は代表の 1 枚。バーの上下は同じ `drawStack` なので片側で確かめる
 

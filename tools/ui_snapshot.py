@@ -109,10 +109,12 @@ class Run:
     def point(self, k, svg="#board-svg"):   # the middle of the k-th tap area of a board picture (24, 25: the bar)
         self.page.locator(f"{svg} .hit").nth(k).click()
 
-    def tap(self, k, level, svg="#board-svg"):   # level 1..5 from the board's edge of the k-th tap area
+    def tap(self, k, level, svg="#board-svg"):   # level 1..5 from the board's edge (the bar's middle) of the k-th tap area
         hit = self.page.locator(f"{svg} .hit").nth(k)
         top = k < 12 or k == 24                  # 0..11 the upper row, 12..23 the lower, 24/25 the bar's halves
         f = (level - 0.5) * 38 / 196             # the level's middle, as a fraction of the half
+        if k >= 24:                              # the bar's stacks start by its middle (board-view.js BAR_GAP, BAR_STEP)
+            f, top = (9 + (level - 0.5) * 36) / 196, not top
         box = hit.bounding_box()
         hit.click(position={"x": box["width"] / 2, "y": box["height"] * (f if top else 1 - f)})
 
