@@ -102,6 +102,14 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   </section>
 
   <!-- 3. 盤面の確認・修正と解析 -->
+  <!-- 長押ししたポイント（かバー）の色と駒の数を選ぶ吹き出し。指のそばに出る -->
+  <div id="palette" class="palette" role="dialog" aria-label="駒の色と数" hidden>
+    <div class="palette-head"><span id="palette-title"></span><button id="palette-close" type="button" aria-label="閉じる">✕</button></div>
+    <div id="palette-side" class="paint-side">
+      <button type="button" data-value="white"><span class="chip white"></span>手前</button><button type="button" data-value="black"><span class="chip black"></span>奥</button>
+    </div>
+    <div id="palette-counts" class="palette-counts"></div>
+  </div>
   <section id="board" class="step" hidden>
     <div id="errors" class="alert" hidden></div>
     <!-- 元の写真は四隅で補正し、盤面図と同じ並びにしたもの -->
@@ -118,14 +126,13 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <div id="board-pin" class="board-pin">
         <div class="board-wrap"><svg id="board-svg" viewBox="0 0 660 440"></svg></div>
         <div id="editor" class="editor">
-          <div id="editor-title" class="editor-title">違う所はポイントやバーをタップして直す（下が手前）</div>
-          <div id="editor-buttons" class="editor-buttons" hidden>
-            <span class="chip white" title="手前の駒"></span>
-            <button data-op="w-" aria-label="手前の駒を減らす">−</button><button data-op="w+" aria-label="手前の駒を増やす">＋</button>
-            <span class="chip black" title="奥の駒"></span>
-            <button data-op="b-" aria-label="奥の駒を減らす">−</button><button data-op="b+" aria-label="奥の駒を増やす">＋</button>
-            <button data-op="clear" class="clear">空</button>
-            <button data-op="close" class="clear" aria-label="閉じる">✕</button>
+          <div id="editor-title" class="editor-title">タップ: その段まで置く／一番上の駒で 1 個減る／番号で空に。長押し: 色と数を選ぶ（下が手前）</div>
+          <div class="editor-row">
+            <span class="note">空の所に置く色</span>
+            <div id="paint-side" class="paint-side">
+              <button type="button" data-value="white" aria-label="手前の色"><span class="chip white"></span>手前</button><button type="button" data-value="black" aria-label="奥の色"><span class="chip black"></span>奥</button>
+            </div>
+            <button id="undo" type="button" class="button small undo" disabled>元に戻す</button>
           </div>
         </div>
       </div>

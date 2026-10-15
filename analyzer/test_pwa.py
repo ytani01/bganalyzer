@@ -291,24 +291,48 @@ def _board_js(expr: str):
 def test_board_model():
     out = _board_js("""(() => {
       const s = B.start();
-      const edited = B.edit(B.edit(B.edit(s, 0, "w+"), 0, "w+"), "bar", "b+");
+      const edited = B.set(B.set(s, 0, "white", 2), "bar", "black", 1);
       return {
-        counts: B.counts(s), edited: [edited.points[0], edited.bar_black, s.points[0]],
-        errors: [B.errors(s), B.errors(B.edit(B.edit(s, 5, "w+"), 6, "w+")), B.errors({points: Array(24).fill(0), bar_white: 0, bar_black: 0})],
-        swapped: B.swapColours(B.edit(s, "bar", "w+")),
+        counts: B.counts(s), edited: [edited.points[0], edited.bar_black, edited.bar_white, s.points[0]],
+        errors: [B.errors(s), B.errors(B.set(B.set(s, 5, "white", 6), 6, "white", 1)), B.errors({points: Array(24).fill(0), bar_white: 0, bar_black: 0})],
+        swapped: B.swapColours(B.set(s, "bar", "white", 1)),
         mirrorTwice: B.mirror(B.mirror(s)).points.join() === s.points.join(),
         mirrored: B.mirror(s).points.slice(0, 12),
         inverse: ["left", "right"].every((home) => [true, false].every((top) =>
           [...Array(12).keys()].every((c) => { const i = B.pointAt(home, top, c), back = B.columnOf(home, i);
                                                return back.top === top && back.c === c; }))),
-        clear: B.edit(s, 5, "clear").points[5], wMinusOnBlack: B.edit(s, 0, "w-").points[0],
+        clear: B.set(s, 5, "white", 0).points[5], capped: B.set(s, 1, "black", 20).points[1],
+        countOf: [B.countOf(s, 0, "black"), B.countOf(s, 0, "white"), B.countOf(edited, "bar", "black")],
       };
     })()""")
     assert out["counts"] == {"onW": 15, "onB": 15, "offW": 0, "offB": 0}
-    assert out["edited"] == [2, 1, -2]   # "w+" on 奥's checkers starts 手前's stack; the start is not changed
+    assert out["edited"] == [2, 1, 0, -2]   # 手前's 2 replace 奥's checkers; the start is not changed
     assert out["errors"][0] == [] and out["errors"][1] == ["手前の駒が 17 個あります（15個まで）"]
     assert out["errors"][2] == ["盤に駒がありません"]
     assert out["swapped"]["points"][5] == -5 and out["swapped"]["bar_black"] == 1 and out["swapped"]["bar_white"] == 0
     assert out["mirrorTwice"] and out["mirrored"] == [-5, 0, 0, 0, 3, 0, 5, 0, 0, 0, 0, -2]
     assert out["inverse"]
-    assert out["clear"] == 0 and out["wMinusOnBlack"] == -2
+    assert out["clear"] == 0 and out["capped"] == -15 and out["countOf"] == [2, 0, 1]
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_board_tap():
+    """A tap at a level of a stack (TODO-059): up to there, one fewer on the top checker, one more past 5."""
+    out = _board_js("""(() => {
+      const s = B.start(), p = (b, i) => b.points[i];
+      return {
+        emptyWhite: p(B.tap(s, 1, 3, "white"), 1), emptyBlack: p(B.tap(s, 1, 2, "black"), 1),
+        keepsColour: p(B.tap(s, 0, 4, "white"), 0),          // 奥's 2 on point 1 stay 奥's
+        top: p(B.tap(s, 0, 2, "white"), 0), last: p(B.tap(B.tap(s, 0, 2, "white"), 0, 1, "white"), 0),
+        lower: p(B.tap(s, 5, 3, "white"), 5),                 // 手前's 5 down to 3
+        more: p(B.tap(s, 5, 5, "white"), 5), more2: p(B.tap(B.tap(s, 5, 5, "white"), 5, 5, "white"), 5),
+        upTo5: p(B.tap(B.set(s, 5, "white", 4), 5, 5, "white"), 5), max: p(B.tap(B.set(s, 5, "white", 15), 5, 5, "white"), 5),
+        level9: p(B.tap(s, 1, 9, "white"), 1), level0: p(B.tap(s, 1, 0, "white"), 1),
+        barBlack: B.tap(s, "bar", 2, "black"), barTop: B.tap(B.set(s, "bar", "white", 1), "bar", 1, "white").bar_white,
+      };
+    })()""")
+    assert out["emptyWhite"] == 3 and out["emptyBlack"] == -2 and out["keepsColour"] == -4
+    assert out["top"] == -1 and out["last"] == 0 and out["lower"] == 3
+    assert out["more"] == 6 and out["more2"] == 7 and out["upTo5"] == 5 and out["max"] == 15
+    assert out["level9"] == 5 and out["level0"] == 1   # levels outside 1..5 are taken as the nearest
+    assert out["barBlack"]["bar_black"] == 2 and out["barBlack"]["bar_white"] == 0 and out["barTop"] == 0

@@ -301,7 +301,7 @@ def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
         fits.append([best, by_shift, [k for k, v in by_shift.items() if v is best][0]])
     # The bar is at most about one and a half points wide. When the fields' columns leave a wider gap,
     # a field may have slipped one point outwards: with its innermost triangle hidden under checkers,
-    # five triangles still match, and the hidden one is taken into the bar (TODO-059). Then move the
+    # five triangles still match, and the hidden one is taken into the bar (TODO-060). Then move the
     # field one point in if that matches nearly as well, the one that leaves between the fields most
     # like a bar (not the field's plain colour at mid-board).
     bar_like = mid.mean(0)

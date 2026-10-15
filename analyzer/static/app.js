@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.40.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.41.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -48,7 +48,10 @@ const state = {
   home: "right",       // the side 手前's home board is on, as read and drawn
   homeGuess: null,     // how the server guessed home (homePick "auto"): {margin}; null once flipped by hand
   warnings: [],        // the server's notes on the photo (e.g. taken at a steep angle)
-  selected: null,      // point index 0..23 or "bar" being edited
+  selected: null,      // point index 0..23 or "bar" whose palette is open
+  palette: null,       // the palette of colours and counts beside the finger: {at, side, x, y (screen px)}
+  paintSide: "white",  // the colour a tap puts on an empty point: the one last put
+  undo: [],            // the boards before the latest fixes by hand, the newest last
   // what the analysis is asked
   onRoll: "white",
   dice: [0, 0],        // each 1..6, or 0 while not set
@@ -79,6 +82,9 @@ const resultFits = (s = state) => !!s.result && s.resultFor === inputsKey(s);
 const resultStale = (s = state) => !!s.result && (!resultFits(s) || String(s.result.plies) !== s.plies);
 
 function update(patch) {
+  // a board from elsewhere (a photo read, a flip): the fixes before it can't be taken back
+  if ("board" in patch && !("undo" in patch)) patch = { ...patch, undo: [] };
+  if ("step" in patch && patch.step !== state.step) patch = { palette: null, selected: null, ...patch };
   Object.assign(state, patch);
   // The cube decides who is on roll: a cube just offered waits on the other side's answer.
   const req = BgCube.request(state.cube, state.onRoll, rolled());
@@ -205,12 +211,27 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess], (s) => {
   $("export-sample").hidden = !s.fromPhoto;
 });
 
-part((s) => [s.selected, s.board], (s) => {
-  const at = s.selected, b = s.board;
-  $("editor-buttons").hidden = at === null;
-  $("editor-title").textContent = at === null ? "違う所はポイントやバーをタップして直す（下が手前）"
-    : at === "bar" ? `バー: 手前 ${b.bar_white} 個、奥 ${b.bar_black} 個`
-    : `ポイント ${at + 1}: ` + (b.points[at] === 0 ? "空" : `${b.points[at] > 0 ? "手前" : "奥"}の駒 ${Math.abs(b.points[at])} 個`);
+part((s) => [s.paintSide, s.undo.length], (s) => {
+  for (const b of $("paint-side").children) b.classList.toggle("on", b.dataset.value === s.paintSide);
+  $("undo").disabled = !s.undo.length;
+});
+
+// The palette: the colour, then the count, of the point (or the bar) held down.
+part((s) => [s.palette, s.board], (s) => {
+  const p = s.palette, box = $("palette");
+  box.hidden = !p || !s.board;
+  if (box.hidden) return;
+  const n = BgBoard.countOf(s.board, p.at, p.side);
+  $("palette-title").textContent = p.at === "bar" ? "バー" : `ポイント ${p.at + 1}`;
+  for (const b of $("palette-side").children) b.classList.toggle("on", b.dataset.value === p.side);
+  for (const b of $("palette-counts").children) b.classList.toggle("on", Number(b.dataset.n) === n);
+  // beside the finger, off the point held: on the side with more room, inside the screen
+  const w = box.offsetWidth, h = box.offsetHeight, gap = 28;
+  const right = p.x < innerWidth / 2;
+  const x = Math.max(8, Math.min(innerWidth - w - 8, right ? p.x + gap : p.x - gap - w));
+  const y = Math.max(8, Math.min(innerHeight - h - 8, p.y - h / 2));
+  box.style.left = `${x}px`;
+  box.style.top = `${y}px`;
 });
 
 // The pictures of the board: on the board screen (with the photo beside it) and on the result screen.
@@ -388,9 +409,31 @@ async function withBusy(text, work, scanning = false) {
   try { return await work(); } finally { update({ busy: null }); }
 }
 
-function select(at) {
-  update({ selected: state.selected === at ? null : at });
+// A tap on a point or the bar of a board picture (board-view.js): put the stack up to the tapped level,
+// or empty the point (its number); held down, the palette.
+function select(at, { level, side, hold, x, y }) {
+  if (closingPalette) return;   // the tap that closed the palette does nothing else
+  const b = state.board;
+  if (hold) {
+    const on = at === "bar" ? side : BgBoard.sideOn(b, at) || state.paintSide;
+    update({ selected: at, palette: { at, side: on, x, y } });
+    return;
+  }
+  if (level === 0) { if (at !== "bar") fixBoard(BgBoard.set(b, at, "white", 0)); return; }
+  const put = at === "bar" ? side : BgBoard.sideOn(b, at) || state.paintSide;
+  fixBoard(BgBoard.tap(b, at, level, put), { paintSide: put });
 }
+
+// A fix by hand, which "元に戻す" can take back.
+function fixBoard(board, patch = {}) {
+  if (JSON.stringify(board) === JSON.stringify(state.board)) { update(patch); return; }
+  update({ board, undo: [...state.undo, state.board].slice(-50), ...patch });
+}
+
+function closePalette() {
+  if (state.palette) update({ palette: null, selected: null });
+}
+let closingPalette = false;
 
 function editBoard(change) {
   update({ board: change(state.board), read: state.read && change(state.read) });
@@ -796,13 +839,36 @@ $("recognize").addEventListener("click", recognize);
 $("hdr-reuse").addEventListener("click", () => go("board"));
 $("to-board").addEventListener("click", () => go("board"));
 
-$("editor-buttons").addEventListener("click", (e) => {
-  const op = e.target.dataset && e.target.dataset.op;
-  const at = state.selected;
-  if (!op || at === null) return;
-  if (op === "close") update({ selected: null });
-  else update({ board: BgBoard.edit(state.board, at, op) });
+$("paint-side").addEventListener("click", (e) => {
+  const v = e.target.closest("button")?.dataset.value;
+  if (v) update({ paintSide: v });
 });
+$("undo").addEventListener("click", () => {
+  if (!state.undo.length) return;
+  update({ board: state.undo[state.undo.length - 1], undo: state.undo.slice(0, -1), palette: null, selected: null });
+});
+for (let n = 0; n <= 15; n++) {
+  const b = document.createElement("button");
+  b.type = "button"; b.dataset.n = String(n); b.textContent = String(n);
+  $("palette-counts").appendChild(b);
+}
+$("palette").addEventListener("click", (e) => {
+  const btn = e.target.closest("button"), p = state.palette;
+  if (!btn || !p) return;
+  if (btn.dataset.value) { update({ palette: { ...p, side: btn.dataset.value } }); return; }
+  if (btn.id === "palette-close") { closePalette(); return; }
+  if (btn.dataset.n !== undefined) {
+    fixBoard(BgBoard.set(state.board, p.at, p.side, Number(btn.dataset.n)), { paintSide: p.side, palette: null, selected: null });
+  }
+});
+// A tap outside the palette closes it (and does nothing else); so does scrolling.
+document.addEventListener("pointerdown", (e) => {
+  if (!state.palette || $("palette").contains(e.target)) return;
+  closingPalette = true;
+  closePalette();
+}, true);
+addEventListener("pointerup", () => setTimeout(() => { closingPalette = false; }));
+addEventListener("scroll", closePalette, { passive: true });
 $("swap-colours").addEventListener("click", () => {
   editBoard(BgBoard.swapColours);
   update({ bottomColour: 1 - state.bottomColour });
@@ -813,7 +879,7 @@ $("flip-home").addEventListener("click", () => {
   update({ home: state.home === "right" ? "left" : "right", homeGuess: null, selected: null });
 });
 $("reset-start").addEventListener("click", () => {
-  if (confirm("盤面を初期配置に戻しますか？")) update({ board: BgBoard.start(), selected: null });
+  if (confirm("盤面を初期配置に戻しますか？")) fixBoard(BgBoard.start(), { palette: null, selected: null });
 });
 
 for (const [k, id] of [[0, "die1"], [1, "die2"]]) {

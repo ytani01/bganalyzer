@@ -87,8 +87,12 @@ const BgBoardView = (() => {
         if (selected === i) {
           el("rect", { x: x - h + 1, y: top ? B.y0 + 1 : B.y0 + half + 1, width: B.pw - 2, height: half - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
         }
-        el("rect", { x: x - h, y: top ? B.y0 : B.y0 + half, width: B.pw, height: half, fill: "transparent", class: "hit" }, svg)
-          .addEventListener("click", () => onSelect(i));
+        if (!onSelect) continue;
+        bindTap(el("rect", { x: x - h, y: top ? B.y0 : B.y0 + half, width: B.pw, height: half, fill: "transparent", class: "hit" }, svg),
+                svg, i, top, null, onSelect);
+        // the point's number, by the board's edge: a tap there empties the point
+        bindTap(el("rect", { x: x - h, y: top ? 0 : B.y1, width: B.pw, height: top ? B.y0 : 440 - B.y1, fill: "transparent", class: "hit-num" }, svg),
+                svg, i, top, null, onSelect, 0);
       }
     }
   }
@@ -101,8 +105,46 @@ const BgBoardView = (() => {
     if (selected === "bar") {
       el("rect", { x: BAR_X - B.bar / 2 + 1, y: B.y0 + 1, width: B.bar - 2, height: B.y1 - B.y0 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
     }
-    el("rect", { x: BAR_X - B.bar / 2, y: B.y0, width: B.bar, height: B.y1 - B.y0, fill: "transparent", class: "hit" }, svg)
-      .addEventListener("click", () => onSelect("bar"));
+    if (!onSelect) return;
+    const half = (B.y1 - B.y0) / 2;
+    for (const top of [true, false]) {   // 奥's half above, 手前's below
+      bindTap(el("rect", { x: BAR_X - B.bar / 2, y: top ? B.y0 : B.y0 + half, width: B.bar, height: half, fill: "transparent", class: "hit" }, svg),
+              svg, "bar", top, top ? "black" : "white", onSelect);
+    }
+  }
+
+  // A tap area of a point or of the bar's half. onSelect(at, {level, side, hold, x, y}) on lifting the finger
+  // (hold false; level 1..5 from the board's edge, or `fixedLevel`), or once the finger has stayed put for
+  // HOLD_MS, or on a right click (hold true). x, y: where on the screen. A finger that moves is scrolling.
+  const HOLD_MS = 450, SLOP = 10;
+  function bindTap(rect, svg, at, top, side, onSelect, fixedLevel) {
+    let down = null, timer = null;
+    const cancel = () => { clearTimeout(timer); timer = null; down = null; };
+    const levelAt = (cx, cy) => {
+      if (fixedLevel !== undefined) return fixedLevel;
+      const m = svg.getScreenCTM();
+      const y = m ? new DOMPoint(cx, cy).matrixTransform(m.inverse()).y : 0;
+      return Math.max(1, Math.min(5, Math.floor((top ? y - B.y0 : B.y1 - y) / B.step) + 1));
+    };
+    const fire = (hold, cx, cy) => onSelect(at, { level: levelAt(cx, cy), side, hold, x: cx, y: cy });
+    rect.addEventListener("pointerdown", (e) => {
+      if (e.button) return;
+      down = [e.clientX, e.clientY];
+      timer = setTimeout(() => { const [cx, cy] = down; cancel(); fire(true, cx, cy); }, HOLD_MS);
+    });
+    rect.addEventListener("pointermove", (e) => {
+      if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) > SLOP) cancel();
+    });
+    rect.addEventListener("pointerup", (e) => {
+      if (!down) return;
+      const [cx, cy] = down;
+      cancel();
+      fire(false, cx, cy);
+      e.preventDefault();
+    });
+    rect.addEventListener("pointercancel", cancel);
+    rect.addEventListener("pointerleave", cancel);
+    rect.addEventListener("contextmenu", (e) => { e.preventDefault(); cancel(); fire(true, e.clientX, e.clientY); });
   }
 
   // Up to 5 checkers of a stack from the board's edge, the count on the last when there are more.
