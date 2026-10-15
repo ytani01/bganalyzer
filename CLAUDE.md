@@ -16,6 +16,7 @@ uv run python recognizer/check_accuracy.py                       # 認識の精�
 uv run python recognizer/trace_cpu.py check                      # 読み取りが途中の値まで基準と同じか（CI の cpu-match。x86_64 と arm64）
 uv run python tools/check_pi.py                                  # Pi の公開サーバーを外から確かめる
 uv run -q --no-project --with playwright python tools/pi_ui_check.py   # Pi の上で、スマホの代わりに PWA を操作して確かめる
+uv run -q --no-project --with playwright python tools/ui_snapshot.py record a.json   # PWA を操作して見える画面を記録（compare a.json b.json で 2 つの版を比べる）
 ```
 
 ## 変えないもの
