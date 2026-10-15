@@ -71,11 +71,11 @@
 |---|---|---|
 | 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 
-ユーザーが決めた（2026-10-16）: 文書だけの PR では `test` を走らせない。`accuracy` と `cpu-match` の x86_64 は同じ全サンプルを読んでいるので 1 回にまとめる。
+ユーザーが決めた（2026-10-16）: 文書だけの PR では `test` を走らせない。`cpu-match` はやめる（`accuracy` と全サンプルの読み取りが重なるため。arm64 は `test` の 1 サンプルで見る）。
 マージ後の main での再実行は残す。
 
-- [ ] `test.yml` に `paths-ignore`（`**.md`・`docs/**`・`archives/**`）。CLAUDE.md の「test が通ってからマージ」に文書だけの PR は除くと書く
-- [ ] 1 回の読み取りで精度と途中の値の両方を確かめる形にし、x86_64 で全サンプルを読むのを 1 回にする
+- [x] `test.yml` に `paths-ignore`（`**.md`・`docs/**`・`archives/**`）。CLAUDE.md の「test が通ってからマージ」に文書だけの PR は除くと書く
+- [x] `cpu-match.yml` を消し、文書を直す
 
 **無駄を省く工夫:** ワークフローの確認は PR 1 本で走らせて見る。手元（Pi）で全サンプルを流さない
 
