@@ -1,5 +1,6 @@
 // The photo on the board screen: the quad tapped in step 2, warped onto the drawn board's playing area
 // so each point of the photo sits where the same point is drawn. Runs in the browser only; nothing is sent.
+// Also the photo turned and cut on the corners screen (turn, TODO-070).
 // Also loaded by Node in the tests (module.exports).
 "use strict";
 
@@ -97,7 +98,29 @@
     return dc.toDataURL("image/jpeg", 0.88);
   }
 
-  const api = { homography, apply, interp, warp, rectify };
+  // The image turned clockwise by deg about its centre, on a canvas just large enough for it (the
+  // rest black), cut to rect: [x0, y0, x1, y1] as fractions of that canvas (null: all of it), and
+  // made smaller if need be so its longest side is at most maxSide (a phone's canvas has a limit).
+  function turn(image, deg, rect, maxSide = Infinity) {
+    const iw = image.width || image.naturalWidth, ih = image.height || image.naturalHeight;
+    const a = deg * Math.PI / 180, c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a));
+    const W = iw * c + ih * s, H = iw * s + ih * c;
+    const [x0, y0, x1, y1] = rect || [0, 0, 1, 1];
+    const k = Math.min(1, maxSide / Math.max((x1 - x0) * W, (y1 - y0) * H));
+    const out = document.createElement("canvas");
+    out.width = Math.max(1, Math.round((x1 - x0) * W * k));
+    out.height = Math.max(1, Math.round((y1 - y0) * H * k));
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.scale(k, k);
+    ctx.translate(W * (0.5 - x0), H * (0.5 - y0));
+    ctx.rotate(a);
+    ctx.drawImage(image, -iw / 2, -ih / 2);
+    return out;
+  }
+
+  const api = { homography, apply, interp, warp, rectify, turn };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.BgPhoto = api;
 })(this);
