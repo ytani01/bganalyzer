@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-065、TODO-066、TODO-067、TODO-069、TODO-072。** これまでに 66 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-074`。**
+**残っている項目: TODO-025、TODO-030、TODO-065、TODO-066、TODO-067、TODO-069、TODO-072、TODO-074。** これまでに 66 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-075`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
 ---
@@ -120,6 +120,25 @@ float の OpenCV（`HoughLinesP`・`LineSegmentDetector` など）も候補に�
 普通の盤を壊すおそれがある。読み取りはどの CPU でも同じ結果にする（CLAUDE.md の「精度の確認」）。
 
 **無駄を省く工夫:** ずらし方は数通りに絞り、全サンプル 1 回。TODO-071 の測る道具（`archives/agents/TODO-071/`）のうち使えるものは使い回す
+
+---
+
+## TODO-074. CPU による読みの違いを確かめるのをやめる
+
+| | main | 担当 |
+|---|---|---|
+| 見込み | Opus 5.5 / effort high | main（実装）+ verifier（Sonnet 5.5 / medium） |
+
+ユーザーの決定（2026-10-16）: これからは CPU の違いを全く気にしない。
+
+- [ ] `trace_cpu.py`・`cpu_reference.json`・`tracing.py`（読み取りのコードから呼んでいる `_trace` も）と、それを使うテスト、CI の `test` で x86_64 と arm64 の途中の値を比べる手順を消す
+- [ ] CLAUDE.md の「精度の確認」から、float の処理を読み取りに入れない決まりと `trace_cpu.py --update` の手順を消す。コマンドの一覧からも消す
+- [ ] README・docs（HANDOVER・PI_CHECKS）の記述を合わせる
+
+前提: 今の整数の計算（`exact.py` など）は書き直さない（読みが変わるので）。これからの変更で float を使ってよくなるだけ。
+recognizer の版は上げない（読み取りの結果は変わらない）。
+
+**無駄を省く工夫:** 対象は `rg -l -e trace_cpu -e cpu_reference -e tracing -e cpu-match -e "CPU" --hidden -g '!archives'` で拾う。verifier は pytest と `check_accuracy.py` が通ることと、消し残しが無いことだけを見る
 
 ---
 
