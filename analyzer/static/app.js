@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.44.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.45.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -33,14 +33,13 @@ const state = {
   step: "photo",
   busy: null,          // {text, scanning} while waiting for the server
   // the photo and where the board is in it
-  photo: null,         // {file, bitmap}: the chosen photo (EXIF orientation applied)
+  photo: null,         // {file, bitmap, trimmed}: the chosen photo (EXIF orientation applied); trimmed: cut to the board by the user
   fromPhoto: false,    // the board comes from a photo (else it was set up by hand)
   corners: [],         // [[x, y], ...] in image px, TL TR BR BL
   cornerGuess: "",     // where the corners came from: "finding", "again" (looking again), "found", "default" (a rectangle), "missed", "moved" or "" (tapped)
   cornersMoved: false,
   cornersFixed: [false, false, false, false],   // each corner the user has dragged or tapped in: kept when looking again
-  crop: null,          // [x0, y0, x1, y1] in image px: the part the user has trimmed to (looked in, and shown), or null
-  trimming: false,     // a drag on the photo draws the part to trim to
+  edit: null,          // while the photo is being edited (TODO-070): {turn (quarter turns clockwise), angle (degrees, -45..45), rect ([x0, y0, x1, y1] as fractions of the turned photo) or null}
   dragging: false,     // a finger is on the corners
   homePick: "auto",    // the choice on the corners screen: "auto" (guess from the checkers), "left" or "right"
   bottomColour: 1,     // 0 = the darker checkers are 手前's, 1 = the lighter ones
@@ -87,7 +86,7 @@ const resultStale = (s = state) => !!s.result && (!resultFits(s) || String(s.res
 function update(patch) {
   // a board from elsewhere (a photo read, a flip): the fixes before it can't be taken back
   if ("board" in patch && !("undo" in patch)) patch = { ...patch, undo: [] };
-  if ("step" in patch && patch.step !== state.step) patch = { palette: null, selected: null, ...patch };
+  if ("step" in patch && patch.step !== state.step) patch = { palette: null, selected: null, edit: null, ...patch };
   Object.assign(state, patch);
   // The cube decides who is on roll: a cube just offered waits on the other side's answer.
   const req = BgCube.request(state.cube, state.onRoll, rolled());
@@ -165,28 +164,42 @@ part((s) => s.bottomColour, (s) => {
 
 // ---- the corners screen
 const cornersView = BgCornersView.create($("photo-canvas"), {
-  photo: () => state.photo && state.photo.bitmap,
-  corners: () => state.corners,
+  photo: () => (state.edit ? editPreview() : state.photo && state.photo.bitmap),
+  corners: () => (state.edit ? [] : state.corners),
   onTouch: () => stopOverlay("corners"),   // a tap while the search is shown: on to the corners as they are
   onChange: (corners, done, index) => update({ corners, cornersMoved: true, dragging: !done,
                                                 cornersFixed: state.cornersFixed.map((f, k) => f || k === index) }),
-  crop: () => state.crop,
-  trimming: () => state.trimming,
-  // the board is inside what was trimmed to: a corner put outside it is looked for again
-  onTrim: (crop) => {
-    const inside = ([x, y]) => crop[0] <= x && x <= crop[2] && crop[1] <= y && y <= crop[3];
-    update({ crop, trimming: false, cornersFixed: state.cornersFixed.map((f, k) => f && inside(state.corners[k])) });
-    findAgain();
+  trimming: () => !!state.edit,
+  trimmed: () => {
+    const r = state.edit && state.edit.rect, c = r && editPreview();
+    return r && [r[0] * c.width, r[1] * c.height, r[2] * c.width, r[3] * c.height];
+  },
+  onTrim: ([x0, y0, x1, y1]) => {
+    const c = editPreview();
+    update({ edit: { ...state.edit, rect: [x0 / c.width, y0 / c.height, x1 / c.width, y1 / c.height] } });
   },
 });
 
+// The photo as being edited, small enough to turn at once as the slider moves.
+let preview = null;   // {photo, small, key, canvas}
+function editPreview() {
+  const { bitmap } = state.photo, e = state.edit;
+  if (!preview || preview.photo !== bitmap) {
+    const [iw, ih] = imageSize(bitmap);
+    preview = { photo: bitmap, small: scaledCanvas(bitmap, Math.min(1, 1280 / Math.max(iw, ih))) };
+  }
+  const key = e.turn * 90 + e.angle;
+  if (preview.key !== key) Object.assign(preview, { key, canvas: BgPhoto.turn(preview.small, key, null) });
+  return preview.canvas;
+}
+
 // Not while a finger is on the photo: the text may change height and move the photo under it.
-part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess, s.trimming]), (s) => {
+part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess, !!s.edit]), (s) => {
   const n = s.corners.length;
   const fit = "点をドラッグして、盤の遊戯面（枠の内側）の四隅 1 左上・2 右上・3 右下・4 左下（手前に座った向き）に合わせてください。";
-  const again = "盤が小さいときは「範囲を囲む」で盤のまわりを囲むと、その中を探し直します。動かした点はそのままで、残りを「もう一度検出」で探し直せます。";
-  $("corner-help").innerHTML = s.trimming
-    ? "写真の上を斜めにドラッグして、盤のまわりを四角く囲んでください。指を離すとその範囲を拡大して、四隅を探し直します。"
+  const again = "盤が小さいときは「画像を編集」で盤のまわりを切り抜くと、その中を探し直します。動かした点はそのままで、残りを「もう一度検出」で探し直せます。";
+  $("corner-help").innerHTML = s.edit
+    ? "写真の向きをボタンとスライダーで直し、写真の上を斜めにドラッグして盤のまわりを四角く囲んでください。「確定」を押すと、その画像で四隅を探し直します。"
     : n < 4
     ? `手前に座った向きで、盤の遊戯面（枠の内側）の四隅を <b>${n + 1}. ${CORNER_NAMES[n]}</b> の順にタップしてください（左上→右上→右下→左下）。`
     : s.cornerGuess === "finding" || s.cornerGuess === "again" ? "盤の四隅を探しています… " + fit
@@ -195,16 +208,19 @@ part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess, s.trimmi
     : s.cornerGuess === "missed" ? "見つかりませんでした。" + fit + again
     : s.cornerGuess === "moved" ? fit + again
     : "四隅が決まりました。ホーム側と駒の色を選んで上の「盤面を読み取る」を押してください。";
-  $("recognize").disabled = n < 4;
+  $("recognize").disabled = n < 4 || !!s.edit;
 });
-part((s) => [s.crop, s.trimming], (s) => {
-  $("crop-start").textContent = s.trimming ? "囲むのをやめる" : "範囲を囲む";
-  $("crop-clear").hidden = !s.crop;
+part((s) => s.edit && s.edit.angle, (s) => {
+  $("edit-tools").hidden = !s.edit;
+  $("corner-tools").hidden = !!s.edit;
+  if (!s.edit) return;
+  $("edit-angle").value = String(s.edit.angle);
+  $("edit-angle-text").textContent = `${s.edit.angle}°`;
 });
 
 // The photo is left alone while scan.js draws on it.
 const drawCorners = () => cornersView.draw();
-part((s) => (s.step !== "corners" || scanning() ? undefined : [photoId(s), s.corners, s.dragging, s.crop]), drawCorners);
+part((s) => (s.step !== "corners" || scanning() ? undefined : [photoId(s), s.corners, s.dragging, s.edit]), drawCorners);
 
 // ---- the board screen
 part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess], (s) => {
@@ -353,6 +369,7 @@ function rectifiedPhoto(s) {
 const historyRecord = (s) => {
   const k = s.historyScale;
   return { corners: s.corners.map(([x, y]) => [x * k, y * k]), cornerGuess: s.cornerGuess, cornersMoved: s.cornersMoved,
+           trimmed: s.photo.trimmed,
            homePick: s.homePick, home: s.home, homeGuess: s.homeGuess, bottomColour: s.bottomColour,
            onRoll: s.onRoll, dice: rolled(s), cube: s.cube, board: s.board, read: s.read, warnings: s.warnings };
 };
@@ -484,12 +501,12 @@ function setResult(result, dice) {
 function startPhoto(file, bitmap, kept, historyId, historyScale) {
   const guess = !kept || !kept.corners || kept.corners.length < 4 || kept.cornerGuess === "finding";
   update({
-    photo: { file, bitmap }, fromPhoto: true, geometry: null, historyId, historyScale, selected: null,
+    photo: { file, bitmap, trimmed: !!(kept && kept.trimmed) }, fromPhoto: true, geometry: null, historyId, historyScale, selected: null,
     corners: guess ? defaultCorners(bitmap) : kept.corners.map((c) => c.slice()),
     // looking again when the app was left: the corners as the user left them
     cornerGuess: guess ? "finding" : kept.cornerGuess === "again" ? "moved" : kept.cornerGuess || "",
     cornersMoved: !!(kept && kept.cornersMoved),
-    cornersFixed: [false, false, false, false], crop: null, trimming: false,   // not kept with the photo
+    cornersFixed: [false, false, false, false], edit: null,   // not kept with the photo
     // entries from before 0.6.0 kept only the side picked
     homePick: (kept && (kept.homePick || kept.home)) || (kept ? "auto" : state.homePick),
     home: kept ? kept.home || "right" : state.home,
@@ -544,6 +561,26 @@ async function forgetPhoto(id) {
   render();
 }
 
+// The edited photo (TODO-070) is the photo from now on: what is sent, kept in the history and on the
+// Pi. The corners are looked for again in it; the rest (the board read, the settings) stays.
+async function applyEdit() {
+  const e = state.edit;
+  if (!e.turn && !e.angle && !e.rect) { update({ edit: null }); return; }
+  search++;   // a search for the corners still running: its answer is the old photo's (nor kept in the history meanwhile)
+  await withBusy("画像を作っています…", async () => {
+    try {
+      const file = new File([await jpeg(BgPhoto.turn(state.photo.bitmap, e.turn * 90 + e.angle, e.rect, UPLOAD_MAX))], "edited.jpg", { type: "image/jpeg" });
+      const bitmap = await decode(file);
+      const [w, h] = imageSize(bitmap);
+      let id = state.historyId, scale = 1;
+      try { if (id) scale = await PhotoHistory.replace(id, file, bitmap, w, h); } catch (_) { id = null; /* not stored */ }
+      startPhoto(file, bitmap, { ...historyRecord(state), corners: null, cornersMoved: false, trimmed: state.photo.trimmed || !!e.rect }, id, scale);
+    } catch (err) {
+      alert("画像を編集できませんでした: " + err.message);
+    }
+  });
+}
+
 function setUpByHand() {
   update({ fromPhoto: false, read: null, historyId: null, warnings: [], board: BgBoard.start(), selected: null });
   setResult(null);
@@ -582,11 +619,32 @@ async function uploadImage() {
   const [iw, ih] = imageSize(bitmap);
   if (Math.max(iw, ih) <= SEND_AS_IS_MAX) return { blob: file, scale: 1 };
   const scale = Math.min(1, UPLOAD_MAX / Math.max(iw, ih));
+  return { blob: await jpeg(scaledCanvas(bitmap, scale)), scale };
+}
+
+function scaledCanvas(image, scale) {
+  const [iw, ih] = imageSize(image);
   const c = document.createElement("canvas");
   c.width = Math.round(iw * scale);
   c.height = Math.round(ih * scale);
-  c.getContext("2d").drawImage(bitmap, 0, 0, c.width, c.height);
-  return { blob: await new Promise((res) => c.toBlob(res, "image/jpeg", 0.92)), scale };
+  c.getContext("2d").drawImage(image, 0, 0, c.width, c.height);
+  return c;
+}
+
+const jpeg = (canvas) => new Promise((res, rej) =>
+  canvas.toBlob((b) => (b ? res(b) : rej(new Error("画像が大きすぎます"))), "image/jpeg", 0.92));
+
+// The photo the corners are looked for in: one the user has cut to the board is looked in as a
+// whole with the board allowed to fill it (crop = all of it; TODO-070).
+async function cornersForm() {
+  const { blob, scale } = await uploadImage();
+  const fd = new FormData();
+  fd.append("image", blob, "board.jpg");
+  if (state.photo.trimmed) {
+    const [iw, ih] = imageSize(state.photo.bitmap);
+    fd.append("crop", `0,0,${Math.round(iw * scale)},${Math.round(ih * scale)}`);
+  }
+  return { fd, scale };
 }
 
 // What the server finds, shown on the photo as it goes (scan.js), stage by stage: the search for
@@ -626,9 +684,7 @@ async function guessCorners(file) {
   const mine = startOverlay("corners", [[0, 0], [iw, 0], [iw, ih], [0, ih]]);   // (the search for the last photo stops)
   let corners = null;
   try {
-    const { blob, scale } = await uploadImage();   // the guess is steadier from the larger image
-    const fd = new FormData();
-    fd.append("image", blob, "board.jpg");
+    const { fd, scale } = await cornersForm();   // the guess is steadier from the larger image
     const data = await BgApi.postStages("find-corners", fd, (ev) => mine && mine.scan.push(BgApi.scaleGeometry(ev, scale)));
     if (data.corners) corners = data.corners.map(([x, y]) => [x / scale, y / scale]);
     if (mine && data.streamed && state.photo.file === file) await mine.scan.done();   // every stage shown (or tapped)
@@ -642,25 +698,19 @@ async function guessCorners(file) {
   redraw(drawCorners);
 }
 
-// Looks again (TODO-068): the corners the user has put in place stay, the others are looked for in
-// the part trimmed to (or the whole photo). Not found: those go to the part's corners, if trimmed.
+// Looks again (TODO-068): the corners the user has put in place stay, the others are looked for.
 async function findAgain() {
   const id = ++search;
   const { file, bitmap } = state.photo;
   const [iw, ih] = imageSize(bitmap);
-  const c = state.crop || [0, 0, iw, ih];
-  const box = [[c[0], c[1]], [c[2], c[1]], [c[2], c[3]], [c[0], c[3]]];
   const start = state.corners;   // a new array whenever the user moves one
   const fixed = [0, 1, 2, 3].map((k) => (state.cornersFixed[k] && start[k] ? start[k] : null));
   update({ cornerGuess: "again" });   // not "finding": a photo reopened then keeps the corners the user put
-  const mine = startOverlay("corners", box);
+  const mine = startOverlay("corners", [[0, 0], [iw, 0], [iw, ih], [0, ih]]);
   let corners = null;
   try {
-    const { blob, scale } = await uploadImage();
-    const fd = new FormData();
-    fd.append("image", blob, "board.jpg");
+    const { fd, scale } = await cornersForm();
     fd.append("fixed", JSON.stringify(fixed.map((p) => p && p.map((v) => +(v * scale).toFixed(1)))));
-    if (state.crop) fd.append("crop", state.crop.map((v) => (v * scale).toFixed(1)).join(","));
     const data = await BgApi.postStages("find-corners", fd, (ev) => mine && mine.scan.push(BgApi.scaleGeometry(ev, scale)));
     if (data.corners) corners = data.corners.map(([x, y]) => [x / scale, y / scale]);
     if (mine && data.streamed && state.photo.file === file) await mine.scan.done();
@@ -669,8 +719,7 @@ async function findAgain() {
   // the user may have moved on to another photo, moved a corner or started reading meanwhile
   if (id !== search || state.photo.file !== file || state.cornerGuess !== "again") return;
   if (state.corners !== start) { update({ cornerGuess: "moved" }); return; }
-  const from = corners || (state.crop ? box : null);
-  update({ corners: from ? box.map((b, k) => fixed[k] || from[k]) : start, cornerGuess: corners ? "found" : "missed" });
+  update({ corners: corners ? corners.map((p, k) => fixed[k] || p) : start, cornerGuess: corners ? "found" : "missed" });
   redraw(drawCorners);
 }
 
@@ -892,8 +941,18 @@ window.addEventListener("popstate", () => {
 });
 
 $("corner-reset").addEventListener("click", () => update({ corners: [], cornerGuess: "", cornersFixed: [false, false, false, false] }));
-$("crop-start").addEventListener("click", () => { stopOverlay("corners"); update({ trimming: !state.trimming }); });
-$("crop-clear").addEventListener("click", () => update({ crop: null, trimming: false }));
+$("edit-start").addEventListener("click", () => { stopOverlay("corners"); update({ edit: { turn: 0, angle: 0, rect: null } }); });
+$("edit-cancel").addEventListener("click", () => update({ edit: null }));
+$("edit-done").addEventListener("click", applyEdit);
+// a quarter turn turns the rectangle drawn with the photo
+for (const [id, q] of [["edit-right", 1], ["edit-left", 3]]) {
+  $(id).addEventListener("click", () => {
+    const { turn, rect: r } = state.edit;
+    const rect = r && (q === 1 ? [1 - r[3], r[0], 1 - r[1], r[2]] : [r[1], 1 - r[2], r[3], 1 - r[0]]);
+    update({ edit: { ...state.edit, turn: (turn + q) % 4, rect } });
+  });
+}
+$("edit-angle").addEventListener("input", () => update({ edit: { ...state.edit, angle: Number($("edit-angle").value) } }));
 $("find-again").addEventListener("click", findAgain);
 $("recognize").addEventListener("click", recognize);
 $("hdr-reuse").addEventListener("click", () => go("board"));

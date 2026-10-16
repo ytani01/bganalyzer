@@ -7,8 +7,8 @@
 //     corners: () => [[x, y], ...],      // image px, TL TR BR BL (up to 4 while they are tapped in)
 //     onTouch(),                         // a finger came down (before anything moves)
 //     onChange(corners, done, index),    // the corners moved; done: the finger is up; index: the one moved
-//     crop: () => [x0, y0, x1, y1] | null, // image px: the part shown (zoomed in on), or null: the whole photo
 //     trimming: () => bool,              // a drag draws a rectangle instead of moving the corners
+//     trimmed: () => [x0, y0, x1, y1] | null,  // image px: the rectangle to show (outside it darkened)
 //     onTrim([x0, y0, x1, y1]),          // the rectangle drawn (image px), when large enough
 //   });
 //   view.draw();      // the photo and the corners; view.draw(true): the photo alone (for scan.js)
@@ -26,22 +26,20 @@ const BgCornersView = (() => {
     let trim = null;   // {from, to (image px), pointerId}: the rectangle being drawn
 
     const size = () => { const b = app.photo(); return [b.width || b.naturalWidth, b.height || b.naturalHeight]; };
-    const part = () => { const [iw, ih] = size(); return app.crop() || [0, 0, iw, ih]; };   // x0 y0 x1 y1 shown
     const toCanvas = ([x, y]) => [view.ox + x * view.scale, view.oy + y * view.scale];
 
     function toImage(e) {
       const r = canvas.getBoundingClientRect();
-      const [x0, y0, x1, y1] = part();
+      const [iw, ih] = size();
       const x = (e.clientX - r.left - view.ox) / view.scale;
       const y = (e.clientY - r.top - view.oy) / view.scale;
-      return [Math.min(Math.max(x, x0), x1 - 1), Math.min(Math.max(y, y0), y1 - 1)];
+      return [Math.min(Math.max(x, 0), iw - 1), Math.min(Math.max(y, 0), ih - 1)];
     }
 
     function draw(bare) {
       const photo = app.photo();
       if (!photo || !canvas.offsetParent) return;   // no photo, or not on screen
-      const [x0, y0, x1, y1] = part();
-      const iw = x1 - x0, ih = y1 - y0;
+      const [iw, ih] = size();
       const cw = canvas.parentElement.clientWidth;
       const ch = Math.min(window.innerHeight * 0.68, cw * ih / iw);
       const dpr = window.devicePixelRatio || 1;
@@ -49,12 +47,12 @@ const BgCornersView = (() => {
       canvas.width = Math.round(cw * dpr);
       canvas.height = Math.round(ch * dpr);
       const scale = Math.min(cw / iw, ch / ih);
-      view = { scale, ox: (cw - iw * scale) / 2 - x0 * scale, oy: (ch - ih * scale) / 2 - y0 * scale };
+      view = { scale, ox: (cw - iw * scale) / 2, oy: (ch - ih * scale) / 2 };
       const ctx = canvas.getContext("2d");
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, cw, ch);
-      ctx.drawImage(photo, x0, y0, iw, ih, ...toCanvas([x0, y0]), iw * scale, ih * scale);
+      ctx.drawImage(photo, view.ox, view.oy, iw * scale, ih * scale);
       if (bare === true) return;   // the reading overlay (scan.js) draws on the photo alone
 
       const pts = app.corners().map(toCanvas);
@@ -78,8 +76,14 @@ const BgCornersView = (() => {
         ctx.fillText(String(k + 1), x, y);
       });
       if (loupeAt) drawLoupe(ctx, photo, loupeAt, cw);
-      if (trim) {
-        const [ax, ay] = toCanvas(trim.from), [bx, by] = toCanvas(trim.to);
+      const rect = trim ? [...trim.from, ...trim.to] : app.trimmed();
+      if (rect) {
+        const [ax, ay] = toCanvas(rect.slice(0, 2)), [bx, by] = toCanvas(rect.slice(2));
+        ctx.beginPath();   // the part cut away, darkened
+        ctx.rect(0, 0, cw, ch);
+        ctx.rect(ax, ay, bx - ax, by - ay);
+        ctx.fillStyle = "rgba(0, 0, 0, .5)";
+        ctx.fill("evenodd");
         ctx.setLineDash([6, 4]);
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 2;

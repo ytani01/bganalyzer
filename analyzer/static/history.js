@@ -58,16 +58,22 @@ const PhotoHistory = (() => {
     return (all || []).sort((a, b) => b.time - a.time);
   }
 
-  // Store a newly opened photo. Returns {id, scale}: scale converts the image's pixels
-  // to the stored copy's (corners are saved in the stored copy's pixels).
-  async function add(file, image, w, h) {
+  // The photo as stored: {image, thumb} and the scale from the image's pixels to the stored copy's.
+  async function copies(file, image, w, h) {
     let blob = file, scale = 1;
     if (Math.max(w, h) > KEEP_AS_IS.side || file.size > KEEP_AS_IS.bytes) {
       scale = fitScale(w, h, MAX_SIDE);
       blob = await toBlob(image, w, h, scale, 0.9);
     }
     const thumb = await toBlob(image, w, h, fitScale(w, h, THUMB_SIDE), 0.7);
-    const entry = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, time: Date.now(), image: blob, thumb };
+    return { stored: { image: blob, thumb }, scale };
+  }
+
+  // Store a newly opened photo. Returns {id, scale}: scale converts the image's pixels
+  // to the stored copy's (corners are saved in the stored copy's pixels).
+  async function add(file, image, w, h) {
+    const { stored, scale } = await copies(file, image, w, h);
+    const entry = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, time: Date.now(), ...stored };
     await run("readwrite", (s) => s.put(entry));
     const drop = idsToDrop(await list());
     if (drop.length) await run("readwrite", (s) => { drop.forEach((id) => s.delete(id)); });
@@ -81,10 +87,17 @@ const PhotoHistory = (() => {
     await run("readwrite", (s) => s.put({ ...entry, ...fields, time: Date.now() }));
   }
 
+  // The entry's photo replaced by an edited one (TODO-070). Returns the scale, as add does.
+  async function replace(id, file, image, w, h) {
+    const { stored, scale } = await copies(file, image, w, h);
+    await update(id, stored);
+    return scale;
+  }
+
   const get = (id) => run("readonly", (s) => s.get(id));
   const remove = (id) => run("readwrite", (s) => s.delete(id));
 
-  return { KEEP, fitScale, idsToDrop, list, add, update, get, remove };
+  return { KEEP, fitScale, idsToDrop, list, add, replace, update, get, remove };
 })();
 
 if (typeof module !== "undefined") module.exports = PhotoHistory;

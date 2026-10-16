@@ -255,6 +255,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .opt .seg button { padding: 7px 6px; font-size: 15px; }
 .opt .note { flex-basis: 100%; margin: 0; }
 .opt .dice + .note { flex-basis: auto; flex: 1; }
+.opt .angle { flex: 1; min-width: 0; }
 .opt .dice select { width: 64px; font-size: 17px; padding: 5px 6px; }
 #flip-turn { margin-top: 0; }
 .panel .note { margin: 4px 0 8px; }
