@@ -28,18 +28,18 @@ def test_history_helpers():
       big: h.fitScale(4000, 3000, 2048),
       small: h.fitScale(1000, 800, 2048),
       drop: h.idsToDrop([{{id: "a", time: 1}}, {{id: "b", time: 4}}, {{id: "c", time: 3}}, {{id: "d", time: 2}}], 3),
-      dropDefault: h.idsToDrop(Array.from({{length: 12}}, (_, i) => ({{id: "e" + i, time: i}}))),
+      dropDefault: h.idsToDrop(Array.from({{length: 102}}, (_, i) => ({{id: "e" + i, time: i}}))),
       none: h.idsToDrop([{{id: "a", time: 1}}, {{id: "b", time: 2}}]),
     }};
     console.log(JSON.stringify(out));
     """
     r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
     out = json.loads(r.stdout)
-    assert out["keep"] == 10
+    assert out["keep"] == 100
     assert out["big"] == pytest.approx(2048 / 4000)
     assert out["small"] == 1
     assert out["drop"] == ["a"]     # the oldest beyond the newest 3
-    assert out["dropDefault"] == ["e1", "e0"]   # by default the newest 10 stay
+    assert out["dropDefault"] == ["e1", "e0"]   # by default the newest 100 stay
     assert out["none"] == []
 
 
@@ -110,7 +110,13 @@ def test_result_html():
     out = _result_js(f"""{{
       moves: R.html({r}, [3, 1]),
       cube: R.html({{...{r}, moves: null, cube: {json.dumps(cube)}}}, null),
+      rolled: R.html({{...{r}, cube: {json.dumps(cube | {"rolled": True})}}}, [3, 1]),
+      rolledSpeech: R.speechText({{...{r}, cube: {json.dumps(cube | {"rolled": True})}}}, [3, 1]),
     }}""")
+    # TODO-096: with dice, the double that was due before the roll comes before the best move
+    assert out["rolled"].index("<h2>キューブ（振る前）</h2>") < out["rolled"].index("最善手（白・ダイス 3-1）")
+    assert "白の人は振る前に <b>ダブルすべきだった</b>" in out["rolled"]
+    assert out["rolledSpeech"].startswith("振る前に白の人はダブルすべきでした。ダブルされたら黒の人はパスです。白の人、ダイス 3 1の最善手は")
     assert '<ol class="moves"><li data-k="0" class="on">bar/22* 13/8(2) 6/off' in out["moves"]
     assert "最善手（白・ダイス 3-1）" in out["moves"]
     assert "ピップ リード" not in out["moves"] and "振ったのは" not in out["moves"]   # TODO-086: the table and the heading say it

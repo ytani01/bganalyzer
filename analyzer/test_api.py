@@ -425,8 +425,23 @@ def test_cube_decision_without_dice():
     assert c["double"] is True and c["take"] is False
 
 
-def test_no_cube_decision_with_dice_or_without_access():
+def test_cube_decision_before_the_roll_with_dice():
+    # with dice too, whether White should have doubled before rolling (TODO-096)
+    pos = _race({1: 3, 2: 3, 3: 3, 4: 2}, {6: 3, 7: 3, 8: 3, 9: 2})
+    r = analyze(pos, "white", plies=0, dice=(3, 1))
+    c = r["cube"]
+    assert r["moves"] and c["question"] == "double" and c["rolled"] is True
+    assert c["proper"] == analyze(pos, "white", plies=0)["cube"]["proper"]
+    assert analyze(pos, "white", plies=0)["cube"]["rolled"] is False
+    assert summary_ja(r).endswith("振る前、白はダブルすべき、黒はパス")
+    # ...but not when no double was due (TODO-096)
     r = analyze(Position.start(), "white", plies=0, dice=(3, 1))
+    assert r["cube"] is None and r["moves"]
+
+
+def test_no_cube_decision_without_access():
+    # Black owns the cube: no cube decision for White, with or without dice
+    r = analyze(Position.start(), "white", plies=0, cube_value=2, cube_owner="black", dice=(3, 1))
     assert r["cube"] is None and r["moves"]
     # Black owns the cube: White on roll can't double
     r = analyze(Position.start(), "white", plies=0, cube_value=2, cube_owner="black")
@@ -583,7 +598,9 @@ def test_api_reads_the_cube_from_the_photo():
     # a cube set by hand comes first
     j = client.post("/analyze-photo", files={"image": ("s.jpg", jpg.tobytes(), "image/jpeg")},
                     data=form | {"cube_value": "1"}).json()
-    assert j["cube_read"] == {"at": "black", "value": 2} and j["analysis"]["cube"] is None and j["analysis"]["moves"]
+    # centred, a double was due before the 5-4 (TODO-096)
+    assert j["cube_read"] == {"at": "black", "value": 2} and j["analysis"]["moves"]
+    assert j["analysis"]["cube"]["double"] and j["analysis"]["cube"]["rolled"]
 
 
 def test_api_cube_read_without_dice_is_a_double(monkeypatch):

@@ -67,8 +67,11 @@ const BgResult = (() => {
   function cubeHtml(c) {
     const d = NAME[c.doubler], t = NAME[c.taker];
     const { word, take } = cubeWords(c);
-    let out = "<h2>キューブ</h2>";
-    if (c.question === "take") {
+    let out = c.rolled ? "<h2>キューブ（振る前）</h2>" : "<h2>キューブ</h2>";
+    if (c.rolled) {   // with dice, shown only when a double was due (TODO-096)
+      out += `<p class="answer">${d}の人は振る前に <b>${word}すべきだった</b></p>`;
+      out += `<p>${word}されたら、${t}の人は${take}。</p>`;
+    } else if (c.question === "take") {
       out += `<p class="answer">${t}の人は <b>${take}</b></p>`;
       out += `<p>${d}の人の${word}は${c.double ? "正しい" : c.optional ? "してもしなくてもよい" : c.too_good ? "ダブルせずギャモンを狙う方がよい局面" : "早すぎる"}。</p>`;
     } else {
@@ -86,7 +89,18 @@ const BgResult = (() => {
   // A short spoken summary, not the numbers: the screen keeps the percentages and pips.
   function speechText(r, dice) {
     const parts = [];
-    const bestMove = r.moves && dice;   // read first: it is what the player wants to hear
+    let cubeText = "";
+    if (r.cube) {
+      const c = r.cube, { word, take } = cubeWords(c);
+      cubeText = c.rolled ? `振る前に${NAME[c.doubler]}の人は${word}すべきでした。${word}されたら${NAME[c.taker]}の人は${take}です。`
+        : c.question === "take"
+        ? `${NAME[c.taker]}の人は${take}です。`
+        : c.double ? `${NAME[c.doubler]}の人は${word}、${NAME[c.taker]}の人は${take}です。`
+          : c.optional ? `${NAME[c.doubler]}の人は${word}してもしなくてもよいです。`
+            : `${NAME[c.doubler]}の人はまだ${word}しません。`;
+    }
+    if (r.cube && r.cube.rolled) parts.push(cubeText);   // as on the screen, before the best move (TODO-096)
+    const bestMove = r.moves && dice;   // read early: it is what the player wants to hear
     if (!bestMove) {   // without a best move, who rolls next is read first (TODO-052)
       parts.push(`${rollWho(dice)}のは${NAME[r.on_roll]}の人です。`);
     } else {
@@ -95,14 +109,7 @@ const BgResult = (() => {
         ? `${who}の最善手は、${moveToSpeech(r.moves[0].move)}。`
         : `${who}では動かせる手がありません。`);
     }
-    if (r.cube) {
-      const c = r.cube, { word, take } = cubeWords(c);
-      parts.push(c.question === "take"
-        ? `${NAME[c.taker]}の人は${take}です。`
-        : c.double ? `${NAME[c.doubler]}の人は${word}、${NAME[c.taker]}の人は${take}です。`
-          : c.optional ? `${NAME[c.doubler]}の人は${word}してもしなくてもよいです。`
-            : `${NAME[c.doubler]}の人はまだ${word}しません。`);
-    }
+    if (cubeText && !r.cube.rolled) parts.push(cubeText);
     parts.push(r.game_over ? `${NAME[r.favourite]}の勝ちで終局しています。` : standingToSpeech(r));
     if (r.match) parts.push(`${matchText(r.match)}です。`);
     return parts.join("");

@@ -23,11 +23,11 @@ _pool: ProcessPoolExecutor | None = None
 
 def evaluate(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
     """In the helper: (win, win gammon, win backgammon, lose gammon, lose backgammon, equity) for the
-    player on roll, cubeless, and then
+    player on roll, cubeless, then
 
-    - with cube = (value, owner): gnubg's cube decision (_cube_hint), or None when there is none,
-    - else with dice: the best max_moves plays [{"move", "steps", "equity"}, ...],
-    - else None.
+    - with cube = (value, owner): gnubg's cube decision before the roll (_cube_hint), or None when
+      there is none; else None,
+    - with dice: the best max_moves plays [{"move", "steps", "equity"}, ...]; else None.
 
     match: None for a money game, else (length, (score of the player on roll, the opponent's),
     crawford, the cube's number)."""
@@ -75,8 +75,7 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
     ctx = gnubg.eval_context(0, plies)    # cubeless
     ci, ci_opp = _cube_infos(gnubg, match)
     probs = gnubg.evaluate(board, ci, ctx)
-    if cube is not None:
-        return probs, _cube_hint(gnubg, pid, plies, *cube, match=match)
+    hint = None if cube is None else _cube_hint(gnubg, pid, plies, *cube, match=match)
     moves = None
     if dice is not None:
         found = gnubg.find_best_moves(board, ci, ctx, tuple(dice))
@@ -86,7 +85,7 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
         moves = [{"move": gnubg.move_tuple_to_string(t, board),
                   "steps": [[t[k], t[k + 1]] for k in range(0, len(t), 2)],
                   "equity": round(m["score"], 3)} for t, m in zip(tuples, found)]
-    return probs, moves
+    return probs, hint, moves
 
 
 # The Python module has no call for a cube decision (gnubg.hint() refuses cube hints, and
