@@ -130,11 +130,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <section id="board" class="step" hidden>
     <div id="errors" class="alert" hidden></div>
     <!-- 元の写真は四隅で補正し、盤面図と同じ並びにしたもの -->
-    <div id="photo-tools" class="opt" hidden>
-      <span class="opt-label">元の写真</span>
-      <div class="seg" data-name="photoView">
-        <button data-value="side">並べる</button><button data-value="off">隠す</button>
-      </div>
+    <div id="photo-tools" class="row wrap" hidden>
+      <label><input type="checkbox" id="photo-side"> 元の写真を並べる</label>
     </div>
     <!-- スマホの縦長の画面では、盤面図と駒の数を直すボタン（#board-pin）が上に貼り付き、
          下の設定や結果をスクロールしても盤面が見えたままになる -->

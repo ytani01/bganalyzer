@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.55.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.58.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -156,9 +156,9 @@ part((s) => s.busy, (s) => {
 });
 
 // ---- segmented buttons: each shows the state of its name
-part((s) => [s.homePick, s.home, s.bottomColour, s.onRoll, s.cube.at, s.photoView, s.collect, s.plies], (s) => {
+part((s) => [s.homePick, s.home, s.bottomColour, s.onRoll, s.cube.at, s.collect, s.plies], (s) => {
   const value = { homePick: s.homePick, home: s.home, bottomColour: s.bottomColour, onRoll: s.onRoll, cubeAt: s.cube.at,
-                  photoView: s.photoView, collect: s.collect, plies: s.plies };
+                  collect: s.collect, plies: s.plies };
   for (const seg of document.querySelectorAll(".seg")) {
     for (const b of seg.children) b.classList.toggle("on", b.dataset.value === String(value[seg.dataset.name]));
   }
@@ -298,6 +298,7 @@ part((s) => s.board && [s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube
   const photo = rectifiedPhoto(s);
   const side = !!photo && s.photoView === "side";
   $("photo-tools").hidden = !photo;
+  $("photo-side").checked = s.photoView === "side";
   $("photo-wrap").hidden = !side;
   $("boards").classList.toggle("two", side);
   if (side) BgBoardView.draw($("photo-svg"), { ...scene, photo });   // for looking: taps do nothing (TODO-088)
@@ -1027,6 +1028,7 @@ window.addEventListener("popstate", () => {
 
 $("corner-reset").addEventListener("click", () => update({ corners: [], cornerGuess: "", cornersFixed: [false, false, false, false] }));
 $("keep-corners").addEventListener("change", () => update({ keepCorners: $("keep-corners").checked }));
+$("photo-side").addEventListener("change", () => update({ photoView: $("photo-side").checked ? "side" : "off" }));   // a checkbox (TODO-094)
 $("edit-start").addEventListener("click", () => { stopOverlay("corners"); update({ edit: { turn: 0, angle: 0, rect: null } }); });
 $("edit-cancel").addEventListener("click", () => update({ edit: null }));
 $("edit-done").addEventListener("click", applyEdit);
@@ -1111,7 +1113,6 @@ const SEGMENTS = {
   bottomColour: (v) => update({ bottomColour: Number(v) }),
   onRoll: setOnRoll,
   cubeAt: (v) => setCube({ at: v }),
-  photoView: (v) => update({ photoView: v }),
   collect: (v) => { keep("collect", v); update({ collect: v }); },
   plies: (v) => { keep("plies", v); update({ plies: v }); },
 };

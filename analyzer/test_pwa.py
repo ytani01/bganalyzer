@@ -281,6 +281,15 @@ def test_match_request():
     assert bad_length["length"] == 0 and money2 == {"length": 0, "white": 0, "black": 0, "crawford": False}
 
 
+def test_photo_view_is_a_checkbox():
+    # TODO-094: one checkbox instead of 並べる / 隠す
+    html = client.get("/").text
+    assert '<input type="checkbox" id="photo-side">' in html and 'data-name="photoView"' not in html
+    js = (STATIC / "app.js").read_text()
+    assert 'update({ photoView: $("photo-side").checked ? "side" : "off" })' in js
+    assert '$("photo-side").checked = s.photoView === "side";' in js
+
+
 def test_match_is_in_the_board_settings_and_sent():
     html = client.get("/").text
     board = html[html.index('<section id="board"'):html.index('<section id="outcome"')]
