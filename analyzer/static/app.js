@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.46.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.47.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -145,8 +145,8 @@ part((s) => s.busy, (s) => {
 });
 
 // ---- segmented buttons: each shows the state of its name
-part((s) => [s.homePick, s.bottomColour, s.onRoll, s.cube.at, s.photoView, s.collect, s.plies], (s) => {
-  const value = { homePick: s.homePick, bottomColour: s.bottomColour, onRoll: s.onRoll, cubeAt: s.cube.at,
+part((s) => [s.homePick, s.home, s.bottomColour, s.onRoll, s.cube.at, s.photoView, s.collect, s.plies], (s) => {
+  const value = { homePick: s.homePick, home: s.home, bottomColour: s.bottomColour, onRoll: s.onRoll, cubeAt: s.cube.at,
                   photoView: s.photoView, collect: s.collect, plies: s.plies };
   for (const seg of document.querySelectorAll(".seg")) {
     for (const b of seg.children) b.classList.toggle("on", b.dataset.value === String(value[seg.dataset.name]));
@@ -242,8 +242,8 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess], (s) => {
   const g = s.fromPhoto && s.homeGuess;
   $("home-note").hidden = !s.fromPhoto;
   $("home-note").textContent = !g ? `手前の人のホームボードは${side}です。`
-    : Math.abs(g.margin) < 1 ? `駒の並びからはホームボードの左右を決められなかったので、${side}にしています。逆なら「左右を入れ替える」を押してください。`
-    : `駒の並びから、手前の人のホームボードを${side}と推測しました。逆なら「左右を入れ替える」を押してください。`;
+    : Math.abs(g.margin) < 1 ? `駒の並びからはホームボードの左右を決められなかったので、${side}にしています。逆なら「手前のホーム」で選び直してください。`
+    : `駒の並びから、手前の人のホームボードを${side}と推測しました。逆なら「手前のホーム」で選び直してください。`;
   $("export-sample").hidden = !s.fromPhoto;
 });
 
@@ -993,10 +993,11 @@ $("swap-colours").addEventListener("click", () => {
   update({ bottomColour: 1 - state.bottomColour });
 });
 // The board was read with the home on the wrong side: mirror it left to right.
-$("flip-home").addEventListener("click", () => {
+function setHome(v) {
+  if (v === state.home) return;
   editBoard(BgBoard.mirror);
-  update({ home: state.home === "right" ? "left" : "right", homeGuess: null, selected: null });
-});
+  update({ home: v, homeGuess: null, selected: null });
+}
 $("reset-start").addEventListener("click", () => {
   if (confirm("盤面を初期配置に戻しますか？")) fixBoard(BgBoard.start(), { palette: null, selected: null });
 });
@@ -1016,6 +1017,7 @@ $("flip-turn").addEventListener("click", () => {
 
 const SEGMENTS = {
   homePick: (v) => update({ homePick: v }),
+  home: setHome,
   bottomColour: (v) => update({ bottomColour: Number(v) }),
   onRoll: setOnRoll,
   cubeAt: (v) => setCube({ at: v }),

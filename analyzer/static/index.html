@@ -162,8 +162,13 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <div id="counts" class="counts"></div>
     <div class="row wrap">
       <button id="swap-colours" class="button small">駒の色を入れ替える</button>
-      <button id="flip-home" class="button small">左右を入れ替える</button>
       <button id="reset-start" class="button small">初期配置にする</button>
+    </div>
+    <div class="opt">
+      <span class="opt-label">手前のホーム<small>（上がる側）</small></span>
+      <div class="seg" data-name="home">
+        <button data-value="left">左</button><button data-value="right">右</button>
+      </div>
     </div>
     <p id="home-note" class="note" hidden></p>
     <div class="row wrap">
