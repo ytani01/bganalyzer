@@ -28,7 +28,7 @@ from samples import router as samples_router, samples_dir
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.47.0"
+__version__ = "0.48.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -69,9 +69,10 @@ def _board_to_position(b: Board) -> Position:
     return pos
 
 
-def _run(pos: Position, on_roll: str, plies: int, dice, **cube) -> dict:
+def _run(pos: Position, on_roll: str, plies: int, dice, **opts) -> dict:
+    """analyze() for the API; opts: the cube and the match (analyze's keywords)."""
     try:
-        r = analyze(pos, on_roll, plies=plies, dice=dice, **cube)
+        r = analyze(pos, on_roll, plies=plies, dice=dice, **opts)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     r["board"] = {k: v for k, v in pos.to_dict().items() if k in
@@ -123,7 +124,9 @@ def analyze_endpoint(req: AnalyzeRequest):
     else:
         pos = _board_to_position(req.board)
     return _run(pos, req.on_roll, req.plies, req.dice,
-                cube_value=req.cube_value, cube_owner=req.cube_owner, doubled=req.doubled)
+                cube_value=req.cube_value, cube_owner=req.cube_owner, doubled=req.doubled,
+                match_length=req.match_length, score_white=req.score_white, score_black=req.score_black,
+                crawford=req.crawford)
 
 
 @app.post("/find-corners")
@@ -165,6 +168,10 @@ async def analyze_photo(
     cube_value: int | None = Form(None, description="without it, the cube read from the photo (if any)"),
     cube_owner: str | None = Form(None, description="white or black; empty: in the middle"),
     doubled: bool = Form(False),
+    match_length: int = Form(0, description="0: money game; else the match's length in points"),
+    score_white: int = Form(0),
+    score_black: int = Form(0),
+    crawford: bool = Form(False),
     stream: bool = Form(False, description="answer as NDJSON lines: each stage of the reading as it is done, then the result"),
 ):
     from board import recognize  # recognizer (OpenCV); imported lazily
@@ -182,7 +189,9 @@ async def analyze_photo(
 
     def work(progress=None):
         pos, info = recognize(img, pts, home=home, bottom_colour=bottom_colour, progress=progress)
-        return _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled)
+        return _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled,
+                             match_length=match_length, score_white=score_white, score_black=score_black,
+                             crawford=crawford)
     return _stream(work) if stream else work()
 
 
@@ -240,8 +249,9 @@ WARNINGS = {
 }
 
 
-def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled) -> dict:
-    """What /analyze-photo returns for the read board: the board, what was read and the analysis."""
+def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled, **match) -> dict:
+    """What /analyze-photo returns for the read board: the board, what was read and the analysis
+    (match: analyze's keywords for the match)."""
     warnings = [WARNINGS[w] for w in info.get("warnings", [])]
     errors = pos.validate()
     # geometry: where the recognizer found the board and its columns (image pixels of the sent image),
@@ -278,8 +288,14 @@ def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled)
             cube_value, cube_owner, doubled = shown, cube_read["at"], d is None
             if doubled:
                 on_roll = other(cube_owner)
-    return out | {"analysis": _run(pos, on_roll, plies, d,
-                                   cube_value=cube_value, cube_owner=cube_owner or None, doubled=doubled)}
+    try:
+        return out | {"analysis": _run(pos, on_roll, plies, d,
+                                       cube_value=cube_value, cube_owner=cube_owner or None, doubled=doubled,
+                                       **match)}
+    except HTTPException as e:
+        # the board was read, but what was asked can't be analysed (e.g. a cube read on one side in the
+        # Crawford game): as with a wrong board, give the board back to be fixed, without the analysis
+        return out | {"analysis": None, "analysis_error": e.detail}
 
 
 @app.post("/share-target")

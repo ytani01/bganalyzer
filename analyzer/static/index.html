@@ -37,6 +37,15 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <div id="hdr-reuse" class="bar2" hidden>
     <button id="to-board" class="act reuse" type="button">前に読み取った盤面を開く<small>読み取り直さずに、直した所もそのまま</small></button>
   </div>
+  <!-- マッチの長さとスコア（TODO-066）。4 画面のどこでも直せるようヘッダーに置き、この端末に残す。マネーに戻せる -->
+  <div id="match" class="match">
+    <select id="match-length" aria-label="マッチの長さ"></select>
+    <span id="match-score" hidden>
+      <label>手前 <select id="score-white" aria-label="手前のスコア"></select></label>
+      <label>奥 <select id="score-black" aria-label="奥のスコア"></select></label>
+      <label id="crawford-opt" hidden><input type="checkbox" id="crawford"> クロフォード</label>
+    </span>
+  </div>
   <nav id="steps">
     <span data-step="photo">1 写真の選択</span>
     <span data-step="corners">2 四隅の調整</span>

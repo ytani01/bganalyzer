@@ -21,14 +21,17 @@ from concurrent.futures.process import BrokenProcessPool
 _pool: ProcessPoolExecutor | None = None
 
 
-def evaluate(pid: str, plies: int, dice, max_moves: int, cube=None):
+def evaluate(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
     """In the helper: (win, win gammon, win backgammon, lose gammon, lose backgammon, equity) for the
     player on roll, cubeless, and then
 
     - with cube = (value, owner): gnubg's cube decision (_cube_hint), or None when there is none,
     - else with dice: the best max_moves plays [{"move", "steps", "equity"}, ...],
-    - else None."""
-    return _call(_engine, pid, plies, dice, max_moves, cube)
+    - else None.
+
+    match: None for a money game, else (length, (score of the player on roll, the opponent's),
+    crawford, the cube's number)."""
+    return _call(_engine, pid, plies, dice, max_moves, cube, match)
 
 
 def shutdown() -> None:
@@ -54,17 +57,30 @@ def _call(fn, *args):
 
 # ---------------------------------------------------------------- in the helper process
 
-def _engine(pid: str, plies: int, dice, max_moves: int, cube=None):
+def _cube_infos(gnubg, match):
+    """gnubg's cube info for the player on roll, and for the opponent (who is on roll after a play)."""
+    if match is None:
+        # money game, said in full: gnubg.cube_info() alone follows the session, which _cube_hint
+        # may have left in a match
+        money = gnubg.cube_info(1, -1, 0, 0, (0, 0), 0, 0)
+        return money, money
+    length, (me, opp), crawford, value = match   # the owner does not change a cubeless evaluation
+    return (gnubg.cube_info(value, -1, 0, length, (me, opp), int(crawford), 0),
+            gnubg.cube_info(value, -1, 0, length, (opp, me), int(crawford), 0))
+
+
+def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
     import gnubg
     board = gnubg.position_from_id(pid)   # (opponent, player on roll)
     ctx = gnubg.eval_context(0, plies)    # cubeless
-    probs = gnubg.evaluate(board, gnubg.cube_info(), ctx)
+    ci, ci_opp = _cube_infos(gnubg, match)
+    probs = gnubg.evaluate(board, ci, ctx)
     if cube is not None:
-        return probs, _cube_hint(gnubg, pid, plies, *cube)
+        return probs, _cube_hint(gnubg, pid, plies, *cube, match=match)
     moves = None
     if dice is not None:
-        found = gnubg.find_best_moves(board, gnubg.cube_info(), ctx, tuple(dice))
-        tuples = _complete_moves(gnubg, board, ctx, tuple(dice), found, max_moves)
+        found = gnubg.find_best_moves(board, ci, ctx, tuple(dice))
+        tuples = _complete_moves(gnubg, board, ctx, tuple(dice), found, max_moves, ci_opp)
         # steps: one [from, to] per die, as gnubg plays them (points by the side on roll,
         # 25 = bar, 0 = off), so "22/15" can be drawn through the point it passes
         moves = [{"move": gnubg.move_tuple_to_string(t, board),
@@ -75,8 +91,9 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None):
 
 # The Python module has no call for a cube decision (gnubg.hint() refuses cube hints, and
 # evaluate() gives only the cubeless equity), so it is asked as gnubg's own "hint" command
-# about a money game set up in the helper, and the printed answer is read.
+# about a game set up in the helper, and the printed answer is read.
 _session_ready = False
+_in_match = False   # the helper's gnubg session is a match (set up by the last call), not money
 
 
 def _gnubg_output(gnubg, command: str) -> str:
@@ -96,18 +113,29 @@ def _gnubg_output(gnubg, command: str) -> str:
         return f.read().decode(errors="replace")
 
 
-def _cube_hint(gnubg, pid: str, plies: int, value: int, owner: int):
-    """gnubg's cube decision for the player on roll (before rolling), money game.
+def _cube_hint(gnubg, pid: str, plies: int, value: int, owner: int, match=None):
+    """gnubg's cube decision for the player on roll (before rolling), in a money game or the match
+    (as in evaluate; its cube is not used here).
 
     owner: -1 centred, 0 the player on roll, 1 the opponent. Returns the cubeful equities
     for the player on roll (in units of the cube as it is) and gnubg's proper action, or None
-    when the player on roll cannot double."""
-    global _session_ready
+    when the player on roll cannot double (also in the Crawford game)."""
+    global _session_ready, _in_match
     if not _session_ready:
         for c in ("set threads 1", "set sound enable off", "set display off", "set confirm new off",
                   "set player 0 human", "set player 1 human", "set beavers 0", "new game"):
             _gnubg_output(gnubg, c)
         _session_ready = True
+    if match is not None:
+        # set up afresh each time. A score 1 away is taken by gnubg as post-Crawford unless told
+        # otherwise; "set crawford" is refused (harmlessly) when no one is 1 away.
+        length, (me, opp), crawford = match[:3]
+        for c in (f"new match {length}", f"set score {me} {opp}", f"set crawford {'on' if crawford else 'off'}"):
+            _gnubg_output(gnubg, c)
+        _in_match = True
+    elif _in_match:
+        _gnubg_output(gnubg, "new session")   # back to money ("new game" would go on with the match)
+        _in_match = False
     for c in ("set turn 0", f"set board {pid}", f"set cube value {value}",
               "set cube centre" if owner < 0 else f"set cube owner {owner}",
               f"set evaluation cubedecision evaluation plies {plies}"):
@@ -210,12 +238,13 @@ def _below(a, b) -> bool:
     return True
 
 
-def _complete_moves(gnubg, board, ctx, dice, found, count) -> list[tuple]:
+def _complete_moves(gnubg, board, ctx, dice, found, count, ci_opp) -> list[tuple]:
     """The move tuples of the first count of gnubg's find_best_moves, made whole.
 
     gnubg's tuple stops at the first checker borne off: 3-1 gives (3,) for both
     "3/off 1/off" and "3/off 3/2". Such a play is found again among the legal
-    plays: one that can follow the steps we do have, scoring what gnubg scored.
+    plays: one that can follow the steps we do have, scoring what gnubg scored
+    (ci_opp: the cube info find_best_moves used, from the opponent's side).
     """
     tuples = [tuple(m["move"]) for m in found]
     if all(len(t) % 2 == 0 for t in tuples[:count]):
@@ -230,7 +259,7 @@ def _complete_moves(gnubg, board, ctx, dice, found, count) -> list[tuple]:
 
     def gap(n, a):                        # how far the play leading to a is from gnubg's score
         if a not in scores:
-            scores[a] = -gnubg.evaluate((a[1], a[0]), gnubg.cube_info(), ctx)[5]
+            scores[a] = -gnubg.evaluate((a[1], a[0]), ci_opp, ctx)[5]
         return round(abs(found[n]["score"] - scores[a]), 6)
 
     # The steps we have can lead to several plays, and the board after them can even be

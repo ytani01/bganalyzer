@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.47.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.48.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -26,6 +26,9 @@ const stored = (key, allowed, fallback) => {
   try { const v = localStorage.getItem(key); return allowed.includes(v) ? v : fallback; } catch (_) { return fallback; }
 };
 const keep = (key, value) => { try { localStorage.setItem(key, value); } catch (_) { /* private mode */ } };
+const storedMatch = () => {
+  try { return BgCube.fixMatch(JSON.parse(localStorage.getItem("match"))); } catch (_) { return BgCube.fixMatch(null); }
+};
 
 // ================================================================ state
 
@@ -61,6 +64,7 @@ const state = {
   cube: BgCube.fromRead(null),   // {at: "centre" | "white" | "black", value, offered} (cube.js)
   cubeFromPhoto: false,
   plies: stored("plies", ["2", "3"], "2"),           // how deep gnubg reads (kept on this phone)
+  match: storedMatch(),   // {length (0: money game), white, black, crawford} (cube.js; kept on this phone)
   // the answer
   result: null,        // what /analyze returned
   resultFor: null,     // inputsKey() of what it was worked out for
@@ -79,7 +83,7 @@ const rolled = (s = state) => (s.dice[0] && s.dice[1] ? s.dice.slice() : null);
 
 // What an analysis is worked out from (but its depth): a result fits the board while this is the same.
 const inputsKey = (s = state) =>
-  s.board && JSON.stringify([s.board.points, s.board.bar_white, s.board.bar_black, s.onRoll, rolled(s), s.cube]);
+  s.board && JSON.stringify([s.board.points, s.board.bar_white, s.board.bar_black, s.onRoll, rolled(s), s.cube, s.match]);
 const resultFits = (s = state) => !!s.result && s.resultFor === inputsKey(s);
 const resultStale = (s = state) => !!s.result && (!resultFits(s) || String(s.result.plies) !== s.plies);
 
@@ -295,6 +299,22 @@ part((s) => [s.dice, s.diceFromPhoto], (s) => {
   $("onroll-label").textContent = `${BgResult.rollWho(rolled(s))}人`;
 });
 
+// ---- the match in the header (TODO-066): the scores go up to one below its length
+part((s) => s.match, (s) => {
+  const m = s.match;
+  $("match-length").value = String(m.length);
+  $("match-score").hidden = !m.length;
+  for (const side of ["white", "black"]) {
+    const sel = $(`score-${side}`);
+    if (sel.options.length !== m.length) {
+      sel.replaceChildren(...Array.from({ length: m.length }, (_, k) => new Option(String(k), String(k))));
+    }
+    sel.value = String(m[side]);
+  }
+  $("crawford-opt").hidden = !BgCube.canCrawford(m.length, m.white, m.black);
+  $("crawford").checked = m.crawford;
+});
+
 part((s) => [s.cube, s.cubeFromPhoto, s.onRoll, rolled(s)], (s) => {
   $("cube-side").hidden = s.cube.at === "centre";
   $("cube-value").value = String(s.cube.value);
@@ -490,6 +510,15 @@ function setDie(k, value) {
 
 function setCube(patch) {
   update({ cube: { ...state.cube, ...patch }, cubeFromPhoto: false });
+}
+
+// The match and its score, from the header on any screen: kept on this phone, and on the result
+// screen the position is analysed again at once (TODO-066).
+function setMatch(patch) {
+  const match = BgCube.fixMatch({ ...state.match, ...patch });
+  keep("match", JSON.stringify(match));
+  update({ match });
+  if (state.step === "outcome") analyze();
 }
 
 function setResult(result, dice) {
@@ -749,6 +778,7 @@ async function recognize() {
         fd.append("doubled", String(req.doubled));
       }
       fd.append("plies", state.plies);
+      for (const [k, v] of Object.entries(BgCube.matchRequest(state.match))) fd.append(k, String(v));
       const data = await BgApi.postStages("analyze-photo", fd, (ev) => mine && mine.scan.push(BgApi.scaleGeometry(ev, scale)));
       // what was read from the photo goes in as if set by hand (the analysis used it too), marked as read
       const patch = {};
@@ -774,6 +804,8 @@ async function recognize() {
                homeGuess: data.home_guess || null, selected: null });
       go("board");
       setResult(data.analysis, dice);
+      // the board was read but not analysed (e.g. a cube read on one side in the Crawford game)
+      if (data.analysis_error) alert(crawfordCube() ? CRAWFORD_CUBE : "解析できませんでした: " + data.analysis_error);
     }, !!mine);
   } catch (err) {
     alert("読み取りに失敗しました: " + err.message);
@@ -783,9 +815,14 @@ async function recognize() {
   }
 }
 
+// No doubling in the Crawford game: the server refuses a cube on one side then (TODO-066).
+const crawfordCube = (s = state) => s.match.crawford && s.cube.at !== "centre";
+const CRAWFORD_CUBE = "クロフォードのゲームではダブルできません。キューブを「中央」にするか、ヘッダーのクロフォードを外してください。";
+
 async function analyze() {
   const errs = BgBoard.errors(state.board);
   if (errs.length) { alert(errs.join("\n")); return; }
+  if (crawfordCube()) { alert(CRAWFORD_CUBE); return; }
   update({ selected: null });   // done editing
   sendSample();
   // The result on hand still fits the board and settings (e.g. worked out when the photo was read): just show it.
@@ -794,7 +831,8 @@ async function analyze() {
   await withBusy(text, async () => {
     try {
       const dice = rolled();
-      const body = { board: BgBoard.copy(state.board), plies: Number(state.plies), ...BgCube.request(state.cube, state.onRoll, dice) };
+      const body = { board: BgBoard.copy(state.board), plies: Number(state.plies), ...BgCube.request(state.cube, state.onRoll, dice),
+                     ...BgCube.matchRequest(state.match) };
       if (dice) body.dice = dice;
       setResult(await BgApi.postJson("analyze", body), dice);
       go("outcome");
@@ -1014,6 +1052,13 @@ $("flip-turn").addEventListener("click", () => {
   setOnRoll(BgBoard.other(state.onRoll));
   if (state.result) analyze();
 });
+
+for (const v of BgCube.MATCH_LENGTHS) $("match-length").add(new Option(v ? `${v} ポイントマッチ` : "マネーゲーム", String(v)));
+$("match-length").addEventListener("change", () => setMatch({ length: Number($("match-length").value) }));
+for (const side of ["white", "black"]) {
+  $(`score-${side}`).addEventListener("change", () => setMatch({ [side]: Number($(`score-${side}`).value) }));
+}
+$("crawford").addEventListener("change", () => setMatch({ crawford: $("crawford").checked }));
 
 const SEGMENTS = {
   homePick: (v) => update({ homePick: v }),

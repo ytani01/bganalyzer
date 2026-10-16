@@ -1,4 +1,4 @@
-// The doubling cube on the board screen, and what it asks of the analysis (money game).
+// The doubling cube on the board screen, and what it asks of the analysis; also the match it is played in.
 // The cube is where it lies: "centre" (nobody owns it, showing 64), or on 手前's ("white") or
 // 奥's ("black") side showing value. With no dice on the board, a cube on one side is taken to
 // have just been offered to that side (offered: true): the other side doubled, and the question
@@ -30,7 +30,24 @@ const BgCube = (() => {
     return { at: read.at, value, offered: true };
   }
 
-  return { VALUES, request, fromRead };
+  // The match (TODO-066): {length (0: a money game), white, black (the scores), crawford}, made whole:
+  // a length the app offers, scores below it, and the Crawford game only when just one side is 1 away.
+  const MATCH_LENGTHS = Array.from({ length: 26 }, (_, k) => k);
+  function fixMatch(m) {
+    m = m || {};
+    const length = MATCH_LENGTHS.includes(Number(m.length)) ? Number(m.length) : 0;
+    const score = (v) => Math.min(Math.max(Math.trunc(Number(v)) || 0, 0), Math.max(length - 1, 0));
+    const white = score(m.white), black = score(m.black);
+    return { length, white, black, crawford: !!m.crawford && canCrawford(length, white, black) };
+  }
+  const canCrawford = (length, white, black) => length > 0 && (white === length - 1) !== (black === length - 1);
+
+  // The fields of an /analyze (or /analyze-photo) request for the match (made whole by fixMatch).
+  function matchRequest(m) {
+    return { match_length: m.length, score_white: m.white, score_black: m.black, crawford: m.crawford };
+  }
+
+  return { VALUES, request, fromRead, MATCH_LENGTHS, fixMatch, canCrawford, matchRequest };
 })();
 
 if (typeof module !== "undefined") module.exports = BgCube;
