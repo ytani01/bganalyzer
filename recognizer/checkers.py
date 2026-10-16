@@ -50,6 +50,7 @@ def edge_support(gx, gy, x, y, r):
 
 
 TEX_MIN = 3.0       # median sideways / up-down edge ratio of a row at which the triangles' sides stand out
+TEX_MIN_COVERED = 4.0   # ... upper quartile, when most of the row is covered (leather-cups' cups: 3.2, photo5: 4.7)
 TEX_HIDDEN = 0.35   # a spot below this share of the median is covered
 TEX_SHOWN = 0.84    # ... above this share, the sides show through it
 TEX_DEPTHS = 5      # depths (in checkers from the frame) to look at
@@ -84,6 +85,9 @@ def column_texture(gx, gy, lay: Layout, m: int, pitch: float):
                 ratio.append(ax[sl][disc].sum() / (ay[sl][disc].sum() + 1))
             ratio = np.float32(ratio)
             med = float(np.nanmedian(ratio))
+            if not med >= TEX_MIN:   # most spots may be covered: the upper quarter, if clear (photo5's bottom row, TODO-077)
+                med = float(np.nanpercentile(ratio, 75))
+                med = med if med >= TEX_MIN_COVERED else np.nan
             if not med >= TEX_MIN:   # the triangles' sides do not stand out here
                 continue
             for c in range(12):

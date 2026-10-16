@@ -59,8 +59,8 @@ TODO-078 は直さずに閉じた（対応しない）。対局者の横から�
 理由は `archives/agents/TODO-076/README.md` の「黒い駒を見落とす理由」: 候補の山が一番強い山の 25% に届かない（白い真珠色の駒が強すぎる）ことと、
 空いた盤面と同じ色で輪郭が全周に出ていない候補を落とすこと。
 
-- [ ] 候補の拾い方と落とし方を直す
-- [ ] `evaluate.py`・`check_accuracy.py` で今より悪くならないことを確かめる（recognizer の版、README の「精度」、`accuracy_baseline.json` の更新も）
+- [x] 候補の拾い方と落とし方を直す
+- [x] `evaluate.py`・`check_accuracy.py` で今より悪くならないことを確かめる（recognizer の版、README の「精度」、`accuracy_baseline.json` の更新も）
 
 **何を決めるか:** 閾値を下げるか、駒の顔の模様など別の手掛かりを足すか。**いつ聞くか:** photo5 と、黒い駒が黒い盤に載ったサンプル 2〜3 枚で試したあと。
 
