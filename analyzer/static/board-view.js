@@ -13,8 +13,11 @@ const BgBoardView = (() => {
   const PLAY = { x: B.x0, y: B.y0, w: 12 * B.pw + B.bar, h: B.y1 - B.y0 };   // the playing area
   const BAR_X = B.x0 + 6 * B.pw + B.bar / 2;                                   // the bar's middle
   const RIGHT = B.x0 + 12 * B.pw + B.bar;                                      // the playing area's right edge
-  const TRAY = { w: 32, extra: 44 };   // borne-off checkers, beside the home board
-  const CUBE = { w: 32, extra: 44 };   // the doubling cube's place, on the other side
+  // Rows above and below the board, each on its player's side (奥 above, 手前 below): the tray of
+  // borne-off checkers by the home boards, the doubling cube at the other end.
+  const ROW = { h: 32, top: -34, bottom: 442 };
+  const TRAY = { w: 186 };
+  const VIEW = { y: ROW.top - 4, h: ROW.bottom + ROW.h + 4 - (ROW.top - 4) };
   const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
                  4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
                  6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
@@ -24,8 +27,8 @@ const BgBoardView = (() => {
     return half + (c % 6) * B.pw + B.pw / 2;
   }
 
-  const trayX = (home) => (home === "right" ? RIGHT + 12 : B.x0 - 12 - TRAY.w);
-  const cubeX = (home) => (home === "right" ? B.x0 - 12 - CUBE.w : RIGHT + 12);
+  const trayX = (home) => (home === "right" ? RIGHT - TRAY.w : B.x0);
+  const rowY = (side) => (side === "black" ? ROW.top : ROW.bottom);
 
   // Centre of the checker at level k (0 = by the board's edge) of a stack; above 5 they are not drawn.
   // On the bar the stacks start by its middle (clear of its label) and go out, a little closer together.
@@ -52,14 +55,12 @@ const BgBoardView = (() => {
   function draw(svg, scene, onSelect) {
     svg.textContent = "";
     const { board: b, home, photo } = scene;
-    // The picture widens on the home side for the tray of borne-off checkers, and on the other side
-    // for the doubling cube's place.
-    const vx = -(home === "right" ? CUBE.extra : TRAY.extra), vw = 660 + TRAY.extra + CUBE.extra;
-    svg.setAttribute("viewBox", `${vx} 0 ${vw} 440`);
-    el("rect", { x: vx, y: 0, width: vw, height: 440, fill: "var(--card)" }, svg);
-    const fx = Math.min(B.x0, trayX(home), cubeX(home)) - 6, fr = Math.max(RIGHT, trayX(home) + TRAY.w, cubeX(home) + CUBE.w) + 6;
-    el("rect", { x: fx, y: B.y0 - 6, width: fr - fx, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
-    el("rect", { x: trayX(home), y: B.y0, width: TRAY.w, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
+    svg.setAttribute("viewBox", `0 ${VIEW.y} 660 ${VIEW.h}`);
+    el("rect", { x: 0, y: VIEW.y, width: 660, height: VIEW.h, fill: "var(--card)" }, svg);
+    el("rect", { x: B.x0 - 6, y: B.y0 - 6, width: RIGHT - B.x0 + 12, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
+    for (const side of ["white", "black"]) {
+      el("rect", { x: trayX(home), y: rowY(side), width: TRAY.w, height: ROW.h, rx: 4, fill: "var(--felt)", stroke: "var(--frame)", "stroke-width": 4 }, svg);
+    }
     if (photo) {
       el("image", { href: photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
     } else {
@@ -163,19 +164,20 @@ const BgBoardView = (() => {
     }
   }
 
-  // Borne-off checkers as thin slabs on their side in the tray: 手前's from the bottom, 奥's from the top, with the count.
+  // Borne-off checkers as thin slabs on their side in their player's tray, from the board's outer
+  // edge inward, with the count.
   function drawBorneOff(svg, b, home) {
     const { offW, offB } = BgBoard.counts(b);
-    const x = trayX(home) + 2, w = TRAY.w - 4, hgt = 9, step = 10;
+    const wid = 9, step = 10, right = home === "right";
     for (let [side, n] of [["white", offW], ["black", offB]]) {
       if (n <= 0) continue;
-      const top = side === "black";
       n = Math.min(n, 15);
+      const y = rowY(side) + 3;
       for (let k = 0; k < n; k++) {
-        const y = top ? B.y0 + 2 + k * step : B.y1 - 2 - hgt - k * step;
-        el("rect", { x, y, width: w, height: hgt, rx: 2, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 1.5, "pointer-events": "none" }, svg);
+        const x = right ? RIGHT - 3 - wid - k * step : B.x0 + 3 + k * step;
+        el("rect", { x, y, width: wid, height: ROW.h - 6, rx: 2, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 1.5, "pointer-events": "none" }, svg);
       }
-      el("text", { x: trayX(home) + TRAY.w / 2, y: top ? B.y0 + n * step + 12 : B.y1 - n * step - 12, class: "off-n", "pointer-events": "none" }, svg)
+      el("text", { x: right ? RIGHT - n * step - 16 : B.x0 + n * step + 16, y: rowY(side) + ROW.h / 2, class: "off-n", "pointer-events": "none" }, svg)
         .textContent = n;
     }
   }
@@ -196,11 +198,12 @@ const BgBoardView = (() => {
     });
   }
 
-  // The doubling cube by the board's edge away from the tray (as it lies on a real board): half-way
-  // up showing 64 while nobody owns it, else at the end of the side it lies on.
+  // The doubling cube in its owner's row at the end away from the tray; while nobody owns it, in
+  // 手前's row under the bar, showing 64.
   function drawCube(svg, cube, home) {
-    const size = 30, x = cubeX(home) + (CUBE.w - size) / 2;
-    const y = cube.at === "centre" ? (B.y0 + B.y1) / 2 - size / 2 : cube.at === "white" ? B.y1 - size - 2 : B.y0 + 2;
+    const size = 30;
+    const x = cube.at === "centre" ? BAR_X - size / 2 : home === "right" ? B.x0 : RIGHT - size;
+    const y = rowY(cube.at === "black" ? "black" : "white") + (ROW.h - size) / 2;
     const g = el("g", { class: "die" }, svg);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
     el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g).textContent = cube.at === "centre" ? "64" : String(cube.value);
@@ -216,7 +219,7 @@ const BgBoardView = (() => {
     const g = el("g", { class: "arrows" }, svg);
     for (const h of hops) {
       const [x0, y0] = at(h.from, h.fromLevel);
-      const [x1, y1] = h.to === "off" ? [trayX(home) + TRAY.w / 2, y0] : at(h.to, h.toLevel);
+      const [x1, y1] = h.to === "off" ? [x0, rowY(mover) + ROW.h / 2] : at(h.to, h.toLevel);
       drawArrow(g, x0, y0, x1, y1);
       if (h.hit) el("circle", { cx: x1, cy: y1, r: B.r, fill: "none", stroke: "#e53935", "stroke-width": 3 }, g);
     }
