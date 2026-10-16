@@ -200,23 +200,6 @@ def test_corners_are_found_on_samples():
         assert _corner_error(found, t["corners_TL_TR_BR_BL"], img.shape) < most, name
 
 
-def test_corners_are_the_same_on_every_cpu():
-    # The corner guess works in integers and in float operations that round the same on every CPU
-    # (exact.py), so x86_64 and the Raspberry Pi find these very corners (TODO-028, TODO-046).
-    # recognizer/trace_cpu.py check compares all samples' corners with recognizer/cpu_reference.json.
-    import cv2
-    from corners import find_corners
-
-    samples = Path(__file__).resolve().parent.parent / "samples"
-    for name, want in (("commons-dark-homeleft", [[183.9, 147.7], [1736.8, 178.8], [1799.1, 1726.0], [112.8, 1643.4]]),
-                       ("commons-tavli-red-brown", [[423.9, 163.3], [1524.4, 163.3], [1514.2, 1181.4], [403.7, 1181.4]]),
-                       ("photo2", [[975.7, 241.8], [3622.9, 315.3], [3953.3, 2790.1], [927.1, 2971.6]]),
-                       ("commons-travel-case", [[494.9, 314.4], [1461.7, 314.4], [1461.4, 1167.5], [479.4, 1109.9]])):
-        t = json.loads((samples / f"{name}.truth.json").read_text())
-        img = cv2.imread(str(samples / t["image"]))
-        assert find_corners(img) == want, name
-
-
 def test_corners_are_found_on_synthetic_boards():
     import numpy as np
     from corners import find_corners
