@@ -15,6 +15,11 @@ const BgResult = (() => {
     return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   }
 
+  // The match in words (TODO-066), as in the server's summary: "7 ポイントマッチ 手前 3 対 奥 5（クロフォード）".
+  function matchText(m) {
+    return `${m.length} ポイントマッチ 手前 ${m.score.white} 対 奥 ${m.score.black}` + (m.crawford ? "（クロフォード）" : "");
+  }
+
   // The words for a cube decision: "ダブル" or "リダブル", "テイク" or "パス".
   function cubeWords(c) {
     return { word: c.value > 1 ? "リダブル" : "ダブル", take: c.take ? "テイク" : "パス" };
@@ -47,7 +52,7 @@ const BgResult = (() => {
           `<p class="note">番号は${NAME[r.on_roll]}の人から見たポイント番号です。盤面図の矢印は選んだ手です（行をタップで切り替え）。</p>`
         : "<p>動かせる手がありません。</p>";
     }
-    out += `<p class="note">gnubg ${r.plies}手読み。勝率とエクイティはキューブなし${r.cube ? "、キューブの判断はマネーゲーム（ジャコビー・ルールあり）" : ""}。` +
+    out += `<p class="note">gnubg ${r.plies}手読み。勝率とエクイティはキューブなし${r.cube ? (r.match ? "、キューブの判断はマッチのスコアで" : "、キューブの判断はマネーゲーム（ジャコビー・ルールあり）") : ""}。` +
       `Position ID: <code>${esc(r.position_id)}</code></p>`;
     return out;
   }
@@ -59,9 +64,9 @@ const BgResult = (() => {
     let out = "<h2>キューブ</h2>";
     if (c.question === "take") {
       out += `<p class="answer">${t}の人は <b>${take}</b></p>`;
-      out += `<p>${d}の人の${word}は${c.double ? "正しい" : c.too_good ? "ダブルせずギャモンを狙う方がよい局面" : "早すぎる"}。</p>`;
+      out += `<p>${d}の人の${word}は${c.double ? "正しい" : c.optional ? "してもしなくてもよい" : c.too_good ? "ダブルせずギャモンを狙う方がよい局面" : "早すぎる"}。</p>`;
     } else {
-      out += `<p class="answer">${d}の人は <b>${c.double ? `${word}する` : c.too_good ? `${word}しない（ギャモン狙い）` : `${word}しない`}</b></p>`;
+      out += `<p class="answer">${d}の人は <b>${c.double ? `${word}する` : c.optional ? `${word}してもしなくてもよい` : c.too_good ? `${word}しない（ギャモン狙い）` : `${word}しない`}</b></p>`;
       out += `<p>${word}されたら、${t}の人は${take}。</p>`;
     }
     const e = c.equity;
@@ -89,9 +94,11 @@ const BgResult = (() => {
       parts.push(c.question === "take"
         ? `${NAME[c.taker]}の人は${take}です。`
         : c.double ? `${NAME[c.doubler]}の人は${word}、${NAME[c.taker]}の人は${take}です。`
-          : `${NAME[c.doubler]}の人はまだ${word}しません。`);
+          : c.optional ? `${NAME[c.doubler]}の人は${word}してもしなくてもよいです。`
+            : `${NAME[c.doubler]}の人はまだ${word}しません。`);
     }
     parts.push(r.game_over ? `${NAME[r.favourite]}の勝ちで終局しています。` : standingToSpeech(r));
+    if (r.match) parts.push(`${matchText(r.match)}です。`);
     return parts.join("");
   }
 
@@ -122,7 +129,7 @@ const BgResult = (() => {
     }).join("、");
   }
 
-  return { NAME, rollWho, esc, html, cubeHtml, speechText, moveToSpeech };
+  return { NAME, rollWho, esc, matchText, html, cubeHtml, speechText, moveToSpeech };
 })();
 
 if (typeof module !== "undefined") module.exports = BgResult;

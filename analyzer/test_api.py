@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from analysis import Position, analyze
+from analysis import Position, analyze, summary_ja
 from app import app
 
 client = TestClient(app)
@@ -72,6 +72,11 @@ def test_api_moves_bearing_off_are_whole():
     assert "3/2* 3/off" in moves and len(set(moves)) == len(moves)
     steps = {m["move"]: m["steps"] for m in res.json()["moves"]}
     assert sorted(steps["3/off 1/off"]) == [[1, 0], [3, 0]]      # the completed tuples too
+    # in a match, the plays are completed by the scores seen from the other side (TODO-066)
+    res = client.post("/analyze", json={"position_id": "e24HABDZAAAAAA", "dice": [3, 1],
+                                        "match_length": 7, "score_white": 5, "score_black": 3})
+    assert res.status_code == 200, res.text
+    assert res.json()["moves"][0]["move"] == "3/off 1/off"
 
 
 def test_api_board_matches_truth():
@@ -452,6 +457,87 @@ def test_api_cube():
         assert client.post("/analyze", json={"position_id": START_ID} | extra).status_code == 422, extra
 
 
+def test_match_score_changes_the_answer():
+    # TODO-066: the start position, 手前 on roll. Money: no double. 7-point match, 手前 behind 3-5: double
+    money = analyze(Position.start(), "white", plies=0)
+    assert money["match"] is None and money["cube"]["double"] is False
+    behind = analyze(Position.start(), "white", plies=0, match_length=7, score_white=3, score_black=5)
+    assert behind["match"] == {"length": 7, "score": {"white": 3, "black": 5}, "crawford": False}
+    assert behind["cube"]["double"] is True and behind["equity"] != money["equity"]
+    # 手前 wins this game more often (52%): the favourite, though the match equity is 奥's
+    assert behind["favourite"] == "white" and behind["equity"]["white"] < 0 and "手前が有利" in summary_ja(behind)
+    # the scores go to gnubg from the side on roll: 奥 on roll and behind 3-5 is the same answer
+    b = analyze(Position.start(), "black", plies=0, match_length=7, score_white=5, score_black=3)
+    assert b["cube"]["proper"] == behind["cube"]["proper"] and b["equity"]["black"] == behind["equity"]["white"]
+    # ahead 5-3: no double
+    ahead = analyze(Position.start(), "white", plies=0, match_length=7, score_white=5, score_black=3)
+    assert ahead["cube"]["double"] is False
+    # the plays are scored for the match too
+    m = analyze(Position.start(), "white", plies=0, dice=(3, 1), match_length=7, score_white=3, score_black=5)
+    assert m["moves"][0]["equity"] != analyze(Position.start(), "white", plies=0, dice=(3, 1))["moves"][0]["equity"]
+    # and back to money after a match: the same as before (gnubg's session is put back)
+    assert analyze(Position.start(), "white", plies=0) == money
+
+
+def test_no_double_in_the_crawford_game():
+    kw = {"match_length": 7, "score_white": 5, "score_black": 6}   # 手前 behind would double, but not now
+    r = analyze(Position.start(), "white", plies=0, crawford=True, **kw)
+    assert r["cube"] is None and r["moves"] is None and r["match"]["crawford"] is True
+    assert "7 ポイントマッチ 手前 5 対 奥 6（クロフォード）" in summary_ja(r)
+    # post-Crawford, the side behind doubles
+    assert analyze(Position.start(), "white", plies=0, **kw)["cube"]["double"] is True
+
+
+def test_optional_double_words():
+    from analysis import _cube_result, cube_summary_ja
+
+    c = _cube_result({"proper": "Optional double, take", "equity": {}}, "white", 1, False)
+    assert c["optional"] is True and c["double"] is False and c["take"] is True
+    assert cube_summary_ja(c) == "手前はダブルしてもしなくてもよい（ダブルされたら奥はテイク）"
+    t = _cube_result({"proper": "Optional double, take", "equity": {}}, "white", 1, True)
+    assert cube_summary_ja(t) == "奥はテイク（手前のダブルはしてもしなくてもよい）"
+
+
+def test_api_match():
+    base = {"position_id": START_ID, "plies": 0}
+    res = client.post("/analyze", json=base | {"match_length": 7, "score_white": 3, "score_black": 5})
+    assert res.status_code == 200, res.text
+    assert res.json()["cube"]["double"] is True
+    assert res.json()["summary"].startswith("7 ポイントマッチ 手前 3 対 奥 5。")
+    assert client.post("/analyze", json=base).json()["summary"].startswith("手前が有利")   # money as before
+    bad = [{"match_length": -1}, {"match_length": 65}, {"score_white": 1}, {"crawford": True},
+           {"match_length": 7, "score_white": 7}, {"match_length": 7, "score_black": -1},
+           {"match_length": 7, "score_white": 3, "crawford": True},                       # no one 1 away
+           {"match_length": 7, "score_white": 6, "score_black": 6, "crawford": True},     # both 1 away
+           {"match_length": 7, "score_white": 6, "crawford": True, "cube_value": 2, "cube_owner": "white"}]
+    for extra in bad:
+        assert client.post("/analyze", json=base | extra).status_code == 422, extra
+
+
+def test_api_photo_match(monkeypatch):
+    import board
+    import cv2
+    import numpy as np
+
+    monkeypatch.setattr(board, "recognize", lambda img, corners, **kw: (
+        Position.start(), {"home": "right", "home_guess": None, "warnings": [], "geometry": None,
+                           "dice": {"values": None, "dice": []}, "cube": None}))
+    _, png = cv2.imencode(".png", np.zeros((40, 40, 3), np.uint8))
+    form = {"corners": "0,0,40,0,40,40,0,40", "plies": "0", "on_roll": "white",
+            "match_length": "7", "score_white": "3", "score_black": "5"}
+    a = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")}, data=form).json()["analysis"]
+    assert a["match"]["score"] == {"white": 3, "black": 5} and a["cube"]["double"] is True
+    # the Crawford game and a cube read on one side: the board comes back to be fixed, without the analysis
+    monkeypatch.setattr(board, "recognize", lambda img, corners, **kw: (
+        Position.start(), {"home": "right", "home_guess": None, "warnings": [], "geometry": None,
+                           "dice": {"values": None, "dice": []}, "cube": {"at": "white", "value": 2}}))
+    res = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")},
+                      data=form | {"score_white": "6", "crawford": "true"})
+    assert res.status_code == 200, res.text
+    j = res.json()
+    assert j["analysis"] is None and "Crawford" in j["analysis_error"] and j["recognized"]["points"]
+
+
 def _draw_cube(img, x, y, side, text):
     import cv2
 
@@ -569,10 +655,11 @@ def test_api_photo_dice_cancel_a_double_set_by_hand(monkeypatch):
     j = r.json()
     a = j["analysis"]
     assert j["dice_read"] == [3, 1] and a["on_roll"] == "black" and a["cube"] is None and a["moves"]
-    # dice set by hand are kept as sent, and a double with dice is still refused
+    # dice set by hand are kept as sent, and a double with dice is still refused: the board comes back
+    # without the analysis (TODO-066)
     r = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")},
                     data=form | {"dice": "6,5"})
-    assert r.status_code == 422
+    assert r.status_code == 200 and r.json()["analysis"] is None and "dice" in r.json()["analysis_error"]
 
 
 def _sample_form(points=None, home="right"):

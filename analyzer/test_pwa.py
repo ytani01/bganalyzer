@@ -235,6 +235,60 @@ def test_cube_request():
     assert field8 == {"at": "black", "value": 8, "offered": True}
 
 
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_match_request():
+    # TODO-066: the match from the header, made whole before it is sent (and when read back from the phone)
+    script = f"""
+    const c = require({json.dumps(str(STATIC / "cube.js"))});
+    console.log(JSON.stringify([
+      c.matchRequest(c.fixMatch(null)), c.matchRequest(c.fixMatch({{length: 7, white: 3, black: 5, crawford: true}})),
+      c.matchRequest(c.fixMatch({{length: 7, white: 6, black: 2, crawford: true}})), c.matchRequest(c.fixMatch({{length: 7, white: 6, black: 6, crawford: true}})),
+      c.fixMatch({{length: 5, white: 9, black: -2}}), c.fixMatch({{length: 99, white: 3}}), c.fixMatch({{length: 0, white: 3, crawford: true}}),
+    ]));
+    """
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    money, no_crawford, crawford, both, clamped, bad_length, money2 = json.loads(r.stdout)
+    assert money == {"match_length": 0, "score_white": 0, "score_black": 0, "crawford": False}
+    assert no_crawford == {"match_length": 7, "score_white": 3, "score_black": 5, "crawford": False}   # no one 1 away
+    assert crawford["crawford"] is True and both["crawford"] is False
+    assert clamped == {"length": 5, "white": 4, "black": 0, "crawford": False}
+    assert bad_length["length"] == 0 and money2 == {"length": 0, "white": 0, "black": 0, "crawford": False}
+
+
+def test_match_is_in_the_header_and_sent():
+    html = client.get("/").text
+    header = html[html.index("<header>"):html.index("</header>")]
+    for id_ in ("match-length", "score-white", "score-black", "crawford"):
+        assert f'id="{id_}"' in header, id_   # one place, seen on all 4 screens
+    js = (STATIC / "app.js").read_text()
+    assert js.count("BgCube.matchRequest(state.match)") == 2   # /analyze and /analyze-photo
+    assert 'if (state.step === "outcome") analyze();' in js
+    assert "if (crawfordCube()) { alert(CRAWFORD_CUBE); return; }" in js   # Japanese before the server's 422
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_match_in_the_result_words():
+    m = {"length": 7, "score": {"white": 6, "black": 5}, "crawford": True}
+    cube = {"question": "double", "doubler": "white", "taker": "black", "value": 1, "take": True, "double": True,
+            "too_good": False, "proper": "Double, take", "equity": {"no_double": 0.5, "double_take": 0.6, "double_pass": 1.0}}
+    r = json.dumps(_RESULT | {"match": m})
+    money = json.dumps(_RESULT | {"moves": None, "cube": cube})
+    out = _result_js(f"""{{
+      text: R.matchText({json.dumps(m)}),
+      speech: R.speechText({r}, [3, 1]),
+      cubeNote: R.html({{...{r}, moves: null, cube: {json.dumps(cube)}}}, null),
+      money: [R.speechText({money}, null), R.html({money}, null)],
+      optional: [R.speechText({{...{money}, cube: {{...{json.dumps(cube)}, double: false, optional: true}}}}, null),
+                 R.html({{...{money}, cube: {{...{json.dumps(cube)}, double: false, optional: true}}}}, null)],
+    }}""")
+    assert out["text"] == "7 ポイントマッチ 手前 6 対 奥 5（クロフォード）"
+    assert out["speech"].endswith("7 ポイントマッチ 手前 6 対 奥 5（クロフォード）です。")
+    assert "キューブの判断はマッチのスコアで" in out["cubeNote"]
+    assert "ポイントマッチ" not in out["money"][0] and "マネーゲーム（ジャコビー・ルールあり）" in out["money"][1]
+    assert "手前の人はダブルしてもしなくてもよいです。" in out["optional"][0]
+    assert "手前の人は <b>ダブルしてもしなくてもよい</b>" in out["optional"][1]
+
+
 def test_sample_script_is_served_and_cached():
     assert client.get("/sample.js").status_code == 200
     assert '<script src="sample.js"></script>' in client.get("/").text

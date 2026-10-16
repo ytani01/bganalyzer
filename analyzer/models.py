@@ -25,3 +25,8 @@ class AnalyzeRequest(BaseModel):
     cube_value: int = 1
     cube_owner: str | None = None   # white, black or null (in the middle)
     doubled: bool = False           # on_roll has just doubled to cube_value: take or pass?
+    # The match: length 0 = money game. Scores are White's and Black's; crawford: no doubling this game.
+    match_length: int = 0
+    score_white: int = 0
+    score_black: int = 0
+    crawford: bool = False

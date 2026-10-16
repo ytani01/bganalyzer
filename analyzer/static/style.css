@@ -86,6 +86,11 @@ header .actions { display: flex; gap: 6px; flex: none; }
 .act.speak svg { width: 20px; height: 20px; flex: none; }
 /* The header's second line: reopen the board read before, without reading the photo again. */
 header .bar2 { margin-top: 8px; }
+/* The match and its score (TODO-066): one short line, the same on every screen. */
+header .match { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; font-size: 14px; }
+header .match label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+header .match select { font-size: 14px; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--accent-fg); background: var(--card); color: var(--fg); }
+#match-score[hidden], #crawford-opt[hidden] { display: none; }
 header .bar2[hidden] { display: none; }
 .act.reuse { display: block; width: 100%; white-space: normal; background: var(--sel); border-color: var(--sel); color: #000; }
 .act.reuse small { display: block; font-weight: normal; font-size: 13px; }

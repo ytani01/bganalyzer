@@ -18,6 +18,7 @@ MAX_PLIES = 3
 SIDES = ("white", "black")
 NAME_JA = {"white": "手前", "black": "奥"}
 CUBE_VALUES = (1, 2, 4, 8, 16, 32, 64)
+MAX_MATCH = 64   # gnubg plays matches up to 64 points
 
 
 def other(side: str) -> str:
@@ -41,7 +42,8 @@ def _check(pos: Position) -> None:
 
 def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES,
             dice: tuple[int, int] | None = None, max_moves: int = 5,
-            cube_value: int = 1, cube_owner: str | None = None, doubled: bool = False) -> dict:
+            cube_value: int = 1, cube_owner: str | None = None, doubled: bool = False,
+            match_length: int = 0, score_white: int = 0, score_black: int = 0, crawford: bool = False) -> dict:
     """Win/gammon/backgammon chances, equity and pip counts for `pos`.
 
     `on_roll` is the side about to roll. With `dice`, also returns the best
@@ -49,6 +51,8 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     whether `on_roll` should double, and whether the other side should take. The cube shows
     `cube_value` and is owned by `cube_owner` (None: in the middle). `doubled`: `on_roll` has
     just doubled, and the cube (showing the new value) waits on the other side's take or pass.
+    `match_length` 0 is a money game (Jacoby rule); else a match to that many points with the
+    sides' scores and whether this is the Crawford game (no doubling).
     """
     if on_roll not in SIDES:
         raise ValueError("on_roll must be 'white' or 'black'")
@@ -67,6 +71,20 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
             raise ValueError("no dice while a double waits on take or pass")
         if cube_value == 1 or cube_owner == on_roll:
             raise ValueError("a doubled cube shows 2 or more and lies on the side of the player doubled")
+    if not 0 <= match_length <= MAX_MATCH:
+        raise ValueError(f"match_length must be 0 (money) .. {MAX_MATCH}")
+    score = {"white": score_white, "black": score_black}
+    if match_length == 0:
+        if score_white or score_black or crawford:
+            raise ValueError("a money game has no score and no Crawford game")
+    else:
+        if not all(0 <= v < match_length for v in score.values()):
+            raise ValueError("each score must be 0 .. match_length - 1")
+        away1 = [v == match_length - 1 for v in score.values()]
+        if crawford and sum(away1) != 1:
+            raise ValueError("the Crawford game needs one side (only) 1 point from winning the match")
+        if crawford and cube_value != 1:
+            raise ValueError("no doubling in the Crawford game: the cube stays at 1 in the middle")
     _check(pos)
 
     pid = pos.position_id(on_roll)
@@ -78,6 +96,7 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
                  "leader": "white" if pw < pb else "black" if pb < pw else None,
                  "difference": abs(pw - pb)},
         "plies": plies,
+        "match": {"length": match_length, "score": score, "crawford": crawford} if match_length else None,
     }
 
     winner = "white" if pos.off_white == 15 else "black" if pos.off_black == 15 else None
@@ -93,8 +112,12 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
         ask = (before, -1 if before == 1 else 0)
     elif dice is None and cube_owner in (None, on_roll):
         ask = (cube_value, -1 if cube_owner is None else 0)
+    # the match, from on_roll's side, with the cube's number for the evaluation (before a double)
+    match = None
+    if match_length:
+        match = (match_length, (score[on_roll], score[other(on_roll)]), crawford, ask[0] if ask else cube_value)
     (win, wg, wbg, lg, lbg, equity), found = evaluate(
-        pid, plies, None if dice is None else tuple(dice), max_moves, ask)
+        pid, plies, None if dice is None else tuple(dice), max_moves, ask, match)
     moves = found if ask is None else None
     cube = _cube_result(found, on_roll, ask[0], doubled) if ask and found else None
 
@@ -106,9 +129,12 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     result.update(
         game_over=False,
         probabilities={on_roll: mover, other(on_roll): opponent},
-        # Cubeless money equity for the side on roll (+1 = sure single win).
+        # Cubeless equity for the side on roll (+1 = sure single win; in a match, gnubg's money-like
+        # equity from the match winning chances).
         equity={on_roll: round(equity, 3), other(on_roll): round(-equity, 3)},
-        favourite=on_roll if equity > 0 else other(on_roll),
+        # money: by the equity, as before; a match: by the chance to win this game (the match equity
+        # can favour the side less likely to win it)
+        favourite=on_roll if (win > 0.5 if match_length else equity > 0) else other(on_roll),
         moves=moves,
         cube=cube,
     )
@@ -120,6 +146,7 @@ def _cube_result(hint: dict, doubler: str, value: int, doubled: bool) -> dict:
     the other side take. Equities are the doubler's, in units of the cube before the double."""
     proper = hint["proper"].lower()
     too_good = proper.startswith("too good")
+    optional = proper.startswith("optional")   # "Optional double, take": doubling or not is the same
     return {
         "question": "take" if doubled else "double",
         "doubler": doubler,
@@ -128,6 +155,7 @@ def _cube_result(hint: dict, doubler: str, value: int, doubled: bool) -> dict:
         "equity": hint["equity"],
         "double": proper.startswith(("double", "redouble")),
         "too_good": too_good,            # better to play on for a gammon than to cash
+        "optional": optional,            # double or not, either is right (seen in matches)
         "take": "take" in proper or "beaver" in proper,
         "proper": hint["proper"],        # gnubg's words, e.g. "No double, take (23.0%)"
     }
@@ -139,7 +167,7 @@ def summary_ja(r: dict) -> str:
         return f"{NAME_JA[r['favourite']]}の勝ちで終局しています。"
     p = r["probabilities"]
     fav = r["favourite"]
-    text = (f"{NAME_JA[fav]}が有利: 勝率 {p[fav]['win']}%（ギャモン {p[fav]['gammon']}%）、"
+    text = (match_ja(r["match"]) + "。" if r.get("match") else "") + (f"{NAME_JA[fav]}が有利: 勝率 {p[fav]['win']}%（ギャモン {p[fav]['gammon']}%）、"
             f"ピップ 手前 {r['pips']['white']} / 奥 {r['pips']['black']}")
     if r.get("cube"):
         text += "。" + cube_summary_ja(r["cube"])
@@ -152,11 +180,19 @@ def cube_summary_ja(c: dict) -> str:
     word = "リダブル" if c["value"] > 1 else "ダブル"
     take = "テイク" if c["take"] else "パス"
     if c["question"] == "take":
-        why = ("ダブルは正しい" if c["double"] else
+        why = ("ダブルは正しい" if c["double"] else f"{word}はしてもしなくてもよい" if c.get("optional") else
                "本当はダブルせずギャモンを狙う局面" if c["too_good"] else "ダブルは早すぎる")
         return f"{t}は{take}（{d}の{why}）"
     if c["double"]:
         return f"{d}は{word}すべき、{t}は{take}"
+    if c.get("optional"):
+        return f"{d}は{word}してもしなくてもよい（{word}されたら{t}は{take}）"
     if c["too_good"]:
         return f"{d}は{word}せずギャモンを狙う（{word}されたら{t}は{take}）"
     return f"{d}はまだ{word}しない（{word}されたら{t}は{take}）"
+
+
+def match_ja(m: dict) -> str:
+    """The match in Japanese, e.g. "7 ポイントマッチ 手前 3 対 奥 5（クロフォード）"."""
+    return (f"{m['length']} ポイントマッチ 手前 {m['score']['white']} 対 奥 {m['score']['black']}"
+            + ("（クロフォード）" if m["crawford"] else ""))
