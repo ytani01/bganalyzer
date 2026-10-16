@@ -219,7 +219,7 @@ const BgBoardView = (() => {
     const g = el("g", { class: "arrows" }, svg);
     for (const h of hops) {
       const [x0, y0] = at(h.from, h.fromLevel);
-      const [x1, y1] = h.to === "off" ? [x0, rowY(mover) + ROW.h / 2] : at(h.to, h.toLevel);
+      const [x1, y1] = h.to === "off" ? [Math.min(Math.max(x0, trayX(home) + B.r), trayX(home) + TRAY.w - B.r), rowY(mover) + ROW.h / 2] : at(h.to, h.toLevel);
       drawArrow(g, x0, y0, x1, y1);
       if (h.hit) el("circle", { cx: x1, cy: y1, r: B.r, fill: "none", stroke: "#e53935", "stroke-width": 3 }, g);
     }
