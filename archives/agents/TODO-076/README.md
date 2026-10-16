@@ -73,3 +73,7 @@ home の推測も外れ（+7.0）、サイコロは読めない。`check_corners
 - **反対の段の長さから取る**（`refine_tips`）: 片方の段の付け根までの長さが反対の段の 90%（`ROW_SHORT`。最初は 85% だったが、photo5 が 0.842〜0.847 と境目に近いと reviewer に言われて上げた）より短く、その段の付け根のうち外側の 2 つが反対の段の長さの 95%（`ROW_REACH`）まで届いているとき、
   反対の段の長さを使う。届いていないとき（collected-er0y2w の上の段は 10 か所ともそろって短い。届くのは 376 / 436 = 0.86）は、写真のとおり上下で長さが違うものとして変えない
 - 試しは photo5・collected-er0y2w・commons-nardy-midgame（と、前の案で落ちた commons-tavli-blue・photo4）。基準の書き直しでは photo5 が 22 で足されたほかは、どのサンプルも変わらなかった（954/1056）
+
+## 分担
+
+測定と実装は、写真を見ながら試す作業で切り離しにくいので main が行った。差分のレビューは reviewer（`reviewer-report.md`）、3 枚の読みと分岐を外したときの読みの確認は verifier（`verifier-report.md`）。
