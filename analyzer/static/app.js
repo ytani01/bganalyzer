@@ -751,7 +751,9 @@ async function findAgain() {
   // the user may have moved on to another photo, moved a corner or started reading meanwhile
   if (id !== search || state.photo.file !== file || state.cornerGuess !== "again") return;
   if (state.corners !== start) { update({ cornerGuess: "moved" }); return; }
-  update({ corners: corners ? corners.map((p, k) => fixed[k] || p) : start, cornerGuess: corners ? "found" : "missed" });
+  // the corners found are rough: read them fitted again
+  update({ corners: corners ? corners.map((p, k) => fixed[k] || p) : start, cornerGuess: corners ? "found" : "missed",
+           keepCorners: state.keepCorners && !corners });
   redraw(drawCorners);
 }
 
