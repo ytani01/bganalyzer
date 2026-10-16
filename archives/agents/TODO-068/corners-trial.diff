@@ -1,0 +1,251 @@
+diff --git a/recognizer/corners.py b/recognizer/corners.py
+index ae78932..0807a1b 100644
+--- a/recognizer/corners.py
++++ b/recognizer/corners.py
+@@ -25,8 +25,12 @@ from __future__ import annotations
+ import cv2
+ import numpy as np
+ 
++import checkers
+ import exact
++import radial
+ 
++import os
++MOVE_IN = os.environ.get("MOVE_IN", "1")
+ DEBUG = None           # a list to collect the scored candidates in (for tuning)
+ WORK_SIDE = 800        # longest side the search runs at (px)
+ SLOPES = np.arange(-60, 61, 2)   # line slopes tried, in 1/200: up to 0.3 (17 degrees), steps of 0.01
+@@ -39,14 +43,15 @@ MIN_HEIGHT = 0.25      # the playing area's height, at least, against the photo'
+ ASPECT = (0.8, 2.2)    # its width against its height
+ MIN_WIDTH = 0.3        # its width, at least, against the photo's
+ STEP = 4               # rows between stored running counts of the upright lines' coverage
+-# the structure score (seen from straight above, RW x RH)
+-RW, RH = 208, 160
+-DEPTH = 0.40           # a triangle's length against the playing area's height
+-BARS = (0.0, 0.03, 0.06, 0.09, 0.12, 0.15, 0.18)   # bar widths tried, against the playing area's width
+-W_PLAIN = 0.6   # weight of a plain band between the tips
+-PLAIN_DE = 20          # colour difference (Lab) still plain
+-MIN_SCORE = 0.15       # a board's structure score, at least
+-REFINE = 12             # candidates (the best by structure) whose edges are moved in and scored again
++# the checkers as a ruler
++R_LO, R_HI, R_STEP = 0.01, 0.04, 1.1   # radii looked for, against the photo's width, and their step
++PEAKS = 60             # circles looked at for each radius
++SUPPORT = 0.5          # a circle's rim, at least (checkers.edge_support)
++PAIR = (1.6, 2.5)      # a neighbour this far away, in radii
++RATIO = 13.7           # the playing area's width in checkers (12 points and the bar: 12.5 to 14.9 on the samples)
++COL_TOL = 0.3          # ... and none when its centre is this far (in points) from a point's middle
++R_TOL = 0.25           # a circle counts less the further its radius is from the expected one, none at 25 %
++REFINE = 12            # candidates (the best by the checkers) whose edges are moved in and scored again
+ # moving each edge to the innermost strong edge nearby (seen from straight above, FW x FH)
+ FW, FH, FM = 400, 320, 40
+ OUT, IN = 0.06, 0.05   # how far each edge is looked for, outwards and inwards, against the side
+@@ -159,66 +164,109 @@ def _meet(hl, vl):
+     return x, ch + x * kh / 200
+ 
+ 
+-# ---------------------------------------------------------------- structure score --
+-
+-def _point_templates(RW, RH):
+-    """For each bar width: the 24 points' pixels (rows, columns: index arrays) and their triangle
+-    template (zero mean, unit length), and which field each is in."""
+-    out = {}
+-    half = RH // 2
+-    for bar in BARS:
+-        a = RW * (1 - bar) / 2
+-        p = a / 6
+-        wp = int(round(p))
+-        rows, cols, tmpl, field = [], [], [], []
+-        for f, f0 in enumerate((0.0, a + bar * RW)):
+-            for i in range(6):
+-                cx = f0 + (i + 0.5) * p
+-                x0 = int(round(cx - wp / 2))
+-                xs = np.arange(x0, x0 + wp)
+-                for top in (True, False):
+-                    ys = np.arange(0, half) if top else np.arange(RH - half, RH)
+-                    d = (ys + 0.5) if top else (RH - ys - 0.5)
+-                    m = (np.abs(xs[None, :] + 0.5 - cx) < (p / 2) * (1 - d[:, None] / (DEPTH * RH))) & (d[:, None] < DEPTH * RH)
+-                    t = m.astype(np.float64).ravel()
+-                    t = t - t.sum() / len(t)
+-                    t = t / np.sqrt((t * t).sum())
+-                    rows.append(np.repeat(ys, wp))
+-                    cols.append(np.tile(np.clip(xs, 0, RW - 1), half))
+-                    tmpl.append(t)
+-                    field.append(f)
+-        out[bar] = (a, np.array(rows), np.array(cols), np.array(tmpl), np.array(field))
+-    return out
++# ---------------------------------------------------------------- checkers as a ruler --
+ 
++def _circles(small):
++    """Circles with a clear rim that have a neighbour about a diameter away (checkers stand in
++    stacks and on the next point): [(x, y, r)], at radii from R_LO to R_HI of the photo's width.
+ 
+-_TEMPLATES = {size: _point_templates(*size) for size in ((RW, RH), (RW // 2, RH // 2))}
+-
+-
+-def _structure(rect):
+-    RH, RW = rect.shape[:2]
+-    """How much the view from straight above (RW x RH) shows two rows of twelve triangles:
+-    the mean correlation of each point's patch (distance from the field's plain colour) with
+-    a triangle's shape, for the best bar width (-1..1)."""
+-    lab = cv2.cvtColor(rect, cv2.COLOR_BGR2Lab).astype(np.int32)
+-    best = -1.0
+-    for bar, (a, rows, cols, tmpl, field) in _TEMPLATES[(RW, RH)].items():
+-        plain = np.empty((2, 3), np.float64)
+-        for f, f0 in enumerate((0.0, a + bar * RW)):
+-            mid = lab[int(0.46 * RH):int(0.54 * RH), int(f0 + 0.05 * a):int(f0 + 0.95 * a)].reshape(-1, 3)
+-            plain[f] = np.median(mid, 0)
+-        d = lab[rows, cols] - plain[field][:, None, :]          # (24, pixels of a point, 3)
+-        v = np.sqrt((d * d).sum(2))
+-        # between the rows of tips the field is plain, all the way across both fields
+-        band = lab[int(0.45 * RH):int(0.55 * RH)]
+-        plain_share = 0.0
+-        for f, (x0, x1) in enumerate(((0, int(a)), (int(a + bar * RW + 0.5), RW))):
+-            e = band[:, x0:x1] - plain[f]
+-            plain_share += float(((e * e).sum(2) < PLAIN_DE * PLAIN_DE).sum()) / max(1, e.shape[0] * e.shape[1]) / 2
+-        v = v - (v.sum(1) / v.shape[1])[:, None]
+-        n = np.sqrt((v * v).sum(1))
+-        c = (v * tmpl).sum(1) / np.where(n > 0, n, 1)
+-        best = max(best, float(c.sum() / len(c)) + W_PLAIN * plain_share)
+-    return best
++    The fast radial symmetry transform (radial.py) over a range of radii, voting from the
++    strongest of Lab's channels at each pixel, in integers (and sqrt, /: the same on every CPU)."""
++    h, w = small.shape[:2]
++    lab = cv2.GaussianBlur(cv2.cvtColor(small, cv2.COLOR_BGR2Lab), (0, 0), 1)
++    g = [(cv2.Sobel(lab[:, :, i], cv2.CV_16S, 1, 0).astype(np.int64),
++          cv2.Sobel(lab[:, :, i], cv2.CV_16S, 0, 1).astype(np.int64)) for i in range(3)]
++    mag2 = np.stack([gx * gx + gy * gy for gx, gy in g])
++    ch = np.argmax(mag2, 0)
++    gx = np.choose(ch, [v[0] for v in g])
++    gy = np.choose(ch, [v[1] for v in g])
++    mag2 = mag2.max(0)
++    flat = mag2.ravel()
++    k = int(len(flat) * (1 - radial.GRAD_KEEP))
++    ys, xs = np.nonzero(mag2 >= max(int(np.partition(flat, k)[k]), 1))
++    m = np.sqrt(mag2[ys, xs].astype(np.float64))
++    ux, uy = gx[ys, xs] / m, gy[ys, xs] / m
++    weight = np.floor(m).astype(np.int64)
++    _, sgx, sgy = checkers.lab_gradients(small)
++    out = []
++    r = R_LO * w
++    while r <= R_HI * w:
++        O = np.zeros(h * w, np.int64)
++        M = np.zeros(h * w, np.int64)
++        for sgn in (1.0, -1.0):
++            px = np.rint(xs + sgn * r * ux).astype(np.int64)
++            py = np.rint(ys + sgn * r * uy).astype(np.int64)
++            ok = (px >= 0) & (px < w) & (py >= 0) & (py < h)
++            idx = py[ok] * w + px[ok]
++            O += np.bincount(idx, minlength=h * w)
++            M += np.bincount(idx, weights=weight[ok], minlength=h * w).astype(np.int64)
++        O = np.minimum(O, radial.ORIENT_CAP)
++        F = (O * O * M).reshape(h, w)
++        b = max(int(round((12 * (0.25 * r) ** 2 / radial.BOX_PASSES + 1) ** 0.5)), 1) | 1
++        for _ in range(radial.BOX_PASSES):
++            F = radial._box(F, b) // (b * b)
++        top = int(F.max())
++        if top > 0:
++            size = int(1.3 * r) | 1
++            dil = cv2.dilate(F.astype(np.float64), np.ones((size, size), np.uint8))
++            py, px = np.nonzero((F >= dil) & (F * 100 > int(radial.PEAK_REL * 100) * top))
++            order = np.lexsort((px, py, -F[py, px]))[:PEAKS]
++            out += [(float(px[i]), float(py[i]), r) for i in order
++                    if checkers.edge_support(sgx, sgy, float(px[i]), float(py[i]), r) >= SUPPORT]
++        r = exact.snap(r * R_STEP, 1 / 64)
++    # checkers often have rings inside: each spot is a checker of its outermost circle
++    out.sort(key=lambda c: (-c[2], c[0], c[1]))
++    spots = []
++    for x, y, r in out:
++        if all((x - u) ** 2 + (y - v) ** 2 > (0.4 * q) ** 2 for u, v, q in spots):
++            spots.append((x, y, r))
++    xy = np.float64([c[:2] for c in spots]).reshape(-1, 2)
++    rr = np.float64([c[2] for c in spots])
++    paired = []
++    for (x, y), r in zip(xy, rr):
++        d = np.sqrt(((xy - (x, y)) ** 2).sum(1))
++        near = (d >= PAIR[0] * r) & (d <= PAIR[1] * r) & (rr * 5 >= r * 4) & (rr * 4 <= r * 5)
++        if near.any():
++            paired.append((x, y, r))
++    return paired
++
++
++def _checker_score(circles, quad):
++    """How well the checkers measure the quad: each circle inside it counts as much as its
++    radius matches the one expected from the quad's width at its row (a checker is a point's
++    width, and a row of the playing area some RATIO checkers wide); one circle per spot."""
++    if not circles:
++        return 0.0
++    H = exact.homography(np.float64(quad), np.float64([(0, 0), (1, 0), (1, 1), (0, 1)]))
++    if H is None:
++        return 0.0
++    c = np.float64(circles)
++    uv = exact.apply_h(H, c[:, :2])
++    inside = (uv[:, 0] > 0) & (uv[:, 0] < 1) & (uv[:, 1] > 0) & (uv[:, 1] < 1)
++    if not inside.any():
++        return 0.0
++    c, u, v = c[inside], uv[inside, 0], uv[inside, 1]
++    Hi = exact.inv3(H)
++    left = exact.apply_h(Hi, np.stack([np.zeros_like(v), v], 1))
++    right = exact.apply_h(Hi, np.stack([np.ones_like(v), v], 1))
++    expected = np.sqrt(((right - left) ** 2).sum(1)) / RATIO / 2
++    t = c[:, 2] / expected
++    t = np.where(t >= 1, t, 1 / np.where(t > 0, t, 1e-9))
++    wt = np.maximum(0.0, 1 - (t - 1) / R_TOL)
++    # checkers stand on the points: their centres half a point from a point's edge, counted
++    # from the left edge in the left half and from the right edge in the right one
++    x = np.where(u < 0.5, u, 1 - u) * RATIO
++    off = np.abs(x - np.floor(x) - 0.5)
++    wt = wt * np.maximum(0.0, 1 - off / COL_TOL) * (x < 6.3)
++    taken, score = [], 0.0
++    for i in np.lexsort((c[:, 1], c[:, 0], -wt)):
++        if wt[i] <= 0:
++            break
++        x, y, e = c[i, 0], c[i, 1], expected[i]
++        if all((x - u) ** 2 + (y - q) ** 2 > (0.6 * e) ** 2 for u, q in taken):
++            taken.append((x, y))
++            score += float(wt[i])
++    return score
+ 
+ 
+ def _view(small, quad, w, h, m):
+@@ -297,32 +345,18 @@ def guess(small, emit=None):
+                     hgt = (exact.norm(q[3] - q[0]) + exact.norm(q[2] - q[1])) / 2
+                     if hgt <= 0 or not ASPECT[0] < wid / hgt < ASPECT[1] or wid < MIN_WIDTH * w:
+                         continue
+-                    view, _ = _view(small, q, RW // 2, RH // 2, 0)   # a first look at half size
+-                    if view is not None:
+-                        raw.append((_structure(view), q))
++                    raw.append(q)
+     emit("uprights", lines=np.float64([[(c + y0 * k / 200, y0), (c + y1 * k / 200, y1)]
+                                        for (k, c), (y0, y1) in sorted(uprights.items())]).reshape(-1, 2, 2))
+-    # the best few, each edge moved to the innermost strong edge nearby, scored again
+-    raw.sort(key=lambda r: -r[0])
+-    emit("candidates", quads=np.float64([q for _, q in raw[:REFINE]]).reshape(-1, 4, 2))
+-    seen, best = set(), None
+-    for s0, q0 in raw[:REFINE]:
+-        for q in (q0, _move_in(small, q0)):      # as found, and with the edges moved in
+-            key = tuple(np.round(q / (0.005 * max(h, w))).astype(np.int64).ravel())
+-            if key in seen:
+-                continue
+-            seen.add(key)
+-            view, _ = _view(small, q, RW, RH, 0)
+-            if view is None:
+-                continue
+-            s = _structure(view)
+-            if DEBUG is not None:
+-                DEBUG.append((s, q, s0))
+-            if best is None or s > best[0]:
+-                best = (s, q)
+-    if best is None or best[0] < MIN_SCORE:
++    if not raw:
+         return None
+-    return best[1]
++    circles = _circles(small)
++    scored = sorted(((_checker_score(circles, q), i) for i, q in enumerate(raw)), key=lambda v: (-v[0], v[1]))
++    emit("candidates", quads=np.float64([raw[i] for _, i in scored[:REFINE]]).reshape(-1, 4, 2))
++    s, i = scored[0]
++    if DEBUG is not None:
++        DEBUG.extend((v, raw[j]) for v, j in scored[:REFINE])
++    return raw[i] if MOVE_IN == "0" else _move_in(small, raw[i])
+ 
+ 
+ def find_corners(img, progress=None):

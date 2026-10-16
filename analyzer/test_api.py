@@ -230,6 +230,45 @@ def test_corners_are_found_on_synthetic_boards():
         assert found is not None and _corner_error(found, c, photo.shape) < 0.02, k
 
 
+def test_corners_keep_the_fixed_ones_and_look_in_the_trimmed_part():
+    # Looking again after the user has moved some corners or trimmed the photo (TODO-068).
+    import cv2
+    from corners import find_corners
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    t = json.loads((samples / "screen1.truth.json").read_text())
+    img = cv2.imread(str(samples / t["image"]))
+    truth = t["corners_TL_TR_BR_BL"]
+    found = find_corners(img, fixed=[truth[0], truth[1], None, None])
+    assert found[:2] == truth[:2] and _corner_error(found, truth, img.shape) < 0.036
+    assert find_corners(img, fixed=truth) == truth
+    # a corner no candidate agrees with: nothing found (the app keeps the corners as they are)
+    assert find_corners(img, fixed=[[img.shape[1] / 2, img.shape[0] / 2], None, None, None]) is None
+
+    # the board is small in this photo: found only in the part around it
+    t = json.loads((samples / "collected-sj1vrx.truth.json").read_text())
+    img = cv2.imread(str(samples / t["image"]))
+    truth = t["corners_TL_TR_BR_BL"]
+    assert find_corners(img) is None
+    xs, ys = [p[0] for p in truth], [p[1] for p in truth]
+    mx, my = 0.15 * (max(xs) - min(xs)), 0.15 * (max(ys) - min(ys))
+    found = find_corners(img, crop=(min(xs) - mx, min(ys) - my, max(xs) + mx, max(ys) + my))
+    assert found is not None and _corner_error(found, truth, img.shape) < 0.036
+
+    # trimmed to the board, the playing area fills most of it: not one of the two fields (20 % off),
+    # and the stages of the search come in the photo's pixels
+    t = json.loads((samples / "screen2.truth.json").read_text())
+    img = cv2.imread(str(samples / t["image"]))
+    truth = t["corners_TL_TR_BR_BL"]
+    xs, ys = [p[0] for p in truth], [p[1] for p in truth]
+    mx, my = 0.15 * (max(xs) - min(xs)), 0.15 * (max(ys) - min(ys))
+    stages = {}
+    found = find_corners(img, lambda stage, data: stages.setdefault(stage, data),
+                         crop=(min(xs) - mx, min(ys) - my, max(xs) + mx, max(ys) + my))
+    assert _corner_error(found, truth, img.shape) < 0.036
+    assert min(line[0][0] for line in stages["edges"]["lines"]) == int(min(xs) - mx)
+
+
 def test_api_find_corners():
     import cv2
     import numpy as np
@@ -248,6 +287,21 @@ def test_api_find_corners():
     blank = cv2.imencode(".png", np.full((300, 400, 3), 200, np.uint8))[1].tobytes()
     assert client.post("/find-corners", files={"image": ("b.png", blank)}).json()["corners"] is None
     assert client.post("/find-corners", files={"image": ("x.jpg", b"not an image")}).status_code == 422
+
+    # looking again (TODO-068): the fixed corners come back as they are, the others are looked for
+    jpg = cv2.imencode(".jpg", small)[1].tobytes()
+    fixed = [j["corners"][0], None, None, None]
+    xs, ys = [p[0] for p in j["corners"]], [p[1] for p in j["corners"]]
+    crop = f"{min(xs) - 50},{min(ys) - 50},{max(xs) + 50},{max(ys) + 50}"
+    res = client.post("/find-corners", files={"image": ("b.jpg", jpg)}, data={"fixed": json.dumps(fixed), "crop": crop})
+    assert res.status_code == 200, res.text
+    assert res.json()["corners"][0] == fixed[0]
+    assert _corner_error(res.json()["corners"], np.multiply(truth, f), small.shape) < 0.035
+    res = client.post("/find-corners", files={"image": ("b.jpg", jpg)}, data={"fixed": json.dumps(j["corners"]), "stream": "true"})
+    assert json.loads(res.text.splitlines()[-1])["result"]["corners"] == j["corners"]
+    for bad in ({"fixed": "[1, 2]"}, {"fixed": "[[1], null, null, null]"}, {"fixed": "nope"},
+                {"crop": "1,2,3"}, {"crop": "a,b,c,d"}):
+        assert client.post("/find-corners", files={"image": ("b.jpg", jpg)}, data=bad).status_code == 422, bad
 
 
 def test_share_target():
