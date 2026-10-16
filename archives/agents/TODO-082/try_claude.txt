@@ -1,0 +1,17 @@
+claude-sonnet-5-5 photo5: max err 109px (2.4% of long side) 8s in=2+5560+17514 out=433 corners=[[1554, 1038], [3102, 466], [3132, 2613], [1504, 2583]]
+claude-sonnet-5-5 photo6: max err 35px (1.7% of long side) 8s in=2+5560+17738 out=525 corners=[[679, 781], [1596, 614], [1557, 1273], [481, 1309]]
+claude-sonnet-5-5 collected-2aunci: max err 63px (3.1% of long side) 6s in=2+5560+17456 out=290 corners=[[86, 107], [1758, 104], [1761, 1505], [89, 1510]]
+claude-opus-5-5 photo5: max err 138px (3.0% of long side) 9s in=2+0+23070 out=391 corners=[[1578, 1017], [3102, 466], [3138, 2613], [1533, 2577]]
+claude-opus-5-5 photo6: max err 26px (1.3% of long side) 7s in=2+5560+17732 out=264 corners=[[679, 781], [1588, 637], [1549, 1264], [470, 1348]]
+claude-opus-5-5 collected-2aunci: max err 80px (3.9% of long side) 7s in=2+5560+17448 out=194 corners=[[115, 110], [1766, 110], [1771, 1505], [110, 1509]]
+claude-sonnet-5-5 photo5: max err 133px (2.9% of long side) 5s in=2+3262+5682 out=32 corners=[[1554, 1038], [3102, 478], [3132, 2607], [1262, 2583]]
+claude-sonnet-5-5 photo6: max err 32px (1.6% of long side) 7s in=2+3262+5906 out=402 corners=[[679, 781], [1587, 611], [1561, 1287], [481, 1313]]
+claude-sonnet-5-5 collected-2aunci: max err 64px (3.1% of long side) 4s in=2+3262+5626 out=34 corners=[[89, 107], [1761, 107], [1761, 1512], [89, 1512]]
+# --setting-sources '' --effort high
+claude-sonnet-5-5 photo5: max err 144px (3.1% of long side) 7s in=2+3262+5682 out=436 corners=[[1554, 1038], [3096, 472], [3161, 2619], [1539, 2583]]
+claude-sonnet-5-5 photo6: max err 33px (1.6% of long side) 7s in=2+649+4879 out=535 corners=[[677, 792], [1596, 619], [1567, 1293], [473, 1309]]
+claude-sonnet-5-5 collected-2aunci: max err 256px (12.5% of long side) 3s in=2+3262+5624 out=38 corners=[[81, 81], [2018, 81], [2018, 1515], [81, 1515]]
+# + per-corner description in the prompt
+claude-sonnet-5-5 photo5: max err 147px (3.2% of long side) 9s in=2+3262+5706 out=644 corners=[[1554, 1053], [3096, 472], [3132, 2616], [1542, 2580]]
+claude-sonnet-5-5 photo6: max err 15px (0.7% of long side) 9s in=2+649+4903 out=802 corners=[[682, 781], [1596, 609], [1561, 1293], [481, 1340]]
+claude-sonnet-5-5 collected-2aunci: max err 61px (3.0% of long side) 7s in=2+649+4623 out=477 corners=[[85, 104], [1763, 104], [1763, 1515], [98, 1515]]

@@ -8,6 +8,8 @@ Description=bganalyzer (API and PWA)
 WorkingDirectory=@DIR@
 # PWA の設定で「Pi に残す」をオンにしたときだけ、写真と直した盤面がここに入る（TODO-030）
 Environment=BG_SAMPLES_DIR=@DIR@/collected
+# 四隅の画面に「Claude に選ばせる」を出すときは、このファイルは変えず、systemctl --user edit bganalyzer で
+# Environment=BG_CLAUDE=%h/.local/bin/claude を足す（押すと写真が Anthropic に送られる。TODO-082、docs/raspi.md）
 # gnubg はメインスレッド以外で評価すると落ちるので、ワーカーは1つ・--reload なし
 ExecStart=@DIR@/.venv/bin/uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000 --workers 1
 Restart=always

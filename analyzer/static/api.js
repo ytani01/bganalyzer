@@ -13,8 +13,8 @@ const BgApi = (() => {
     return new Error(typeof d === "string" ? d : `HTTP ${res.status}`);
   }
 
-  async function post(path, body, headers) {
-    const res = await fetch(url(path), { method: "POST", body, headers });
+  async function post(path, body, headers, signal) {
+    const res = await fetch(url(path), { method: "POST", body, headers, signal });
     if (!res.ok) throw await failure(res);
     try { return await res.json(); } catch (_) { return null; }
   }
