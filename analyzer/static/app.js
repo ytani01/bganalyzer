@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.52.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.53.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -218,8 +218,8 @@ function editPreview() {
 // Not while a finger is on the photo: the text may change height and move the photo under it.
 part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess, !!s.edit]), (s) => {
   const n = s.corners.length;
-  const fit = "点をドラッグして、枠の内側の四隅（手前から見て 1 左上・2 右上・3 右下・4 左下）に合わせてください。";
-  const again = "盤が小さいときは「その他」の「画像を編集」で切り抜いてください。";
+  const fit = "点を動かして盤の内側の四隅に合わせてください。";
+  const again = "盤が小さいときは「その他」の「画像を編集」で切り抜いてください。";   // only when the board was not found (TODO-088)
   $("corner-help").innerHTML = s.edit
     ? "向きを直し、盤のまわりを斜めにドラッグして囲んでください。"
     : n < 4
@@ -245,18 +245,18 @@ part((s) => (s.step !== "corners" || scanning() ? undefined : [photoId(s), s.cor
 // ---- the board screen
 part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColour], (s) => {
   if (!s.board) return;
-  const { onW, onB, offW, offB } = BgBoard.counts(s.board);
-  const line = (name, on, off) =>
-    `<span${on > 15 ? ' class="bad"' : ""}>${name}: 盤上とバー ${on} 個・上がり ${Math.max(off, 0)} 個</span>`;
-  $("counts").innerHTML = line(NAME.white, onW, offW) + "<br>" + line(NAME.black, onB, offB) +
-    (offW > 0 || offB > 0 ? '<br><span class="note">上がりは 15 − 盤上 − バー で数えます。</span>' : "");
-  const errs = BgBoard.errors(s.board, NAME);
-  if (!errs.length && s.fromPhoto && (offW > 0 || offB > 0)) {
-    errs.push(`上がりが ${NAME.white} ${offW} 個・${NAME.black} ${offB} 個になっています。駒の見落としがないか確かめてください。`);
-  }
-  if (s.fromPhoto) errs.unshift(...s.warnings);
-  $("errors").hidden = !errs.length;
-  $("errors").textContent = errs.join(" / ");
+  // Only when the counts do not add up, a short mark under the board (TODO-088): more than 15, or fewer
+  // read from a photo (borne off, or missed); no checkers at all.
+  const { onW, onB } = BgBoard.counts(s.board);
+  const off = (on) => on > 15 || (s.fromPhoto && on < 15);
+  const mark = !onW && !onB ? ["盤に駒がありません"]
+    : [["white", onW], ["black", onB]].filter(([, on]) => off(on)).map(([side, on]) => `${NAME[side]} ${on}/15`);
+  $("count-mark").hidden = !mark.length;
+  $("count-mark").textContent = mark.length ? `⚠ ${mark.join("・")}` : "";
+  // the server's notes on the photo (e.g. taken at a steep angle)
+  const warns = s.fromPhoto ? s.warnings : [];
+  $("errors").hidden = !warns.length;
+  $("errors").textContent = warns.join(" / ");
   // which side 手前's home board was read on, and whether it was guessed
   const side = s.home === "right" ? "右" : "左";
   const g = s.fromPhoto && s.homeGuess;
@@ -300,7 +300,7 @@ part((s) => s.board && [s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube
   $("photo-tools").hidden = !photo;
   $("photo-wrap").hidden = !side;
   $("boards").classList.toggle("two", side);
-  if (side) BgBoardView.draw($("photo-svg"), { ...scene, photo }, select);
+  if (side) BgBoardView.draw($("photo-svg"), { ...scene, photo });   // for looking: taps do nothing (TODO-088)
   BgBoardView.draw($("board-svg"), scene, select);
   BgBoardView.draw($("result-svg"), scene, select);   // the result screen's copy (taps are off there by CSS)
 });
@@ -1097,11 +1097,6 @@ for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
 for (const v of BgCube.VALUES) $("cube-value").add(new Option(String(v), String(v)));
 $("cube-value").addEventListener("change", () => setCube({ value: Number($("cube-value").value) }));
 $("cube-offered").addEventListener("change", () => setCube({ offered: $("cube-offered").checked }));
-// The other side to roll; with a result on screen, analyse again for the new side at once.
-$("flip-turn").addEventListener("click", () => {
-  setOnRoll(BgBoard.other(state.onRoll));
-  if (state.result) analyze();
-});
 
 for (const v of BgCube.MATCH_LENGTHS) $("match-length").add(new Option(v ? `${v} ポイントマッチ` : "マネーゲーム", String(v)));
 $("match-length").addEventListener("change", () => setMatch({ length: Number($("match-length").value) }));

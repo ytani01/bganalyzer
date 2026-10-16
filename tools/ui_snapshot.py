@@ -52,7 +52,7 @@ SNAP = """() => {
     const on = s.querySelector('.on'); segs[s.dataset.name] = on ? on.dataset.value : null;
   }
   const shown = {};
-  for (const id of ['back', 'recognize', 'hdr-reuse', 'analyze', 'speak', 'busy', 'errors', 'home-note',
+  for (const id of ['back', 'recognize', 'hdr-reuse', 'analyze', 'speak', 'busy', 'errors', 'count-mark', 'home-note',
                     'palette', 'dice-note', 'cube-note', 'cube-side', 'photo-tools', 'photo-wrap', 'result',
                     'export-sample', 'history']) shown[id] = vis(id);
   return {
@@ -60,7 +60,7 @@ SNAP = """() => {
     shown, segs, title: txt('title'),
     cornerHelp: html('corner-help'), recognizeDisabled: vis('recognize') ? el('recognize').disabled : null,
     canvas: vis('photo-canvas') ? hash(el('photo-canvas').toDataURL()) : null,
-    counts: html('counts'), errors: txt('errors'), homeNote: txt('home-note'), editor: txt('editor-title'),
+    countMark: txt('count-mark'), errors: txt('errors'), homeNote: txt('home-note'), editor: txt('editor-title'),
     palette: vis('palette') ? [txt('palette-title'), ...['#palette-side .on', '#palette-counts .on'].map((q) => {
       const e = document.querySelector(q); return e && (e.dataset.value || e.dataset.n); })] : null,
     paintSide: vis('paint-side') ? document.querySelector('#paint-side .on')?.dataset.value : null,
@@ -164,7 +164,7 @@ def flow_manual(r):
     r.hold(17); r.snap("palette")
     r.pick(4, "white"); r.snap("palette: 手前 4")
     r.hold(17); r.click("#palette-close"); r.snap("palette closed")
-    r.hold(17); r.click("#counts"); r.snap("palette closed by a tap outside")
+    r.hold(17); r.click("#editor-title"); r.snap("palette closed by a tap outside")
     r.tap(25, 1); r.tap(24, 2); r.snap("bar")
     r.hold(24); r.pick(0); r.snap("bar: 奥 0 from the palette")
     r.click("#undo"); r.click("#undo"); r.snap("undo twice")
@@ -194,7 +194,7 @@ def flow_manual(r):
     r.go("#back", "board")
     r.seg("plies", "3"); r.snap("3-ply: result stale")
     r.seg("plies", "2")
-    r.go("#flip-turn", "outcome"); r.snap("turn flipped: analysed again")
+    r.seg("onRoll", "black"); r.go("#analyze", "outcome"); r.snap("turn flipped: analysed again")
     r.go("#back", "board"); r.go("#back", "photo"); r.snap("back to the start")
 
 
@@ -206,8 +206,8 @@ def flow_photo(r):
     r.seg("homePick", truth["home"]); r.seg("bottomColour", str(truth["bottom_colour"]))
     r.go("#recognize", "board"); r.snap("photo read")
     r.seg("photoView", "off"); r.snap("photo hidden")
-    r.seg("photoView", "side"); r.point(3, "#photo-svg"); r.snap("tap on the photo")
-    r.click("#undo"); r.snap("undo the tap")
+    r.seg("photoView", "side"); r.snap("photo beside")
+    r.page.locator("#photo-svg").click(); r.snap("tap on the photo: the board stays")   # for looking only (TODO-088)
     r.go("#analyze", "outcome"); r.snap("analysed")
     r.go("#back", "board"); r.go("#back", "corners"); r.snap("back to the corners")
     r.go("#hdr-reuse", "board"); r.snap("board again (header)")
