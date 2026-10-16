@@ -176,6 +176,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .board-wrap svg .hit, .board-wrap svg .hit-num { cursor: pointer; }
 .board-wrap svg { -webkit-touch-callout: none; touch-action: manipulation; }
 .board-wrap svg .num { font-size: 11px; fill: var(--muted); text-anchor: middle; }
+.board-wrap svg .match-n { font-size: 17px; font-weight: bold; fill: var(--fg); text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .pip-n { font-size: 17px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .off-n { font-size: 15px; font-weight: bold; fill: #fff; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .stack-n { font-size: 15px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }

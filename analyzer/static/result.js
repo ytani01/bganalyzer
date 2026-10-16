@@ -129,7 +129,6 @@ const BgResult = (() => {
     }
     if (cubeText && !r.cube.rolled) parts.push(cubeText);
     parts.push(r.game_over ? `${NAME[r.favourite]}の勝ちで終局しています。` : standingToSpeech(r));
-    if (r.match) parts.push(`${matchText(r.match)}です。`);
     return parts.join("");
   }
 

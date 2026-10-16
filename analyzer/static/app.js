@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.60.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.61.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -292,10 +292,10 @@ part((s) => [s.palette, s.board, s.onRoll], (s) => {
 
 // The pictures of the board: on the board screen (with the photo beside it) and on the result screen.
 part((s) => s.board && [s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube, s.photoView, moveToShow(s),
-                        photoId(s), s.corners, s.geometry && s.geometry.corners], (s) => {
+                        photoId(s), s.corners, s.geometry && s.geometry.corners, s.match], (s) => {
   if (!s.board) return;
   const scene = { board: s.board, home: s.home, selected: s.selected, dice: rolled(s), onRoll: s.onRoll,
-                  cube: s.cube, move: moveToShow(s) };
+                  cube: s.cube, move: moveToShow(s), match: s.match };
   const photo = rectifiedPhoto(s);
   const side = !!photo && s.photoView === "side";
   $("photo-tools").hidden = !photo;

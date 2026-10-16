@@ -356,7 +356,7 @@ def test_match_in_the_result_words():
                  R.html({{...{money}, cube: {{...{json.dumps(cube)}, double: false, optional: true}}}}, null)],
     }}""")
     assert out["text"] == "7 ポイントマッチ 白 6 対 黒 5（クロフォード）"
-    assert out["speech"].endswith("7 ポイントマッチ 白 6 対 黒 5（クロフォード）です。")
+    assert "ポイントマッチ" not in out["speech"]   # TODO-099: the score is on the board, not read out
     assert "キューブの判断はマッチのスコアで" in out["cubeNote"]
     assert "ポイントマッチ" not in out["money"][0] and "マネーゲーム（ジャコビー・ルールあり）" in out["money"][1]
     assert "白の人はダブルしてもしなくてもよいです。" in out["optional"][0]
