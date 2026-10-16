@@ -8,7 +8,7 @@
 
 ```bash
 uv sync                                                          # 依存を .venv に入れる（uv.lock どおり）
-uv run pytest analyzer                                           # テスト
+uv run pytest analyzer/test_<名前>.py                            # テストを 1 ファイルだけ（全体は GitHub Actions の test が流す。手元で全体を流すと hook が止める）
 uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000   # API と PWA（/）の起動
 git pull && uv sync --frozen && systemctl --user restart bganalyzer   # Raspberry Pi の常駐を更新（docs/raspi.md）
 uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
@@ -84,6 +84,7 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 - **作業の前に main を pull する。**
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
 - **マージ後に Pi で確かめる必要がある変更は、その PR の中で docs/PI_CHECKS.md に項目を足す**
-- **マージの直前に最新の main を取り込み、`uv run pytest analyzer` と GitHub Actions の `test` が
-  両方通ってからマージする（`accuracy` が走った PR はそれも。文書だけの PR では `test` は走らないので要らない）。** どちらかが落ちていたらマージしない。
+- **マージの直前に最新の main を取り込み、GitHub Actions の `test` が通ってからマージする（`accuracy` が走った PR はそれも。
+  文書だけの PR では `test` は走らないので要らない）。** 落ちていたらマージしない。
+  テスト全体は手元で流さない（CI と重なる。`.claude/hooks/no-local-pytest.py` が止める）。
   相手の変更とぶつかったら、勝手に直さずユーザーに報告する

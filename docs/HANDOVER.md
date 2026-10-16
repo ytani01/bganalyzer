@@ -29,7 +29,7 @@ Claude のプロジェクトのメモ（MEMORY）は、そのプロジェクト�
      位置ごと判定と断面の読み方をユーザーの盤の写真で測り直すことは、TODO-030 に残っている。
   4. TODO-025 のキューブの数字は、ユーザーの盤でキューブを 2・4・8・16 にした写真が届くまで待つ。
   5. TODO-027 は 2026-10-14 に決着した（recognizer 0.11.0、PI-022）。TODO-028 は 2026-10-14 にユーザーが再開を指示し、四隅の推定を作り直した（recognizer 0.10.0。3.6% 以内 7 → 14 枚）。TODO-028 も決着した。
-- **運用:** ユーザーとは日本語。自動マージ（最新 main を取り込み、`uv run pytest analyzer` と GitHub Actions の test が通り（文書だけの PR では test は走らない。TODO-064）、
+- **運用:** ユーザーとは日本語。自動マージ（最新 main を取り込み、GitHub Actions の test が通り（文書だけの PR では test は走らない。TODO-064）、
   差分を見直して問題がなければ自分でマージし、一言報告）。Pi で確かめることは同じ PR で docs/PI_CHECKS.md に足し、
   ユーザーに「Pi の Claude に『pull して PI_CHECKS を確かめて』と頼んで」と伝える。版の上げ方は CLAUDE.md の「バージョン」。
 
@@ -56,8 +56,8 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
 - ユーザーとのやりとりは日本語で行う。
 - リポジトリ ytani01/bganalyzer は別アカウントの Claude プロジェクトと共同で開発している。
   作業する前に main を pull し、リポジトリ直下の CLAUDE.md（特に「共同開発」）と docs/HANDOVER.md に従う。
-- 自動マージ: スレッドが作った PR は、マージ直前に最新 main を取り込み、`uv run pytest analyzer` と
-  GitHub Actions の test が両方通り（文書だけの PR では test は走らない。TODO-064）、差分を見直して問題がなければ、ユーザーの確認を待たずにそのスレッド自身が
+- 自動マージ: スレッドが作った PR は、マージ直前に最新 main を取り込み、
+  GitHub Actions の test が通り（文書だけの PR では test は走らない。TODO-064）、差分を見直して問題がなければ、ユーザーの確認を待たずにそのスレッド自身が
   マージする。マージしたことは一言報告する。テスト失敗・未検証の重要事項・判断が必要な点・
   相手の変更とのぶつかりがある場合はマージせず報告する。
 - 方針や進み具合が変わったら、プロジェクトのメモだけでなく docs/HANDOVER.md か TODO.md にも書いてコミットする。
