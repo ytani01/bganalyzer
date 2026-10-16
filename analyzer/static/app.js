@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.54.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.54.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -1160,7 +1160,7 @@ function compareVersions(a, b) {
 }
 
 // Versions, to tell which build is running (e.g. on the Raspberry Pi), in the header.
-$("hdr-version").textContent = `v${APP_VERSION}`;
+$("hdr-version").textContent = `a${APP_VERSION}`;
 BgApi.version().then((v) => {
   if (!v) return;
   // The two differ when this device still has an old app.js (reopening fixes it), or when the server
@@ -1169,7 +1169,7 @@ BgApi.version().then((v) => {
   const note = cmp > 0 ? `（新しい ${v.analyzer} は開き直すと出ます）`
     : cmp < 0 ? `（サーバーは ${v.analyzer}。再起動が必要）` : "";
   // the note before the commit: on a narrow screen the end is cut off, and the note matters more
-  $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + note + (v.commit ? ` · ${v.commit}` : "");
+  $("hdr-version").textContent = `a${APP_VERSION} · r${v.recognizer}` + note + (v.commit ? ` · ${v.commit}` : "");
   $("hdr-version").classList.toggle("old", cmp !== 0);
   $("collect-opt").hidden = $("collect-note").hidden = !v.samples;
   redraw(drawMoreSet);   // 「Pi に残す」 counts only where the server keeps samples
