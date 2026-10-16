@@ -262,6 +262,7 @@ COL_MIN_SCORE = 1.0
 MAX_GAP = 2.5          # fit_columns: the most points between the fields' innermost columns (bar + 1)
 MIN_GAP = 1.4          # ... and the least (TODO-062)
 SHIFT_TIE = 0.6        # ... beyond it a field moved one point in may score this much less
+OUTER_GAP = 1.4        # ... the most points between a field's outermost column and the frame edge (TODO-083)
 BAR_GAIN = 0.1         # ... if what it leaves between the fields looks this much more like a bar
 
 
@@ -349,6 +350,21 @@ def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
             break
         _, f, alt, k = min(moves, key=lambda mv: mv[:2])
         fits[f] = [alt, fits[f][1], k]
+    # A field may also slip one point inwards when the bar is wide (two walls and a hinge) and its
+    # outermost triangle is under checkers: then it leaves too much room at the frame edge (TODO-083).
+    # Move it one point out if that matches nearly as well and does not leave more than a bar between the fields.
+    for f, step in ((0, -1), (1, 1)):
+        cur, by_shift, k = fits[f]
+        alt = by_shift.get(k + step)
+        if cur[0] < COL_MIN_SCORE or alt is None or alt[0] < cur[0] - SHIFT_TIE:
+            continue
+        left, right = placed(0), placed(1)
+        pw = ((left[5] - left[0]) + (right[5] - right[0])) / 10   # the fitted pitch, as for MAX_GAP
+        if (left[0] if f == 0 else lay.w - right[5]) <= OUTER_GAP * pw:
+            continue
+        left, right = (alt[1], right) if f == 0 else (left, alt[1])
+        if right[0] - left[5] <= MAX_GAP * pw:
+            fits[f] = [alt, by_shift, k + step]
     cols = []
     for (best, _, _), f0 in zip(fits, (0.0, lay.a + lay.bar)):
         if os.environ.get("BG_DEBUG_COLS"):
