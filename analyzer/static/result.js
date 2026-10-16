@@ -64,9 +64,9 @@ const BgResult = (() => {
     return out;
   }
 
-  // The roll's luck in words, by gnubg's levels (gnubg.c arLuckLevel: 0.6 and 0.3; TODO-098).
+  // The roll's luck in words, as gnubg's Luck() (analysis.c): beyond 0.6 and 0.3 (TODO-098).
   function luckWords(x) {
-    return x >= 0.6 ? "とても良い目" : x >= 0.3 ? "良い目" : x <= -0.6 ? "とても悪い目" : x <= -0.3 ? "悪い目" : "ふつうの目";
+    return x > 0.6 ? "とても良い目" : x > 0.3 ? "良い目" : x < -0.6 ? "とても悪い目" : x < -0.3 ? "悪い目" : "ふつうの目";
   }
 
   // The cube decision: the answer first, then gnubg's cubeful equities (the doubler's, per cube before the double).
@@ -97,9 +97,9 @@ const BgResult = (() => {
   function distanceHtml(c) {
     const m = c.proper.match(/\(([\d.]+)%\)/);
     if (!m) return "";
-    const v = Number(m[1]), pct = Math.round(v);
-    const words = v < 10 ? "ダブルの一歩手前" : v < 30 ? "ダブルにはまだ少し早い" : "ダブルにはまだ遠い";
-    const what = c.too_good ? "ギャモン狙いをやめてダブルするまでの遠さ" : "ダブルまでの遠さ";
+    const pct = Math.round(Number(m[1])), { word } = cubeWords(c);   // the words go by the number shown
+    const words = pct < 10 ? `${word}の一歩手前` : pct < 30 ? `${word}にはまだ少し早い` : `${word}にはまだ遠い`;
+    const what = c.too_good ? `ギャモン狙いをやめて${word}するまでの遠さ` : `${word}までの遠さ`;
     return `<p>${what} ${pct}%・${words}</p>`;
   }
 

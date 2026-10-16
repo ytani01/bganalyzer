@@ -89,20 +89,30 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
     return probs, hint, moves, None if dice is None else _luck(gnubg, board, min(plies, 1), ci, ci_opp, tuple(dice))
 
 
+START_ID = "4HPwATDgc/ABMA"
+
+
 def _luck(gnubg, board, plies, ci, ci_opp, dice) -> float:
-    """The roll's luck for the player on roll, as gnubg reckons it (cubeless; TODO-098): the best play's
-    equity with these dice less the average over the 21 rolls. At most 1-ply: 21 searches at 2-ply
-    take over a second."""
+    """The roll's luck for the player on roll, as gnubg reckons it (analysis.c LuckNormal/LuckFirst;
+    cubeless; TODO-098): the best play's equity with these dice less the average over the rolls.
+    At most 1-ply: 21 searches at 2-ply take over a second."""
     ctx = gnubg.eval_context(0, plies)
 
-    def best(d):
-        found = gnubg.find_best_moves(board, ci, ctx, d)
-        # no legal play: the board stays and the opponent rolls
-        return found[0]["score"] if found else -gnubg.evaluate((board[1], board[0]), ci_opp, ctx)[5]
+    def best(b, c, c_opp, d):
+        found = gnubg.find_best_moves(b, c, ctx, d)
+        # no legal play: the board stays and the other side rolls
+        return found[0]["score"] if found else -gnubg.evaluate((b[1], b[0]), c_opp, ctx)[5]
 
+    dice = tuple(sorted(dice))
     rolls = [(a, b) for a in range(1, 7) for b in range(a, 7)]
-    mean = sum(best(r) * (1 if r[0] == r[1] else 2) for r in rolls) / 36
-    return best(tuple(sorted(dice))) - mean
+    if board == gnubg.position_from_id(START_ID) and dice[0] != dice[1]:
+        # the opening roll: never doubles, and it could as well have gone to the other side
+        other = [(a, b) for a, b in rolls if a != b]
+        mean = (sum(best(board, ci, ci_opp, r) for r in other)
+                - sum(best((board[1], board[0]), ci_opp, ci, r) for r in other)) / 30
+    else:
+        mean = sum(best(board, ci, ci_opp, r) * (1 if r[0] == r[1] else 2) for r in rolls) / 36
+    return best(board, ci, ci_opp, dice) - mean
 
 
 # The Python module has no call for a cube decision (gnubg.hint() refuses cube hints, and
