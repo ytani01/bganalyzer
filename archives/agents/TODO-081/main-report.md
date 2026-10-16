@@ -97,6 +97,25 @@ flowchart LR
 外し方は 1 種類に偏っていない（3 枚では列のずれ・見落とし・数え過ぎが 1 枚ずつ）。列のずれまで扱えるのは A と C で、
 B は数え方の外れだけに効く。どれも見込みで、採るなら別の項目で 2〜3 枚から試す。
 
+## 5. 案 C を 3 枚で試した（2026-10-17、ユーザーの依頼）
+
+[claude_read.py](claude_read.py) で、`analyzer/claude_corners.py` と同じ呼び方（claude-sonnet-5-5、effort high、長辺 1568px、道具なし）で写真を渡し、
+24 ポイントとバーを JSON で答えさせた。四隅は渡していない。home は truth のもの、駒の色は evaluate.py と同じく合う方の割り当てで比べた。
+答えの全文は `claude-<名前>.txt`。
+
+| サンプル | 円（今の読み方） | Claude | 時間 | Claude の外し方 |
+|---|---|---|---|---|
+| collected-4b88u3 | 13 | 17 | 57 秒 | 5 の山を 6 に、20 の山を 21 に（列のずれ）。2・3・4 の 1 個だけの駒 |
+| collected-3wo2ot | 18 | 10 | 29 秒 | 14 ポイントで、正解より 1 個多い（下の注） |
+| collected-l9azfe | 18 | **24** | 22 秒 | なし |
+
+**collected-3wo2ot の正解が写真と合わない疑いがある**（実害は未確認）。正解の駒は white 8・black 8 で 15 に足りず、
+真上から見た写真では、どの山も正解より 1 個多く写っている（例: 手前の右半分は、右から 1・2・2・3・2・4 個で、正解は 0・1・1・2・1・3）。
+Claude の答えは 15・15 で、写真と合っている。円の 18 は、この正解に合わせた数。
+
+- 長い山の数え過ぎ（collected-l9azfe）は直った。列のずれ（collected-4b88u3）は、円と別の所でまだ起きる。
+- 時間は 22〜57 秒で、四隅の「Claude に選ばせる」（7〜9 秒、上限 60 秒）より長い。
+
 出典:
 - [Ultralytics: Raspberry Pi の YOLO11 ベンチマーク](https://docs.ultralytics.com/guides/raspberry-pi)
 - [Roboflow Universe: Backgammon computer vision dataset](https://universe.roboflow.com/katarina-popovi/backgammon-computer-vision/dataset/)
