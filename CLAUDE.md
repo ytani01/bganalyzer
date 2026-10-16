@@ -29,9 +29,11 @@ uv run -q --no-project --with playwright python tools/ui_snapshot.py record a.js
 - **色の呼び方: white = 写真の手前のプレイヤー、black = 奥のプレイヤー。**
   `points[i]` は手前側から見たポイント i+1、正が white、負が black。
   認識と解析で揃えている
-- 写真はサーバーで処理するだけで保存しない。**例外は PWA の設定で「Pi に残す」をオンにしたときだけ**で、
-  そのときは解析するたびに写真と直した盤面を Pi の `collected/` に保存する（`POST /samples`、
-  `BG_SAMPLES_DIR` を設定したサーバーだけ。2026-10-14 ユーザーが決めた）。`collected/` はリポジトリに自動では入れない
+- 写真はサーバーで処理するだけで、保存も外へ送ることもしない。例外は次の 2 つだけ
+  - **PWA の設定で「Pi に残す」をオンにしたとき**: 解析するたびに写真と直した盤面を Pi の `collected/` に保存する（`POST /samples`、
+    `BG_SAMPLES_DIR` を設定したサーバーだけ。2026-10-14 ユーザーが決めた）。`collected/` はリポジトリに自動では入れない
+  - **四隅の画面で「Claude に選ばせる」を押したとき**: その写真を `claude -p` に渡す（Anthropic に送られる。`POST /claude-corners`、
+    `BG_CLAUDE` を設定したサーバーだけ。2026-10-17 ユーザーが決めた。TODO-082）
 - `samples/` の写真と正解の `*.truth.json` はリポジトリに入れて公開している
   （クラウドでも精度を確認できるように）。**人の顔や第三者の投稿は隠してから入れる。**
   screen2 はゲーム盤の画像以外を塗りつぶしてある。写真の大きさと盤の画素は

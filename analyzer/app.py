@@ -23,12 +23,13 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from analysis import DEFAULT_PLIES, Position, analyze, other, parse_position, shutdown, summary_ja
+from claude_corners import claude_command, router as claude_router
 from models import AnalyzeRequest, Board
 from samples import router as samples_router, samples_dir
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.48.0"
+__version__ = "0.49.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -42,6 +43,7 @@ async def lifespan(_app):
 app = FastAPI(title="bganalyzer", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(samples_router)
+app.include_router(claude_router)
 log = logging.getLogger("uvicorn.error")   # uvicorn's access log has the status but not why
 
 
@@ -107,9 +109,10 @@ def git_commit(git_dir: Path = REPO / ".git") -> str | None:
 def version():
     from board import __version__ as recognizer_version
 
-    # samples: whether this server keeps photos sent to /samples (the app shows its switch only then)
+    # samples: whether this server keeps photos sent to /samples (the app shows its switch only then);
+    # claude: whether it answers /claude-corners (the app shows its button only then)
     return {"analyzer": __version__, "recognizer": recognizer_version, "commit": git_commit(),
-            "samples": samples_dir() is not None}
+            "samples": samples_dir() is not None, "claude": claude_command() is not None}
 
 
 @app.post("/analyze")

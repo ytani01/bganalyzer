@@ -115,6 +115,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <div class="row wrap">
       <button id="edit-start" class="button small">画像を編集</button>
       <button id="find-again" class="button small">もう一度検出</button>
+      <button id="claude-corners" class="button small" hidden>Claude に選ばせる</button>
+      <span id="claude-note" class="note" hidden>押すと写真が Anthropic に送られます</span>
     </div>
     <div class="opt">
       <span class="opt-label">手前のホーム<small>（上がる側）</small></span>
@@ -244,7 +246,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   </section>
 </main>
 
-<div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text"></p></div>
+<div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text"></p><button id="busy-cancel" class="button small" hidden>取り消す</button></div>
 
 <script src="board.js"></script>
 <script src="board-view.js"></script>

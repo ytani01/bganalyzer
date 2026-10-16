@@ -738,3 +738,75 @@ def test_samples_measured_again_after_ten_new(monkeypatch, tmp_path):
     done.append(1)   # it finished without writing .measured.json: the next save starts it again
     client.post("/samples", data={"id": "n11", **_sample_form()}, files={"image": ("a.jpg", b"jpg", "image/jpeg")})
     assert len(started) == 2
+
+
+# A stand-in for claude -p (TODO-082): FAKE_CLAUDE says what it does. The real one is never called here.
+FAKE_CLAUDE = '''#!{python}
+import json, os, re, subprocess, sys
+mode = os.environ["FAKE_CLAUDE"]
+if mode == "slow":   # ends at once, leaving a child that holds stdout and never ends
+    child = subprocess.Popen(["sleep", "60"])
+    open(os.environ["FAKE_PIDS"], "w").write(f"{{os.getpid()}} {{child.pid}}")
+    sys.exit(0)
+msg = json.loads(sys.stdin.readline())["message"]["content"]
+assert msg[0]["type"] == "image" and "--tools" in sys.argv
+w, h = map(int, re.search(r"\\((\\d+)x(\\d+)\\)", msg[1]["text"]).groups())
+text = "top-left: ...\\n" + json.dumps({{"corners": [[-5, 10], [w - 10, 10], [w + 5, h - 10], [10, h - 10]]}})
+print(json.dumps({{"type": "system"}}))
+print(json.dumps({{"type": "result", "result": text if mode == "ok" else "I can't see a board"}}))
+'''
+
+
+def _fake_claude(monkeypatch, tmp_path, mode):
+    import sys
+    p = tmp_path / "claude"
+    p.write_text(FAKE_CLAUDE.format(python=sys.executable))
+    p.chmod(0o755)
+    monkeypatch.setenv("BG_CLAUDE", str(p))
+    monkeypatch.setenv("FAKE_CLAUDE", mode)
+    monkeypatch.setenv("FAKE_PIDS", str(tmp_path / "pids"))
+
+
+def _wide_png():
+    import cv2
+    import numpy as np
+    return cv2.imencode(".png", np.zeros((1000, 3136, 3), np.uint8))[1].tobytes()   # sent at half the size
+
+
+def test_claude_corners_off_or_busy(monkeypatch):
+    import claude_corners
+    monkeypatch.delenv("BG_CLAUDE", raising=False)
+    assert client.get("/version").json()["claude"] is False
+    img = {"image": ("a.png", _wide_png())}
+    assert client.post("/claude-corners", files=img).status_code == 404
+    monkeypatch.setenv("BG_CLAUDE", "/nonexistent/claude")
+    assert client.get("/version").json()["claude"] is True
+    monkeypatch.setattr(claude_corners, "_running", True)   # one is running: the next is not kept waiting
+    assert client.post("/claude-corners", files=img).status_code == 429
+
+
+def test_claude_corners_answer(monkeypatch, tmp_path):
+    img = {"image": ("a.png", _wide_png())}
+    _fake_claude(monkeypatch, tmp_path, "ok")
+    r = client.post("/claude-corners", files=img)
+    assert r.status_code == 200, r.text
+    # scaled back to the sent image (it went at 1568 px wide), and kept inside it
+    assert r.json() == {"corners": [[0, 20], [3116, 20], [3136, 980], [20, 980]], "width": 3136, "height": 1000}
+    _fake_claude(monkeypatch, tmp_path, "garbled")
+    assert client.post("/claude-corners", files=img).status_code == 502
+
+
+def test_claude_corners_timeout_kills_it(monkeypatch, tmp_path):
+    import os
+    import time
+
+    import claude_corners
+    _fake_claude(monkeypatch, tmp_path, "slow")
+    monkeypatch.setattr(claude_corners, "TIMEOUT", 1)
+    t = time.monotonic()
+    assert client.post("/claude-corners", files={"image": ("a.png", _wide_png())}).status_code == 504
+    assert time.monotonic() - t < 10   # not waiting for the child (it holds stdout) to end by itself
+    for pid in map(int, (tmp_path / "pids").read_text().split()):   # claude and its child are gone
+        with pytest.raises(ProcessLookupError):
+            os.kill(pid, 0)
+    assert claude_corners._running is False

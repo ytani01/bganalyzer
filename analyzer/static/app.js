@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.48.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.49.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -34,7 +34,7 @@ const storedMatch = () => {
 
 const state = {
   step: "photo",
-  busy: null,          // {text, scanning} while waiting for the server
+  busy: null,          // {text, scanning, cancel} while waiting for the server (cancel: an AbortController)
   // the photo and where the board is in it
   photo: null,         // {file, bitmap, trimmed}: the chosen photo (EXIF orientation applied); trimmed: cut to the board by the user
   fromPhoto: false,    // the board comes from a photo (else it was set up by hand)
@@ -146,6 +146,7 @@ part((s) => s.busy, (s) => {
   $("busy").hidden = !s.busy;
   $("busy").classList.toggle("scanning", !!(s.busy && s.busy.scanning));
   $("busy-text").textContent = s.busy ? s.busy.text : "";
+  $("busy-cancel").hidden = !(s.busy && s.busy.cancel);
 });
 
 // ---- segmented buttons: each shows the state of its name
@@ -461,8 +462,8 @@ function goBack() {
   else go(previousStep());
 }
 
-async function withBusy(text, work, scanning = false) {
-  update({ busy: { text, scanning } });
+async function withBusy(text, work, scanning = false, cancel = null) {
+  update({ busy: { text, scanning, cancel } });
   try { return await work(); } finally { update({ busy: null }); }
 }
 
@@ -752,6 +753,34 @@ async function findAgain() {
   redraw(drawCorners);
 }
 
+// Claude picks the corners (TODO-082): all 4 are replaced. Only on servers that ask Claude (/version).
+async function claudeCorners() {
+  const id = ++search;   // a search still running is not taken
+  const { file } = state.photo;
+  const start = state.corners;
+  stopOverlay("corners");
+  update({ cornerGuess: "again" });
+  const cancel = new AbortController();
+  let corners = null, error = null;
+  try {
+    await withBusy("Claude が四隅を選んでいます…", async () => {
+      const { blob, scale } = await uploadImage();
+      const fd = new FormData();
+      fd.append("image", blob, "board.jpg");
+      const data = await BgApi.post("claude-corners", fd, undefined, cancel.signal);
+      corners = data.corners.map(([x, y]) => [x / scale, y / scale]);
+    }, false, cancel);
+  } catch (err) {
+    if (!cancel.signal.aborted) error = err;
+  }
+  // as findAgain: another photo, a corner moved or reading started meanwhile
+  if (id !== search || state.photo.file !== file || state.cornerGuess !== "again") return;
+  if (state.corners !== start || !corners) update({ cornerGuess: "moved" });
+  else update({ corners, cornerGuess: "found", cornersFixed: [false, false, false, false] });   // Claude's, not the user's
+  redraw(drawCorners);
+  if (error) alert("Claude に選ばせられませんでした: " + error.message);
+}
+
 async function recognize() {
   stopOverlay("corners");   // reading now: the corners as they are
   if (state.cornerGuess === "finding" || state.cornerGuess === "again") update({ cornerGuess: "" });   // and a guess coming later does not move them
@@ -992,6 +1021,8 @@ for (const [id, q] of [["edit-right", 1], ["edit-left", 3]]) {
 }
 $("edit-angle").addEventListener("input", () => update({ edit: { ...state.edit, angle: Number($("edit-angle").value) } }));
 $("find-again").addEventListener("click", findAgain);
+$("claude-corners").addEventListener("click", claudeCorners);
+$("busy-cancel").addEventListener("click", () => state.busy && state.busy.cancel && state.busy.cancel.abort());
 $("recognize").addEventListener("click", recognize);
 $("hdr-reuse").addEventListener("click", () => go("board"));
 $("to-board").addEventListener("click", () => go("board"));
@@ -1123,6 +1154,7 @@ BgApi.version().then((v) => {
   $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + note + (v.commit ? ` · ${v.commit}` : "");
   $("hdr-version").classList.toggle("old", cmp !== 0);
   $("collect-opt").hidden = $("collect-note").hidden = !v.samples;
+  $("claude-corners").hidden = $("claude-note").hidden = !v.claude;
 }).catch(() => {});
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

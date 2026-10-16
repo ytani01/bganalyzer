@@ -105,6 +105,28 @@ tailscale funnel status
 - 更新は `main` を pull して依存を揃え、立ち上げ直すだけです。`bganalyzer.service` が変わったときだけは、「2.」の `sed` から `enable --now` までをやり直し、`systemctl --user restart bganalyzer` します。
 - 更新したら [PI_CHECKS.md](PI_CHECKS.md) の未確認の項目を確かめます（Pi の上の Claude Code に「PI_CHECKS を確かめて」と頼めます）。
 
+## Claude に四隅を選ばせる（任意）
+
+四隅の画面に「Claude に選ばせる」ボタンを出せます（TODO-082）。押すとサーバーが `claude -p` に写真を渡し、Claude が選んだ四隅に点を置きます。
+**押したときだけ、写真が Anthropic に送られます。** 使った分は、Pi で `claude` にログインしているアカウントの利用枠から引かれます。
+
+1. Pi に Claude Code を入れ、`claude` を一度起動してログインしておく（`which claude` でパスを確かめる。ふつうは `~/.local/bin/claude`）
+2. `systemctl --user edit bganalyzer` で開いたファイル（`~/.config/systemd/user/bganalyzer.service.d/override.conf`）に次を書いて保存する。
+   リポジトリの `bganalyzer.service` は変えないので、`git pull` や「2.」の `sed` のやり直しで消えません。
+   systemd のユーザー unit は PATH に `~/.local/bin` を含まないので、パスで書きます（`%h` はホームのフォルダ）
+
+   ```ini
+   [Service]
+   Environment=BG_CLAUDE=%h/.local/bin/claude
+   ```
+
+3. `systemctl --user restart bganalyzer` する
+4. `curl -s http://127.0.0.1:8000/version` に `"claude": true` が出れば有効です
+
+モデルを変えるときは、同じファイルに `Environment=BG_CLAUDE_MODEL=...` を足します（既定は `claude-sonnet-5-5`）。
+同時に走らせるのは 1 本だけで、60 秒で打ち切ります。続けて押す回数には上限が無いので、公開しているサーバーでは、
+だれでも続けて押せば利用枠を使えます。
+
 ## 精度改善用に集めた写真（`collected/`）
 
 PWA の「解析の設定」で「Pi に残す」をオンにすると、解析するたびに写真と直した後の盤面が

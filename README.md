@@ -41,10 +41,11 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph analyzer["analyzer/（ステップ2・3）"]
-        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /find-corners,<br/>/share-target, /health, /version<br/>/ で static/ を配信"]
+        app["app.py<br/>FastAPI のエンドポイント<br/>/analyze, /analyze-photo, /find-corners,<br/>/claude-corners, /share-target, /health, /version<br/>/ で static/ を配信"]
         analysis["analysis.py<br/>入力の確認・確率/エクイティ整形<br/>日本語の要約"]
         engine["engine.py<br/>gnubg 呼び出し（子プロセス）<br/>キューブ判断・手の補完"]
         samplesapi["samples.py<br/>/samples（Pi に写真を残す）"]
+        claudeapi["claude_corners.py<br/>/claude-corners（claude -p に四隅を選ばせる）"]
         worker["gnubg 子プロセス<br/>（そのメインスレッドで評価）"]
         test["test_api.py<br/>API のテスト"]
         static["static/<br/>PWA（index.html, app.js = state と render,<br/>board.js・board-view.js・corners-view.js・api.js など,<br/>manifest, Service Worker）"]
@@ -62,6 +63,7 @@ flowchart TB
     static -- "fetch" --> app
     app --> analysis
     app --> samplesapi
+    app --> claudeapi
     app -- "/analyze-photo のときだけ読み込む" --> board
     analysis --> position
     analysis --> engine
@@ -84,6 +86,7 @@ flowchart TB
 | `analyzer/analysis.py` | 入力を確かめ、勝率・ギャモン率・エクイティ・最善手・キューブ判断を API の形に整え、日本語の要約を作る |
 | `analyzer/engine.py` | gnubg の呼び出し。gnubg はメインスレッド以外で落ちるので専用の子プロセスで動かす。キューブ判断（`hint` の表示を読む）と、gnubg が途中で切る手の補完もここ |
 | `analyzer/models.py`, `samples.py` | API のリクエストの型、`POST /samples`（「Pi に残す」の写真の保存と測り直し） |
+| `analyzer/claude_corners.py` | `POST /claude-corners`。`BG_CLAUDE` を設定したサーバーだけで、写真を `claude -p` に渡して四隅を選ばせる（押したときだけ写真が Anthropic に送られる） |
 
 詳しくは [recognizer/README.md](recognizer/README.md) と [analyzer/README.md](analyzer/README.md) を見てください。
 
