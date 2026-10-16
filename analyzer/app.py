@@ -29,7 +29,7 @@ from samples import router as samples_router, samples_dir
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.49.0"
+__version__ = "0.50.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -175,6 +175,7 @@ async def analyze_photo(
     score_white: int = Form(0),
     score_black: int = Form(0),
     crawford: bool = Form(False),
+    keep_corners: bool = Form(False, description="read with the corners as given, not fitted to the frame (TODO-084)"),
     stream: bool = Form(False, description="answer as NDJSON lines: each stage of the reading as it is done, then the result"),
 ):
     from board import recognize  # recognizer (OpenCV); imported lazily
@@ -191,7 +192,8 @@ async def analyze_photo(
     pts = list(zip(c[0::2], c[1::2]))
 
     def work(progress=None):
-        pos, info = recognize(img, pts, home=home, bottom_colour=bottom_colour, progress=progress)
+        pos, info = recognize(img, pts, home=home, bottom_colour=bottom_colour, progress=progress,
+                              keep_corners=keep_corners)
         return _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled,
                              match_length=match_length, score_white=score_white, score_black=score_black,
                              crawford=crawford)

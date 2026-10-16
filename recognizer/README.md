@@ -6,12 +6,13 @@ GNU Backgammon にそのまま渡せる **Position ID** を出します。
 ## 使い方
 
 ```
-uv run python board.py <写真> --corners x1,y1,x2,y2,x3,y3,x4,y4 --home left|right|auto [--bottom-colour 0|1] [--debug 出力先]
+uv run python board.py <写真> --corners x1,y1,x2,y2,x3,y3,x4,y4 --home left|right|auto [--bottom-colour 0|1] [--keep-corners] [--debug 出力先]
 ```
 
 - `--corners`: 盤の遊戯面（左右のフィールド＋バー、枠の内側）の四隅。手前側プレイヤーから見て 左上, 右上, 右下, 左下 の順。
   ざっくりで構いません（盤の縁と三角形の先端で自動補正します）。アプリでは下の「四隅の推定」で初期値を置き、ユーザーがドラッグで直します。
 - `--home`: 手前プレイヤーのホームボードが左右どちらか。`auto` なら駒の並びから推測する（下の「ホームボードの推測」）。
+- `--keep-corners`: 四隅を合わせ直さずに読む（下の「四隅を固定して読む」）。
 - `--bottom-colour`: 手前プレイヤーの駒の色（0 = 暗い方、1 = 明るい方）。アプリでは「自分の色」を選んでもらいます。
 - 出力: 盤面のアスキー表示と JSON（points, bar, off, pips, position_id_white_on_roll / black_on_roll, errors）。
   White = 手前プレイヤー。駒が15個でないときは `errors` に出るので、アプリで手修正を促せます。
@@ -508,6 +509,21 @@ Pi での走らせ方は [docs/raspi.md](../docs/raspi.md) の「精度改善用
 （collected-er0y2w は上の段が本当に短く写る）。下の段にはこの条件を付けない。低い角度で撮った photo6 では手前の壁が下の段の付け根を全部隠すので
 （上 381.5、下 306.0、届いた付け根は 313 まで）、前は短いまま使われ、盤が横に 8% 広がっていた。photo6 は 10 → 18 ポイント。
 collected-er0y2w は 21 → 20 ポイント（合わせ直しの 2 回目に下の段が 222 / 409 と短く出て、条件に入る）、commons-nardy-midgame は 16 → 15、synth-cube-photo2-32 は 20 → 22 ポイント（下がった 2 枚はユーザーが受け入れた）。
+
+## 四隅を固定して読む（TODO-084、recognizer 0.23.0）
+
+`recognize(..., keep_corners=True)` は、枠の線に合わせる段（`refine`）と三角形に合わせ直す段（`refine_tips`）を省き、
+渡した四隅で真上から見た盤にして、列の位置（`fit_columns`）だけを合わせて駒を読む。アプリの四隅の画面の「四隅を固定する」がこれ。
+正解の四隅（`*.truth.json`）を渡し、アプリと同じく縮めて測った読み（24 ポイント中、2026-10-17）:
+
+| サンプル | 合わせ直す（既定） | 固定する |
+|---|---|---|
+| photo6 | 18 | 14 |
+| photo5 | 22 | 16 |
+| commons-case-midgame | 24 | 22 |
+| commons-leather-cups | 15 | 18 |
+
+正解の四隅でも、固定すると 4 枚中 3 枚で下がった。正解の四隅は手で置いたもので、合わせ直す段の方が枠や三角形に近いことが多い。
 
 ## 撮影の傾きの警告
 

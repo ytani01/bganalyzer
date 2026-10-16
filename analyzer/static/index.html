@@ -110,7 +110,11 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <div id="corner-tools">
     <div class="row">
       <button id="corner-reset" class="button small">四隅をやり直す</button>
-      <span class="note">点はドラッグで動かせます。ざっくりで大丈夫です。</span>
+      <span class="note">点はドラッグで動かせます。</span>
+    </div>
+    <div class="row wrap">
+      <label><input type="checkbox" id="keep-corners"> 四隅を固定する</label>
+      <span class="note">読み取りで四隅を枠に合わせ直さない。点を動かすと入ります。ざっくり合わせたときは外してください</span>
     </div>
     <div class="row wrap">
       <button id="edit-start" class="button small">画像を編集</button>

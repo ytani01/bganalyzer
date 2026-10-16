@@ -43,6 +43,8 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
    「もう一度検出」は、ユーザーが動かした・タップした隅をそのままにして、残りの隅を探し直す（見つからなければ四隅はそのまま）。
    「Claude に選ばせる」（TODO-082。`claude` が使えるサーバーだけに出る）は、写真を Anthropic に送って Claude に四隅を選ばせ、4 つとも置き換える。
    待つ間の「取り消す」でやめられる。失敗したときは四隅はそのまま。
+   「四隅を固定する」（TODO-084）にチェックを入れると、読み取りで四隅を枠や三角形に合わせ直さない（`keep_corners`）。
+   点を手で動かすとチェックが入り、新しい写真・画像の編集・Claude の四隅では外れる。
    手前の人のホーム側（自動/左/右。自動なら駒の並びから推測）と駒の色（暗い方/明るい方）を選んでヘッダーの「盤面を読み取る」。
 3. 読み取った盤面が出るので、違うポイントやバーを盤の上で直す（TODO-059）。
    - タップ: 根元から何段目かで、その段まで駒を置く（3 段目なら 3 個）。一番上の駒をタップすると 1 個減る。
@@ -208,10 +210,11 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 フィールド: `image`、`corners`（`x1,y1,…,x4,y4`）、`home`（`left`・`right`・`auto`。既定 `right`）、
 `bottom_colour`（意味は recognizer/README.md と同じ）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）、`cube_value`・`cube_owner`・`doubled`（/analyze と同じ。ただし `dice` を省いて写真からダイスが読めたときは、`doubled` を false にしてチェッカーの手を評価する）、
 `match_length`・`score_white`・`score_black`・`crawford`（/analyze と同じ）、
+`keep_corners`（`true` なら四隅を枠や三角形に合わせ直さずに読む。既定 `false`。TODO-084）、
 `stream`（`true` なら下の応答を NDJSON で段階ごとに返す。既定 `false`）。
 
 `stream=true` の応答は `application/x-ndjson` で、1 行に 1 つ、認識の段階が終わるたびに
-`{"stage": "fit", corners, columns, bar, by, round}`（四隅の合わせ直し。`by` が `"edges"`（枠の線）で 2 回、`"triangles"`（三角形の並び）で 2 回）、`{"stage": "tips", tips}`、`{"stage": "checkers", corners, columns, bar, checkers}`、
+`{"stage": "fit", corners, columns, bar, by, round}`（四隅の合わせ直し。`by` が `"edges"`（枠の線）で 2 回、`"triangles"`（三角形の並び）で 2 回。`keep_corners=true` では `"corners"` で 1 回だけ）、`{"stage": "tips", tips}`、`{"stage": "checkers", corners, columns, bar, checkers}`、
 `{"stage": "counts", counts, home, home_guess}`、`{"stage": "dice", dice}`、`{"stage": "cube", cube}`（各値は下の `geometry` と同じ形）が来て、
 最後に `{"stage": "done", "result": 下の応答}` が来る。途中で失敗したときは最後が `{"stage": "error", "detail": 理由}`（状態は 200 のまま）。
 認識は別のスレッドで動かすので、送り終わるのは認識と解析が終わったとき。

@@ -49,7 +49,7 @@ from position import Position
 
 # The recognizer's version (the reading code in recognizer/: board.py and the modules it uses, corners.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.22.3"
+__version__ = "0.23.0"
 
 
 def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
@@ -75,8 +75,10 @@ def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
 
 
 def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
-              a_ratio=None, debug_prefix=None, method="circles", progress=None):
+              a_ratio=None, debug_prefix=None, method="circles", progress=None, keep_corners=False):
     """corners: TL, TR, BR, BL of the playing area as seen from the bottom player.
+    keep_corners: read the board as the corners give it, without fitting them to the frame's edges
+    and the triangles (TODO-084); only the columns are fitted ("fit" once, by "corners").
     home: 'left', 'right' or 'auto' (guessed from the checkers; info['home'] says which).
     progress: called as progress(stage, data) when each stage is done ("fit" four times: the frame
     fitted to the frame's edges twice, then to the triangles twice; then "tips", "checkers", "counts",
@@ -95,13 +97,17 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     a = aspect * H_CAN / (2 + br)
     lay = snap_layout(Layout(a=a, bar=a * br))
     # 1. geometry: frame edges, then the printed triangles
-    H, quality, lay = refine(img, corners, lay, m)
-    emit("fit", geometry_frame(H, lay) | dict(by="edges", round=1))
-    H, quality, lay = refine(img, exact.apply_h(H, lay.src_pts()), lay, m)
-    emit("fit", geometry_frame(H, lay) | dict(by="edges", round=2))
-    tips = []
+    if keep_corners:
+        H, quality = exact.snap_h(exact.homography(lay.src_pts(), corners), lay.w, lay.h), 0.0
+        lay = fit_columns(to_ground(img, H, m, (int(lay.w + 2 * m), int(lay.h + 2 * m))), lay, m)
+        emit("fit", geometry_frame(H, lay) | dict(by="corners", round=1))
+    else:
+        H, quality, lay = refine(img, corners, lay, m)
+        emit("fit", geometry_frame(H, lay) | dict(by="edges", round=1))
+        H, quality, lay = refine(img, exact.apply_h(H, lay.src_pts()), lay, m)
+        emit("fit", geometry_frame(H, lay) | dict(by="edges", round=2))
     reach = 1.2
-    for round_ in range(2):
+    for round_ in range(0 if keep_corners else 2):
         size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
         ground = to_ground(img, H, m, size)
         lay = fit_columns(ground, lay, m, reach)
@@ -195,11 +201,13 @@ if __name__ == "__main__":
     ap.add_argument("--corners", required=True, help="x1,y1,x2,y2,x3,y3,x4,y4 (TL,TR,BR,BL)")
     ap.add_argument("--home", default="right", choices=["left", "right", "auto"])
     ap.add_argument("--bottom-colour", type=int, default=0)
+    ap.add_argument("--keep-corners", action="store_true", help="read with the corners as given (not fitted)")
     ap.add_argument("--debug")
     args = ap.parse_args()
     img = cv2.imread(args.image)
     c = list(map(float, args.corners.split(",")))
     pos, info = recognize(img, list(zip(c[0::2], c[1::2])), home=args.home,
-                          bottom_colour=args.bottom_colour, debug_prefix=args.debug)
+                          bottom_colour=args.bottom_colour, debug_prefix=args.debug,
+                          keep_corners=args.keep_corners)
     print(pos.ascii())
     print(json.dumps({**pos.to_dict(), "info": info}, ensure_ascii=False))

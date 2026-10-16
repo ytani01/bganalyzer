@@ -76,6 +76,22 @@ def test_analyze_photo_streams_the_stages():
     assert fits[-1]["corners"] == result["geometry"]["corners"]   # the last round is where it ended up
 
 
+def test_analyze_photo_keeps_the_corners():
+    # keep_corners (TODO-084): the board read where the corners put it, fitted once (the columns only)
+    t = json.loads((SAMPLES / "screen2.truth.json").read_text())
+    corners = ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy)
+    data = {"corners": corners, "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0",
+            "keep_corners": "true", "stream": "true"}
+    with open(SAMPLES / t["image"], "rb") as f:
+        res = client.post("/analyze-photo", files={"image": (t["image"], f)}, data=data)
+    events = [json.loads(line) for line in res.text.splitlines()]
+    fits = [e for e in events if e["stage"] == "fit"]
+    assert [(f["by"], f["round"]) for f in fits] == [("corners", 1)]
+    g = events[-1]["result"]["geometry"]
+    for (x, y), (tx, ty) in zip(g["corners"], t["corners_TL_TR_BR_BL"]):
+        assert abs(x - tx) < 0.5 and abs(y - ty) < 0.5
+    assert len(g["columns"]) == 12
+
 def test_find_corners_streams_the_stages():
     with open(SAMPLES / "photo3.jpg", "rb") as f:
         body = f.read()

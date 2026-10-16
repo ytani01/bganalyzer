@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.49.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.50.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -42,6 +42,7 @@ const state = {
   cornerGuess: "",     // where the corners came from: "finding", "again" (looking again), "found", "default" (a rectangle), "missed", "moved" or "" (tapped)
   cornersMoved: false,
   cornersFixed: [false, false, false, false],   // each corner the user has dragged or tapped in: kept when looking again
+  keepCorners: false,  // read with the corners as they are, not fitted to the frame (TODO-084); on once a corner is moved by hand
   edit: null,          // while the photo is being edited (TODO-070): {turn (quarter turns clockwise), angle (degrees, -45..45), rect ([x0, y0, x1, y1] as fractions of the turned photo) or null}
   dragging: false,     // a finger is on the corners
   homePick: "auto",    // the choice on the corners screen: "auto" (guess from the checkers), "left" or "right"
@@ -172,7 +173,7 @@ const cornersView = BgCornersView.create($("photo-canvas"), {
   photo: () => (state.edit ? editPreview() : state.photo && state.photo.bitmap),
   corners: () => (state.edit ? [] : state.corners),
   onTouch: () => stopOverlay("corners"),   // a tap while the search is shown: on to the corners as they are
-  onChange: (corners, done, index) => update({ corners, cornersMoved: true, dragging: !done,
+  onChange: (corners, done, index) => update({ corners, cornersMoved: true, dragging: !done, keepCorners: true,
                                                 cornersFixed: state.cornersFixed.map((f, k) => f || k === index) }),
   trimming: () => !!state.edit,
   trimmed: () => {
@@ -215,6 +216,7 @@ part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess, !!s.edit
     : "四隅が決まりました。ホーム側と駒の色を選んで上の「盤面を読み取る」を押してください。";
   $("recognize").disabled = n < 4 || !!s.edit;
 });
+part((s) => s.keepCorners, (s) => { $("keep-corners").checked = s.keepCorners; });
 part((s) => s.edit && s.edit.angle, (s) => {
   $("edit-tools").hidden = !s.edit;
   $("corner-tools").hidden = !!s.edit;
@@ -390,7 +392,7 @@ function rectifiedPhoto(s) {
 const historyRecord = (s) => {
   const k = s.historyScale;
   return { corners: s.corners.map(([x, y]) => [x * k, y * k]), cornerGuess: s.cornerGuess, cornersMoved: s.cornersMoved,
-           trimmed: s.photo.trimmed,
+           keepCorners: s.keepCorners, trimmed: s.photo.trimmed,
            homePick: s.homePick, home: s.home, homeGuess: s.homeGuess, bottomColour: s.bottomColour,
            onRoll: s.onRoll, dice: rolled(s), cube: s.cube, board: s.board, read: s.read, warnings: s.warnings };
 };
@@ -535,7 +537,7 @@ function startPhoto(file, bitmap, kept, historyId, historyScale) {
     corners: guess ? defaultCorners(bitmap) : kept.corners.map((c) => c.slice()),
     // looking again when the app was left: the corners as the user left them
     cornerGuess: guess ? "finding" : kept.cornerGuess === "again" ? "moved" : kept.cornerGuess || "",
-    cornersMoved: !!(kept && kept.cornersMoved),
+    cornersMoved: !!(kept && kept.cornersMoved), keepCorners: !!(kept && kept.keepCorners),
     cornersFixed: [false, false, false, false], edit: null,   // not kept with the photo
     // entries from before 0.6.0 kept only the side picked
     homePick: (kept && (kept.homePick || kept.home)) || (kept ? "auto" : state.homePick),
@@ -604,7 +606,7 @@ async function applyEdit() {
       const [w, h] = imageSize(bitmap);
       let id = state.historyId, scale = 1;
       try { if (id) scale = await PhotoHistory.replace(id, file, bitmap, w, h); } catch (_) { id = null; /* not stored */ }
-      startPhoto(file, bitmap, { ...historyRecord(state), corners: null, cornersMoved: false, trimmed: state.photo.trimmed || !!e.rect }, id, scale);
+      startPhoto(file, bitmap, { ...historyRecord(state), corners: null, cornersMoved: false, keepCorners: false, trimmed: state.photo.trimmed || !!e.rect }, id, scale);
     } catch (err) {
       alert("画像を編集できませんでした: " + err.message);
     }
@@ -776,7 +778,7 @@ async function claudeCorners() {
   // as findAgain: another photo, a corner moved or reading started meanwhile
   if (id !== search || state.photo.file !== file || state.cornerGuess !== "again") return;
   if (state.corners !== start || !corners) update({ cornerGuess: "moved" });
-  else update({ corners, cornerGuess: "found", cornersFixed: [false, false, false, false] });   // Claude's, not the user's
+  else update({ corners, cornerGuess: "found", cornersFixed: [false, false, false, false], keepCorners: false });   // Claude's, not the user's
   redraw(drawCorners);
   if (error) alert("Claude に選ばせられませんでした: " + error.message);
 }
@@ -798,6 +800,7 @@ async function recognize() {
       fd.append("image", blob, "board.jpg");
       fd.append("corners", state.corners.flat().map((v) => (v * scale).toFixed(1)).join(","));
       fd.append("home", state.homePick);
+      if (state.keepCorners) fd.append("keep_corners", "true");
       fd.append("bottom_colour", String(state.bottomColour));
       fd.append("on_roll", req.on_roll);
       if (dice) fd.append("dice", dice.join(","));
@@ -1008,6 +1011,7 @@ window.addEventListener("popstate", () => {
 });
 
 $("corner-reset").addEventListener("click", () => update({ corners: [], cornerGuess: "", cornersFixed: [false, false, false, false] }));
+$("keep-corners").addEventListener("change", () => update({ keepCorners: $("keep-corners").checked }));
 $("edit-start").addEventListener("click", () => { stopOverlay("corners"); update({ edit: { turn: 0, angle: 0, rect: null } }); });
 $("edit-cancel").addEventListener("click", () => update({ edit: null }));
 $("edit-done").addEventListener("click", applyEdit);
