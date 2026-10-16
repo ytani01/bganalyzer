@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-065、TODO-066、TODO-067、TODO-072、TODO-075。** これまでに 68 件を決着させた。
+**残っている項目: TODO-025、TODO-030、TODO-065、TODO-066、TODO-067、TODO-072。** これまでに 69 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-076`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
@@ -103,24 +103,6 @@ float の OpenCV（`HoughLinesP`・`LineSegmentDetector` など）も候補に�
 普通の盤を壊すおそれがある。
 
 **無駄を省く工夫:** ずらし方は数通りに絞り、全サンプル 1 回。TODO-071 の測る道具（`archives/agents/TODO-071/`）のうち使えるものは使い回す
-
-## TODO-075. GitHub Actions の test から arm64 のジョブを消す
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Opus 5.5 / effort low | main（実装）+ verifier（Haiku 5.5 / medium） |
-
-ユーザーの決定（2026-10-16）: arm64 で流していた理由のうち、CPU による読みの違いは TODO-074 でやめた。残る gnubg の aarch64 の wheel の確認は、
-依存が変わるときだけ要り、壊れていても Pi の `uv sync --frozen` と再起動で分かるので、毎回の PR では流さない。
-
-- [ ] `.github/workflows/test.yml` の matrix から `ubuntu-24.04-arm` を消す
-- [ ] `.github/workflows/gnubg-wheel.yml` で、ビルドした wheel を入れて `import gnubg` できるかを確かめてから Release に置く
-- [ ] CLAUDE.md の「共同開発」に、依存（`pyproject.toml`・`uv.lock`）を変えた PR は docs/PI_CHECKS.md に Pi での `uv sync --frozen` と起動の確認を足す、と書く
-- [ ] README・docs の「x86_64 と arm64 で確かめる」の記述を合わせる
-
-**無駄を省く工夫:** 対象は `rg -n -e arm64 -e aarch64 -e ubuntu-24.04-arm --hidden -g '!archives' -g '!uv.lock'` で拾う（recognizer の README・exact.py の経緯は対象外）。
-`gnubg-wheel.yml` はタグを打たないと走らないので、verifier は書いた手順を読むだけにし、実際に走らせるのは次に wheel を作り直すとき。
-verifier は PR の `test` に x86_64 のジョブだけが出て通ることを見る
 
 ---
 

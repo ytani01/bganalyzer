@@ -93,7 +93,7 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
 - **公開先は自宅の Raspberry Pi + Tailscale Funnel**（`https://<Pi>.<tailnet>.ts.net/bg/`、無料・ドメイン不要。同じ Pi で別のアプリも別のパスで公開する予定があるので、アプリはパスの下でも動くようにしてある）（手順は [raspi.md](raspi.md)）。2026-10-12 にユーザーが Pi で動くことを確かめた（TODO-002 完了）。
   ホーム画面への追加には HTTPS が必要。サーバーレス関数は不可、ワーカー1つで常駐。
 - **Docker は使わない**（2026-10-15、TODO-056）。Pi も uv で入れ、systemd のユーザー unit（`bganalyzer.service`）で常駐させる。
-  起動して解析まで通るかは、GitHub Actions の `test` が x86_64 と arm64 で確かめる。
+  起動して解析まで通るかは、GitHub Actions の `test` が x86_64 で確かめる（arm64 は依存を変えた PR で docs/PI_CHECKS.md に Pi の確認を足す。TODO-075）。
   gnubg の PyPI パッケージには arm64 の Linux の wheel もソース配布もないので、StonesAndDice/gnubg-pypi の固定したコミットから
   `.github/workflows/gnubg-wheel.yml` でビルドして Release に置き、`pyproject.toml` が aarch64 のときに使う（TODO-055）。
   gnubg の版を上げるときはそのコミットと URL も合わせる。
