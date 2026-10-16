@@ -1,0 +1,313 @@
+{
+  "header_version": "a0.56.0 · r0.23.0",
+  "s1_start_points": [
+    -2,
+    0,
+    0,
+    0,
+    0,
+    5,
+    0,
+    3,
+    0,
+    0,
+    0,
+    -5,
+    5,
+    0,
+    0,
+    0,
+    -3,
+    0,
+    -5,
+    0,
+    0,
+    0,
+    0,
+    2
+  ],
+  "s1_pip_before": [
+    "PIP 167",
+    "PIP 167"
+  ],
+  "s1_bar_texts": [],
+  "s1_pips_js_before": {
+    "white": 167,
+    "black": 167
+  },
+  "s1_points_after_tap": [
+    -2,
+    0,
+    0,
+    0,
+    0,
+    5,
+    0,
+    3,
+    0,
+    0,
+    0,
+    -5,
+    3,
+    0,
+    0,
+    0,
+    -3,
+    0,
+    -5,
+    0,
+    0,
+    0,
+    0,
+    2
+  ],
+  "s1_pip_after": [
+    "PIP 141",
+    "PIP 167"
+  ],
+  "s1_pips_js_after": {
+    "white": 141,
+    "black": 167
+  },
+  "s2_start_points_restored": [
+    -2,
+    0,
+    0,
+    0,
+    0,
+    5,
+    0,
+    3,
+    0,
+    0,
+    0,
+    -5,
+    5,
+    0,
+    0,
+    0,
+    -3,
+    0,
+    -5,
+    0,
+    0,
+    0,
+    0,
+    2
+  ],
+  "s2_analyze_status": 200,
+  "s2_server_pips": {
+    "white": 167,
+    "black": 167,
+    "leader": null,
+    "difference": 0
+  },
+  "s2_result_top": [
+    {
+      "tag": "P",
+      "cls": "summary",
+      "text": "白が有利: 勝率 52.5%（ギャモン 14.9",
+      "top": 431
+    },
+    {
+      "tag": "DIV",
+      "cls": "winbar",
+      "text": "白 52.5%黒 47.5%",
+      "top": 481
+    },
+    {
+      "tag": "H2",
+      "cls": "",
+      "text": "最善手（白・ダイス 3-1）",
+      "top": 517
+    },
+    {
+      "tag": "OL",
+      "cls": "moves",
+      "text": "8/5 6/5エクイティ 0.16324/21 ",
+      "top": 552
+    },
+    {
+      "tag": "P",
+      "cls": "note",
+      "text": "番号は盤と同じく白の人から見たもの。行をタップで",
+      "top": 725
+    },
+    {
+      "tag": "TABLE",
+      "cls": "",
+      "text": "白黒勝率52.5%47.5%うちギャモン勝ち14",
+      "top": 777
+    },
+    {
+      "tag": "P",
+      "cls": "note",
+      "text": "gnubg 2手読み・勝率とエクイティはキューブ",
+      "top": 970
+    }
+  ],
+  "s2_result_pip_texts": [
+    "PIP 167",
+    "PIP 167"
+  ],
+  "s2_board_pip_texts": [
+    "PIP 167",
+    "PIP 167"
+  ],
+  "s2_result_arrows": 1,
+  "s2_result_way": 1,
+  "s2_board_bar_texts": [],
+  "screenshot": "/home/ytani/tmp/playwright-mcp/todo090-result.png",
+  "s3a_cube_at": {
+    "at": "centre",
+    "value": 2,
+    "offered": true
+  },
+  "s3a_onRoll": "white",
+  "s3a_rolled": null,
+  "s3a_status": 200,
+  "s3a_has_cube": true,
+  "s3a_has_moves": false,
+  "s3a_server_pips": {
+    "white": 167,
+    "black": 167,
+    "leader": null,
+    "difference": 0
+  },
+  "s3a_result_top": [
+    {
+      "tag": "P",
+      "cls": "summary",
+      "text": "白が有利: 勝率 52.5%（ギャモン 14.9",
+      "top": 431
+    },
+    {
+      "tag": "DIV",
+      "cls": "winbar",
+      "text": "白 52.5%黒 47.5%",
+      "top": 502
+    },
+    {
+      "tag": "H2",
+      "cls": "",
+      "text": "キューブ",
+      "top": 538
+    },
+    {
+      "tag": "P",
+      "cls": "answer",
+      "text": "白の人は ダブルしない",
+      "top": 573
+    },
+    {
+      "tag": "P",
+      "cls": "",
+      "text": "ダブルされたら、黒の人はテイク。",
+      "top": 619
+    },
+    {
+      "tag": "TABLE",
+      "cls": "",
+      "text": "白の人から見てエクイティダブルしない+0.098",
+      "top": 659
+    },
+    {
+      "tag": "P",
+      "cls": "note",
+      "text": "gnubg の判断: No double, ta",
+      "top": 792
+    },
+    {
+      "tag": "TABLE",
+      "cls": "",
+      "text": "白黒勝率52.5%47.5%うちギャモン勝ち14",
+      "top": 824
+    },
+    {
+      "tag": "P",
+      "cls": "note",
+      "text": "gnubg 2手読み・勝率とエクイティはキューブ",
+      "top": 1017
+    }
+  ],
+  "s3a_result_pip_texts": [
+    "PIP 167",
+    "PIP 167"
+  ],
+  "s3b_cube_at": {
+    "at": "white",
+    "value": 2,
+    "offered": true
+  },
+  "s3b_onRoll": "black",
+  "s3b_rolled": null,
+  "s3b_status": 200,
+  "s3b_has_cube": true,
+  "s3b_has_moves": false,
+  "s3b_server_pips": {
+    "white": 167,
+    "black": 167,
+    "leader": null,
+    "difference": 0
+  },
+  "s3b_result_top": [
+    {
+      "tag": "P",
+      "cls": "summary",
+      "text": "黒が有利: 勝率 52.5%（ギャモン 14.9",
+      "top": 431
+    },
+    {
+      "tag": "DIV",
+      "cls": "winbar",
+      "text": "白 47.5%黒 52.5%",
+      "top": 481
+    },
+    {
+      "tag": "H2",
+      "cls": "",
+      "text": "キューブ",
+      "top": 517
+    },
+    {
+      "tag": "P",
+      "cls": "answer",
+      "text": "白の人は テイク",
+      "top": 552
+    },
+    {
+      "tag": "P",
+      "cls": "",
+      "text": "黒の人のダブルは早すぎる。",
+      "top": 598
+    },
+    {
+      "tag": "TABLE",
+      "cls": "",
+      "text": "黒の人から見てエクイティダブルしない+0.098",
+      "top": 638
+    },
+    {
+      "tag": "P",
+      "cls": "note",
+      "text": "gnubg の判断: No double, ta",
+      "top": 771
+    },
+    {
+      "tag": "TABLE",
+      "cls": "",
+      "text": "白黒勝率47.5%52.5%うちギャモン勝ち12",
+      "top": 803
+    },
+    {
+      "tag": "P",
+      "cls": "note",
+      "text": "gnubg 2手読み・勝率とエクイティはキューブ",
+      "top": 996
+    }
+  ],
+  "s3b_result_pip_texts": [
+    "PIP 167",
+    "PIP 167"
+  ]
+}

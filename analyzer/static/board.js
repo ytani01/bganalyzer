@@ -22,6 +22,14 @@ const BgBoard = (() => {
     return { onW, onB, offW: 15 - onW, offB: 15 - onB };
   }
 
+  // Pips each side still has to move: a checker on point i+1 has i+1 to go for 手前 and 24-i for 奥,
+  // one on the bar 25 (TODO-090).
+  function pips(b) {
+    let white = 25 * b.bar_white, black = 25 * b.bar_black;
+    b.points.forEach((n, i) => { if (n > 0) white += n * (i + 1); else black -= n * (24 - i); });
+    return { white, black };
+  }
+
   // What stops the board from being analysed. name: the sides' names (BgResult.NAME; 白 = the lighter checkers).
   function errors(b, name = { white: "白", black: "黒" }) {
     const { onW, onB } = counts(b);
@@ -88,7 +96,7 @@ const BgBoard = (() => {
   // The number of point i as the side on roll counts it, from its own home (TODO-089).
   const number = (i, onRoll) => (onRoll === "black" ? 24 - i : i + 1);
 
-  return { START, LEVELS, other, start, copy, counts, errors, swapColours, mirror, countOf, sideOn, set, tap,
+  return { START, LEVELS, other, start, copy, counts, pips, errors, swapColours, mirror, countOf, sideOn, set, tap,
            pointAt, columnOf, number };
 })();
 
