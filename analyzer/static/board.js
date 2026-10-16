@@ -85,8 +85,11 @@ const BgBoard = (() => {
     return { top, c: top ? 23 - i : i };
   }
 
+  // The number of point i as the side on roll counts it, from its own home (TODO-089).
+  const number = (i, onRoll) => (onRoll === "black" ? 24 - i : i + 1);
+
   return { START, LEVELS, other, start, copy, counts, errors, swapColours, mirror, countOf, sideOn, set, tap,
-           pointAt, columnOf };
+           pointAt, columnOf, number };
 })();
 
 if (typeof module !== "undefined") module.exports = BgBoard;

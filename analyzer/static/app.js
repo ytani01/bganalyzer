@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.53.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.54.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -272,12 +272,12 @@ part((s) => [s.paintSide, s.undo.length], (s) => {
 });
 
 // The palette: the colour, then the count, of the point (or the bar) held down.
-part((s) => [s.palette, s.board], (s) => {
+part((s) => [s.palette, s.board, s.onRoll], (s) => {
   const p = s.palette, box = $("palette");
   box.hidden = !p || !s.board;
   if (box.hidden) return;
   const n = BgBoard.countOf(s.board, p.at, p.side);
-  $("palette-title").textContent = p.at === "bar" ? "バー" : `ポイント ${p.at + 1}`;
+  $("palette-title").textContent = p.at === "bar" ? "バー" : `ポイント ${BgBoard.number(p.at, s.onRoll)}`;
   for (const b of $("palette-side").children) b.classList.toggle("on", b.dataset.value === p.side);
   for (const b of $("palette-counts").children) b.classList.toggle("on", Number(b.dataset.n) === n);
   // beside the finger, off the point held: on the side with more room, inside the screen

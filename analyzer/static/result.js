@@ -52,7 +52,7 @@ const BgResult = (() => {
       out += `<h2>最善手（${NAME[r.on_roll]}・ダイス ${dice ? dice.join("-") : ""}）</h2>`;
       out += r.moves.length
         ? `<ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>エクイティ ${m.equity.toFixed(3)}</span></li>`).join("")}</ol>` +
-          `<p class="note">番号は${NAME[r.on_roll]}の人から見たもの。行をタップで矢印を切り替え。</p>`
+          `<p class="note">番号は盤と同じく${NAME[r.on_roll]}の人から見たもの。行をタップで矢印を切り替え。</p>`
         : "<p>動かせる手がありません。</p>";
     }
     out += `<p class="note">gnubg ${r.plies}手読み・勝率とエクイティはキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はマネーゲーム（ジャコビー・ルールあり）") : ""}。` +

@@ -77,7 +77,7 @@ const BgBoardView = (() => {
   }
 
   // Triangles, point numbers, checkers, the selection and a tap area for each point.
-  function drawPoints(svg, { board: b, home, selected, photo }, onSelect) {
+  function drawPoints(svg, { board: b, home, selected, photo, onRoll }, onSelect) {
     const half = (B.y1 - B.y0) / 2;
     for (const top of [true, false]) {
       for (let c = 0; c < 12; c++) {
@@ -85,7 +85,7 @@ const BgBoardView = (() => {
         const x = colX(c), h = B.pw / 2;
         const base = top ? B.y0 : B.y1, tip = top ? B.y0 + B.tri : B.y1 - B.tri;
         if (!photo) el("polygon", { points: `${x - h},${base} ${x + h},${base} ${x},${tip}`, fill: c % 2 ? "var(--tri-b)" : "var(--tri-a)" }, svg);
-        el("text", { x, y: top ? 16 : 434, class: "num" }, svg).textContent = i + 1;
+        el("text", { x, y: top ? 16 : 434, class: "num" }, svg).textContent = BgBoard.number(i, onRoll);
         const n = b.points[i];
         if (n && !photo) drawStack(svg, x, top, Math.abs(n), n > 0 ? "white" : "black");
         if (selected === i) {
