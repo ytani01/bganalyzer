@@ -117,6 +117,17 @@ def test_result_html():
     assert "<h2>キューブ</h2>" in out["cube"] and "白の人は <b>ダブルする</b>" in out["cube"]
     assert "ダブルされたら、黒の人はパス。" in out["cube"] and "+1.200" in out["cube"]
     assert "振るのは" not in out["cube"]   # with the cube decision, the pip line stands alone
+    # TODO-090: summary, the bar of winning chances, the best move or the cube decision, then the table
+    for html, middle in ((out["moves"], "最善手"), (out["cube"], "<h2>キューブ</h2>")):
+        at = [html.index(s) for s in ('<p class="summary">', '<div class="winbar">', middle, "<table><tr><th></th>")]
+        assert at == sorted(at)
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_pips():
+    # TODO-090: the board's pip counts, the bar counting 25
+    out = _board_js("""[B.pips(B.start()), B.pips(B.set(B.set(B.set(B.start(), 23, "white", 1), "bar", "black", 1), "bar", "white", 1))]""")
+    assert out == [{"white": 167, "black": 167}, {"white": 168, "black": 192}]
 
 
 def test_moves_script_is_served_and_cached():

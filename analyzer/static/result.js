@@ -30,22 +30,17 @@ const BgResult = (() => {
     return { word: c.value > 1 ? "リダブル" : "ダブル", take: c.take ? "テイク" : "パス" };
   }
 
+  // Top to bottom (TODO-090): the summary, the winning chances as a bar, the cube decision or the
+  // best move, then the table of the numbers.
   function html(r, dice) {
     const pips = r.pips;
-    let out = `<h2>${esc(r.summary)}</h2>`;
+    let out = `<p class="summary">${esc(r.summary)}</p>`;
+    const p = r.probabilities;
     if (!r.game_over) {
-      const p = r.probabilities;
-      const w = p.white.win, bl = p.black.win;
-      out += `<div class="winbar"><div class="w" style="width:${w}%">${NAME.white} ${w}%</div>` +
-        `<div class="b" style="width:${bl}%">${NAME.black} ${bl}%</div></div>`;
-      out += `<table><tr><th></th><th>${NAME.white}</th><th>${NAME.black}</th></tr>` +
-        `<tr><td>勝率</td><td>${w}%</td><td>${bl}%</td></tr>` +
-        `<tr><td>うちギャモン勝ち</td><td>${p.white.gammon}%</td><td>${p.black.gammon}%</td></tr>` +
-        `<tr><td>うちバックギャモン勝ち</td><td>${p.white.backgammon}%</td><td>${p.black.backgammon}%</td></tr>` +
-        `<tr><td>エクイティ</td><td>${r.equity.white.toFixed(3)}</td><td>${r.equity.black.toFixed(3)}</td></tr>` +
-        `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
+      out += `<div class="winbar"><div class="w" style="width:${p.white.win}%">${NAME.white} ${p.white.win}%</div>` +
+        `<div class="b" style="width:${p.black.win}%">${NAME.black} ${p.black.win}%</div></div>`;
     }
-    // the pips are in the table, and who rolled in the best move's heading (TODO-086)
+    // who rolled is in the best move's heading (TODO-086)
     if (r.cube) out += cubeHtml(r.cube);
     else if (!r.moves && !r.game_over) out += `<p>${rollWho(dice)}のは${NAME[r.on_roll]}の人。</p>`;
     if (r.moves) {
@@ -54,6 +49,14 @@ const BgResult = (() => {
         ? `<ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>エクイティ ${m.equity.toFixed(3)}</span></li>`).join("")}</ol>` +
           `<p class="note">番号は盤と同じく${NAME[r.on_roll]}の人から見たもの。行をタップで矢印を切り替え。</p>`
         : "<p>動かせる手がありません。</p>";
+    }
+    if (!r.game_over) {
+      out += `<table><tr><th></th><th>${NAME.white}</th><th>${NAME.black}</th></tr>` +
+        `<tr><td>勝率</td><td>${p.white.win}%</td><td>${p.black.win}%</td></tr>` +
+        `<tr><td>うちギャモン勝ち</td><td>${p.white.gammon}%</td><td>${p.black.gammon}%</td></tr>` +
+        `<tr><td>うちバックギャモン勝ち</td><td>${p.white.backgammon}%</td><td>${p.black.backgammon}%</td></tr>` +
+        `<tr><td>エクイティ</td><td>${r.equity.white.toFixed(3)}</td><td>${r.equity.black.toFixed(3)}</td></tr>` +
+        `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
     }
     out += `<p class="note">gnubg ${r.plies}手読み・勝率とエクイティはキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はマネーゲーム（ジャコビー・ルールあり）") : ""}。` +
       `Position ID: <code>${esc(r.position_id)}</code></p>`;

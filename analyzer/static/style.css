@@ -175,8 +175,8 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .board-wrap svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
 .board-wrap svg .hit, .board-wrap svg .hit-num { cursor: pointer; }
 .board-wrap svg { -webkit-touch-callout: none; touch-action: manipulation; }
-.board-wrap svg .label { font-size: 13px; fill: #fff; font-weight: bold; text-anchor: middle; }
 .board-wrap svg .num { font-size: 11px; fill: var(--muted); text-anchor: middle; }
+.board-wrap svg .pip-n { font-size: 17px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .off-n { font-size: 15px; font-weight: bold; fill: #fff; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .stack-n { font-size: 15px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
 .boards { display: grid; gap: 8px; }
@@ -227,6 +227,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .result { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 16px 0; }
 .result.stale { opacity: .5; }
 .result h2 { font-size: 18px; margin: 0 0 8px; }
+.result .summary { font-size: 14px; margin: 0 0 8px; }
 .winbar { display: flex; height: 28px; border-radius: 8px; overflow: hidden; margin: 8px 0; font-size: 14px; font-weight: bold; }
 .winbar div { display: flex; align-items: center; padding: 0 8px; white-space: nowrap; }
 .winbar .w { background: var(--white-chk); color: var(--white-fg); }
