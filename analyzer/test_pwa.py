@@ -300,6 +300,11 @@ def test_match_is_in_the_board_settings_and_sent():
     js = (STATIC / "app.js").read_text()
     assert js.count("BgCube.matchRequest(state.match)") == 2   # /analyze and /analyze-photo
     assert "if (crawfordCube()) { alert(CRAWFORD_CUBE); return; }" in js   # Japanese before the server's 422
+    # TODO-093: the corners screen shows the same inputs, moved there while it is open
+    corners = html[html.index('<section id="corners"'):html.index('<section id="board"')]
+    assert '<div id="corners-match"></div>' in corners and "<details" not in corners
+    assert '<div id="board-match">\n    <div id="match"' in board   # where it goes back to
+    assert '$(s.step === "corners" ? "corners-match" : "board-match").appendChild($("match"));' in js
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")

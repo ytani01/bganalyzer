@@ -29,7 +29,7 @@ from samples import router as samples_router, samples_dir
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.56.0"
+__version__ = "0.57.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
