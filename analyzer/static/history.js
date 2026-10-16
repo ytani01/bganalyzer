@@ -5,7 +5,7 @@
 
 const PhotoHistory = (() => {
   const DB_NAME = "bganalyzer", STORE = "photos";
-  const KEEP = 10;           // older entries are deleted automatically
+  const KEEP = 100;          // older entries are deleted automatically
   const MAX_SIDE = 2048;     // the size the app sends to the server anyway (UPLOAD_MAX)
   const KEEP_AS_IS = { side: 2560, bytes: 1.5e6 };  // small files (screenshots) are stored untouched
   const THUMB_SIDE = 192;

@@ -54,8 +54,9 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     """Win/gammon/backgammon chances, equity and pip counts for `pos`.
 
     `on_roll` is the side about to roll. With `dice`, also returns the best
-    checker plays for that roll. Without dice, also returns the cube decision (money game):
-    whether `on_roll` should double, and whether the other side should take. The cube shows
+    checker plays for that roll. Also returns the cube decision before the roll (with dice, only
+    when `on_roll` should have doubled: TODO-096): whether `on_roll` should double, and whether
+    the other side should take. The cube shows
     `cube_value` and is owned by `cube_owner` (None: in the middle). `doubled`: `on_roll` has
     just doubled, and the cube (showing the new value) waits on the other side's take or pass.
     `match_length` 0 is a money game (Jacoby rule); else a match to that many points with the
@@ -117,16 +118,17 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     if doubled:
         before = cube_value // 2
         ask = (before, -1 if before == 1 else 0)
-    elif dice is None and cube_owner in (None, on_roll):
+    elif cube_owner in (None, on_roll):
         ask = (cube_value, -1 if cube_owner is None else 0)
     # the match, from on_roll's side, with the cube's number for the evaluation (before a double)
     match = None
     if match_length:
         match = (match_length, (score[on_roll], score[other(on_roll)]), crawford, ask[0] if ask else cube_value)
-    (win, wg, wbg, lg, lbg, equity), found = evaluate(
+    (win, wg, wbg, lg, lbg, equity), hint, moves = evaluate(
         pid, plies, None if dice is None else tuple(dice), max_moves, ask, match)
-    moves = found if ask is None else None
-    cube = _cube_result(found, on_roll, ask[0], doubled) if ask and found else None
+    cube = _cube_result(hint, on_roll, ask[0], doubled, dice is not None) if hint else None
+    if cube and dice is not None and not cube["double"]:
+        cube = None   # with dice, only when on_roll should have doubled before rolling (TODO-096)
 
     def pct(x: float) -> float:
         return round(100 * x, 1)
@@ -148,7 +150,7 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     return result
 
 
-def _cube_result(hint: dict, doubler: str, value: int, doubled: bool) -> dict:
+def _cube_result(hint: dict, doubler: str, value: int, doubled: bool, rolled: bool = False) -> dict:
     """The cube decision in the app's terms, from gnubg's: should the doubler double, and should
     the other side take. Equities are the doubler's, in units of the cube before the double."""
     proper = hint["proper"].lower()
@@ -165,6 +167,7 @@ def _cube_result(hint: dict, doubler: str, value: int, doubled: bool) -> dict:
         "optional": optional,            # double or not, either is right (seen in matches)
         "take": "take" in proper or "beaver" in proper,
         "proper": hint["proper"],        # gnubg's words, e.g. "No double, take (23.0%)"
+        "rolled": rolled,                # the dice are in: should the doubler have doubled before rolling
     }
 
 
@@ -190,6 +193,8 @@ def cube_summary_ja(c: dict, name: dict = NAME_JA) -> str:
         why = ("ダブルは正しい" if c["double"] else f"{word}はしてもしなくてもよい" if c.get("optional") else
                "本当はダブルせずギャモンを狙う局面" if c["too_good"] else "ダブルは早すぎる")
         return f"{t}は{take}（{d}の{why}）"
+    if c.get("rolled"):
+        d = f"振る前、{d}"
     if c["double"]:
         return f"{d}は{word}すべき、{t}は{take}"
     if c.get("optional"):

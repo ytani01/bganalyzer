@@ -67,8 +67,11 @@ const BgResult = (() => {
   function cubeHtml(c) {
     const d = NAME[c.doubler], t = NAME[c.taker];
     const { word, take } = cubeWords(c);
-    let out = "<h2>キューブ</h2>";
-    if (c.question === "take") {
+    let out = c.rolled ? "<h2>キューブ（振る前）</h2>" : "<h2>キューブ</h2>";
+    if (c.rolled) {   // with dice, shown only when a double was due (TODO-096)
+      out += `<p class="answer">${d}の人は振る前に <b>${word}すべきだった</b></p>`;
+      out += `<p>${word}されたら、${t}の人は${take}。</p>`;
+    } else if (c.question === "take") {
       out += `<p class="answer">${t}の人は <b>${take}</b></p>`;
       out += `<p>${d}の人の${word}は${c.double ? "正しい" : c.optional ? "してもしなくてもよい" : c.too_good ? "ダブルせずギャモンを狙う方がよい局面" : "早すぎる"}。</p>`;
     } else {
@@ -97,7 +100,8 @@ const BgResult = (() => {
     }
     if (r.cube) {
       const c = r.cube, { word, take } = cubeWords(c);
-      parts.push(c.question === "take"
+      parts.push(c.rolled ? `振る前に${NAME[c.doubler]}の人は${word}すべきでした。${word}されたら${NAME[c.taker]}の人は${take}です。`
+        : c.question === "take"
         ? `${NAME[c.taker]}の人は${take}です。`
         : c.double ? `${NAME[c.doubler]}の人は${word}、${NAME[c.taker]}の人は${take}です。`
           : c.optional ? `${NAME[c.doubler]}の人は${word}してもしなくてもよいです。`
