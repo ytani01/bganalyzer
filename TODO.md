@@ -140,8 +140,8 @@ float の OpenCV（`HoughLinesP`・`LineSegmentDetector` など）も候補に�
 今の向きが選ばれた状態で見え、反対を選ぶと今のボタンと同じ動き（盤を鏡写しにし、`home` を変える）になる。
 「自動」は画面3では出さない（読み取りは済んでいる）。2026-10-16 ユーザーが決めた。
 
-- [ ] `index.html`・`app.js` を直し、`home-note` の文言を合わせる
-- [ ] analyzer の版を上げる（`APP_VERSION` も）
+- [x] `index.html`・`app.js` を直し、`home-note` の文言を合わせる
+- [x] analyzer の版を上げる（`APP_VERSION` も）
 
 **無駄を省く工夫:** 確認は左→右→左を 1 回ずつ押すだけにし、認識の精度は測らない（recognizer は変えない）
 

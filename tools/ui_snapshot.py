@@ -163,7 +163,7 @@ def flow_manual(r):
     r.hold(24); r.pick(0); r.snap("bar: 奥 0 from the palette")
     r.click("#undo"); r.click("#undo"); r.snap("undo twice")
     r.click("#swap-colours"); r.snap("swap colours")
-    r.click("#flip-home"); r.snap("flip home")
+    r.seg("home", "left"); r.snap("home left")
     r.choose("#die1", "3"); r.snap("one die")
     r.choose("#die2", "1"); r.snap("dice 3-1")
     r.seg("onRoll", "black"); r.snap("on roll 奥")
