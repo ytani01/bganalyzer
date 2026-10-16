@@ -31,7 +31,7 @@ const BgBoardView = (() => {
   const rowY = (side) => (side === "black" ? ROW.top : ROW.bottom);
 
   // Centre of the checker at level k (0 = by the board's edge) of a stack; above 5 they are not drawn.
-  // On the bar the stacks start by its middle (clear of its label) and go out, a little closer together.
+  // On the bar the stacks start a little off its middle and go out, a little closer together.
   const MID = (B.y0 + B.y1) / 2, BAR_GAP = 9, BAR_STEP = 36;
   function stackY(top, k, bar) {
     k = Math.min(k, 4);
@@ -72,6 +72,7 @@ const BgBoardView = (() => {
     if (photo) return;   // the photo shows the checkers itself
     if (scene.onRoll) drawWay(svg, scene.onRoll, home);
     drawBorneOff(svg, b, home);
+    drawPips(svg, b, home);
     if (scene.dice) drawDice(svg, scene.dice, scene.onRoll);
     drawCube(svg, scene.cube, home);
     if (scene.move) drawMove(svg, scene.move, home);
@@ -106,7 +107,6 @@ const BgBoardView = (() => {
   function drawBar(svg, { board: b, selected, photo }, onSelect) {
     if (b.bar_black && !photo) drawStack(svg, BAR_X, false, b.bar_black, "black", true);
     if (b.bar_white && !photo) drawStack(svg, BAR_X, true, b.bar_white, "white", true);
-    if (!photo) el("text", { x: BAR_X, y: MID + 5, class: "label" }, svg).textContent = "バー";
     if (selected === "bar") {
       el("rect", { x: BAR_X - B.bar / 2 + 1, y: B.y0 + 1, width: B.bar - 2, height: B.y1 - B.y0 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
     }
@@ -180,6 +180,18 @@ const BgBoardView = (() => {
       }
       el("text", { x: right ? RIGHT - n * step - 16 : B.x0 + n * step + 16, y: rowY(side) + ROW.h / 2, class: "off-n", "pointer-events": "none" }, svg)
         .textContent = n;
+    }
+  }
+
+  // Each side's pip count in its own row, on a plate of its checker colour beside the tray it bears
+  // off to, clear of the cubes (TODO-090).
+  function drawPips(svg, b, home) {
+    const pips = BgBoard.pips(b), w = 96, gap = 4;
+    const x = home === "right" ? trayX(home) - gap - w : trayX(home) + TRAY.w + gap;
+    for (const side of ["white", "black"]) {
+      const y = rowY(side);
+      el("rect", { x, y: y + 2, width: w, height: ROW.h - 4, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, svg);
+      el("text", { x: x + w / 2, y: y + ROW.h / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg).textContent = `PIP ${pips[side]}`;
     }
   }
 

@@ -130,6 +130,7 @@ function redraw(drawFn) { for (const p of parts) if (p.draw === drawFn) p.last =
 part((s) => s.step, (s) => {
   const at = STEPS.indexOf(s.step);
   for (const sec of document.querySelectorAll("section.step")) sec.hidden = sec.id !== s.step;
+  $(s.step === "corners" ? "corners-match" : "board-match").appendChild($("match"));   // the same inputs on both screens (TODO-093)
   for (const sp of document.querySelectorAll("#steps span")) {
     sp.classList.toggle("on", sp.dataset.step === s.step);
     sp.classList.toggle("done", STEPS.indexOf(sp.dataset.step) < at);
@@ -219,7 +220,7 @@ function editPreview() {
 part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess, !!s.edit]), (s) => {
   const n = s.corners.length;
   const fit = "点を動かして盤の内側の四隅に合わせてください。";
-  const again = "盤が小さいときは「その他」の「画像を編集」で切り抜いてください。";   // only when the board was not found (TODO-088)
+  const again = "盤が小さいときは下の「画像を編集」で切り抜いてください。";   // only when the board was not found (TODO-088)
   $("corner-help").innerHTML = s.edit
     ? "向きを直し、盤のまわりを斜めにドラッグして囲んでください。"
     : n < 4
