@@ -115,6 +115,7 @@ def test_result_html():
       tooGood: R.cubeHtml({{...{json.dumps(cube)}, double: false, too_good: true, proper: "Too good, pass (5.0%)"}}),
       luck: [0.601, 0.6, 0.3, -0.29, -0.301, -0.6, -0.601].map((x) => R.html({{...{r}, luck: x}}, [3, 1])),
       luckSpeech: R.speechText({{...{r}, luck: -0.65}}, [3, 1]),
+      plainSpeech: [0.3, -0.3].map((x) => R.speechText({{...{r}, luck: x}}, [3, 1])),
       rolled: R.html({{...{r}, cube: {json.dumps(cube | {"rolled": True})}}}, [3, 1]),
       rolledSpeech: R.speechText({{...{r}, cube: {json.dumps(cube | {"rolled": True})}}}, [3, 1]),
     }}""")
@@ -130,6 +131,7 @@ def test_result_html():
         "-0.601・とても悪い目"]   # as gnubg: beyond the levels, not at them
     assert out["luck"][0].index("最善手（") < out["luck"][0].index("Luck ") < out["luck"][0].index('<ol class="moves">')
     assert "最善手は、バーから22でヒット、13から8を2つ、6から上がり。とても悪い目です。" in out["luckSpeech"]
+    assert all("目です" not in s for s in out["plainSpeech"])   # TODO-100: an ordinary roll is not read out
     assert "Luck" not in out["moves"] and "目です" not in out["rolledSpeech"]   # no luck in the result: nothing shown
     # TODO-096: with dice, the double that was due before the roll comes before the best move
     assert out["rolled"].index("<h2>キューブ（振る前）</h2>") < out["rolled"].index("最善手（白・ダイス 3-1）")

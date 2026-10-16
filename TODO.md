@@ -109,7 +109,7 @@ TODO-078 は直さずに閉じた（対応しない）。対局者の横から�
 ユーザーの依頼（2026-10-17）。`analyzer/static/result.js` の `speechText` は、ダイスがあると最善手のあとに `luckWords` の言葉（「ふつうの目です」など）を読む。
 「ふつうの目」（-0.3〜0.3）のときだけ読まない。画面の表示は今のまま。
 
-- [ ] `speechText` で「ふつうの目」を読まないようにし、`analyzer/test_pwa.py` のテストを足す（analyzer の版も上げる。README の読み上げの説明も）
+- [x] `speechText` で「ふつうの目」を読まないようにし、`analyzer/test_pwa.py` のテストを足す（analyzer の版も上げる。README の読み上げの説明も）
 - [ ] ローカル: ふつうの目の局面で読み上げに Luck が入らないこと
 
 **無駄を省く工夫:** テストは `analyzer/test_pwa.py` だけを流す（全体は CI）。ローカルの確認は 1 局面で足りる
