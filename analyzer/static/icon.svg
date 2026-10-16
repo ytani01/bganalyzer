@@ -1,11 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#2e5a3a"/>
-  <rect x="64" y="96" width="384" height="320" rx="16" fill="#c9a979"/>
-  <g fill="#a8322d"><polygon points="80,96 128,96 104,240"/><polygon points="176,96 224,96 200,240"/><polygon points="128,416 176,416 152,272"/><polygon points="288,96 336,96 312,240"/><polygon points="384,96 432,96 408,240"/><polygon points="336,416 384,416 360,272"/></g>
-  <g fill="#283a66"><polygon points="128,96 176,96 152,240"/><polygon points="80,416 128,416 104,272"/><polygon points="176,416 224,416 200,272"/><polygon points="336,96 384,96 360,240"/><polygon points="288,416 336,416 312,272"/><polygon points="384,416 432,416 408,272"/></g>
-  <rect x="236" y="96" width="40" height="320" fill="#5b3b22"/>
-  <circle cx="104" cy="390" r="22" fill="#f3efe4" stroke="#555" stroke-width="3"/>
-  <circle cx="104" cy="346" r="22" fill="#f3efe4" stroke="#555" stroke-width="3"/>
-  <circle cx="408" cy="122" r="22" fill="#3a2a4a" stroke="#555" stroke-width="3"/>
-  <circle cx="408" cy="166" r="22" fill="#3a2a4a" stroke="#555" stroke-width="3"/>
+<rect width="512" height="512" fill="#4a2f1a"/>
+<rect x="56" y="56" width="400" height="400" rx="20" fill="#2f6b4f"/>
+<g fill="#c98f4a">
+<polygon points="56,56 156,56 106,220"/>
+<polygon points="256,56 356,56 306,220"/>
+<polygon points="156,456 256,456 206,292"/>
+<polygon points="356,456 456,456 406,292"/>
+</g>
+<g fill="#a33a2c">
+<polygon points="156,56 256,56 206,220"/>
+<polygon points="356,56 456,56 406,220"/>
+<polygon points="56,456 156,456 106,292"/>
+<polygon points="256,456 356,456 306,292"/>
+</g>
+<!-- the lens shows plain felt, so the magnifier stands out from the points -->
+<circle cx="236" cy="236" r="96" fill="#2f6b4f"/>
+<circle cx="236" cy="236" r="96" fill="none" stroke="#1c1c1c" stroke-width="58"/>
+<line x1="306" y1="306" x2="366" y2="366" stroke="#1c1c1c" stroke-width="76" stroke-linecap="round"/>
+<circle cx="236" cy="236" r="96" fill="none" stroke="#ffcc33" stroke-width="34"/>
+<line x1="306" y1="306" x2="366" y2="366" stroke="#ffcc33" stroke-width="52" stroke-linecap="round"/>
 </svg>
