@@ -1,4 +1,4 @@
-"""Check the PWA on the Pi the way a phone would, in a headless browser (docs/PI_CHECKS.md).
+"""Check the PWA on the Pi the way a phone would, in a headless browser (docs/raspi.md).
 
     uv run -q --no-project --with playwright python tools/pi_ui_check.py          # all checks
     uv run -q --no-project --with playwright python tools/pi_ui_check.py collect  # some of them

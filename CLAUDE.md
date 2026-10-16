@@ -61,14 +61,14 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 
 ## Raspberry Pi で確かめること
 
-マージ後に自宅の Raspberry Pi（本番）でしか確かめられないことは [docs/PI_CHECKS.md](docs/PI_CHECKS.md) で、
-**TODO.md と同じ決まり**で管理する（`PI-001` からの通し番号、ファイルの先頭に「残っている項目」と「次の番号」、
-各項目に **担当**、状態は `- [ ]` / `- [x]`、決着したら `archives/pi/` に 1 項目 1 ファイルで移す）。
-**Raspberry Pi の上で作業する Claude Code は、`git pull` のあとに docs/PI_CHECKS.md を読み、**
-**残っている項目を確かめて結果を書き込む**（アプリの更新は `uv sync --frozen && systemctl --user restart bganalyzer`、詳しくは [docs/raspi.md](docs/raspi.md)）。
+マージ後に自宅の Raspberry Pi（本番）でしか確かめられないことも、**TODO.md のその項目に書く**
+（`- [ ] Pi:` / `- [ ] スマホ:` の行。項目は Pi とスマホの確認まで済んでから決着させる）。
+2026-10-17 に docs/PI_CHECKS.md の決まりをやめた（決着した PI-001〜PI-050 は `archives/pi/` に残す）。
+**Raspberry Pi の上で作業する Claude Code は、`git pull` のあとに TODO.md の `- [ ] Pi:` の行を確かめて結果を書き込む**
+（アプリの更新と確かめ方は [docs/raspi.md](docs/raspi.md) の「ふだんの運用」「更新したあとに確かめる」）。
 期待と違えばユーザーに報告する。
 公開している https://bg.tail5c266.ts.net/bg/ にはクラウドからも届くので、版・画面・公開サンプルの読み取りは
-**クラウドの Claude が `uv run python tools/check_pi.py` で先に確かめてよい**（やり方とやらないことは docs/PI_CHECKS.md の「クラウドから確かめられること」）。
+**クラウドの Claude が `uv run python tools/check_pi.py` で先に確かめてよい**（やり方とやらないことは docs/raspi.md の「クラウドから確かめられること」）。
 
 ## タスク管理
 
@@ -85,8 +85,8 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
   ルールはこの CLAUDE.md、作業は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
 - **作業の前に main を pull する。**
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
-- **マージ後に Pi で確かめる必要がある変更は、その PR の中で docs/PI_CHECKS.md に項目を足す**
-  依存（`pyproject.toml`・`uv.lock`）を変えた PR では、Pi で `uv sync --frozen` と再起動が通るかの項目を必ず足す（GitHub Actions は arm64 で流さない。TODO-075）
+- **マージ後に Pi で確かめる必要がある変更は、その PR の中で TODO.md のその項目に `- [ ] Pi:` の行を足す**
+  依存（`pyproject.toml`・`uv.lock`）を変えた PR では、Pi で `uv sync --frozen` と再起動が通るかの行を必ず足す（GitHub Actions は arm64 で流さない。TODO-075）
 - **マージの直前に最新の main を取り込み、GitHub Actions の `test` が通ってからマージする（`accuracy` が走った PR はそれも。
   文書だけの PR では `test` は走らないので要らない）。** 落ちていたらマージしない。
   テスト全体は手元で流さない（CI と重なる。`.claude/hooks/no-local-pytest.py` が止める）。
