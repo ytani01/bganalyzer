@@ -30,3 +30,6 @@ class AnalyzeRequest(BaseModel):
     score_white: int = 0
     score_black: int = 0
     crawford: bool = False
+    # Which checkers are White's (the player at the bottom): 1 the lighter, 0 the darker. Only for the
+    # words: the lighter side is called 白 (TODO-086). Without it, White is 白.
+    bottom_colour: int | None = None

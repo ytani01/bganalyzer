@@ -4,7 +4,12 @@
 "use strict";
 
 const BgResult = (() => {
-  const NAME = { white: "手前", black: "奥" };
+  // The sides by their checkers' colour, as drawn: the lighter ones are 白 (TODO-086). app.js sets it
+  // with the setting of 手前's colour (bottomColour 1: 手前's are the lighter, 0: the darker).
+  const NAME = { white: "白", black: "黒" };
+  function setNames(bottomColour) {
+    Object.assign(NAME, bottomColour === 0 ? { white: "黒", black: "白" } : { white: "白", black: "黒" });
+  }
 
   // With dice in, the side on roll has already rolled: "振った人", not "次に振る人" (TODO-042).
   function rollWho(dice) {
@@ -15,9 +20,9 @@ const BgResult = (() => {
     return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   }
 
-  // The match in words (TODO-066), as in the server's summary: "7 ポイントマッチ 手前 3 対 奥 5（クロフォード）".
+  // The match in words (TODO-066), as in the server's summary: "7 ポイントマッチ 白 3 対 黒 5（クロフォード）".
   function matchText(m) {
-    return `${m.length} ポイントマッチ 手前 ${m.score.white} 対 奥 ${m.score.black}` + (m.crawford ? "（クロフォード）" : "");
+    return `${m.length} ポイントマッチ ${NAME.white} ${m.score.white} 対 ${NAME.black} ${m.score.black}` + (m.crawford ? "（クロフォード）" : "");
   }
 
   // The words for a cube decision: "ダブル" or "リダブル", "テイク" or "パス".
@@ -27,32 +32,30 @@ const BgResult = (() => {
 
   function html(r, dice) {
     const pips = r.pips;
-    const pipLine = pips.leader
-      ? `${NAME[pips.leader]}が ${pips.difference} ピップ リード`
-      : "ピップは同じ";
     let out = `<h2>${esc(r.summary)}</h2>`;
     if (!r.game_over) {
       const p = r.probabilities;
       const w = p.white.win, bl = p.black.win;
-      out += `<div class="winbar"><div class="w" style="width:${w}%">手前 ${w}%</div>` +
-        `<div class="b" style="width:${bl}%">奥 ${bl}%</div></div>`;
-      out += `<table><tr><th></th><th>手前</th><th>奥</th></tr>` +
+      out += `<div class="winbar"><div class="w" style="width:${w}%">${NAME.white} ${w}%</div>` +
+        `<div class="b" style="width:${bl}%">${NAME.black} ${bl}%</div></div>`;
+      out += `<table><tr><th></th><th>${NAME.white}</th><th>${NAME.black}</th></tr>` +
         `<tr><td>勝率</td><td>${w}%</td><td>${bl}%</td></tr>` +
         `<tr><td>うちギャモン勝ち</td><td>${p.white.gammon}%</td><td>${p.black.gammon}%</td></tr>` +
         `<tr><td>うちバックギャモン勝ち</td><td>${p.white.backgammon}%</td><td>${p.black.backgammon}%</td></tr>` +
         `<tr><td>エクイティ</td><td>${r.equity.white.toFixed(3)}</td><td>${r.equity.black.toFixed(3)}</td></tr>` +
         `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
     }
-    out += r.cube ? cubeHtml(r.cube) + `<p>${pipLine}。</p>`
-      : `<p>${pipLine}。${rollWho(dice)}のは${NAME[r.on_roll]}の人。</p>`;
+    // the pips are in the table, and who rolled in the best move's heading (TODO-086)
+    if (r.cube) out += cubeHtml(r.cube);
+    else if (!r.moves && !r.game_over) out += `<p>${rollWho(dice)}のは${NAME[r.on_roll]}の人。</p>`;
     if (r.moves) {
       out += `<h2>最善手（${NAME[r.on_roll]}・ダイス ${dice ? dice.join("-") : ""}）</h2>`;
       out += r.moves.length
         ? `<ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>エクイティ ${m.equity.toFixed(3)}</span></li>`).join("")}</ol>` +
-          `<p class="note">番号は${NAME[r.on_roll]}の人から見たポイント番号です。盤面図の矢印は選んだ手です（行をタップで切り替え）。</p>`
+          `<p class="note">番号は${NAME[r.on_roll]}の人から見たもの。行をタップで矢印を切り替え。</p>`
         : "<p>動かせる手がありません。</p>";
     }
-    out += `<p class="note">gnubg ${r.plies}手読み。勝率とエクイティはキューブなし${r.cube ? (r.match ? "、キューブの判断はマッチのスコアで" : "、キューブの判断はマネーゲーム（ジャコビー・ルールあり）") : ""}。` +
+    out += `<p class="note">gnubg ${r.plies}手読み・勝率とエクイティはキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はマネーゲーム（ジャコビー・ルールあり）") : ""}。` +
       `Position ID: <code>${esc(r.position_id)}</code></p>`;
     return out;
   }
@@ -129,7 +132,7 @@ const BgResult = (() => {
     }).join("、");
   }
 
-  return { NAME, rollWho, esc, matchText, html, cubeHtml, speechText, moveToSpeech };
+  return { NAME, setNames, rollWho, esc, matchText, html, cubeHtml, speechText, moveToSpeech };
 })();
 
 if (typeof module !== "undefined") module.exports = BgResult;

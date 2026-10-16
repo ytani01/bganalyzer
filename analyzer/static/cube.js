@@ -20,6 +20,11 @@ const BgCube = (() => {
     return { on_roll: onRoll, cube_value: cube.value, cube_owner: cube.at, doubled: false };
   }
 
+  // A cube just offered (on one side, "ダブルされたところ"): nobody has rolled yet (TODO-086).
+  const offered = (cube) => !!cube && cube.at !== "centre" && !!cube.offered;
+  // The dice the analysis uses: none while the cube is being offered, whatever was entered.
+  const usedDice = (cube, dice) => (offered(cube) ? null : dice);
+
   // The cube as the recognizer read it (null: none seen, so in the middle). "field": it lies in a
   // playing field, so onRoll has just doubled and it is offered to the other side (TODO-045).
   // Its number is the one read (TODO-025), else 2.
@@ -47,7 +52,7 @@ const BgCube = (() => {
     return { match_length: m.length, score_white: m.white, score_black: m.black, crawford: m.crawford };
   }
 
-  return { VALUES, request, fromRead, MATCH_LENGTHS, fixMatch, canCrawford, matchRequest };
+  return { VALUES, request, offered, usedDice, fromRead, MATCH_LENGTHS, fixMatch, canCrawford, matchRequest };
 })();
 
 if (typeof module !== "undefined") module.exports = BgCube;
