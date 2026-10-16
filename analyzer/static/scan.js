@@ -199,7 +199,7 @@
         if (!opts.reduced) drawSweep(guess, CYAN, (t % 1500) / 1500);
         return;
       }
-      drawBoard(guess, CYAN, { quad: t / 500, tris: (t - 300) / 1000, bar: (t - 900) / 500 });
+      drawBoard(guess, CYAN, { quad: t / 500, tris: (t - 300) / 500, bar: (t - 800) / 500 });
       drawCorners(guess, CYAN, t);
       if (opts.reduced) return;   // a still picture
       if (t > 1300) drawSweep(guess, CYAN, ((t - 1300) % 1500) / 1500);
