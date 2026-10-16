@@ -120,7 +120,8 @@ const BgResult = (() => {
       parts.push(r.moves.length
         ? `${who}の最善手は、${moveToSpeech(r.moves[0].move)}。`
         : `${who}では動かせる手がありません。`);
-      if (r.luck != null) parts.push(`${luckWords(r.luck)}です。`);
+      const luck = r.luck != null && luckWords(r.luck);
+      if (luck && luck !== "ふつうの目") parts.push(`${luck}です。`);   // an ordinary roll is not worth saying (TODO-100)
     }
     if (cubeText && !r.cube.rolled) parts.push(cubeText);
     parts.push(r.game_over ? `${NAME[r.favourite]}の勝ちで終局しています。` : standingToSpeech(r));
