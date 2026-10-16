@@ -70,6 +70,7 @@ const BgBoardView = (() => {
     drawPoints(svg, scene, onSelect);
     drawBar(svg, scene, onSelect);
     if (photo) return;   // the photo shows the checkers itself
+    if (scene.onRoll) drawWay(svg, scene.onRoll, home);
     drawBorneOff(svg, b, home);
     if (scene.dice) drawDice(svg, scene.dice, scene.onRoll);
     drawCube(svg, scene.cube, home);
@@ -207,6 +208,25 @@ const BgBoardView = (() => {
     const g = el("g", { class: "die" }, svg);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
     el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g).textContent = cube.at === "centre" ? "64" : String(cube.value);
+  }
+
+  // The way the side on roll goes, as a see-through U across the middle of the board (over the
+  // checkers, under the dice): from its farthest point along its far row, round at the end away from home, and back
+  // along its near row to home (TODO-092). 手前's far row is the upper one, 奥's the lower one.
+  function drawWay(svg, side, home) {
+    const r = 42, yTop = MID - r, yBot = MID + r;
+    const right = home === "right";
+    const inset = 82, xHome = right ? RIGHT - inset : B.x0 + inset, xTurn = right ? B.x0 + inset + r : RIGHT - inset - r;
+    const [y0, y1] = side === "white" ? [yTop, yBot] : [yBot, yTop];
+    const dir = right ? 1 : -1, head = 20;
+    const sweep = (y0 < y1) === right ? 0 : 1;
+    const d = `M${xHome},${y0} H${xTurn} A${r},${r} 0 0 ${sweep} ${xTurn},${y1} H${xHome - dir * head}`;
+    const tip = `${xHome},${y1} ${xHome - dir * head},${y1 - 13} ${xHome - dir * head},${y1 + 13}`;
+    const g = el("g", { class: "way", opacity: 0.6 }, svg);
+    el("path", { d, fill: "none", stroke: `var(--${side}-rim)`, "stroke-width": 12, "stroke-linecap": "round" }, g);
+    el("polygon", { points: tip, fill: `var(--${side}-rim)`, stroke: `var(--${side}-rim)`, "stroke-width": 4, "stroke-linejoin": "round" }, g);
+    el("path", { d, fill: "none", stroke: checkerFill(side), "stroke-width": 8, "stroke-linecap": "round" }, g);
+    el("polygon", { points: tip, fill: checkerFill(side) }, g);
   }
 
   // A move as arrows, one per die, with a red ring where a checker is hit.
