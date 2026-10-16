@@ -40,7 +40,7 @@
  "photo3": {"points": 24, "bar": true, "home": true, "dice": "not read", "cube": "ok"},
  "photo4": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "photo5": {"points": 22, "bar": true, "home": false, "dice": "not read", "cube": "ok"},
- "photo6": {"points": 8, "bar": true, "home": true, "dice": "ok", "cube": "not found"},
+ "photo6": {"points": 10, "bar": true, "home": true, "dice": "ok", "cube": "not found"},
  "screen1": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "screen2": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok"},
  "synth-cube-photo2-16": {"points": 22, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
