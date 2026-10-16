@@ -110,7 +110,7 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     winner = "white" if pos.off_white == 15 else "black" if pos.off_black == 15 else None
     if winner:
         result.update(game_over=True, favourite=winner,
-                      probabilities=None, equity=None, moves=None, cube=None)
+                      probabilities=None, equity=None, moves=None, cube=None, luck=None)
         return result
 
     # The cube question: the cube as it was before on_roll's (possible) double.
@@ -124,7 +124,7 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     match = None
     if match_length:
         match = (match_length, (score[on_roll], score[other(on_roll)]), crawford, ask[0] if ask else cube_value)
-    (win, wg, wbg, lg, lbg, equity), hint, moves = evaluate(
+    (win, wg, wbg, lg, lbg, equity), hint, moves, luck = evaluate(
         pid, plies, None if dice is None else tuple(dice), max_moves, ask, match)
     cube = _cube_result(hint, on_roll, ask[0], doubled, dice is not None) if hint else None
     if cube and dice is not None and not cube["double"]:
@@ -146,6 +146,7 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
         favourite=on_roll if (win > 0.5 if match_length else equity > 0) else other(on_roll),
         moves=moves,
         cube=cube,
+        luck=None if luck is None else round(luck, 3),   # the roll's luck for on_roll (TODO-098)
     )
     return result
 

@@ -110,9 +110,27 @@ def test_result_html():
     out = _result_js(f"""{{
       moves: R.html({r}, [3, 1]),
       cube: R.html({{...{r}, moves: null, cube: {json.dumps(cube)}}}, null),
+      far: [9.4, 9.6, 25.6, 29.6].map((v) => R.cubeHtml({{...{json.dumps(cube)}, double: false, proper: `No double, take (${{v}}%)`}})),
+      redouble: R.cubeHtml({{...{json.dumps(cube)}, value: 2, double: false, proper: "No redouble, take (25.6%)"}}),
+      tooGood: R.cubeHtml({{...{json.dumps(cube)}, double: false, too_good: true, proper: "Too good, pass (5.0%)"}}),
+      luck: [0.601, 0.6, 0.3, -0.29, -0.301, -0.6, -0.601].map((x) => R.html({{...{r}, luck: x}}, [3, 1])),
+      luckSpeech: R.speechText({{...{r}, luck: -0.65}}, [3, 1]),
       rolled: R.html({{...{r}, cube: {json.dumps(cube | {"rolled": True})}}}, [3, 1]),
       rolledSpeech: R.speechText({{...{r}, cube: {json.dumps(cube | {"rolled": True})}}}, [3, 1]),
     }}""")
+    # TODO-097: gnubg's percentage with words; 10% and 30% start the next words
+    assert [next(w for w in ("一歩手前", "少し早い", "まだ遠い") if w in h) for h in out["far"]] == ["一歩手前", "少し早い", "少し早い", "まだ遠い"]   # by the rounded number
+    assert "ダブルまでの遠さ 26%・ダブルにはまだ少し早い" in out["far"][2] and "gnubg: No double, take (25.6%)" in out["far"][2]
+    assert "ギャモン狙いをやめてダブルするまでの遠さ 5%・ダブルの一歩手前" in out["tooGood"]
+    assert "遠さ" not in out["cube"]   # "Double, pass": gnubg gives no percentage
+    assert "リダブルまでの遠さ 26%・リダブルにはまだ少し早い" in out["redouble"]
+    # TODO-098: the roll's luck by gnubg's levels, after the best move's heading; spoken in words only
+    assert [h.split("Luck ")[1].split("</p>")[0] for h in out["luck"]] == [
+        "+0.601・とても良い目", "+0.600・良い目", "+0.300・ふつうの目", "-0.290・ふつうの目", "-0.301・悪い目", "-0.600・悪い目",
+        "-0.601・とても悪い目"]   # as gnubg: beyond the levels, not at them
+    assert out["luck"][0].index("最善手（") < out["luck"][0].index("Luck ") < out["luck"][0].index('<ol class="moves">')
+    assert "最善手は、バーから22でヒット、13から8を2つ、6から上がり。とても悪い目です。" in out["luckSpeech"]
+    assert "Luck" not in out["moves"] and "目です" not in out["rolledSpeech"]   # no luck in the result: nothing shown
     # TODO-096: with dice, the double that was due before the roll comes before the best move
     assert out["rolled"].index("<h2>キューブ（振る前）</h2>") < out["rolled"].index("最善手（白・ダイス 3-1）")
     assert "白の人は振る前に <b>ダブルすべきだった</b>" in out["rolled"]
