@@ -113,10 +113,10 @@ float の OpenCV（`HoughLinesP`・`LineSegmentDetector` など）も候補に�
 ユーザーの決定（2026-10-16）: arm64 で流していた理由のうち、CPU による読みの違いは TODO-074 でやめた。残る gnubg の aarch64 の wheel の確認は、
 依存が変わるときだけ要り、壊れていても Pi の `uv sync --frozen` と再起動で分かるので、毎回の PR では流さない。
 
-- [ ] `.github/workflows/test.yml` の matrix から `ubuntu-24.04-arm` を消す
-- [ ] `.github/workflows/gnubg-wheel.yml` で、ビルドした wheel を入れて `import gnubg` できるかを確かめてから Release に置く
-- [ ] CLAUDE.md の「共同開発」に、依存（`pyproject.toml`・`uv.lock`）を変えた PR は docs/PI_CHECKS.md に Pi での `uv sync --frozen` と起動の確認を足す、と書く
-- [ ] README・docs の「x86_64 と arm64 で確かめる」の記述を合わせる
+- [x] `.github/workflows/test.yml` の matrix から `ubuntu-24.04-arm` を消す
+- [x] `.github/workflows/gnubg-wheel.yml` で、ビルドした wheel を入れて `import gnubg` できるかを確かめてから Release に置く
+- [x] CLAUDE.md の「共同開発」に、依存（`pyproject.toml`・`uv.lock`）を変えた PR は docs/PI_CHECKS.md に Pi での `uv sync --frozen` と起動の確認を足す、と書く
+- [x] README・docs の「x86_64 と arm64 で確かめる」の記述を合わせる
 
 **無駄を省く工夫:** 対象は `rg -n -e arm64 -e aarch64 -e ubuntu-24.04-arm --hidden -g '!archives' -g '!uv.lock'` で拾う（recognizer の README・exact.py の経緯は対象外）。
 `gnubg-wheel.yml` はタグを打たないと走らないので、verifier は書いた手順を読むだけにし、実際に走らせるのは次に wheel を作り直すとき。

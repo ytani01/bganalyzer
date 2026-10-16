@@ -84,6 +84,7 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 - **作業の前に main を pull する。**
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
 - **マージ後に Pi で確かめる必要がある変更は、その PR の中で docs/PI_CHECKS.md に項目を足す**
+  依存（`pyproject.toml`・`uv.lock`）を変えた PR では、Pi で `uv sync --frozen` と再起動が通るかの項目を必ず足す（GitHub Actions は arm64 で流さない。TODO-075）
 - **マージの直前に最新の main を取り込み、GitHub Actions の `test` が通ってからマージする（`accuracy` が走った PR はそれも。
   文書だけの PR では `test` は走らないので要らない）。** 落ちていたらマージしない。
   テスト全体は手元で流さない（CI と重なる。`.claude/hooks/no-local-pytest.py` が止める）。
