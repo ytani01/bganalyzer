@@ -1,9 +1,9 @@
-"""Check the PWA on the Pi the way a phone would, in a headless browser (docs/raspi.md).
+"""Check the PWA the way a phone would, in a headless browser (docs/raspi.md).
 
     uv run -q --no-project --with playwright python tools/pi_ui_check.py          # all checks
     uv run -q --no-project --with playwright python tools/pi_ui_check.py collect  # some of them
 
-Run it on the Pi, next to the running app (bganalyzer.service). The browser is the Pi's own
+Run it on the local host, next to the running app (bganalyzer.service). The browser is the host's own
 /usr/bin/chromium, so Playwright downloads nothing. It sends only samples/ photos (public in this
 repository). The "collect" check saves one pair in collected/ and removes it again.
 What it cannot see stays for the phone: the voice itself, iPhone's share sheet, attaching files.
