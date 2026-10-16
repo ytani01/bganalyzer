@@ -10,7 +10,7 @@ Claude のプロジェクトのメモ（MEMORY）は、そのプロジェクト�
 ## 0. 引き継ぎ（2026-10-14 02:20 UTC）
 
 ユーザーのアカウントの Claude の使用量が上限に近いので、続きを別のアカウントの Claude プロジェクトに引き継ぐ。
-引き継ぎ先は main を pull し、CLAUDE.md・このファイル・TODO.md・docs/PI_CHECKS.md を読んでから続ける。
+引き継ぎ先は main を pull し、CLAUDE.md・このファイル・TODO.md を読んでから続ける。
 
 - **今の状態:** Pi（本番）は analyzer 0.39.0 / recognizer 0.21.2（93285de）（2026-10-15 に Pi で確認。今の版は `/bg/version` で見る）。アプリは https://bg.tail5c266.ts.net/bg/
   （`/` は 404、`/bg/version` で版が見られる）。クラウドの Claude からも読み取り専用で確かめられる（アカウントによっては shell から届かず、WebFetch の GET だけ通る）。Pi に書き込む操作
@@ -30,8 +30,8 @@ Claude のプロジェクトのメモ（MEMORY）は、そのプロジェクト�
   4. TODO-025 のキューブの数字は、ユーザーの盤でキューブを 2・4・8・16 にした写真が届くまで待つ。
   5. TODO-027 は 2026-10-14 に決着した（recognizer 0.11.0、PI-022）。TODO-028 は 2026-10-14 にユーザーが再開を指示し、四隅の推定を作り直した（recognizer 0.10.0。3.6% 以内 7 → 14 枚）。TODO-028 も決着した。
 - **運用:** ユーザーとは日本語。自動マージ（最新 main を取り込み、GitHub Actions の test が通り（文書だけの PR では test は走らない。TODO-064）、
-  差分を見直して問題がなければ自分でマージし、一言報告）。Pi で確かめることは同じ PR で docs/PI_CHECKS.md に足し、
-  ユーザーに「Pi の Claude に『pull して PI_CHECKS を確かめて』と頼んで」と伝える。版の上げ方は CLAUDE.md の「バージョン」。
+  差分を見直して問題がなければ自分でマージし、一言報告）。Pi で確かめることは同じ PR で TODO.md のその項目に `- [ ] Pi:` の行で足し、
+  ユーザーに「Pi の Claude に『pull して TODO.md の Pi の確認をして』と頼んで」と伝える。版の上げ方は CLAUDE.md の「バージョン」。
 
 ## 1. GitHub で招待する（ユーザーがやる）
 
@@ -93,7 +93,7 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
 - **公開先は自宅の Raspberry Pi + Tailscale Funnel**（`https://<Pi>.<tailnet>.ts.net/bg/`、無料・ドメイン不要。同じ Pi で別のアプリも別のパスで公開する予定があるので、アプリはパスの下でも動くようにしてある）（手順は [raspi.md](raspi.md)）。2026-10-12 にユーザーが Pi で動くことを確かめた（TODO-002 完了）。
   ホーム画面への追加には HTTPS が必要。サーバーレス関数は不可、ワーカー1つで常駐。
 - **Docker は使わない**（2026-10-15、TODO-056）。Pi も uv で入れ、systemd のユーザー unit（`bganalyzer.service`）で常駐させる。
-  起動して解析まで通るかは、GitHub Actions の `test` が x86_64 で確かめる（arm64 は依存を変えた PR で docs/PI_CHECKS.md に Pi の確認を足す。TODO-075）。
+  起動して解析まで通るかは、GitHub Actions の `test` が x86_64 で確かめる（arm64 は依存を変えた PR で TODO.md に Pi の確認の行を足す。TODO-075）。
   gnubg の PyPI パッケージには arm64 の Linux の wheel もソース配布もないので、StonesAndDice/gnubg-pypi の固定したコミットから
   `.github/workflows/gnubg-wheel.yml` でビルドして Release に置き、`pyproject.toml` が aarch64 のときに使う（TODO-055）。
   gnubg の版を上げるときはそのコミットと URL も合わせる。
@@ -106,8 +106,8 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
   同じ撮影者・同じ初期配置の Tavli 7 枚は消さない（ユーザーの決定）。
   著作権のある盤面図（USBGF）は URL と正解だけを `samples/external/` に置き、画像は入れない（TODO-011）。
 - **Pi での確認（TODO-023、2026-10-13）:** マージ後に Pi でしか確かめられないこと（Pi での所要時間など）は
-  [PI_CHECKS.md](PI_CHECKS.md) に足す。Pi の上の Claude Code が git pull のあとに読んで確かめ、結果を書き込む（CLAUDE.md）。
-  2026-10-13 から TODO.md と同じ決まり（通し番号・担当・`- [ ]`・決着したら `archives/pi/` へ）で管理する（TODO-026）。
+  TODO.md のその項目に `- [ ] Pi:` の行で足す。Pi の上の Claude Code が git pull のあとに読んで確かめ、結果を書き込む（CLAUDE.md）。
+  2026-10-17 までは docs/PI_CHECKS.md で別に管理していた（TODO-026。決着した 50 件は `archives/pi/`）。
 - **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR（文書だけの PR は除く。TODO-064）と main への push で `uv run pytest analyzer` を実行する。
   `accuracy`（`.github/workflows/accuracy.yml`、TODO-035）は recognizer・samples・依存を変える PR で、認識の精度が
   `recognizer/accuracy_baseline.json` より下がっていないかを確かめる。

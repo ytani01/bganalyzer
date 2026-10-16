@@ -103,7 +103,57 @@ tailscale funnel status
 
 - Pi を再起動しても、落ちても、systemd がアプリを自動で立ち上げ直します（`Restart=always`）。
 - 更新は `main` を pull して依存を揃え、立ち上げ直すだけです。`bganalyzer.service` が変わったときだけは、「2.」の `sed` から `enable --now` までをやり直し、`systemctl --user restart bganalyzer` します。
-- 更新したら [PI_CHECKS.md](PI_CHECKS.md) の未確認の項目を確かめます（Pi の上の Claude Code に「PI_CHECKS を確かめて」と頼めます）。
+- 更新したら、下の「更新したあとに確かめる」のとおり TODO.md の `- [ ] Pi:` の行を確かめます（Pi の上の Claude Code に「pull して TODO.md の Pi の確認をして」と頼めます）。
+
+## 更新したあとに確かめる
+
+マージしたあと Pi（本番）でしか確かめられないことは、TODO.md のその項目に `- [ ] Pi:` / `- [ ] スマホ:` の行で書いてあります（2026-10-17 までは docs/PI_CHECKS.md で別に管理していた。決着した 50 件は `archives/pi/`）。
+Pi の上の Claude Code は、更新したあと TODO.md の `- [ ] Pi:` の行を確かめ、結果を書き込みます。スマホの画面の操作は、まず下の「スマホの代わりに確かめる」で確かめ、それでも確かめられないこと（実際の音声、iPhone の共有の画面など）だけを `- [ ] スマホ:` に残してユーザーに頼みます。
+
+### スマホの代わりに確かめる
+
+Pi の上で、Playwright から `http://127.0.0.1:8000/` の PWA をスマホと同じ画面の大きさで操作する。
+ブラウザは Pi の `/usr/bin/chromium` を使い、Playwright は `uv run --no-project` でその場で入れる
+（pyproject.toml には入れていない）。
+
+```bash
+uv run -q --no-project --with playwright python tools/pi_ui_check.py           # 全部
+uv run -q --no-project --with playwright python tools/pi_ui_check.py collect   # 名前を並べると、その確認だけ
+```
+
+1 つ失敗すると終了コードが 1 になる。どれも `samples/screen1.png`（ダイス 4-2 の写ったアプリの画面）を読み取ってから確かめる。
+
+| 名前 | 確かめること |
+|---|---|
+| `double` | キューブを片側・「ダブルされたところ」にしたまま読み取っても、写真のダイスで最善手が出て、キューブの説明が「ダイスがあるので、最善手を出します。」になる |
+| `speech` | 「読み上げ」ボタンで読み上げる文が 1 つで、最善手を含み、`%`・「勝率」・「ピップ」・小数を含まない（音声は出さず、文だけを取り出す） |
+| `export` | 「精度改善用に書き出す」で、写真と `.truth.json` の 2 つがダウンロードされ、盤面とダイスが画面と同じ（共有の画面が無いときの動き） |
+| `export-denied` | `export` と同じことを、共有の画面がファイルを断る（`NotAllowedError`、Android の Chrome が `.json` を断るとき）ときに確かめる |
+| `collect` | 「解析の設定」の下のスイッチを押して切り替える。「Pi に残す」がオフなら `collected/` が増えず、オンなら 1 組でき、`evaluate.py` で測れる。作った組はそのあと消す |
+
+画面の操作が要る項目を足したら、ここにも確認を足す。
+
+### クラウドから確かめられること
+
+Pi のアプリは Tailscale Funnel で https://bg.tail5c266.ts.net/bg/ に公開している（ルートの `/` は 404）。
+クラウドの Claude もここには届くので、**外から見えることはクラウドで先に確かめ、TODO.md の `Pi:` の行に「クラウドから」と書いてよい。**
+
+```bash
+uv run python tools/check_pi.py          # --all で samples/ の全部
+```
+
+`/version`（版とコミット、main からコードが変わっていないか）、静的ファイルが手元と同じか、
+`samples/` の公開写真 5 枚を `/analyze-photo`（0-ply）に送り、Pi の読み取りが手元と同じか・正解と何点合うかを出す。
+画面は Playwright の Chromium で `/bg/` を開けば見られる。
+クラウドの環境によっては、プロキシが ts.net を通さず `Tunnel connection failed: 403` になる（2026-10-14、引き継ぎ先のアカウントで確認）。
+そのときでも、Claude の WebFetch ツールでは GET（`/bg/version` など）が読めることがある（2026-10-14、同じアカウントで確認）。
+POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi の Claude Code に任せる。
+
+クラウドからは**やらない・できない**こと（Pi の上の Claude Code かユーザーに残す）:
+
+- `git pull` と `systemctl --user restart bganalyzer`（Pi の更新そのもの）、アプリのログ、`collected/` の中身
+- `/samples` に送ること（Pi に写真が残る）。送ってよいのはリポジトリで公開している `samples/` の写真だけ
+- スマホ実機での操作（カメラ、共有、読み上げ、ホーム画面のアプリ）
 
 ## Claude に四隅を選ばせる（任意）
 
