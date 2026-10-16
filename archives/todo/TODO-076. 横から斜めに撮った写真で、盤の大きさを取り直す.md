@@ -35,6 +35,7 @@
 
 - photo5 は 0 → 22/24。基準の書き直しでは、photo5 が足されたほかはどのサンプルも変わらなかった（954/1056）
 - 分岐を効かなくすると photo5 は 10/24 に落ちる（verifier）。collected-er0y2w・commons-nardy-midgame は 21・16 のまま
+- PR の CI の `test` で、サンプルを並べて調べるテストが 2 つ落ちた。photo5 を `test_steep_photo_is_flagged` の急な斜めの一覧に足し、`test_home_side_is_guessed_from_the_checkers` からは外した（正解の盤面から推しても home を外す局面のため）
 
 ## 分担の振り返り
 
