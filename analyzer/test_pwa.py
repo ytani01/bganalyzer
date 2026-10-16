@@ -397,6 +397,7 @@ def test_board_model():
                                                return back.top === top && back.c === c; }))),
         clear: B.set(s, 5, "white", 0).points[5], capped: B.set(s, 1, "black", 20).points[1],
         countOf: [B.countOf(s, 0, "black"), B.countOf(s, 0, "white"), B.countOf(edited, "bar", "black")],
+        number: [B.number(0, "white"), B.number(23, "white"), B.number(0, "black"), B.number(23, "black"), B.number(5, "black")],
       };
     })()""")
     assert out["counts"] == {"onW": 15, "onB": 15, "offW": 0, "offB": 0}
@@ -407,6 +408,7 @@ def test_board_model():
     assert out["mirrorTwice"] and out["mirrored"] == [-5, 0, 0, 0, 3, 0, 5, 0, 0, 0, 0, -2]
     assert out["inverse"]
     assert out["clear"] == 0 and out["capped"] == -15 and out["countOf"] == [2, 0, 1]
+    assert out["number"] == [1, 24, 24, 1, 19]   # each side counts from its own home (TODO-089)
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
