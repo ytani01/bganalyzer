@@ -27,7 +27,7 @@ Canonical frame (ground plane, pixels): x 0..W left->right, y 0..H top->bottom.
 
 This file runs the pipeline (recognize) and maps the counts to a Position. The steps live in
 geometry.py (1-2), colours.py (3), checkers.py (4-5) and overlay.py (what the app draws over the
-photo); dice.py and cube.py read the dice and the cube, tracing.py records each step's value.
+photo); dice.py and cube.py read the dice and the cube.
 """
 from __future__ import annotations
 
@@ -46,7 +46,6 @@ from geometry import (H_CAN, OBLIQUE_WARN_DEG, TRI_DEPTH, Layout, camera_from_h,
                       fit_columns_to_checkers, refine, refine_tips, snap_layout, to_ground, view_tilt_deg)
 from overlay import geometry_checkers, geometry_counts, geometry_frame, geometry_square, geometry_tips, save_debug
 from position import Position
-from tracing import trace as _trace
 
 # The recognizer's version (the reading code in recognizer/: board.py and the modules it uses, corners.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
@@ -76,10 +75,9 @@ def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
 
 
 def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
-              a_ratio=None, debug_prefix=None, method="circles", trace=None, progress=None):
+              a_ratio=None, debug_prefix=None, method="circles", progress=None):
     """corners: TL, TR, BR, BL of the playing area as seen from the bottom player.
     home: 'left', 'right' or 'auto' (guessed from the checkers; info['home'] says which).
-    trace: a list to append (step, hash of its value) to, for finding where two machines part.
     progress: called as progress(stage, data) when each stage is done ("fit" four times: the frame
     fitted to the frame's edges twice, then to the triangles twice; then "tips", "checkers", "counts",
     "dice", "cube"), with the parts of info["geometry"] it found (image pixels), for showing the
@@ -87,7 +85,6 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     finder = {"hough": "hough", "radial+hough": "both"}.get(method, "radial")
     emit = progress or (lambda stage, data: None)
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
-    _trace(trace, "image", img)
     m = 60
     corners = exact.snap(np.float64(corners).reshape(4, 2), 1 / 64)
     H0 = exact.homography(np.float64([(0, 0), (1, 0), (1, 1), (0, 1)]), corners)
@@ -97,24 +94,18 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     br = bar_ratio or 0.16
     a = aspect * H_CAN / (2 + br)
     lay = snap_layout(Layout(a=a, bar=a * br))
-    _trace(trace, "start", [H0, K, aspect, a])
     # 1. geometry: frame edges, then the printed triangles
     H, quality, lay = refine(img, corners, lay, m)
-    _trace(trace, "refine1", [H, quality, lay.a, lay.bar])
     emit("fit", geometry_frame(H, lay) | dict(by="edges", round=1))
     H, quality, lay = refine(img, exact.apply_h(H, lay.src_pts()), lay, m)
-    _trace(trace, "refine2", [H, quality, lay.a, lay.bar])
     emit("fit", geometry_frame(H, lay) | dict(by="edges", round=2))
     tips = []
     reach = 1.2
     for round_ in range(2):
         size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
         ground = to_ground(img, H, m, size)
-        _trace(trace, "ground_loop", ground)
         lay = fit_columns(ground, lay, m, reach)
-        _trace(trace, "fit_columns", [lay.a, lay.bar, lay.cols])
         H, lay, tips = refine_tips(img, H, lay, m)
-        _trace(trace, "refine_tips", [H, lay.a, lay.bar, lay.cols, tips])
         emit("fit", geometry_frame(H, lay) | dict(by="triangles", round=round_ + 1))
         if lay.cols is None:
             # fitted to the triangles: from here on only small corrections, as other
@@ -122,25 +113,19 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
             reach = 0.4
     size = (int(lay.w + 2 * m), int(lay.h + 2 * m))
     ground = to_ground(img, H, m, size)
-    _trace(trace, "ground", ground)
     tips = find_tips(ground, lay, m)
-    _trace(trace, "tips", tips)
     emit("tips", dict(tips=geometry_tips(tips, H)))
     board = board_colours(ground, lay, m, tips)
-    _trace(trace, "board_colours", board)
     pitch = lay.pw * 1.05
     # 2. counting
     ground_lab = cv2.cvtColor(ground, cv2.COLOR_BGR2Lab).astype(np.float32)
     tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
     tri_len = np.median([t[4] for t in tips]) if tips else TRI_DEPTH * lay.h
     # measured with all the circles: which ones show the triangle's sides must not change the size
-    _trace(trace, "tri_map", [tri_map, tri_len])
     circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, drop_shown=False, finder=finder)
-    _trace(trace, "circles1", circles)
     if len(circles) >= 4:   # checkers may be wider than a point: measure them
         pitch = float(2 * np.median([c[2] for c in circles]))
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, finder=finder)
-    _trace(trace, "circles2", [pitch, circles])
     if len(circles) >= 4:   # learn the board colours again without the checkers on it
         mask = np.zeros(ground.shape[:2], np.uint8)
         for x, y, r, *_ in circles:
@@ -148,7 +133,6 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         board = board_colours(ground, lay, m, tips, mask.astype(bool))
         tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, finder=finder)
-    _trace(trace, "circles3", [board, circles])
     lay2 = fit_columns_to_checkers(lay, circles)
     if lay2.cols != lay.cols:
         lay = lay2
@@ -156,9 +140,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, finder=finder)
     # last, so that the added checkers do not change the measured pitch or the board colours
     circles = add_hidden_stacks(ground, lay, m, pitch, circles)
-    _trace(trace, "circles4", [lay.cols, circles])
     runs, bar, cc = count_from_circles(circles, lay, pitch)
-    _trace(trace, "count", [sorted(runs.items()), bar, cc])
     if method == "slots" and cc is not None:   # experimental (TODO-032): slots.py
         import slots
         labf = cv2.GaussianBlur(ground_lab, (0, 0), 1.5)
@@ -188,8 +170,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     # corners in image pixels (TL TR BR BL), columns and bar edges as fractions of the width.
     info["geometry"] = geometry_frame(H, lay) | dict(tips=geometry_tips(tips, H), checkers=checkers, counts=counts)
     info["dice"] = dice_reader.read_dice(img, H, lay, pitch, circles,
-                                         debug=debug_prefix and debug_prefix + "_dice.jpg", trace=trace)
-    _trace(trace, "dice", info["dice"])
+                                         debug=debug_prefix and debug_prefix + "_dice.jpg")
     # the dice and the cube found, for the reading overlay too (the dice read with confidence in the
     # fields: the ones dice_read can come from)
     info["geometry"]["dice"] = [dict(quad=geometry_square(d, H), value=d["value"])
@@ -197,7 +178,6 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     emit("dice", dict(dice=info["geometry"]["dice"]))
     info["cube"] = cube_reader.read_cube(img, H, lay, pitch, circles, info["dice"]["dice"],
                                          debug=debug_prefix and debug_prefix + "_cube.jpg")
-    _trace(trace, "cube", info["cube"])
     cube = info["cube"]
     info["geometry"]["cube"] = cube and dict(quad=geometry_square(cube, H), at=cube["at"], value=cube.get("value"))
     emit("cube", dict(cube=info["geometry"]["cube"]))

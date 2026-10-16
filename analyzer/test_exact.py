@@ -1,5 +1,4 @@
 """recognizer/exact.py: arithmetic that comes out the same on every CPU (TODO-046)."""
-import json
 import sys
 from pathlib import Path
 
@@ -60,21 +59,6 @@ def test_kmeans_in_integers():
     assert len(set(lbl[:50])) == 1 and len(set(lbl[50:])) == 1 and lbl[0] != lbl[50]
     assert centres.dtype.kind == "i"
     assert (exact.kmeans(pts, 2)[0] == lbl).all()
-
-
-def test_a_sample_reads_like_the_cpu_reference():
-    # every step of the reading, hashed, as recognizer/cpu_reference.json has it (made with
-    # trace_cpu.py --update; GitHub Actions' test runs this on x86_64 and arm64; trace_cpu.py check does all samples)
-    import cv2
-    import board
-
-    ref = json.loads((ROOT / "recognizer" / "cpu_reference.json").read_text())
-    assert ref["meta"]["recognizer"] == board.__version__, "run recognizer/trace_cpu.py --update"
-    name = "commons-diagram-prime"
-    t = json.loads((ROOT / "samples" / f"{name}.truth.json").read_text())
-    steps = []
-    board.recognize(cv2.imread(str(ROOT / "samples" / t["image"])), t["corners_TL_TR_BR_BL"], home=t["home"], trace=steps)
-    assert [list(s) for s in steps] == ref["samples"][name]["steps"]
 
 
 @pytest.mark.parametrize("v", [0.1, -2.75, 1e6 / 3])

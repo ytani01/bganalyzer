@@ -13,7 +13,6 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000   # API と
 git pull && uv sync --frozen && systemctl --user restart bganalyzer   # Raspberry Pi の常駐を更新（docs/raspi.md）
 uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
 uv run python recognizer/check_accuracy.py                       # 認識の精度が基準より下がっていないか（CI の accuracy）
-uv run python recognizer/trace_cpu.py check                      # 読み取りが途中の値まで基準と同じか（全サンプル。CI では走らせない）
 uv run python tools/check_pi.py                                  # Pi の公開サーバーを外から確かめる
 uv run -q --no-project --with playwright python tools/pi_ui_check.py   # Pi の上で、スマホの代わりに PWA を操作して確かめる
 uv run -q --no-project --with playwright python tools/ui_snapshot.py record a.json   # PWA を操作して見える画面を記録（compare a.json b.json で 2 つの版を比べる）
@@ -45,7 +44,7 @@ analyzer と recognizer は別々にバージョンを持つ（`analyzer/app.py`
 API の `/version` と PWA のヘッダーに、両方とコミット ID が出る。
 **そのディレクトリのコードを変える PR で、その方を上げる**（直しは 0.1.0 → 0.1.1、機能の追加や変更は 0.1.0 → 0.2.0）。
 analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同じにする（端末に古い app.js が残っているとヘッダーに出る）。
-ドキュメントやテストだけの変更では上げない。recognizer の測る道具（`evaluate.py`・`check_accuracy.py`・`check_corners.py`・`trace_cpu.py`・`collected.py` の比べ方など）だけの変更でも上げない（アプリの読み取りの結果は変わらないため。2026-10-15 ユーザーが決めた）。`pyproject.toml` の version は使わない。
+ドキュメントやテストだけの変更では上げない。recognizer の測る道具（`evaluate.py`・`check_accuracy.py`・`check_corners.py`・`collected.py` の比べ方など）だけの変更でも上げない（アプリの読み取りの結果は変わらないため。2026-10-15 ユーザーが決めた）。`pyproject.toml` の version は使わない。
 
 ## 精度の確認
 
@@ -54,12 +53,9 @@ analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同
 GitHub Actions の `accuracy` は、サンプルごとの結果が `recognizer/accuracy_baseline.json` より悪くなると落ちる。
 良くなったとき・サンプルを足した／消したときは `uv run python recognizer/check_accuracy.py --update` で基準を書き直して同じ PR に入れる。
 
-**読み取りはどの CPU でも途中の値まで同じ**（recognizer 0.14.0、TODO-046）なので、基準はどの機械（Pi でも）で更新してよい。
-recognizer のコードは、画像を 8 ビットか整数で扱い、幾何は `recognizer/exact.py` で計算する。float の OpenCV の処理
-（`warpPerspective`、float の `GaussianBlur`・`Sobel`、`kmeans`、`findHomography`）や NumPy の `@`・`linalg`・`polyfit`・`np.interp`・`cos`・`exp` などを
-読み取りに入れない（CPU によって最後の桁が変わり、読みが変わる）。recognizer を変えた PR は
-`uv run python recognizer/trace_cpu.py --update` で `recognizer/cpu_reference.json` も書き直して同じ PR に入れる。
-GitHub Actions の `test` が x86_64 と arm64 で 1 サンプルだけそれと同じかを確かめる（全サンプルの `cpu-match` は TODO-064 でやめた）。
+CPU による読みの違いは気にしない（TODO-074）。今の読み取りは整数と `recognizer/exact.py` で計算していて、どの機械でも同じに読むので、
+基準はどの機械（Pi でも）で更新してよい。これからの変更で float の処理を使ってもよい。
+そのせいで Pi と GitHub Actions で結果が分かれたら、GitHub Actions の結果に合わせて基準を書き直す。
 
 ## Raspberry Pi で確かめること
 

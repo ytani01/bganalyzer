@@ -13,9 +13,10 @@ network) and compares each sample with accuracy_baseline.json:
   uv run python recognizer/check_accuracy.py            # check (exit 1 on a regression)
   uv run python recognizer/check_accuracy.py --update   # rewrite the baseline with this run
 
-Since recognizer 0.14.0 (TODO-046) every machine reads every sample the same, bit for bit
-(x86_64 with or without AVX-512, GitHub's arm64 runners, the Raspberry Pi; recognizer/trace_cpu.py
-checks it), so the baseline may be updated on any of them and no slack is needed.
+Since recognizer 0.14.0 (TODO-046) the reading is in integers and gave the same results on every
+machine tried (x86_64, arm64, the Raspberry Pi), so the baseline may be updated on any of them.
+That is no longer checked (TODO-074): if code that rounds differently by CPU makes the Pi and GitHub
+Actions part, update the baseline on GitHub's machine.
 """
 import glob, json, os, sys
 from concurrent.futures import ProcessPoolExecutor

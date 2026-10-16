@@ -5,7 +5,7 @@ default) is tried on every sample, and the results compared with the settings as
 bar, home side, dice, cube and the cube's number (the same measures as check_accuracy.py). A setting is
 suggested only when it reads more points and nothing gets worse on any sample. Then all the suggested
 settings are tried together. Nothing in the code is changed: the report says what to change, and that
-goes in as a PR like any other change to the recognizer (CLAUDE.md: the accuracy and CPU baselines).
+goes in as a PR like any other change to the recognizer (CLAUDE.md: the accuracy baseline).
 
   uv run python recognizer/tune.py                                   # samples/ (not the synthetic copies)
   uv run python recognizer/tune.py --collected collected             # and the pairs kept with 「Pi に残す」 (on the Pi)
@@ -192,7 +192,7 @@ def main(argv=None):
         gain, better, worse = compare(base, res)
         lines += ["", f"全部を一緒に変えると: {gain:+d} ポイント、良くなった {len(better)}、悪くなった {len(worse)}"
                   + ("" if not worse else "（" + "、".join(worse[:8]) + "）"), "",
-                  "採るときは、コードの定数を変える PR を作り、`check_accuracy.py --update` と `trace_cpu.py --update` を同じ PR に入れる（CLAUDE.md）。"]
+                  "採るときは、コードの定数を変える PR を作り、`check_accuracy.py --update` を同じ PR に入れる（CLAUDE.md）。"]
     lines.append(f"\nかかった時間: {(time.time() - t0) / 60:.0f} 分")
     report = "\n".join(lines) + "\n"
     print("\n".join(lines[lines.index("## 候補"):]))

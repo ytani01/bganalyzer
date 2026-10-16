@@ -17,8 +17,8 @@ Claude のプロジェクトのメモ（MEMORY）は、そのプロジェクト�
   （「Pi に残す」の保存など）はクラウドから行わない。
 - **途中の PR:** なし。#86（`tools/check_pi.py`）は 2026-10-14 に引き継ぎ先がマージした（引き継ぎ先のクラウドではプロキシで ts.net に届かず、実行は試せなかった）。
 - **2026-10-15:** TODO-045（盤の中のキューブ）・TODO-044（模様のある駒）・TODO-046（読み取りを CPU で変わらない計算に）を決着させた。
-  recognizer 0.14.0 から、読み取りは x86_64 と Pi で途中の値まで同じ（CLAUDE.md の「精度の確認」。recognizer を変える PR は
-  `recognizer/trace_cpu.py --update` も要る）。精度の基準はどの機械で更新してもよい。
+  recognizer 0.14.0 から、読み取りは x86_64 と Pi で途中の値まで同じ。精度の基準はどの機械で更新してもよい。
+  TODO-074（2026-10-16）で CPU による違いを確かめるのをやめた（`trace_cpu.py`・`cpu_reference.json`・`tracing.py` を消した）。
 - **次の一手（おすすめ順）:**
   1. TODO-033 は済み（2026-10-14、ユーザーの判断で写真のダイスを優先。analyzer 0.25.2、PI-017）。
      TODO-035 も済み（2026-10-14、PR #99）。recognizer を変える PR では GitHub Actions の `accuracy` が精度の低下を見る。
@@ -116,7 +116,7 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
   analyzer は gnubg の呼び出しを `engine.py`、`POST /samples` を `samples.py`、リクエストの型を `models.py` に分けた。
   PWA は結果の表と読み上げの文を `static/result.js`（`BgResult`）に分けた。
   recognizer は `board.py` を `geometry.py`（遊戯面の位置）・`colours.py`（盤の色）・`checkers.py`（駒と数え方、しきい値）・
-  `overlay.py`（写真に重ねる読み取りの様子）・`tracing.py` に分け、`board.py` は `recognize` だけにした。
+  `overlay.py`（写真に重ねる読み取りの様子）・`tracing.py`（TODO-074 で消した）に分け、`board.py` は `recognize` だけにした。
   **`tune.py` のしきい値の名前は `checkers.CIRCLE_MIN_SCORE` などに変わった**（`COL_MIN_SCORE` だけ `geometry.`）。
 - **PWA の作りを変えた（2026-10-15、analyzer 0.39.0。画面と動きは同じ）:** 状態は `app.js` の `state` 1 つにまとめ、
   `update(patch)` → `render()` で画面に出す一方向の流れにした（詳しくは analyzer/README.md の「作り」）。

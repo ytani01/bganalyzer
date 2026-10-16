@@ -76,7 +76,7 @@ float の OpenCV（`HoughLinesP`・`LineSegmentDetector` など）も候補に�
 
 「駒を物差しにする」案は TODO-071 に分けた（2026-10-16 ユーザー）。
 
-前提: 適当に撮った写真に使えること（撮り方・盤への細工に頼る案は採らない。2026-10-16 ユーザーが決めた）。Pi の CPU で動くこと。読み取りはどの CPU でも同じ結果にする（CLAUDE.md の「精度の確認」）ので、float の処理に頼る手法はその点も書く。
+前提: 適当に撮った写真に使えること（撮り方・盤への細工に頼る案は採らない。2026-10-16 ユーザーが決めた）。Pi の CPU で動くこと。CPU による読みの違いは気にしない（TODO-074）。
 
 **無駄を省く工夫:** 試しの実装や全件の測定はしない。今のやり方の弱点は TODO-061 の報告（`archives/agents/TODO-061/`）を読んで使う
 
@@ -95,12 +95,12 @@ float の OpenCV（`HoughLinesP`・`LineSegmentDetector` など）も候補に�
   直すと元の四隅と読みに戻るかを測る
 - [ ] 結果を選択肢にして報告する（例: 大きすぎるときだけ縮める／両方向／採らない）
 - [ ] 採ると決まったら `board.py` に入れ、`evaluate.py`・`check_accuracy.py` で今より悪くならないことを確かめる
-  （recognizer の版、README の「精度」、`accuracy_baseline.json`・`cpu_reference.json` の更新も）
+  （recognizer の版、README の「精度」、`accuracy_baseline.json` の更新も）
 
 **何を決めるか:** 直す範囲（上の例）。**いつ聞くか:** 測った結果の報告のあと。
 
 前提: 正解の四隅からでも、横幅 ÷ 駒の直径は盤ごとに 12.5〜14.9 とばらつく（`archives/agents/TODO-068/README.md`）ので、決まった比に合わせると
-普通の盤を壊すおそれがある。読み取りはどの CPU でも同じ結果にする（CLAUDE.md の「精度の確認」）。
+普通の盤を壊すおそれがある。
 
 **無駄を省く工夫:** ずらし方は数通りに絞り、全サンプル 1 回。TODO-071 の測る道具（`archives/agents/TODO-071/`）のうち使えるものは使い回す
 
@@ -114,9 +114,9 @@ float の OpenCV（`HoughLinesP`・`LineSegmentDetector` など）も候補に�
 
 ユーザーの決定（2026-10-16）: これからは CPU の違いを全く気にしない。
 
-- [ ] `trace_cpu.py`・`cpu_reference.json`・`tracing.py`（読み取りのコードから呼んでいる `_trace` も）と、それを使うテスト、CI の `test` で x86_64 と arm64 の途中の値を比べる手順を消す
-- [ ] CLAUDE.md の「精度の確認」から、float の処理を読み取りに入れない決まりと `trace_cpu.py --update` の手順を消す。コマンドの一覧からも消す
-- [ ] README・docs（HANDOVER・PI_CHECKS）の記述を合わせる
+- [x] `trace_cpu.py`・`cpu_reference.json`・`tracing.py`（読み取りのコードから呼んでいる `_trace` も）と、それを使うテスト、CI の `test` で x86_64 と arm64 の途中の値を比べる手順を消す
+- [x] CLAUDE.md の「精度の確認」から、float の処理を読み取りに入れない決まりと `trace_cpu.py --update` の手順を消す。コマンドの一覧からも消す
+- [x] README・docs（HANDOVER・PI_CHECKS）の記述を合わせる
 
 前提: 今の整数の計算（`exact.py` など）は書き直さない（読みが変わるので）。これからの変更で float を使ってよくなるだけ。
 recognizer の版は上げない（読み取りの結果は変わらない）。
