@@ -21,6 +21,8 @@ import exact
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
+ROW_SHORT = 0.85      # a row whose bases are this much nearer its tips than the other row's: hidden (TODO-076) ...
+ROW_REACH = 0.95      # ... when two of its bases reach this share of the other row's length
 
 
 @dataclass
@@ -540,6 +542,19 @@ def refine_tips(img, H, lay: Layout, m: int):
             tb = top_tip - (bb - bot_tip)
         else:
             bb = bot_tip + (top_tip - tb)
+    if tb is not None and bb is not None:
+        # the triangles of both rows are the same length: checkers wider than a point can hide
+        # most of one row's bases, so that row looks short (TODO-076). Take it from the other row,
+        # when two of the row's own bases do reach about that far (else the rows do differ in the photo)
+        top_tip = np.median([y for _, r, _, y, *_ in tips if r == "top"])
+        bot_tip = np.median([y for _, r, _, y, *_ in tips if r == "bottom"])
+        lt, lb = top_tip - tb, bb - bot_tip
+        reach = {row: sorted([0, 0] + [b for _, r, _, _, _, _, b in tips if r == row and b is not None])[-2]
+                 for row in ("top", "bottom")}
+        if lb < ROW_SHORT * lt and ROW_REACH * lt <= reach["bottom"]:
+            bb = bot_tip + lt
+        elif lt < ROW_SHORT * lb and ROW_REACH * lb <= reach["top"]:
+            tb = top_tip - lb
     if tb is None or bb is None:
         # no bases seen: assume the sides reach one pitch apart at the frame
         tb = np.median([y - L for _, r, _, y, L, *_ in tips if r == "top"])
@@ -575,12 +590,11 @@ def refine_tips(img, H, lay: Layout, m: int):
 def _row_bases(tips, row):
     """Where one row's triangles meet the frame (canonical y), or None.
 
-    A checker standing on a point makes its triangle look shorter, and checkers wider
-    than a point hide the bases next to them too: most of a row can look short
-    (TODO-076). Take the two outer bases.
+    A checker standing on a point makes its triangle look shorter, and most
+    positions leave some points of each row empty: take the outer bases.
     """
     sgn = 1 if row == "top" else -1
     ys = sorted((y - sgn * b for _, r, _, y, _, _, b in tips if r == row and b is not None), key=lambda v: sgn * v)
     if len(ys) < 3:
         return None
-    return float(np.median(ys[:2]))
+    return float(np.median(ys[:max(2, (len(ys) + 1) // 2)]))
