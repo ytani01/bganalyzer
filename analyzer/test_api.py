@@ -139,7 +139,7 @@ def test_steep_photo_is_flagged():
     # and so are three of the photos collected on the Pi (TODO-030)
     steep = {"commons-nardy-midgame.truth.json", "commons-rollup-oblique.truth.json",
              "collected-4b88u3.truth.json", "collected-5wxq9t.truth.json", "collected-ajxlol.truth.json",
-             "photo5.truth.json"}   # taken from beside the players (TODO-076)
+             "photo5.truth.json", "photo6.truth.json"}   # taken from beside the players (TODO-076)
     samples = Path(__file__).resolve().parent.parent / "samples"
     for f in samples.glob("*.truth.json"):
         t = json.loads(f.read_text())
