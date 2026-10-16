@@ -4,7 +4,8 @@
 //
 // scene: {board, home, selected (point index, "bar" or null), photo (an image URL to show in the
 // playing area instead of the drawn board and checkers), dice, onRoll, cube {at, value},
-// move {hops, mover} (arrows of a best move, BgMoves.hops)}.
+// move {hops, mover} (arrows of a best move, BgMoves.hops), match {length (0: a money game), white,
+// black, crawford} (BgCube.fixMatch)}.
 "use strict";
 
 const BgBoardView = (() => {
@@ -18,6 +19,7 @@ const BgBoardView = (() => {
   const ROW = { h: 32, top: -34, bottom: 442 };
   const TRAY = { w: 186 };
   const VIEW = { y: ROW.top - 4, h: ROW.bottom + ROW.h + 4 - (ROW.top - 4) };
+  const MATCH_H = 26;   // the line above 奥's row for the match, only in a match (TODO-099)
   const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
                  4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
                  6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
@@ -55,8 +57,11 @@ const BgBoardView = (() => {
   function draw(svg, scene, onSelect) {
     svg.textContent = "";
     const { board: b, home, photo } = scene;
-    svg.setAttribute("viewBox", `0 ${VIEW.y} 660 ${VIEW.h}`);
-    el("rect", { x: 0, y: VIEW.y, width: 660, height: VIEW.h, fill: "var(--card)" }, svg);
+    const match = scene.match && scene.match.length ? scene.match : null;
+    const y0 = VIEW.y - (match ? MATCH_H : 0), h = VIEW.h + (match ? MATCH_H : 0);
+    svg.setAttribute("viewBox", `0 ${y0} 660 ${h}`);
+    el("rect", { x: 0, y: y0, width: 660, height: h, fill: "var(--card)" }, svg);
+    if (match) drawMatch(svg, match, home, y0);
     el("rect", { x: B.x0 - 6, y: B.y0 - 6, width: RIGHT - B.x0 + 12, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
     for (const side of ["white", "black"]) {
       el("rect", { x: trayX(home), y: rowY(side), width: TRAY.w, height: ROW.h, rx: 4, fill: "var(--felt)", stroke: "var(--frame)", "stroke-width": 4 }, svg);
@@ -192,6 +197,20 @@ const BgBoardView = (() => {
       const y = rowY(side);
       el("rect", { x, y: y + 2, width: w, height: ROW.h - 4, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, svg);
       el("text", { x: x + w / 2, y: y + ROW.h / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg).textContent = `PIP ${pips[side]}`;
+    }
+  }
+
+  // The match on a line of its own above 奥's row, and each side's score in its own row at the end
+  // away from home, inside the cube (TODO-099).
+  function drawMatch(svg, m, home, y0) {
+    el("text", { x: BAR_X, y: y0 + MATCH_H / 2 + 2, class: "match-n", "pointer-events": "none" }, svg).textContent =
+      `${m.length} ポイントマッチ` + (m.crawford ? "（クロフォード）" : "");
+    const w = 56, gap = 4, cube = 30;
+    const x = home === "right" ? B.x0 + cube + gap : RIGHT - cube - gap - w;
+    for (const side of ["white", "black"]) {
+      const y = rowY(side);
+      el("rect", { x, y: y + 2, width: w, height: ROW.h - 4, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, svg);
+      el("text", { x: x + w / 2, y: y + ROW.h / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg).textContent = `${m[side]} 点`;
     }
   }
 

@@ -348,15 +348,13 @@ def test_match_in_the_result_words():
     r = json.dumps(_RESULT | {"match": m})
     money = json.dumps(_RESULT | {"moves": None, "cube": cube})
     out = _result_js(f"""{{
-      text: R.matchText({json.dumps(m)}),
       speech: R.speechText({r}, [3, 1]),
       cubeNote: R.html({{...{r}, moves: null, cube: {json.dumps(cube)}}}, null),
       money: [R.speechText({money}, null), R.html({money}, null)],
       optional: [R.speechText({{...{money}, cube: {{...{json.dumps(cube)}, double: false, optional: true}}}}, null),
                  R.html({{...{money}, cube: {{...{json.dumps(cube)}, double: false, optional: true}}}}, null)],
     }}""")
-    assert out["text"] == "7 ポイントマッチ 白 6 対 黒 5（クロフォード）"
-    assert out["speech"].endswith("7 ポイントマッチ 白 6 対 黒 5（クロフォード）です。")
+    assert "ポイントマッチ" not in out["speech"]   # TODO-099: the score is on the board, not read out
     assert "キューブの判断はマッチのスコアで" in out["cubeNote"]
     assert "ポイントマッチ" not in out["money"][0] and "マネーゲーム（ジャコビー・ルールあり）" in out["money"][1]
     assert "白の人はダブルしてもしなくてもよいです。" in out["optional"][0]
@@ -369,12 +367,10 @@ def test_names_follow_the_colour():
     r = json.dumps(_RESULT)
     out = _result_js(f"""(R.setNames(0), {{
       speech: R.speechText({r}, null), html: R.html({r}, [3, 1]),
-      match: R.matchText({{length: 7, score: {{white: 3, black: 5}}, crawford: false}}),
       back: (R.setNames(1), R.NAME.white),
     }})""")
     assert out["speech"].startswith("次に振るのは黒の人です。")
     assert "<th>黒</th><th>白</th>" in out["html"] and "最善手（黒・ダイス 3-1）" in out["html"]
-    assert out["match"] == "7 ポイントマッチ 黒 3 対 白 5"
     assert out["back"] == "白"
 
 

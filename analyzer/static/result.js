@@ -20,11 +20,6 @@ const BgResult = (() => {
     return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   }
 
-  // The match in words (TODO-066), as in the server's summary: "7 ポイントマッチ 白 3 対 黒 5（クロフォード）".
-  function matchText(m) {
-    return `${m.length} ポイントマッチ ${NAME.white} ${m.score.white} 対 ${NAME.black} ${m.score.black}` + (m.crawford ? "（クロフォード）" : "");
-  }
-
   // The words for a cube decision: "ダブル" or "リダブル", "テイク" or "パス".
   function cubeWords(c) {
     return { word: c.value > 1 ? "リダブル" : "ダブル", take: c.take ? "テイク" : "パス" };
@@ -129,7 +124,6 @@ const BgResult = (() => {
     }
     if (cubeText && !r.cube.rolled) parts.push(cubeText);
     parts.push(r.game_over ? `${NAME[r.favourite]}の勝ちで終局しています。` : standingToSpeech(r));
-    if (r.match) parts.push(`${matchText(r.match)}です。`);
     return parts.join("");
   }
 
@@ -160,7 +154,7 @@ const BgResult = (() => {
     }).join("、");
   }
 
-  return { NAME, setNames, rollWho, esc, matchText, html, cubeHtml, speechText, moveToSpeech };
+  return { NAME, setNames, rollWho, esc, html, cubeHtml, speechText, moveToSpeech };
 })();
 
 if (typeof module !== "undefined") module.exports = BgResult;

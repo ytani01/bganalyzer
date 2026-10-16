@@ -86,7 +86,7 @@ TODO-078 は直さずに閉じた（対応しない）。対局者の横から�
 | 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 
 ユーザーの依頼（2026-10-17）。スコアは画面を見れば分かるので、読み上げでは「7 ポイントマッチ 白 6 対 黒 5 です」を言わない。
-今は `analyzer/static/result.js` の `speechText` が最後に `matchText` を足している。画面の表示（`matchText`）はそのまま。
+今は `analyzer/static/result.js` の `speechText` が最後に `matchText` を足している。アプリの中で `matchText` を使うのはここだけだったので、`matchText` ごと消す（結果の画面のマッチの文はサーバーの `summary` から来る）。
 代わりに、盤面の確認と解析結果の盤の絵（`analyzer/static/board-view.js`。3 枚とも `app.js` の同じ scene で描く）にスコアを出す。
 
 決めたこと（2026-10-17 ユーザー）:
@@ -94,8 +94,8 @@ TODO-078 は直さずに閉じた（対応しない）。対局者の横から�
 - 何ポイントマッチかとクロフォードは、奥の行のさらに上に 1 行足し、中央に出す（盤の絵は 1 行ぶん縦に伸びる。マネーゲームでも伸ばすかは実装のときに決める）
 - マネーゲームでは何も出さない
 
-- [ ] 盤の絵にスコアとマッチを出す
-- [ ] `speechText` からマッチのスコアを外し、`analyzer/test_pwa.py` の `test_match_in_the_result_words` を直す（analyzer の版も上げる）
+- [x] 盤の絵にスコアとマッチを出す
+- [x] `speechText` からマッチのスコアを外し、`analyzer/test_pwa.py` の `test_match_in_the_result_words` を直す（analyzer の版も上げる）
 - [ ] ローカル: マッチを設定して解析し、盤の確認と結果の盤にスコアが出て、読み上げにスコアが入らないこと
 
 **無駄を省く工夫:** テストは `analyzer/test_pwa.py` だけを流す（全体は CI）。ローカルの確認は home の左右 2 通り × 1 局面で足りる
