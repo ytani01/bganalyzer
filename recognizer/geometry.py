@@ -575,11 +575,12 @@ def refine_tips(img, H, lay: Layout, m: int):
 def _row_bases(tips, row):
     """Where one row's triangles meet the frame (canonical y), or None.
 
-    A checker standing on a point makes its triangle look shorter, and most
-    positions leave some points of each row empty: take the outer bases.
+    A checker standing on a point makes its triangle look shorter, and checkers wider
+    than a point hide the bases next to them too: most of a row can look short
+    (TODO-076). Take the two outer bases.
     """
     sgn = 1 if row == "top" else -1
     ys = sorted((y - sgn * b for _, r, _, y, _, _, b in tips if r == row and b is not None), key=lambda v: sgn * v)
     if len(ys) < 3:
         return None
-    return float(np.median(ys[:max(2, (len(ys) + 1) // 2)]))
+    return float(np.median(ys[:2]))
