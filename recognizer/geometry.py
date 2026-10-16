@@ -21,6 +21,8 @@ import exact
 
 H_CAN = 1000          # canonical field height (px)
 TRI_DEPTH = 0.44      # triangle length / field height
+ROW_SHORT = 0.9       # a row whose bases are this much nearer its tips than the other row's: hidden (TODO-076) ...
+ROW_REACH = 0.95      # ... when two of its bases reach this share of the other row's length
 
 
 @dataclass
@@ -531,15 +533,26 @@ def refine_tips(img, H, lay: Layout, m: int):
         return H, lay, tips
     # field height in this image: from top-row bases to bottom-row bases
     tb, bb = _row_bases(tips, "top"), _row_bases(tips, "bottom")
+    top_tip = np.median([y for _, r, _, y, *_ in tips if r == "top"])
+    bot_tip = np.median([y for _, r, _, y, *_ in tips if r == "bottom"])
     if (tb is None) != (bb is None):
         # one row's bases hidden (dice cups on the points): the triangles are all the
         # same length, so take it from the other row
-        top_tip = np.median([y for _, r, _, y, *_ in tips if r == "top"])
-        bot_tip = np.median([y for _, r, _, y, *_ in tips if r == "bottom"])
         if tb is None:
             tb = top_tip - (bb - bot_tip)
         else:
             bb = bot_tip + (top_tip - tb)
+    if tb is not None and bb is not None:
+        # the triangles of both rows are the same length: checkers wider than a point can hide
+        # most of one row's bases, so that row looks short (TODO-076). Take it from the other row,
+        # when two of the row's own bases do reach about that far (else the rows do differ in the photo)
+        lt, lb = top_tip - tb, bb - bot_tip
+        reach = {row: sorted([0, 0] + [b for _, r, _, _, _, _, b in tips if r == row and b is not None])[-2]
+                 for row in ("top", "bottom")}
+        if lb < ROW_SHORT * lt and ROW_REACH * lt <= reach["bottom"]:
+            bb = bot_tip + lt
+        elif lt < ROW_SHORT * lb and ROW_REACH * lb <= reach["top"]:
+            tb = top_tip - lb
     if tb is None or bb is None:
         # no bases seen: assume the sides reach one pitch apart at the frame
         tb = np.median([y - L for _, r, _, y, L, *_ in tips if r == "top"])
