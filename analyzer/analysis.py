@@ -16,7 +16,14 @@ from position import Position  # noqa: E402
 DEFAULT_PLIES = 2   # 2-ply: gnubg's usual analysis strength, ~30 ms per position
 MAX_PLIES = 3
 SIDES = ("white", "black")
-NAME_JA = {"white": "手前", "black": "奥"}
+
+
+def names_ja(white_light: bool = True) -> dict:
+    """The sides in Japanese by their checkers' colour, as drawn: the lighter ones are 白 (TODO-086)."""
+    return {"white": "白", "black": "黒"} if white_light else {"white": "黒", "black": "白"}
+
+
+NAME_JA = names_ja()
 CUBE_VALUES = (1, 2, 4, 8, 16, 32, 64)
 MAX_MATCH = 64   # gnubg plays matches up to 64 points
 
@@ -161,22 +168,22 @@ def _cube_result(hint: dict, doubler: str, value: int, doubled: bool) -> dict:
     }
 
 
-def summary_ja(r: dict) -> str:
-    """One-line Japanese summary for display."""
+def summary_ja(r: dict, name: dict = NAME_JA) -> str:
+    """One-line Japanese summary for display (name: names_ja)."""
     if r["game_over"]:
-        return f"{NAME_JA[r['favourite']]}の勝ちで終局しています。"
+        return f"{name[r['favourite']]}の勝ちで終局しています。"
     p = r["probabilities"]
     fav = r["favourite"]
-    text = (match_ja(r["match"]) + "。" if r.get("match") else "") + (f"{NAME_JA[fav]}が有利: 勝率 {p[fav]['win']}%（ギャモン {p[fav]['gammon']}%）、"
-            f"ピップ 手前 {r['pips']['white']} / 奥 {r['pips']['black']}")
+    text = (match_ja(r["match"], name) + "。" if r.get("match") else "") + (f"{name[fav]}が有利: 勝率 {p[fav]['win']}%（ギャモン {p[fav]['gammon']}%）、"
+            f"ピップ {name['white']} {r['pips']['white']} / {name['black']} {r['pips']['black']}")
     if r.get("cube"):
-        text += "。" + cube_summary_ja(r["cube"])
+        text += "。" + cube_summary_ja(r["cube"], name)
     return text
 
 
-def cube_summary_ja(c: dict) -> str:
+def cube_summary_ja(c: dict, name: dict = NAME_JA) -> str:
     """The cube decision in one Japanese sentence."""
-    d, t = NAME_JA[c["doubler"]], NAME_JA[c["taker"]]
+    d, t = name[c["doubler"]], name[c["taker"]]
     word = "リダブル" if c["value"] > 1 else "ダブル"
     take = "テイク" if c["take"] else "パス"
     if c["question"] == "take":
@@ -192,7 +199,7 @@ def cube_summary_ja(c: dict) -> str:
     return f"{d}はまだ{word}しない（{word}されたら{t}は{take}）"
 
 
-def match_ja(m: dict) -> str:
-    """The match in Japanese, e.g. "7 ポイントマッチ 手前 3 対 奥 5（クロフォード）"."""
-    return (f"{m['length']} ポイントマッチ 手前 {m['score']['white']} 対 奥 {m['score']['black']}"
+def match_ja(m: dict, name: dict = NAME_JA) -> str:
+    """The match in Japanese, e.g. "7 ポイントマッチ 白 3 対 黒 5（クロフォード）"."""
+    return (f"{m['length']} ポイントマッチ {name['white']} {m['score']['white']} 対 {name['black']} {m['score']['black']}"
             + ("（クロフォード）" if m["crawford"] else ""))

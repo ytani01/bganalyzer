@@ -59,6 +59,13 @@ def read_photo(page, cube=None):
     return truth
 
 
+def reveal(page, selector):
+    """Open the folded 「その他」 the control is in (TODO-086), as a person would: by its summary."""
+    summary = page.locator(selector).locator("xpath=ancestor::details[not(@open)]/summary")
+    if summary.count():
+        summary.first.click()
+
+
 def show_outcome(page):
     page.click("#analyze")
     page.wait_for_function("!document.querySelector('#outcome').hidden", timeout=120000)
@@ -71,7 +78,7 @@ def check_double(browser):
     dice = page.evaluate("BgApp.rolled()")
     best = page.evaluate("(r => r && r.moves && r.moves[0] && r.moves[0].move)(BgApp.state.result)")
     help_ = page.text_content("#cube-help")
-    ok = not page.alerts and dice and best and help_ == "ダイスがあるので、最善手を出します。"
+    ok = not page.alerts and dice and best and help_ == ""   # with dice, no cube help (TODO-086)
     return ok, f"dice={dice} best={best!r} cube-help={help_!r} alerts={page.alerts}"
 
 
@@ -93,6 +100,7 @@ def check_export(browser, *scripts):
     truth = read_photo(page)
     files, downloads = {}, []
     page.on("download", lambda d: downloads.append(d))
+    reveal(page, "#export-sample")
     page.click("#export-sample")
     for _ in range(100):   # both come at once
         if len(downloads) >= 2:
@@ -127,7 +135,9 @@ def check_collect(browser):
         before = collected()
         page = open_app(browser)
         read_photo(page)
-        page.click(f'.seg[data-name="collect"] [data-value="{mode}"]')   # 「解析の設定」の下: shown only when the Pi keeps samples
+        seg = f'.seg[data-name="collect"] [data-value="{mode}"]'   # in 「その他の設定」: shown only when the Pi keeps samples
+        reveal(page, seg)
+        page.click(seg)
         show_outcome(page)
         page.wait_for_timeout(2000)   # sendSample does not hold up the result
         new = sorted(collected() - before)

@@ -56,7 +56,7 @@ header {
   top: 0;
   z-index: 5;
 }
-header .bar { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+header .bar { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 header .titles { flex: 1; min-width: 0; line-height: 1.2; }
 header h1 { font-size: 18px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* The app's name and version, the same on every screen, above the screen's own title. */
@@ -66,40 +66,48 @@ header .app-name { font-size: 16px; font-weight: bold; white-space: nowrap; flex
 .hdr-version { font-size: 12px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .hdr-version:empty { display: none; }
 .hdr-version.old { opacity: 1; color: var(--sel); white-space: normal; }   /* the note in full: the footer that showed it is gone */
-header .actions { display: flex; gap: 6px; flex: none; }
+/* The bottom bar (TODO-086): the screen's main action, full width and in reach of the thumb. Not shown
+   while every button in it is hidden (the photo screen); main keeps room for it (--bar-h, app.js). */
+.actbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--card); border-top: 1px solid var(--line);
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+}
+.actbar:not(:has(> :not([hidden]))) { display: none; }
+.actbar > * { width: 100%; max-width: 688px; margin: 0 auto; }
 .act {
   appearance: none;
-  background: var(--accent-fg);
-  color: var(--accent);
-  border: 1px solid var(--accent-fg);
-  border-radius: 10px;
-  padding: 6px 12px;
-  font-size: 16px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  min-height: 48px;
+  padding: 8px 16px;
+  font-size: 17px;
+  font-family: inherit;
   font-weight: bold;
-  white-space: nowrap;
   cursor: pointer;
 }
 .act:active { opacity: .8; }
 .act:disabled { opacity: .45; cursor: default; }
-.act.on { background: transparent; color: var(--accent-fg); }
-.act.speak { display: inline-flex; align-items: center; gap: 4px; }
+.act.on { background: var(--card); color: var(--accent); }
+.act.speak { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .act.speak svg { width: 20px; height: 20px; flex: none; }
-/* The header's second line: reopen the board read before, without reading the photo again. */
-header .bar2 { margin-top: 8px; }
-/* The match and its score (TODO-066): one short line, the same on every screen. */
-header .match { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; font-size: 14px; }
-header .match label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-header .match select { font-size: 14px; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--accent-fg); background: var(--card); color: var(--fg); }
+/* Reopen the board read before, without reading the photo again (above the main button). */
+.act.reuse { display: block; width: 100%; background: var(--sel); border-color: var(--sel); color: #000; }
+.act.reuse small { display: block; font-weight: normal; font-size: 14px; }
+/* The match and its score (TODO-066): a line of the board screen's settings (TODO-086). */
+.match label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+#match-score { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 #match-score[hidden], #crawford-opt[hidden] { display: none; }
-header .bar2[hidden] { display: none; }
-.act.reuse { display: block; width: 100%; white-space: normal; background: var(--sel); border-color: var(--sel); color: #000; }
-.act.reuse small { display: block; font-weight: normal; font-size: 13px; }
 .back {
   appearance: none;
   background: rgba(255,255,255,.18);
   color: var(--accent-fg);
   border: 1px solid rgba(255,255,255,.45);
   border-radius: 10px;
+  min-height: 44px;
   padding: 6px 14px 6px 10px;
   font-size: 16px;
   cursor: pointer;
@@ -111,7 +119,8 @@ header .bar2[hidden] { display: none; }
 #steps span.done { opacity: .85; }
 #steps span.done::before { content: "✓ "; }
 #steps span.on { background: var(--accent-fg); color: var(--accent); font-weight: bold; opacity: 1; }
-main { max-width: 720px; margin: 0 auto; padding: 12px 16px 40px; }
+html { scroll-padding-bottom: var(--bar-h, 0px); }   /* what is scrolled to (a focused field) stays above the bottom bar */
+main { max-width: 720px; margin: 0 auto; padding: 12px 16px calc(var(--bar-h, 0px) + 40px); }
 .lead { font-size: 17px; }
 #corner-help { min-height: 4.5em; }
 .note { color: var(--muted); font-size: 13px; }
@@ -125,6 +134,7 @@ main { max-width: 720px; margin: 0 auto; padding: 12px 16px 40px; }
   background: var(--card);
   color: var(--fg);
   border-radius: 10px;
+  min-height: 44px;
   padding: 10px 16px;
   font-size: 16px;
   font-family: inherit;   /* <button> and <label class="button"> look the same */
@@ -133,7 +143,7 @@ main { max-width: 720px; margin: 0 auto; padding: 12px 16px 40px; }
   display: inline-block;
 }
 .button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-.button.small { padding: 6px 12px; font-size: 14px; }
+.button.small { padding: 6px 12px; font-size: 15px; }
 .button:disabled { opacity: .4; cursor: default; }
 
 fieldset { border: none; padding: 0; margin: 12px 0; }
@@ -151,6 +161,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 
 .tips { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 12px 0; }
 .tips ul { margin: 6px 0; padding-left: 20px; }
+.tips > summary { padding: 10px 0; line-height: 24px; cursor: pointer; }   /* 44px high */
 
 .pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
 .pick .button { padding: 12px 4px; font-size: 15px; line-height: 1.3; }
@@ -181,8 +192,8 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .editor-row .undo { margin-left: auto; }
 .paint-side { display: flex; }
 .paint-side button {
-  appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-size: 14px;
-  height: 36px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-size: 15px;
+  height: 44px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
 }
 .paint-side button:first-child { border-radius: 8px 0 0 8px; }
 .paint-side button:last-child { border-radius: 0 8px 8px 0; }
@@ -192,12 +203,12 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
   border-radius: 12px; padding: 8px; box-shadow: 0 6px 20px #0004;
 }
 .palette-head { display: flex; align-items: center; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
-.palette-head button { appearance: none; border: none; background: none; color: var(--fg); font-size: 18px; padding: 2px 6px; cursor: pointer; }
+.palette-head button { appearance: none; border: none; background: none; color: var(--fg); font-size: 18px; min-width: 44px; height: 44px; padding: 0; cursor: pointer; }
 .palette .paint-side button { flex: 1; justify-content: center; }
 .palette-counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
 .palette-counts button {
   appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 8px;
-  height: 40px; font-size: 17px; font-family: inherit; cursor: pointer;
+  height: 44px; font-size: 17px; font-family: inherit; cursor: pointer;
 }
 .palette-counts button.on { background: var(--sel); border-color: var(--sel); color: #000; font-weight: bold; }
 .chip { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #888; display: inline-block; }
@@ -244,8 +255,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .history-list .open { flex: 1; display: flex; align-items: center; gap: 10px; background: none; border: none; color: var(--fg); font-size: 14px; text-align: left; padding: 0; cursor: pointer; }
 .history-list img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; background: #000; }
 .history-list .sub { color: var(--muted); font-size: 13px; display: block; }
-.history-list .del { width: 40px; height: 40px; padding: 0; font-size: 18px; }
-#to-board { display: block; margin: 0 0 12px auto; }
+.history-list .del { width: 44px; height: 44px; padding: 0; font-size: 18px; }
 .die, .arrows { pointer-events: none; }   /* taps go to the point under the dice */
 #flip-turn { margin-top: 8px; }
 .board-wrap svg .cube-num { font-size: 15px; font-weight: bold; fill: #222; text-anchor: middle; }
@@ -260,7 +270,6 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .opt .seg { flex: 1; min-width: 0; }
 .opt .seg button { padding: 7px 6px; font-size: 15px; }
 .opt .note { flex-basis: 100%; margin: 0; }
-.opt .dice + .note { flex-basis: auto; flex: 1; }
 .opt .angle { flex: 1; min-width: 0; }
 .opt .dice select { width: 64px; font-size: 17px; padding: 5px 6px; }
 #flip-turn { margin-top: 0; }
@@ -282,3 +291,25 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
   .board-pin { position: sticky; top: var(--hdr-h, 56px); z-index: 4; background: var(--bg); padding: 4px 0 6px; }
 }
 #result-svg { pointer-events: none; }   /* the result screen's board is for looking; it is edited on the board screen */
+
+/* Everything pressed is at least 44px high (TODO-086). */
+select { min-height: 44px; font-family: inherit; }
+.match select { font-size: 16px; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+label:has(> input[type="checkbox"]) { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+input[type="checkbox"] { width: 20px; height: 20px; margin: 0; }
+
+/* What is used less often, folded (TODO-086). */
+details.more { margin: 12px 0; }
+details.more > summary { padding: 10px 0; line-height: 24px; font-size: 15px; color: var(--muted); cursor: pointer; }   /* 44px high, with its marker */
+details.panel.more { padding-top: 0; padding-bottom: 0; }
+details.panel.more[open] { padding-bottom: 8px; }
+
+/* The loupe over the finger on a board picture (board-view.js): a copy of the board, zoomed in. */
+.loupe {
+  position: fixed; z-index: 30; width: 120px; height: 120px; padding: 0; overflow: hidden; pointer-events: none;
+  border: 2px solid var(--fg); border-radius: 50%; box-shadow: 0 4px 14px #0006;
+}
+.loupe svg { width: 100%; height: 100%; }
+
+/* The sides' names (白/黒, app.js): a tap goes to their button (.seg reads the button's own data-value). */
+.nm-white, .nm-black { pointer-events: none; }

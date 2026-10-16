@@ -100,11 +100,17 @@ class Run:
         self.page.alerts.clear()
         self.snaps.append([name, s])
 
+    def reveal(self, selector):   # open the folded 「その他」 the control is in (TODO-086), by its summary
+        summary = self.page.locator(selector).locator("xpath=ancestor::details[not(@open)]/summary")
+        if summary.count():
+            summary.first.click()
+
     def click(self, selector):
+        self.reveal(selector)
         self.page.click(selector)
 
     def seg(self, name, value):
-        self.page.click(f'.seg[data-name="{name}"] [data-value="{value}"]')
+        self.click(f'.seg[data-name="{name}"] [data-value="{value}"]')
 
     def point(self, k, svg="#board-svg"):   # the middle of the k-th tap area of a board picture (24, 25: the bar)
         self.page.locator(f"{svg} .hit").nth(k).click()
@@ -167,8 +173,9 @@ def flow_manual(r):
     r.choose("#die1", "3"); r.snap("one die")
     r.choose("#die2", "1"); r.snap("dice 3-1")
     r.seg("onRoll", "black"); r.snap("on roll 奥")
-    r.seg("cubeAt", "white"); r.snap("cube 手前 with dice")
-    r.choose("#die1", ""); r.snap("no dice: the cube is offered")
+    r.seg("cubeAt", "white"); r.snap("cube 手前 offered: the dice are hidden")   # TODO-086
+    r.click("#cube-offered"); r.snap("cube 手前 owned, with dice")
+    r.choose("#die1", ""); r.click("#cube-offered"); r.snap("no dice: the cube is offered")
     r.choose("#cube-value", "8"); r.snap("cube 8")
     r.click("#cube-offered"); r.snap("cube owned")
     r.click("#cube-offered"); r.seg("onRoll", "white"); r.snap("offered, 手前 on roll: the cube moves")

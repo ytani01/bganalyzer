@@ -22,14 +22,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from analysis import DEFAULT_PLIES, Position, analyze, other, parse_position, shutdown, summary_ja
+from analysis import DEFAULT_PLIES, Position, analyze, names_ja, other, parse_position, shutdown, summary_ja
 from claude_corners import claude_command, router as claude_router
 from models import AnalyzeRequest, Board
 from samples import router as samples_router, samples_dir
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.51.0"
+__version__ = "0.52.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -71,15 +71,16 @@ def _board_to_position(b: Board) -> Position:
     return pos
 
 
-def _run(pos: Position, on_roll: str, plies: int, dice, **opts) -> dict:
-    """analyze() for the API; opts: the cube and the match (analyze's keywords)."""
+def _run(pos: Position, on_roll: str, plies: int, dice, bottom_colour: int | None = None, **opts) -> dict:
+    """analyze() for the API; opts: the cube and the match (analyze's keywords). bottom_colour: whose
+    checkers are the lighter (1: White's, 0: Black's; None: White's), for the names in the summary."""
     try:
         r = analyze(pos, on_roll, plies=plies, dice=dice, **opts)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     r["board"] = {k: v for k, v in pos.to_dict().items() if k in
                   ("points", "bar_white", "bar_black", "off_white", "off_black")}
-    r["summary"] = summary_ja(r)
+    r["summary"] = summary_ja(r, names_ja(bottom_colour != 0))
     return r
 
 
@@ -129,7 +130,7 @@ def analyze_endpoint(req: AnalyzeRequest):
     return _run(pos, req.on_roll, req.plies, req.dice,
                 cube_value=req.cube_value, cube_owner=req.cube_owner, doubled=req.doubled,
                 match_length=req.match_length, score_white=req.score_white, score_black=req.score_black,
-                crawford=req.crawford)
+                crawford=req.crawford, bottom_colour=req.bottom_colour)
 
 
 @app.post("/find-corners")
@@ -164,7 +165,7 @@ async def analyze_photo(
     image: UploadFile = File(...),
     corners: str = Form(..., description="x1,y1,...,x4,y4: TL,TR,BR,BL of the playing area"),
     home: str = Form("right", description="left, right or auto (guessed from the checkers)"),
-    bottom_colour: int = Form(0),
+    bottom_colour: int = Form(0, description="1: the lighter checkers are White's (called 白), 0: the darker (White is 黒)"),
     on_roll: str = Form("white"),
     plies: int = Form(DEFAULT_PLIES),
     dice: str | None = Form(None, description="e.g. 3,1; without it, the dice read from the photo (if any)"),
@@ -194,7 +195,7 @@ async def analyze_photo(
     def work(progress=None):
         pos, info = recognize(img, pts, home=home, bottom_colour=bottom_colour, progress=progress,
                               keep_corners=keep_corners)
-        return _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled,
+        return _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled, bottom_colour,
                              match_length=match_length, score_white=score_white, score_black=score_black,
                              crawford=crawford)
     return _stream(work) if stream else work()
@@ -254,7 +255,7 @@ WARNINGS = {
 }
 
 
-def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled, **match) -> dict:
+def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled, bottom_colour, **match) -> dict:
     """What /analyze-photo returns for the read board: the board, what was read and the analysis
     (match: analyze's keywords for the match)."""
     warnings = [WARNINGS[w] for w in info.get("warnings", [])]
@@ -294,7 +295,7 @@ def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled,
             if doubled:
                 on_roll = other(cube_owner)
     try:
-        return out | {"analysis": _run(pos, on_roll, plies, d,
+        return out | {"analysis": _run(pos, on_roll, plies, d, bottom_colour,
                                        cube_value=cube_value, cube_owner=cube_owner or None, doubled=doubled,
                                        **match)}
     except HTTPException as e:

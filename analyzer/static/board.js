@@ -22,12 +22,12 @@ const BgBoard = (() => {
     return { onW, onB, offW: 15 - onW, offB: 15 - onB };
   }
 
-  // What stops the board from being analysed.
-  function errors(b) {
+  // What stops the board from being analysed. name: the sides' names (BgResult.NAME; 白 = the lighter checkers).
+  function errors(b, name = { white: "白", black: "黒" }) {
     const { onW, onB } = counts(b);
     const errs = [];
-    if (onW > 15) errs.push(`手前の駒が ${onW} 個あります（15個まで）`);
-    if (onB > 15) errs.push(`奥の駒が ${onB} 個あります（15個まで）`);
+    if (onW > 15) errs.push(`${name.white}の駒が ${onW} 個あります（15個まで）`);
+    if (onB > 15) errs.push(`${name.black}の駒が ${onB} 個あります（15個まで）`);
     if (onW === 0 && onB === 0) errs.push("盤に駒がありません");
     return errs;
   }

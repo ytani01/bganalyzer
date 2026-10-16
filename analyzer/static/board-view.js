@@ -120,10 +120,11 @@ const BgBoardView = (() => {
   // A tap area of a point or of the bar's half. onSelect(at, {level, side, hold, x, y}) on lifting the finger
   // (hold false; level 1..5 from the board's edge, from the middle on the bar, or `fixedLevel`), or once the finger has stayed put for
   // HOLD_MS, or on a right click (hold true). x, y: where on the screen. A finger that moves is scrolling.
-  const HOLD_MS = 450, SLOP = 10;
+  // While the finger stays down, a loupe shows what is under it (TODO-086); not for a finger that starts scrolling.
+  const HOLD_MS = 450, SLOP = 10, LOUPE_MS = 100;
   function bindTap(rect, svg, at, top, side, onSelect, fixedLevel) {
-    let down = null, timer = null;
-    const cancel = () => { clearTimeout(timer); timer = null; down = null; };
+    let down = null, timer = null, loupeTimer = null;
+    const cancel = () => { clearTimeout(timer); clearTimeout(loupeTimer); timer = loupeTimer = null; down = null; hideLoupe(); };
     const levelAt = (cx, cy) => {
       if (fixedLevel !== undefined) return fixedLevel;
       const m = svg.getScreenCTM();
@@ -135,6 +136,7 @@ const BgBoardView = (() => {
     rect.addEventListener("pointerdown", (e) => {
       if (e.button) return;
       down = [e.clientX, e.clientY];
+      loupeTimer = setTimeout(() => showLoupe(svg, e.clientX, e.clientY), LOUPE_MS);
       timer = setTimeout(() => { const [cx, cy] = down; cancel(); fire(true, cx, cy); }, HOLD_MS);
     });
     rect.addEventListener("pointermove", (e) => {
@@ -150,6 +152,33 @@ const BgBoardView = (() => {
     rect.addEventListener("pointercancel", cancel);
     rect.addEventListener("pointerleave", cancel);
     rect.addEventListener("contextmenu", (e) => { e.preventDefault(); cancel(); fire(true, e.clientX, e.clientY); });
+  }
+
+  // The loupe: a copy of the board, LOUPE.zoom times as large as on screen around the finger, in a
+  // round frame above it (below when there is no room). The finger does not move (that is a scroll).
+  const LOUPE = { size: 120, zoom: 3, gap: 36 };
+  let loupe = null;
+  function showLoupe(svg, cx, cy) {
+    hideLoupe();
+    const m = svg.getScreenCTM(), shown = svg.getBoundingClientRect().width;
+    if (!m || !shown) return;
+    const p = new DOMPoint(cx, cy).matrixTransform(m.inverse());
+    const w = LOUPE.size / (shown / svg.viewBox.baseVal.width) / LOUPE.zoom;   // in the board's units
+    const copy = svg.cloneNode(true);
+    copy.removeAttribute("id");
+    copy.setAttribute("viewBox", `${p.x - w / 2} ${p.y - w / 2} ${w} ${w}`);
+    el("circle", { cx: p.x, cy: p.y, r: w / 16, fill: "none", stroke: "var(--sel)", "stroke-width": w / 40 }, copy);
+    loupe = document.createElement("div");
+    loupe.className = "board-wrap loupe";   // board-wrap: the board's text styles
+    const s = LOUPE.size, above = cy - LOUPE.gap - s;
+    loupe.style.left = `${Math.max(4, Math.min(innerWidth - s - 4, cx - s / 2))}px`;
+    loupe.style.top = `${above >= 4 ? above : cy + LOUPE.gap}px`;
+    loupe.append(copy);
+    document.body.append(loupe);
+  }
+  function hideLoupe() {
+    if (loupe) loupe.remove();
+    loupe = null;
   }
 
   // Up to 5 checkers of a stack from the board's edge (the bar's middle), the count on the last when there are more.

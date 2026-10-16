@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.51.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.52.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -79,12 +79,17 @@ const state = {
   historyScale: 1,     // image px -> the stored copy's px
 };
 
-// Both dice, or null while one is not set.
-const rolled = (s = state) => (s.dice[0] && s.dice[1] ? s.dice.slice() : null);
+// Both dice as entered, or null while one is not set.
+const diceIn = (s = state) => (s.dice[0] && s.dice[1] ? s.dice.slice() : null);
+// A cube just offered (on one side, "ダブルされたところ"): nobody has rolled yet, so dice left in do not count (TODO-086).
+const cubeOffered = (s = state) => BgCube.offered(s.cube);
+// The dice the analysis uses: both dice, or null while one is not set or the cube is being offered.
+const rolled = (s = state) => BgCube.usedDice(s.cube, diceIn(s));
 
 // What an analysis is worked out from (but its depth): a result fits the board while this is the same.
+// (bottomColour: the server's summary names the sides by it)
 const inputsKey = (s = state) =>
-  s.board && JSON.stringify([s.board.points, s.board.bar_white, s.board.bar_black, s.onRoll, rolled(s), s.cube, s.match]);
+  s.board && JSON.stringify([s.board.points, s.board.bar_white, s.board.bar_black, s.onRoll, rolled(s), s.cube, s.match, s.bottomColour]);
 const resultFits = (s = state) => !!s.result && s.resultFor === inputsKey(s);
 const resultStale = (s = state) => !!s.result && (!resultFits(s) || String(s.result.plies) !== s.plies);
 
@@ -133,8 +138,8 @@ part((s) => s.step, (s) => {
   $("title").textContent = STEP_TITLES[s.step];
 });
 
-// The header carries the screen's main action (and reading aloud once there is a result), so it
-// can be pressed without scrolling down to the big button.
+// The bottom bar carries the screen's main action (and reading aloud once there is a result), so it
+// can be pressed without scrolling down (TODO-086).
 part((s) => [s.step, s.fromPhoto && !!s.board, !!s.result], (s) => {
   $("recognize").hidden = s.step !== "corners";
   $("hdr-reuse").hidden = !(s.step === "corners" && s.fromPhoto && s.board);
@@ -160,6 +165,10 @@ part((s) => [s.homePick, s.home, s.bottomColour, s.onRoll, s.cube.at, s.photoVie
 });
 
 part((s) => s.bottomColour, (s) => {
+  // the sides are named by their colour, the lighter 白 (TODO-086): here and in the result's words
+  BgResult.setNames(s.bottomColour);
+  for (const e of document.querySelectorAll(".nm-white")) e.textContent = NAME.white;
+  for (const e of document.querySelectorAll(".nm-black")) e.textContent = NAME.black;
   const [w, b] = s.bottomColour ? ["light", "dark"] : ["dark", "light"];
   const root = document.documentElement.style;
   for (const k of ["chk", "fg", "rim"]) {
@@ -167,6 +176,13 @@ part((s) => s.bottomColour, (s) => {
     root.setProperty(`--black-${k}`, `var(--${b}-${k})`);
   }
 });
+
+// What in the folded 「その他の設定」 is not as it starts, beside its name, so it shows while closed (TODO-086).
+const drawMoreSet = (s) => {
+  const set = [s.plies === "3" && "3手", s.collect === "on" && !$("collect-opt").hidden && "Pi に残す"].filter(Boolean);
+  $("more-set").textContent = set.length ? `（${set.join("・")}）` : "";
+};
+part((s) => [s.plies, s.collect], drawMoreSet);
 
 // ---- the corners screen
 const cornersView = BgCornersView.create($("photo-canvas"), {
@@ -202,18 +218,15 @@ function editPreview() {
 // Not while a finger is on the photo: the text may change height and move the photo under it.
 part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess, !!s.edit]), (s) => {
   const n = s.corners.length;
-  const fit = "点をドラッグして、盤の遊戯面（枠の内側）の四隅 1 左上・2 右上・3 右下・4 左下（手前に座った向き）に合わせてください。";
-  const again = "盤が小さいときは「画像を編集」で盤のまわりを切り抜くと、その中を探し直します。動かした点はそのままで、残りを「もう一度検出」で探し直せます。";
+  const fit = "点をドラッグして、枠の内側の四隅（手前から見て 1 左上・2 右上・3 右下・4 左下）に合わせてください。";
+  const again = "盤が小さいときは「その他」の「画像を編集」で切り抜いてください。";
   $("corner-help").innerHTML = s.edit
-    ? "写真の向きをボタンとスライダーで直し、写真の上を斜めにドラッグして盤のまわりを四角く囲んでください。「確定」を押すと、その画像で四隅を探し直します。"
+    ? "向きを直し、盤のまわりを斜めにドラッグして囲んでください。"
     : n < 4
-    ? `手前に座った向きで、盤の遊戯面（枠の内側）の四隅を <b>${n + 1}. ${CORNER_NAMES[n]}</b> の順にタップしてください（左上→右上→右下→左下）。`
-    : s.cornerGuess === "finding" || s.cornerGuess === "again" ? "盤の四隅を探しています… " + fit
-    : s.cornerGuess === "found" ? "盤の四隅を自動で置きました。ずれていたら" + fit
-    : s.cornerGuess === "default" ? "盤を自動で見つけられませんでした。" + fit + again
-    : s.cornerGuess === "missed" ? "見つかりませんでした。" + fit + again
-    : s.cornerGuess === "moved" ? fit + again
-    : "四隅が決まりました。ホーム側と駒の色を選んで上の「盤面を読み取る」を押してください。";
+    ? `枠の内側の四隅を、手前から見て <b>${n + 1}. ${CORNER_NAMES[n]}</b> の順にタップしてください。`
+    : s.cornerGuess === "finding" || s.cornerGuess === "again" ? "盤の四隅を探しています…"
+    : s.cornerGuess === "default" || s.cornerGuess === "missed" ? "盤を見つけられませんでした。" + fit + again
+    : fit;
   $("recognize").disabled = n < 4 || !!s.edit;
 });
 part((s) => s.keepCorners, (s) => { $("keep-corners").checked = s.keepCorners; });
@@ -230,16 +243,16 @@ const drawCorners = () => cornersView.draw();
 part((s) => (s.step !== "corners" || scanning() ? undefined : [photoId(s), s.corners, s.dragging, s.edit]), drawCorners);
 
 // ---- the board screen
-part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess], (s) => {
+part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColour], (s) => {
   if (!s.board) return;
   const { onW, onB, offW, offB } = BgBoard.counts(s.board);
   const line = (name, on, off) =>
     `<span${on > 15 ? ' class="bad"' : ""}>${name}: 盤上とバー ${on} 個・上がり ${Math.max(off, 0)} 個</span>`;
-  $("counts").innerHTML = line("手前", onW, offW) + "<br>" + line("奥", onB, offB) +
-    '<br><span class="note">上がった駒は 15 − 盤上 − バー として数えます。読み取りで駒を見落とすと、その分が上がった扱いになります。</span>';
-  const errs = BgBoard.errors(s.board);
+  $("counts").innerHTML = line(NAME.white, onW, offW) + "<br>" + line(NAME.black, onB, offB) +
+    (offW > 0 || offB > 0 ? '<br><span class="note">上がりは 15 − 盤上 − バー で数えます。</span>' : "");
+  const errs = BgBoard.errors(s.board, NAME);
   if (!errs.length && s.fromPhoto && (offW > 0 || offB > 0)) {
-    errs.push(`上がった駒が 手前 ${offW} 個・奥 ${offB} 個 の扱いです。駒の見落としがないか確かめてください。`);
+    errs.push(`上がりが ${NAME.white} ${offW} 個・${NAME.black} ${offB} 個になっています。駒の見落としがないか確かめてください。`);
   }
   if (s.fromPhoto) errs.unshift(...s.warnings);
   $("errors").hidden = !errs.length;
@@ -247,10 +260,9 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess], (s) => {
   // which side 手前's home board was read on, and whether it was guessed
   const side = s.home === "right" ? "右" : "左";
   const g = s.fromPhoto && s.homeGuess;
-  $("home-note").hidden = !s.fromPhoto;
-  $("home-note").textContent = !g ? `手前の人のホームボードは${side}です。`
-    : Math.abs(g.margin) < 1 ? `駒の並びからはホームボードの左右を決められなかったので、${side}にしています。逆なら「手前のホーム」で選び直してください。`
-    : `駒の並びから、手前の人のホームボードを${side}と推測しました。逆なら「手前のホーム」で選び直してください。`;
+  const doubtful = !!g && Math.abs(g.margin) < 1;   // only then: the setting above shows the side (TODO-086)
+  $("home-note").hidden = !doubtful;
+  $("home-note").textContent = doubtful ? `ホームの左右を決められず、${side}にしました。違えば選び直してください。` : "";
   $("export-sample").hidden = !s.fromPhoto;
 });
 
@@ -294,15 +306,16 @@ part((s) => s.board && [s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube
 });
 
 // ---- what the analysis is asked
-part((s) => [s.dice, s.diceFromPhoto], (s) => {
+part((s) => [s.dice, s.diceFromPhoto, cubeOffered(s)], (s) => {
   $("die1").value = s.dice[0] ? String(s.dice[0]) : "";
   $("die2").value = s.dice[1] ? String(s.dice[1]) : "";
-  $("dice-note").hidden = !s.diceFromPhoto;
+  $("dice-row").hidden = cubeOffered(s);   // a double offered: no dice yet (TODO-086)
+  $("dice-note").hidden = !s.diceFromPhoto || cubeOffered(s);
   // with dice in, the side on roll has already rolled: "振った人", not "次に振る人" (TODO-042)
   $("onroll-label").textContent = `${BgResult.rollWho(rolled(s))}人`;
 });
 
-// ---- the match in the header (TODO-066): the scores go up to one below its length
+// ---- the match (TODO-066): the scores go up to one below its length
 part((s) => s.match, (s) => {
   const m = s.match;
   $("match-length").value = String(m.length);
@@ -318,24 +331,23 @@ part((s) => s.match, (s) => {
   $("crawford").checked = m.crawford;
 });
 
-part((s) => [s.cube, s.cubeFromPhoto, s.onRoll, rolled(s)], (s) => {
+part((s) => [s.cube, s.cubeFromPhoto, s.onRoll, rolled(s), s.bottomColour], (s) => {
   $("cube-side").hidden = s.cube.at === "centre";
   $("cube-value").value = String(s.cube.value);
   $("cube-offered").checked = s.cube.offered;
   $("cube-note").hidden = !s.cubeFromPhoto;
   const req = BgCube.request(s.cube, s.onRoll, rolled(s));
   const roll = NAME[req.on_roll];
-  $("cube-help").textContent = rolled(s)
-    ? "ダイスがあるので、最善手を出します。"
-    : req.doubled
-      ? `${roll}の人が ${req.cube_value} にダブルしたところとして、${NAME[req.cube_owner]}の人がテイクかパスかを判定します。`
-      : req.cube_owner && req.cube_owner !== req.on_roll
-        ? `キューブは${NAME[req.cube_owner]}の人が持っているので、${roll}の人はダブルできません。`
-        : `ダイスが無いので、${roll}の人がダブルすべきかを判定します。`;
+  // only what the settings do not show: who is asked what (TODO-086)
+  $("cube-help").textContent = rolled(s) ? ""
+    : req.doubled ? `${NAME[req.cube_owner]}の人のテイク／パスを判定します。`
+    : req.cube_owner && req.cube_owner !== req.on_roll ? `キューブは${NAME[req.cube_owner]}の人のもの。${roll}の人はダブルできません。`
+    : `${roll}の人のダブルを判定します。`;
+  $("cube-help").hidden = !$("cube-help").textContent;
 });
 
 // ---- the result
-part((s) => [s.result, s.resultDice], (s) => {
+part((s) => [s.result, s.resultDice, s.bottomColour], (s) => {
   const box = $("result");
   box.hidden = !s.result;
   if (s.result) box.innerHTML = BgResult.html(s.result, s.resultDice);
@@ -394,7 +406,7 @@ const historyRecord = (s) => {
   return { corners: s.corners.map(([x, y]) => [x * k, y * k]), cornerGuess: s.cornerGuess, cornersMoved: s.cornersMoved,
            keepCorners: s.keepCorners, trimmed: s.photo.trimmed,
            homePick: s.homePick, home: s.home, homeGuess: s.homeGuess, bottomColour: s.bottomColour,
-           onRoll: s.onRoll, dice: rolled(s), cube: s.cube, board: s.board, read: s.read, warnings: s.warnings };
+           onRoll: s.onRoll, dice: diceIn(s), cube: s.cube, board: s.board, read: s.read, warnings: s.warnings };
 };
 
 let savedRecord = null;
@@ -515,13 +527,11 @@ function setCube(patch) {
   update({ cube: { ...state.cube, ...patch }, cubeFromPhoto: false });
 }
 
-// The match and its score, from the header on any screen: kept on this phone, and on the result
-// screen the position is analysed again at once (TODO-066).
+// The match and its score, from the board screen's settings: kept on this phone (TODO-066).
 function setMatch(patch) {
   const match = BgCube.fixMatch({ ...state.match, ...patch });
   keep("match", JSON.stringify(match));
   update({ match });
-  if (state.step === "outcome") analyze();
 }
 
 function setResult(result, dice) {
@@ -825,6 +835,9 @@ async function recognize() {
         if (data.cube_read.at === "field" && dice) { dice = null; Object.assign(patch, { dice: [0, 0], diceFromPhoto: false }); }
         Object.assign(patch, { cube: BgCube.fromRead(data.cube_read, state.onRoll), cubeFromPhoto: true });
       }
+      // with dice, the cube on a side is owned, not just offered (as the server took it; TODO-086)
+      const cube = patch.cube || state.cube;
+      if (dice && cubeOffered({ cube })) patch.cube = { ...cube, offered: false };
       if (data.analysis) patch.onRoll = data.analysis.on_roll;
       const g = data.geometry;
       const geometry = g && { ...BgApi.scaleGeometry(g, scale), photo: photoId(state), from: JSON.stringify(state.corners) };
@@ -851,10 +864,10 @@ async function recognize() {
 
 // No doubling in the Crawford game: the server refuses a cube on one side then (TODO-066).
 const crawfordCube = (s = state) => s.match.crawford && s.cube.at !== "centre";
-const CRAWFORD_CUBE = "クロフォードのゲームではダブルできません。キューブを「中央」にするか、ヘッダーのクロフォードを外してください。";
+const CRAWFORD_CUBE = "クロフォードのゲームではダブルできません。キューブを「中央」にするか、「ゲーム」のクロフォードを外してください。";
 
 async function analyze() {
-  const errs = BgBoard.errors(state.board);
+  const errs = BgBoard.errors(state.board, NAME);
   if (errs.length) { alert(errs.join("\n")); return; }
   if (crawfordCube()) { alert(CRAWFORD_CUBE); return; }
   update({ selected: null });   // done editing
@@ -866,7 +879,7 @@ async function analyze() {
     try {
       const dice = rolled();
       const body = { board: BgBoard.copy(state.board), plies: Number(state.plies), ...BgCube.request(state.cube, state.onRoll, dice),
-                     ...BgCube.matchRequest(state.match) };
+                     ...BgCube.matchRequest(state.match), bottom_colour: state.bottomColour };
       if (dice) body.dice = dice;
       setResult(await BgApi.postJson("analyze", body), dice);
       go("outcome");
@@ -890,7 +903,7 @@ async function sampleOf(name) {
   const truth = BgSample.truth({
     image: `${name}.${ext}`, corners: state.corners.map(([x, y]) => [x * k, y * k]),
     home: state.home, bottomColour: state.bottomColour, board: state.board,
-    dice: rolled(), cube: state.cube, read: state.read,
+    dice: diceIn(), cube: state.cube, read: state.read,
   });
   return { blob, ext, truth };
 }
@@ -1131,6 +1144,10 @@ document.addEventListener("visibilitychange", () => persist());
 new ResizeObserver(() => {
   document.documentElement.style.setProperty("--hdr-h", document.querySelector("header").offsetHeight + "px");
 }).observe(document.querySelector("header"));
+// main keeps room under it for the bottom bar (0 while the bar is not shown).
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty("--bar-h", $("actbar").offsetHeight + "px");
+}).observe($("actbar"));
 
 // ================================================================ start
 
@@ -1160,6 +1177,7 @@ BgApi.version().then((v) => {
   $("hdr-version").textContent = `v${APP_VERSION} · r${v.recognizer}` + note + (v.commit ? ` · ${v.commit}` : "");
   $("hdr-version").classList.toggle("old", cmp !== 0);
   $("collect-opt").hidden = $("collect-note").hidden = !v.samples;
+  redraw(drawMoreSet);   // 「Pi に残す」 counts only where the server keeps samples
   $("claude-corners").hidden = $("claude-note").hidden = !v.claude;
 }).catch(() => {});
 

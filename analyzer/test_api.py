@@ -465,7 +465,7 @@ def test_match_score_changes_the_answer():
     assert behind["match"] == {"length": 7, "score": {"white": 3, "black": 5}, "crawford": False}
     assert behind["cube"]["double"] is True and behind["equity"] != money["equity"]
     # 手前 wins this game more often (52%): the favourite, though the match equity is 奥's
-    assert behind["favourite"] == "white" and behind["equity"]["white"] < 0 and "手前が有利" in summary_ja(behind)
+    assert behind["favourite"] == "white" and behind["equity"]["white"] < 0 and "白が有利" in summary_ja(behind)
     # the scores go to gnubg from the side on roll: 奥 on roll and behind 3-5 is the same answer
     b = analyze(Position.start(), "black", plies=0, match_length=7, score_white=5, score_black=3)
     assert b["cube"]["proper"] == behind["cube"]["proper"] and b["equity"]["black"] == behind["equity"]["white"]
@@ -483,7 +483,7 @@ def test_no_double_in_the_crawford_game():
     kw = {"match_length": 7, "score_white": 5, "score_black": 6}   # 手前 behind would double, but not now
     r = analyze(Position.start(), "white", plies=0, crawford=True, **kw)
     assert r["cube"] is None and r["moves"] is None and r["match"]["crawford"] is True
-    assert "7 ポイントマッチ 手前 5 対 奥 6（クロフォード）" in summary_ja(r)
+    assert "7 ポイントマッチ 白 5 対 黒 6（クロフォード）" in summary_ja(r)
     # post-Crawford, the side behind doubles
     assert analyze(Position.start(), "white", plies=0, **kw)["cube"]["double"] is True
 
@@ -493,9 +493,9 @@ def test_optional_double_words():
 
     c = _cube_result({"proper": "Optional double, take", "equity": {}}, "white", 1, False)
     assert c["optional"] is True and c["double"] is False and c["take"] is True
-    assert cube_summary_ja(c) == "手前はダブルしてもしなくてもよい（ダブルされたら奥はテイク）"
+    assert cube_summary_ja(c) == "白はダブルしてもしなくてもよい（ダブルされたら黒はテイク）"
     t = _cube_result({"proper": "Optional double, take", "equity": {}}, "white", 1, True)
-    assert cube_summary_ja(t) == "奥はテイク（手前のダブルはしてもしなくてもよい）"
+    assert cube_summary_ja(t) == "黒はテイク（白のダブルはしてもしなくてもよい）"
 
 
 def test_api_match():
@@ -503,8 +503,12 @@ def test_api_match():
     res = client.post("/analyze", json=base | {"match_length": 7, "score_white": 3, "score_black": 5})
     assert res.status_code == 200, res.text
     assert res.json()["cube"]["double"] is True
-    assert res.json()["summary"].startswith("7 ポイントマッチ 手前 3 対 奥 5。")
-    assert client.post("/analyze", json=base).json()["summary"].startswith("手前が有利")   # money as before
+    assert res.json()["summary"].startswith("7 ポイントマッチ 白 3 対 黒 5。")
+    assert client.post("/analyze", json=base).json()["summary"].startswith("白が有利")   # money as before
+    # TODO-086: the names follow the checkers' colour; 手前 (White) with the darker ones is 黒
+    dark = client.post("/analyze", json=base | {"bottom_colour": 0}).json()["summary"]
+    assert dark.startswith("黒が有利") and "ピップ 黒 167 / 白 167" in dark
+    assert client.post("/analyze", json=base | {"bottom_colour": 1}).json()["summary"].startswith("白が有利")
     bad = [{"match_length": -1}, {"match_length": 65}, {"score_white": 1}, {"crawford": True},
            {"match_length": 7, "score_white": 7}, {"match_length": 7, "score_black": -1},
            {"match_length": 7, "score_white": 3, "crawford": True},                       # no one 1 away

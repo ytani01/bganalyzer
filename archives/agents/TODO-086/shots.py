@@ -40,7 +40,9 @@ with sync_playwright() as p:
     shot(page, "1-photo")
     truth = json.loads((pc.ROOT / f"samples/{pc.SAMPLE}.truth.json").read_text())
     page.set_input_files("#file", str(pc.ROOT / "samples" / truth["image"]))
-    page.wait_for_function("BgApp.state.cornerGuess !== 'finding'", timeout=60000)
+    # the corners screen, once the photo is loaded and the corners are found (not under the busy overlay)
+    page.wait_for_function("!document.querySelector('#corners').hidden && document.querySelector('#busy').hidden"
+                           " && BgApp.state.cornerGuess !== 'finding'", timeout=60000)
     shot(page, "2-corners")
     pc.read_photo(page)   # the truth's corners, so that the board can be analysed
     shot(page, "3-board")

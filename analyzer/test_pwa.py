@@ -94,12 +94,12 @@ def test_speech_reads_who_rolls_next_first():
       dice: R.speechText({r}, [3, 1]),
       take: R.speechText({{...{r}, moves: null, cube: {{question: "take", doubler: "black", taker: "white", value: 1, take: true, double: true}}}}, null),
     }}""")
-    assert out["noDice"].startswith("次に振るのは手前の人です。")
-    assert out["noDice"].count("のは手前の人です。") == 1
-    assert out["dice"].startswith("手前の人、ダイス 3 1の最善手は、バーから22でヒット")
+    assert out["noDice"].startswith("次に振るのは白の人です。")
+    assert out["noDice"].count("のは白の人です。") == 1
+    assert out["dice"].startswith("白の人、ダイス 3 1の最善手は、バーから22でヒット")
     assert "振るのは" not in out["dice"]
     assert "かなり有利" in out["dice"] and "ギャモン勝ち" in out["dice"] and "大きくリード" in out["dice"]
-    assert out["take"].startswith("次に振るのは手前の人です。手前の人はテイクです。")
+    assert out["take"].startswith("次に振るのは白の人です。白の人はテイクです。")
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
@@ -112,9 +112,10 @@ def test_result_html():
       cube: R.html({{...{r}, moves: null, cube: {json.dumps(cube)}}}, null),
     }}""")
     assert '<ol class="moves"><li data-k="0" class="on">bar/22* 13/8(2) 6/off' in out["moves"]
-    assert "最善手（手前・ダイス 3-1）" in out["moves"] and "振ったのは手前の人。" in out["moves"]
-    assert "<h2>キューブ</h2>" in out["cube"] and "手前の人は <b>ダブルする</b>" in out["cube"]
-    assert "ダブルされたら、奥の人はパス。" in out["cube"] and "+1.200" in out["cube"]
+    assert "最善手（白・ダイス 3-1）" in out["moves"]
+    assert "ピップ リード" not in out["moves"] and "振ったのは" not in out["moves"]   # TODO-086: the table and the heading say it
+    assert "<h2>キューブ</h2>" in out["cube"] and "白の人は <b>ダブルする</b>" in out["cube"]
+    assert "ダブルされたら、黒の人はパス。" in out["cube"] and "+1.200" in out["cube"]
     assert "振るのは" not in out["cube"]   # with the cube decision, the pip line stands alone
 
 
@@ -236,6 +237,31 @@ def test_cube_request():
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_no_dice_while_a_double_is_offered():
+    # TODO-086: a cube offered on one side ("ダブルされたところ"): dice left in are not used, so it is take or pass
+    script = f"""
+    const c = require({json.dumps(str(STATIC / "cube.js"))});
+    const offered = {{at: "white", value: 2, offered: true}}, owned = {{at: "white", value: 2, offered: false}};
+    const centre = {{at: "centre", value: 2, offered: true}};
+    console.log(JSON.stringify([
+      c.usedDice(offered, [3, 1]), c.usedDice(owned, [3, 1]), c.usedDice(centre, [3, 1]), c.usedDice(owned, null),
+      c.request(offered, "white", c.usedDice(offered, [3, 1])),
+      [c.offered(offered), c.offered(owned), c.offered(centre)],
+    ]));
+    """
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    dropped, kept, kept_centre, none, req, flags = json.loads(r.stdout)
+    assert dropped is None and kept == [3, 1] and kept_centre == [3, 1] and none is None
+    assert req == {"on_roll": "black", "cube_value": 2, "cube_owner": "white", "doubled": True}
+    assert flags == [True, False, False]
+    js = (STATIC / "app.js").read_text()
+    assert "const rolled = (s = state) => BgCube.usedDice(s.cube, diceIn(s));" in js   # everything asked goes through it
+    assert '$("dice-row").hidden = cubeOffered(s);' in js
+    # dice read from the photo: the cube is owned, as the server took it
+    assert "if (dice && cubeOffered({ cube })) patch.cube = { ...cube, offered: false };" in js
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
 def test_match_request():
     # TODO-066: the match from the header, made whole before it is sent (and when read back from the phone)
     script = f"""
@@ -255,14 +281,13 @@ def test_match_request():
     assert bad_length["length"] == 0 and money2 == {"length": 0, "white": 0, "black": 0, "crawford": False}
 
 
-def test_match_is_in_the_header_and_sent():
+def test_match_is_in_the_board_settings_and_sent():
     html = client.get("/").text
-    header = html[html.index("<header>"):html.index("</header>")]
+    board = html[html.index('<section id="board"'):html.index('<section id="outcome"')]
     for id_ in ("match-length", "score-white", "score-black", "crawford"):
-        assert f'id="{id_}"' in header, id_   # one place, seen on all 4 screens
+        assert f'id="{id_}"' in board, id_   # one place, the board screen's settings (TODO-086)
     js = (STATIC / "app.js").read_text()
     assert js.count("BgCube.matchRequest(state.match)") == 2   # /analyze and /analyze-photo
-    assert 'if (state.step === "outcome") analyze();' in js
     assert "if (crawfordCube()) { alert(CRAWFORD_CUBE); return; }" in js   # Japanese before the server's 422
 
 
@@ -281,12 +306,27 @@ def test_match_in_the_result_words():
       optional: [R.speechText({{...{money}, cube: {{...{json.dumps(cube)}, double: false, optional: true}}}}, null),
                  R.html({{...{money}, cube: {{...{json.dumps(cube)}, double: false, optional: true}}}}, null)],
     }}""")
-    assert out["text"] == "7 ポイントマッチ 手前 6 対 奥 5（クロフォード）"
-    assert out["speech"].endswith("7 ポイントマッチ 手前 6 対 奥 5（クロフォード）です。")
+    assert out["text"] == "7 ポイントマッチ 白 6 対 黒 5（クロフォード）"
+    assert out["speech"].endswith("7 ポイントマッチ 白 6 対 黒 5（クロフォード）です。")
     assert "キューブの判断はマッチのスコアで" in out["cubeNote"]
     assert "ポイントマッチ" not in out["money"][0] and "マネーゲーム（ジャコビー・ルールあり）" in out["money"][1]
-    assert "手前の人はダブルしてもしなくてもよいです。" in out["optional"][0]
-    assert "手前の人は <b>ダブルしてもしなくてもよい</b>" in out["optional"][1]
+    assert "白の人はダブルしてもしなくてもよいです。" in out["optional"][0]
+    assert "白の人は <b>ダブルしてもしなくてもよい</b>" in out["optional"][1]
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_names_follow_the_colour():
+    # TODO-086: the sides are named by their checkers' colour; 手前 (white) with the darker ones is 黒
+    r = json.dumps(_RESULT)
+    out = _result_js(f"""(R.setNames(0), {{
+      speech: R.speechText({r}, null), html: R.html({r}, [3, 1]),
+      match: R.matchText({{length: 7, score: {{white: 3, black: 5}}, crawford: false}}),
+      back: (R.setNames(1), R.NAME.white),
+    }})""")
+    assert out["speech"].startswith("次に振るのは黒の人です。")
+    assert "<th>黒</th><th>白</th>" in out["html"] and "最善手（黒・ダイス 3-1）" in out["html"]
+    assert out["match"] == "7 ポイントマッチ 黒 3 対 白 5"
+    assert out["back"] == "白"
 
 
 def test_sample_script_is_served_and_cached():
@@ -361,7 +401,7 @@ def test_board_model():
     })()""")
     assert out["counts"] == {"onW": 15, "onB": 15, "offW": 0, "offB": 0}
     assert out["edited"] == [2, 1, 0, -2]   # 手前's 2 replace 奥's checkers; the start is not changed
-    assert out["errors"][0] == [] and out["errors"][1] == ["手前の駒が 17 個あります（15個まで）"]
+    assert out["errors"][0] == [] and out["errors"][1] == ["白の駒が 17 個あります（15個まで）"]
     assert out["errors"][2] == ["盤に駒がありません"]
     assert out["swapped"]["points"][5] == -5 and out["swapped"]["bar_black"] == 1 and out["swapped"]["bar_white"] == 0
     assert out["mirrorTwice"] and out["mirrored"] == [-5, 0, 0, 0, 3, 0, 5, 0, 0, 0, 0, -2]
