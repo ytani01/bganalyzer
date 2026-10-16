@@ -45,6 +45,7 @@ const BgResult = (() => {
     else if (!r.moves && !r.game_over) out += `<p>${rollWho(dice)}のは${NAME[r.on_roll]}の人。</p>`;
     if (r.moves) {
       out += `<h2>最善手（${NAME[r.on_roll]}・ダイス ${dice ? dice.join("-") : ""}）</h2>`;
+      if (r.luck != null) out += `<p>Luck ${r.luck >= 0 ? "+" : ""}${r.luck.toFixed(3)}・${luckWords(r.luck)}</p>`;
       out += r.moves.length
         ? `<ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>エクイティ ${m.equity.toFixed(3)}</span></li>`).join("")}</ol>` +
           `<p class="note">番号は盤と同じく${NAME[r.on_roll]}の人から見たもの。行をタップで矢印を切り替え。</p>`
@@ -61,6 +62,11 @@ const BgResult = (() => {
     out += `<p class="note">gnubg ${r.plies}手読み・勝率とエクイティはキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はマネーゲーム（ジャコビー・ルールあり）") : ""}。` +
       `Position ID: <code>${esc(r.position_id)}</code></p>`;
     return out;
+  }
+
+  // The roll's luck in words, by gnubg's levels (gnubg.c arLuckLevel: 0.6 and 0.3; TODO-098).
+  function luckWords(x) {
+    return x >= 0.6 ? "とても良い目" : x >= 0.3 ? "良い目" : x <= -0.6 ? "とても悪い目" : x <= -0.3 ? "悪い目" : "ふつうの目";
   }
 
   // The cube decision: the answer first, then gnubg's cubeful equities (the doubler's, per cube before the double).
@@ -82,8 +88,19 @@ const BgResult = (() => {
     const row = (name, v) => `<tr><td>${name}</td><td>${v >= 0 ? "+" : ""}${v.toFixed(3)}</td></tr>`;
     out += `<table><tr><th>${d}の人から見て</th><th>エクイティ</th></tr>` +
       row(`${word}しない`, e.no_double) + row(`${word}・テイク`, e.double_take) + row(`${word}・パス`, e.double_pass) +
-      `</table><p class="note">gnubg の判断: ${esc(c.proper)}</p>`;
+      `</table>${distanceHtml(c)}<p class="note">gnubg: ${esc(c.proper)}</p>`;
     return out;
+  }
+
+  // gnubg's "(25.6%)" after "No double, take" or "Too good, pass" (eval.c getPercent): how often the
+  // other side would have to pass (take) wrongly for a double to pay. The smaller, the nearer a double (TODO-097).
+  function distanceHtml(c) {
+    const m = c.proper.match(/\(([\d.]+)%\)/);
+    if (!m) return "";
+    const v = Number(m[1]), pct = Math.round(v);
+    const words = v < 10 ? "ダブルの一歩手前" : v < 30 ? "ダブルにはまだ少し早い" : "ダブルにはまだ遠い";
+    const what = c.too_good ? "ギャモン狙いをやめてダブルするまでの遠さ" : "ダブルまでの遠さ";
+    return `<p>${what} ${pct}%・${words}</p>`;
   }
 
   // A short spoken summary, not the numbers: the screen keeps the percentages and pips.
@@ -108,6 +125,7 @@ const BgResult = (() => {
       parts.push(r.moves.length
         ? `${who}の最善手は、${moveToSpeech(r.moves[0].move)}。`
         : `${who}では動かせる手がありません。`);
+      if (r.luck != null) parts.push(`${luckWords(r.luck)}です。`);
     }
     if (cubeText && !r.cube.rolled) parts.push(cubeText);
     parts.push(r.game_over ? `${NAME[r.favourite]}の勝ちで終局しています。` : standingToSpeech(r));

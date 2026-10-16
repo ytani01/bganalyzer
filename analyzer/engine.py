@@ -27,7 +27,8 @@ def evaluate(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
 
     - with cube = (value, owner): gnubg's cube decision before the roll (_cube_hint), or None when
       there is none; else None,
-    - with dice: the best max_moves plays [{"move", "steps", "equity"}, ...]; else None.
+    - with dice: the best max_moves plays [{"move", "steps", "equity"}, ...]; else None,
+    - with dice: the roll's luck (_luck); else None.
 
     match: None for a money game, else (length, (score of the player on roll, the opponent's),
     crawford, the cube's number)."""
@@ -85,7 +86,23 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
         moves = [{"move": gnubg.move_tuple_to_string(t, board),
                   "steps": [[t[k], t[k + 1]] for k in range(0, len(t), 2)],
                   "equity": round(m["score"], 3)} for t, m in zip(tuples, found)]
-    return probs, hint, moves
+    return probs, hint, moves, None if dice is None else _luck(gnubg, board, min(plies, 1), ci, ci_opp, tuple(dice))
+
+
+def _luck(gnubg, board, plies, ci, ci_opp, dice) -> float:
+    """The roll's luck for the player on roll, as gnubg reckons it (cubeless; TODO-098): the best play's
+    equity with these dice less the average over the 21 rolls. At most 1-ply: 21 searches at 2-ply
+    take over a second."""
+    ctx = gnubg.eval_context(0, plies)
+
+    def best(d):
+        found = gnubg.find_best_moves(board, ci, ctx, d)
+        # no legal play: the board stays and the opponent rolls
+        return found[0]["score"] if found else -gnubg.evaluate((board[1], board[0]), ci_opp, ctx)[5]
+
+    rolls = [(a, b) for a in range(1, 7) for b in range(a, 7)]
+    mean = sum(best(r) * (1 if r[0] == r[1] else 2) for r in rolls) / 36
+    return best(tuple(sorted(dice))) - mean
 
 
 # The Python module has no call for a cube decision (gnubg.hint() refuses cube hints, and

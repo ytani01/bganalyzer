@@ -439,6 +439,20 @@ def test_cube_decision_before_the_roll_with_dice():
     assert r["cube"] is None and r["moves"]
 
 
+def test_luck_of_the_roll():
+    # TODO-098: the best play with these dice less the average over the 21 rolls (at most 1-ply)
+    start = Position.start()
+    assert analyze(start, "white", plies=2, dice=(6, 6))["luck"] > 0.3 > analyze(start, "white", plies=2, dice=(2, 1))["luck"]
+    assert analyze(start, "white", plies=0)["luck"] is None
+    # White on the bar against five closed points: a dance (no play) is bad luck, 1-1 good
+    pos = Position(points=[0] * 24, bar_white=1)
+    pos.points[5], pos.points[10] = 14, -5
+    for i in range(18, 23):
+        pos.points[i] = -2
+    dance = analyze(pos, "white", plies=0, dice=(6, 6))
+    assert dance["moves"] == [] and dance["luck"] < 0 < analyze(pos, "white", plies=0, dice=(1, 1))["luck"]
+
+
 def test_no_cube_decision_without_access():
     # Black owns the cube: no cube decision for White, with or without dice
     r = analyze(Position.start(), "white", plies=0, cube_value=2, cube_owner="black", dice=(3, 1))
