@@ -1,10 +1,10 @@
 {
 "meta": {
-"machine": "aarch64",
-"recognizer": "0.21.4",
+"machine": "x86_64",
+"recognizer": "0.22.0",
 "opencv": "5.0.0",
 "numpy": "2.5.4",
-"cpu": "NEON FP16 *NEON_DOTPROD *NEON_FP16 *NEON_BF16?"
+"cpu": "SSE SSE2 SSE3 *SSE4.1 *SSE4.2 *AVX *FP16 *AVX2 *AVX512-SKX?"
 },
 "samples": {
 "collected-2aunci": {

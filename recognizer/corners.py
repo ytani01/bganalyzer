@@ -19,6 +19,9 @@ Everything is in integers or in float operations that round the same on every CP
 so x86_64 and the Raspberry Pi find the same corners. Boards without visible triangles may
 still be found from their edges; when nothing looks like a board the app starts from a rectangle
 for the user to drag into place.
+
+The user can then look again (TODO-068): the corners they have dragged into place stay where they
+are in every candidate, and only the part of the photo they have trimmed to is looked in.
 """
 from __future__ import annotations
 
@@ -38,6 +41,7 @@ V_COVER = 0.45         # an upright line needs an edge pixel in this share of th
 MIN_HEIGHT = 0.25      # the playing area's height, at least, against the photo's
 ASPECT = (0.8, 2.2)    # its width against its height
 MIN_WIDTH = 0.3        # its width, at least, against the photo's
+TRIMMED = (0.5, 0.4)   # its width and height, at least, in a photo the user has trimmed to the board
 STEP = 4               # rows between stored running counts of the upright lines' coverage
 # the structure score (seen from straight above, RW x RH)
 RW, RH = 208, 160
@@ -50,6 +54,7 @@ REFINE = 12             # candidates (the best by structure) whose edges are mov
 # moving each edge to the innermost strong edge nearby (seen from straight above, FW x FH)
 FW, FH, FM = 400, 320, 40
 OUT, IN = 0.06, 0.05   # how far each edge is looked for, outwards and inwards, against the side
+NEAR = 0.05            # a candidate agrees with a fixed corner this near it, against the long side looked in
 PEAK = 0.4             # an edge counts if this strong against the strongest in the range
 
 
@@ -265,12 +270,24 @@ def _move_in(small, quad):
 
 # ---------------------------------------------------------------- the search --
 
-def guess(small, emit=None):
+def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT)):
     """TL, TR, BR, BL of the playing area in small's pixels (float64 4 x 2), or None.
 
+    fixed: TL, TR, BR, BL, each a point (small's pixels) the user has put in place, or None: those
+    stay where they are, and only the others are looked for. least: the playing area's width and
+    height, at least, against small's.
     emit(stage, **arrays): told of each stage of the search, in small's pixels, for showing it as it
     goes ("edges", "uprights", "candidates"; see find_corners). It does not change what is found."""
     emit = emit or (lambda stage, **arrays: None)
+    fixed = fixed or [None] * 4
+    keep = [i for i in range(4) if fixed[i] is not None]
+
+    def pin(q):
+        q = q.copy()
+        for i in keep:
+            q[i] = fixed[i]
+        return q
+
     h, w = small.shape[:2]
     gx, gy = _gradients(small)
     hl = _h_lines(gx, gy)
@@ -279,11 +296,11 @@ def guess(small, emit=None):
         return None
     up = _Upright(gx, gy)
     uprights = {}   # each upright line found, over the tallest band it was found in
-    raw = []
+    raw, looked = [], set()
     for top in hl:
         for bot in hl:
             yt, yb = top[1] + w / 2 * top[0] / 200, bot[1] + w / 2 * bot[0] / 200
-            if yb - yt < MIN_HEIGHT * h:
+            if yb - yt < least[1] * h:
                 continue
             band = (int(yt + 0.03 * (yb - yt)), int(yb - 0.03 * (yb - yt)))
             vl = up.lines(max(0, band[0]), min(h, band[1]))
@@ -293,10 +310,17 @@ def guess(small, emit=None):
             for i in range(len(vl)):
                 for j in range(i + 1, len(vl)):
                     q = np.float64([_meet(top, vl[i]), _meet(top, vl[j]), _meet(bot, vl[j]), _meet(bot, vl[i])])
+                    if max([exact.norm(q[i] - fixed[i]) for i in keep], default=0) > NEAR * max(h, w):
+                        continue   # its corners disagree with the ones the user put in place
+                    q = pin(q)
                     wid = (exact.norm(q[1] - q[0]) + exact.norm(q[2] - q[3])) / 2
                     hgt = (exact.norm(q[3] - q[0]) + exact.norm(q[2] - q[1])) / 2
-                    if hgt <= 0 or not ASPECT[0] < wid / hgt < ASPECT[1] or wid < MIN_WIDTH * w:
+                    if hgt <= 0 or not ASPECT[0] < wid / hgt < ASPECT[1] or wid < least[0] * w:
                         continue
+                    key = tuple(np.round(q / (0.005 * max(h, w))).astype(np.int64).ravel())
+                    if key in looked:   # the same quad with the fixed corners in place
+                        continue
+                    looked.add(key)
                     view, _ = _view(small, q, RW // 2, RH // 2, 0)   # a first look at half size
                     if view is not None:
                         raw.append((_structure(view), q))
@@ -307,7 +331,7 @@ def guess(small, emit=None):
     emit("candidates", quads=np.float64([q for _, q in raw[:REFINE]]).reshape(-1, 4, 2))
     seen, best = set(), None
     for s0, q0 in raw[:REFINE]:
-        for q in (q0, _move_in(small, q0)):      # as found, and with the edges moved in
+        for q in (q0, pin(_move_in(small, q0))):      # as found, and with the edges moved in
             key = tuple(np.round(q / (0.005 * max(h, w))).astype(np.int64).ravel())
             if key in seen:
                 continue
@@ -325,23 +349,40 @@ def guess(small, emit=None):
     return best[1]
 
 
-def find_corners(img, progress=None):
+def find_corners(img, progress=None, fixed=None, crop=None):
     """TL, TR, BR, BL of the playing area in image pixels, or None if no board was found.
+
+    fixed: TL, TR, BR, BL, each [x, y] the user has put in place or None; those are kept and only
+    the others are looked for (all four given: they are the answer). crop: (x0, y0, x1, y1), the
+    part of the photo to look in (the user's trimming).
 
     progress(stage, data): called as each stage of the search is done, with what it found in image
     pixels: "edges" {lines: the far / near edge candidates across the photo}, "uprights" {lines: the
     left / right edge candidates, over the band between two of those}, "candidates" {quads: the
     quadrilaterals that looked most like a board at first, best first}, "corners" {corners} (only
     when a board is found). It does not change what is found."""
-    small, s = shrink(img)
-    emit = None
-    if progress:
-        def emit(stage, **arrays):
-            progress(stage, {k: (np.float64(v) / s).round(1).tolist() for k, v in arrays.items()})
-    q = guess(small, emit)
-    if q is None:
+    h, w = img.shape[:2]
+    x0, y0, x1, y1 = (0, 0, w, h) if crop is None else (
+        min(max(int(crop[0]), 0), w - 1), min(max(int(crop[1]), 0), h - 1),
+        min(max(int(crop[2]), 1), w), min(max(int(crop[3]), 1), h))
+    if x1 - x0 < 16 or y1 - y0 < 16:
         return None
-    corners = exact.snap(q / s, 0.1).round(1).tolist()
+    small, s = shrink(img[y0:y1, x0:x1])
+    at = np.float64([x0, y0])
+    fixed = list(fixed or [None] * 4)
+    if all(p is not None for p in fixed):
+        q = np.float64(fixed)
+    else:
+        emit = None
+        if progress:
+            def emit(stage, **arrays):
+                progress(stage, {k: (np.float64(v) / s + at).round(1).tolist() for k, v in arrays.items()})
+        q = guess(small, emit, [None if p is None else (np.float64(p) - at) * s for p in fixed],
+                  (MIN_WIDTH, MIN_HEIGHT) if crop is None else TRIMMED)
+        if q is None:
+            return None
+        q = q / s + at
+    corners = exact.snap(q, 0.1).round(1).tolist()
     if progress:
         progress("corners", {"corners": corners})
     return corners

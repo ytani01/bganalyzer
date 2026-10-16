@@ -87,6 +87,11 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <button id="corner-reset" class="button small">四隅をやり直す</button>
       <span class="note">点はドラッグで動かせます。ざっくりで大丈夫です。</span>
     </div>
+    <div class="row wrap">
+      <button id="crop-start" class="button small">範囲を囲む</button>
+      <button id="crop-clear" class="button small" hidden>範囲を戻す</button>
+      <button id="find-again" class="button small">もう一度検出</button>
+    </div>
     <div class="opt">
       <span class="opt-label">手前のホーム<small>（上がる側）</small></span>
       <div class="seg" data-name="homePick">

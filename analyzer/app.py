@@ -28,7 +28,7 @@ from samples import router as samples_router, samples_dir
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.43.0"
+__version__ = "0.44.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -130,16 +130,27 @@ def analyze_endpoint(req: AnalyzeRequest):
 async def find_corners_endpoint(
     image: UploadFile = File(...),
     stream: bool = Form(False, description="answer as NDJSON lines: each stage of the search as it is done, then the result"),
+    fixed: str | None = Form(None, description='JSON [TL, TR, BR, BL], each [x, y] the user has put in place or null: kept as they are'),
+    crop: str | None = Form(None, description="x0,y0,x1,y1: look only in this part of the photo"),
 ):
-    """A first guess at the playing area's corners (TL, TR, BR, BL), for the app to show
-    before the user adjusts them. corners is null when no board was found."""
+    """A guess at the playing area's corners (TL, TR, BR, BL), for the app to show before the user
+    adjusts them, or again after (fixed, crop). corners is null when no board was found."""
     from corners import find_corners  # recognizer (OpenCV); imported lazily
 
     img = await _decode(image)
+    try:
+        f = json.loads(fixed) if fixed else None
+        assert f is None or (isinstance(f, list) and len(f) == 4)
+        f = f and [None if p is None else [float(v) for v in p] for p in f]
+        assert f is None or all(p is None or len(p) == 2 for p in f)
+        c = tuple(float(v) for v in crop.split(",")) if crop else None
+        assert c is None or len(c) == 4
+    except Exception as e:
+        raise HTTPException(422, "fixed must be 4 of [x, y] or null, crop 4 numbers") from e
     size = {"width": img.shape[1], "height": img.shape[0]}
     if stream:
-        return _stream(lambda progress: {"corners": find_corners(img, progress)} | size)
-    return {"corners": find_corners(img)} | size
+        return _stream(lambda progress: {"corners": find_corners(img, progress, fixed=f, crop=c)} | size)
+    return {"corners": find_corners(img, fixed=f, crop=c)} | size
 
 
 @app.post("/analyze-photo")
