@@ -116,7 +116,7 @@ def test_result_html():
     # TODO-096: with dice, the double that was due before the roll comes before the best move
     assert out["rolled"].index("<h2>キューブ（振る前）</h2>") < out["rolled"].index("最善手（白・ダイス 3-1）")
     assert "白の人は振る前に <b>ダブルすべきだった</b>" in out["rolled"]
-    assert "振る前に白の人はダブルすべきでした。ダブルされたら黒の人はパスです。" in out["rolledSpeech"]
+    assert out["rolledSpeech"].startswith("振る前に白の人はダブルすべきでした。ダブルされたら黒の人はパスです。白の人、ダイス 3 1の最善手は")
     assert '<ol class="moves"><li data-k="0" class="on">bar/22* 13/8(2) 6/off' in out["moves"]
     assert "最善手（白・ダイス 3-1）" in out["moves"]
     assert "ピップ リード" not in out["moves"] and "振ったのは" not in out["moves"]   # TODO-086: the table and the heading say it

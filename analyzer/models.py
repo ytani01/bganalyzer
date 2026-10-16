@@ -21,7 +21,7 @@ class AnalyzeRequest(BaseModel):
     on_roll: str = "white"
     plies: int = Field(DEFAULT_PLIES, ge=0, le=MAX_PLIES)
     dice: tuple[int, int] | None = None
-    # The doubling cube (money game). Without dice, the answer has the cube decision.
+    # The doubling cube. The answer has the cube decision before the roll (with dice, only when a double was due).
     cube_value: int = 1
     cube_owner: str | None = None   # white, black or null (in the middle)
     doubled: bool = False           # on_roll has just doubled to cube_value: take or pass?
