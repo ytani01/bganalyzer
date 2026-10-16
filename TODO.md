@@ -86,7 +86,7 @@ TODO-078 は直さずに閉じた（対応しない）。対局者の横から�
 | 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 
 ユーザーの依頼（2026-10-17）。スコアは画面を見れば分かるので、読み上げでは「7 ポイントマッチ 白 6 対 黒 5 です」を言わない。
-今は `analyzer/static/result.js` の `speechText` が最後に `matchText` を足している。画面の表示（`matchText`）はそのまま。
+今は `analyzer/static/result.js` の `speechText` が最後に `matchText` を足している。アプリの中で `matchText` を使うのはここだけだったので、`matchText` ごと消す（結果の画面のマッチの文はサーバーの `summary` から来る）。
 代わりに、盤面の確認と解析結果の盤の絵（`analyzer/static/board-view.js`。3 枚とも `app.js` の同じ scene で描く）にスコアを出す。
 
 決めたこと（2026-10-17 ユーザー）:
