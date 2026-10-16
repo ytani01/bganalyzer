@@ -1,0 +1,38 @@
+import json, os, sys
+sys.path.insert(0, "/home/ytani/work/bganalyzer/tools")
+import pi_ui_check as pc
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    b = p.chromium.launch(executable_path=pc.CHROMIUM) if os.path.exists(pc.CHROMIUM) else p.chromium.launch()
+    page = b.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    page.add_init_script(pc.INIT); page.on("dialog", lambda d: d.dismiss())
+    page.goto(pc.URL); page.wait_for_function("document.querySelector('#hdr-version').textContent.trim() !== ''")
+    print("tips after pick:", page.evaluate("document.querySelector('.pick').compareDocumentPosition(document.querySelector('.tips')) & 4"))
+    truth = json.loads((pc.ROOT / f"samples/{pc.SAMPLE}.truth.json").read_text())
+    page.set_input_files("#file", str(pc.ROOT / "samples" / truth["image"]))
+    page.wait_for_function("!document.querySelector('#corners').hidden && document.querySelector('#busy').hidden && BgApp.state.cornerGuess !== 'finding'", timeout=60000)
+    pc.read_photo(page)
+    B = "JSON.stringify(BgApp.state.board)"
+    b0 = page.evaluate(B)
+    print("photo hit rects:", page.evaluate("document.querySelectorAll('#photo-svg .hit, #photo-svg .hit-num').length"))
+    box = page.locator("#photo-svg").bounding_box()
+    page.mouse.click(box["x"] + box["width"] * 0.1, box["y"] + box["height"] * 0.8)
+    print("photo tap changed board:", page.evaluate(B) != b0, "palette:", page.evaluate("!document.querySelector('#palette').hidden"))
+    print("notes:", page.evaluate("[!document.querySelector('#dice-note').hidden, !document.querySelector('#cube-note').hidden]"))
+    print("mark before:", page.evaluate("[document.querySelector('#count-mark').hidden, document.querySelector('#count-mark').textContent]"))
+    page.locator("#board-svg .hit").nth(0).click()   # tap point 1 low level
+    print("board tap changed:", page.evaluate(B) != b0)
+    print("mark after tap:", page.evaluate("[document.querySelector('#count-mark').hidden, document.querySelector('#count-mark').textContent]"))
+    pos = page.evaluate("(() => { const r = (id) => document.getElementById(id).getBoundingClientRect(); return [r('board-svg').bottom, r('count-mark').top, r('count-mark').bottom, r('editor').top]; })()")
+    print("board bottom / mark top,bottom / editor top:", pos)
+    page.evaluate("BgApp.update && BgApp.update({ board: { ...BgApp.state.board, points: BgApp.state.board.points.map((n,i)=> i===5 ? n+3 : n) } })")
+    print("mark +3:", page.evaluate("document.querySelector('#count-mark').textContent"))
+    page.locator("#board-svg .hit").nth(2).dispatch_event("contextmenu")
+    print("hold -> palette:", page.evaluate("!document.querySelector('#palette').hidden"))
+    page.click("#editor-title")
+    page.select_option("#die1", "1"); print("dice note after edit hidden:", page.evaluate("document.querySelector('#dice-note').hidden"))
+    order = page.evaluate("[...document.querySelectorAll('#board .panel')][1].innerText.split('\\n').filter(Boolean)")
+    print("settings order:", order)
+    print("flip-turn exists:", page.evaluate("!!document.getElementById('flip-turn')"))
+    page.screenshot(path=sys.argv[1], full_page=False)
+    b.close()

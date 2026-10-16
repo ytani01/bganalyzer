@@ -122,7 +122,7 @@ header .app-name { font-size: 16px; font-weight: bold; white-space: nowrap; flex
 html { scroll-padding-bottom: var(--bar-h, 0px); }   /* what is scrolled to (a focused field) stays above the bottom bar */
 main { max-width: 720px; margin: 0 auto; padding: 12px 16px calc(var(--bar-h, 0px) + 40px); }
 .lead { font-size: 17px; }
-#corner-help { min-height: 4.5em; }
+#corner-help { min-height: 1.5em; }   /* one line (TODO-088) */
 .note { color: var(--muted); font-size: 13px; }
 .row { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
 .row.wrap { flex-wrap: wrap; }
@@ -215,8 +215,10 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .chip.white { background: var(--white-chk); }
 .chip.black { background: var(--black-chk); }
 
-.counts { font-size: 14px; margin: 8px 0; }
-.counts .bad { color: #c62828; font-weight: bold; }
+/* The checkers that do not add up, under the board (TODO-088). */
+.count-mark { color: #c62828; font-weight: bold; font-size: 14px; margin: 4px 0 0; }
+/* 写真: the value beside it is still the one read from the photo (TODO-088). */
+.from-photo { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; white-space: nowrap; }
 .alert { background: var(--warn-bg); color: var(--warn-fg); border-radius: 10px; padding: 8px 12px; margin: 8px 0; font-size: 14px; }
 
 .dice { display: flex; gap: 8px; }
@@ -257,7 +259,6 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .history-list .sub { color: var(--muted); font-size: 13px; display: block; }
 .history-list .del { width: 44px; height: 44px; padding: 0; font-size: 18px; }
 .die, .arrows { pointer-events: none; }   /* taps go to the point under the dice */
-#flip-turn { margin-top: 8px; }
 .board-wrap svg .cube-num { font-size: 15px; font-weight: bold; fill: #222; text-anchor: middle; }
 .result .answer { font-size: 20px; margin: 4px 0; }
 #cube-side label { display: flex; align-items: center; gap: 6px; }
@@ -272,7 +273,6 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .opt .note { flex-basis: 100%; margin: 0; }
 .opt .angle { flex: 1; min-width: 0; }
 .opt .dice select { width: 64px; font-size: 17px; padding: 5px 6px; }
-#flip-turn { margin-top: 0; }
 .panel .note { margin: 4px 0 8px; }
 
 /* Phone held upright: the header is one line (the step's name instead of the step list), and the board
@@ -280,7 +280,6 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 @media (max-width: 599px) {
   #steps { display: none; }
   .lead { font-size: 15px; margin: 4px 0 8px; }
-  #corner-help { min-height: 3em; }
   .row { margin: 8px 0; }
   .panel { padding: 2px 10px 6px; }
   .panel-title { font-size: 15px; }
@@ -303,13 +302,6 @@ details.more { margin: 12px 0; }
 details.more > summary { padding: 10px 0; line-height: 24px; font-size: 15px; color: var(--muted); cursor: pointer; }   /* 44px high, with its marker */
 details.panel.more { padding-top: 0; padding-bottom: 0; }
 details.panel.more[open] { padding-bottom: 8px; }
-
-/* The loupe over the finger on a board picture (board-view.js): a copy of the board, zoomed in. */
-.loupe {
-  position: fixed; z-index: 30; width: 120px; height: 120px; padding: 0; overflow: hidden; pointer-events: none;
-  border: 2px solid var(--fg); border-radius: 50%; box-shadow: 0 4px 14px #0006;
-}
-.loupe svg { width: 100%; height: 100%; }
 
 /* The sides' names (白/黒, app.js): a tap goes to their button (.seg reads the button's own data-value). */
 .nm-white, .nm-black { pointer-events: none; }

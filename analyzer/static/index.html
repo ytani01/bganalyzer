@@ -39,15 +39,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <section id="photo" class="step">
     <!-- Android 14+ の Chrome は accept="image/*" だけだと写真選択の画面しか出さず、
          カメラを選べない。撮る方は capture を付けて直接カメラを開く -->
-    <details class="tips">
-      <summary>うまく読み取るコツ</summary>
-      <ul>
-        <li>盤の<b>真上から</b>、盤全体が画面いっぱいに入るように撮る</li>
-        <li>影や照明の反射が強い所を避ける</li>
-        <li>ダイスやカップは盤の外に置く</li>
-      </ul>
-    </details>
-    <!-- 3 つのボタンは同じ扱い（どれも主ボタンにしない、大きさも揃えて横に並べる）。コツは撮る前に読めるよう上に置く -->
+    <!-- 3 つのボタンは同じ扱い（どれも主ボタンにしない、大きさも揃えて横に並べる）。コツはその下（TODO-088） -->
     <div class="pick">
       <label class="button">
         <span class="pick-icon" aria-hidden="true">📷</span>写真を撮る
@@ -59,6 +51,14 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </label>
       <button id="manual" class="button"><span class="pick-icon" aria-hidden="true">✏️</span>手で入力<small>初期配置から</small></button>
     </div>
+    <details class="tips">
+      <summary>うまく読み取るコツ</summary>
+      <ul>
+        <li>盤の<b>真上から</b>、盤全体が画面いっぱいに入るように撮る</li>
+        <li>影や照明の反射が強い所を避ける</li>
+        <li>ダイスやカップは盤の外に置く</li>
+      </ul>
+    </details>
     <div id="history" hidden>
       <h2 class="history-title">最近の写真</h2>
       <ul id="history-list" class="history-list"></ul>
@@ -92,7 +92,6 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     </div>
     <div class="row wrap">
       <label><input type="checkbox" id="keep-corners"> 四隅を固定する</label>
-      <span class="note">オンだと読み取りで四隅を合わせ直さない（ざっくり置いたときは外す）</span>
     </div>
     <div class="opt">
       <span class="opt-label">手前のホーム<small>（上がる側）</small></span>
@@ -143,6 +142,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <div id="photo-wrap" class="board-wrap" hidden><svg id="photo-svg" viewBox="0 0 660 440"></svg></div>
       <div id="board-pin" class="board-pin">
         <div class="board-wrap"><svg id="board-svg" viewBox="0 0 660 440"></svg></div>
+        <!-- 駒の数が合わないときだけ出す短い印（TODO-088） -->
+        <div id="count-mark" class="count-mark" role="status" hidden></div>
         <div id="editor" class="editor">
           <div id="editor-title" class="editor-title">タップした段まで置く（一番上なら 1 個減る）・番号で空に・長押しで色と数</div>
           <div class="editor-row">
@@ -156,7 +157,6 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </div>
     </div>
     <div class="panel">
-    <div id="counts" class="counts"></div>
     <div class="opt">
       <span class="opt-label"><span class="nm-white">白</span>のホーム<small>（上がる側）</small></span>
       <div class="seg" data-name="home">
@@ -178,12 +178,25 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
         <label id="crawford-opt" hidden><input type="checkbox" id="crawford"> クロフォード</label>
       </span>
     </div>
+    <fieldset>
+      <div class="opt">
+        <span class="opt-label">キューブ</span>
+        <div class="seg" data-name="cubeAt">
+          <button data-value="centre">中央</button><button data-value="white"><span class="nm-white">白</span></button><button data-value="black"><span class="nm-black">黒</span></button>
+        </div>
+        <span id="cube-note" class="from-photo" title="写真から読み取ったキューブ" hidden>写真</span>
+      </div>
+      <div id="cube-side" class="row wrap" hidden>
+        <label>キューブの数 <select id="cube-value"></select></label>
+        <label><input type="checkbox" id="cube-offered" checked> ダブルされたところ（テイクかパスか）</label>
+      </div>
+      <p id="cube-help" class="note"></p>
+    </fieldset>
     <div class="opt">
       <span class="opt-label" id="onroll-label">次に振る人</span>
       <div class="seg" data-name="onRoll">
         <button data-value="white"><span class="nm-white">白</span></button><button data-value="black"><span class="nm-black">黒</span></button>
       </div>
-      <button id="flip-turn" class="button small" title="手番を入れ替えます（解析した後なら解析し直します）">入れ替える</button>
     </div>
     <div id="dice-row" class="opt">
       <span class="opt-label">ダイスの目</span>
@@ -191,22 +204,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
         <select id="die1" aria-label="ダイス 1"><option value="">-</option></select>
         <select id="die2" aria-label="ダイス 2"><option value="">-</option></select>
       </div>
+      <span id="dice-note" class="from-photo" title="写真から読み取った目" hidden>写真</span>
     </div>
-    <p id="dice-note" class="note" hidden>写真から読み取った目です。違えば直してください。</p>
-    <fieldset>
-      <div class="opt">
-        <span class="opt-label">キューブ</span>
-        <div class="seg" data-name="cubeAt">
-          <button data-value="centre">中央</button><button data-value="white"><span class="nm-white">白</span></button><button data-value="black"><span class="nm-black">黒</span></button>
-        </div>
-      </div>
-      <div id="cube-side" class="row wrap" hidden>
-        <label>キューブの数 <select id="cube-value"></select></label>
-        <label><input type="checkbox" id="cube-offered" checked> ダブルされたところ（テイクかパスか）</label>
-      </div>
-      <p id="cube-help" class="note"></p>
-      <p id="cube-note" class="note" hidden>写真から読み取ったキューブです。違えば直してください。</p>
-    </fieldset>
     </div>
 
     <!-- 使うことが少ないもの（TODO-086）。閉じた状態で始まる -->
