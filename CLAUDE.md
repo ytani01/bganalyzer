@@ -14,7 +14,7 @@ git pull && uv sync --frozen && systemctl --user restart bganalyzer   # Raspberr
 uv run python recognizer/board.py <写真> --corners ... --home left|right   # 認識だけ試す
 uv run python recognizer/check_accuracy.py                       # 認識の精度が基準より下がっていないか（CI の accuracy）
 uv run python tools/check_pi.py                                  # Pi の公開サーバーを外から確かめる
-uv run -q --no-project --with playwright python tools/pi_ui_check.py   # Pi の上で、スマホの代わりに PWA を操作して確かめる
+uv run -q --no-project --with playwright python tools/pi_ui_check.py   # ローカルホストで、スマホの代わりに PWA を操作して確かめる
 uv run -q --no-project --with playwright python tools/ui_snapshot.py record a.json   # PWA を操作して見える画面を記録（compare a.json b.json で 2 つの版を比べる）
 ```
 
@@ -59,13 +59,14 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 基準はどの機械（Pi でも）で更新してよい。これからの変更で float の処理を使ってもよい。
 そのせいで Pi と GitHub Actions で結果が分かれたら、GitHub Actions の結果に合わせて基準を書き直す。
 
-## Raspberry Pi で確かめること
+## マージ後に確かめること
 
-マージ後に自宅の Raspberry Pi（本番）でしか確かめられないことも、**TODO.md のその項目に書く**
-（`- [ ] Pi:` / `- [ ] スマホ:` の行。項目は Pi とスマホの確認まで済んでから決着させる）。
+マージ後に動いているアプリでしか確かめられないことは、Raspberry Pi ではなく**ローカルホスト（開発機）で確かめ**、
+**TODO.md のその項目に書く**（`- [ ] ローカル:` / `- [ ] スマホ:` の行。項目はその確認まで済んでから決着させる）。
+開発機にも Pi と同じ `bganalyzer.service` を入れてある。
 2026-10-17 に docs/PI_CHECKS.md の決まりをやめた（決着した PI-001〜PI-050 は `archives/pi/` に残す）。
-**Raspberry Pi の上で作業する Claude Code は、`git pull` のあとに TODO.md の `- [ ] Pi:` の行を確かめて結果を書き込む**
-（アプリの更新と確かめ方は [docs/raspi.md](docs/raspi.md) の「ふだんの運用」「更新したあとに確かめる」）。
+**`git pull` のあと、ローカルホストでアプリを更新して TODO.md の `- [ ] ローカル:` の行を確かめ、結果を書き込む**
+（更新と確かめ方は [docs/raspi.md](docs/raspi.md) の「ふだんの運用」「更新したあとに確かめる」）。
 期待と違えばユーザーに報告する。
 公開している https://bg.tail5c266.ts.net/bg/ にはクラウドからも届くので、版・画面・公開サンプルの読み取りは
 **クラウドの Claude が `uv run python tools/check_pi.py` で先に確かめてよい**（やり方とやらないことは docs/raspi.md の「クラウドから確かめられること」）。
@@ -85,8 +86,8 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
   ルールはこの CLAUDE.md、作業は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
 - **作業の前に main を pull する。**
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
-- **マージ後に Pi で確かめる必要がある変更は、その PR の中で TODO.md のその項目に `- [ ] Pi:` の行を足す**
-  依存（`pyproject.toml`・`uv.lock`）を変えた PR では、Pi で `uv sync --frozen` と再起動が通るかの行を必ず足す（GitHub Actions は arm64 で流さない。TODO-075）
+- **マージ後に確かめる必要がある変更は、その PR の中で TODO.md のその項目に `- [ ] ローカル:` の行を足す**
+  arm64（Pi）で `uv sync --frozen` が通るかは確かめない（2026-10-17 ユーザーが決めた。GitHub Actions も arm64 では流さない）
 - **マージの直前に最新の main を取り込み、GitHub Actions の `test` が通ってからマージする（`accuracy` が走った PR はそれも。
   文書だけの PR では `test` は走らないので要らない）。** 落ちていたらマージしない。
   テスト全体は手元で流さない（CI と重なる。`.claude/hooks/no-local-pytest.py` が止める）。

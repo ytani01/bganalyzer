@@ -155,7 +155,7 @@ flowchart LR
 いま動いているのは https://bg.tail5c266.ts.net/bg/ です。
 PWA は API を相対パスで呼ぶので、`/bg/` のようなパスの下でも動きます（同じ Pi で別のアプリを別のパスに置ける）。
 gnubg が子プロセスとメインスレッドを必要とするため、サーバーレス関数ではなく常駐するプロセスで動かします。
-arm64 の gnubg は Release に置いた wheel を使います。GitHub Actions の `test` は x86_64 で起動して解析まで確かめ、arm64 は依存を変えたときに Pi で確かめます。
+arm64 の gnubg は Release に置いた wheel を使います。GitHub Actions の `test` は x86_64 で起動して解析まで確かめます（arm64 では確かめません）。
 PWA を別の静的ホスティングに置く場合は `?api=https://APIのURL` を付けて開けば、その API を呼びます。
 
 ```mermaid

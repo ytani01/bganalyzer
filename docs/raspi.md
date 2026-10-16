@@ -103,17 +103,17 @@ tailscale funnel status
 
 - Pi を再起動しても、落ちても、systemd がアプリを自動で立ち上げ直します（`Restart=always`）。
 - 更新は `main` を pull して依存を揃え、立ち上げ直すだけです。`bganalyzer.service` が変わったときだけは、「2.」の `sed` から `enable --now` までをやり直し、`systemctl --user restart bganalyzer` します。
-- 更新したら、下の「更新したあとに確かめる」のとおり TODO.md の `- [ ] Pi:` の行を確かめます（Pi の上の Claude Code に「pull して TODO.md の Pi の確認をして」と頼めます）。
+- マージ後の確認は Pi ではなくローカルホスト（開発機）で行います（下の「更新したあとに確かめる」）。
 
 ## 更新したあとに確かめる
 
-マージしたあと Pi（本番）でしか確かめられないことは、TODO.md のその項目に `- [ ] Pi:` / `- [ ] スマホ:` の行で書いてあります（2026-10-17 までは docs/PI_CHECKS.md で別に管理していた。決着した 50 件は `archives/pi/`）。
-Pi の上の Claude Code は、更新したあと TODO.md の `- [ ] Pi:` の行を確かめ、結果を書き込みます。スマホの画面の操作は、まず下の「スマホの代わりに確かめる」で確かめ、それでも確かめられないこと（実際の音声、iPhone の共有の画面など）だけを `- [ ] スマホ:` に残してユーザーに頼みます。
+マージしたあと動いているアプリでしか確かめられないことは、TODO.md のその項目に `- [ ] ローカル:` / `- [ ] スマホ:` の行で書いてあります（2026-10-17 までは docs/PI_CHECKS.md で別に管理していた。決着した 50 件は `archives/pi/`）。
+確かめるのは Pi ではなくローカルホスト（開発機）です。開発機にもこのページの手順で `bganalyzer.service` を入れておき、`git pull && uv sync --frozen && systemctl --user restart bganalyzer` で更新してから、`- [ ] ローカル:` の行を確かめて結果を書き込みます。スマホの画面の操作は、まず下の「スマホの代わりに確かめる」で確かめ、それでも確かめられないこと（実際の音声、iPhone の共有の画面など）だけを `- [ ] スマホ:` に残してユーザーに頼みます。
 
 ### スマホの代わりに確かめる
 
-Pi の上で、Playwright から `http://127.0.0.1:8000/` の PWA をスマホと同じ画面の大きさで操作する。
-ブラウザは Pi の `/usr/bin/chromium` を使い、Playwright は `uv run --no-project` でその場で入れる
+ローカルホストで、Playwright から `http://127.0.0.1:8000/` の PWA をスマホと同じ画面の大きさで操作する。
+ブラウザは `/usr/bin/chromium` を使い、Playwright は `uv run --no-project` でその場で入れる
 （pyproject.toml には入れていない）。
 
 ```bash
@@ -136,7 +136,7 @@ uv run -q --no-project --with playwright python tools/pi_ui_check.py collect   #
 ### クラウドから確かめられること
 
 Pi のアプリは Tailscale Funnel で https://bg.tail5c266.ts.net/bg/ に公開している（ルートの `/` は 404）。
-クラウドの Claude もここには届くので、**外から見えることはクラウドで先に確かめ、TODO.md の `Pi:` の行に「クラウドから」と書いてよい。**
+クラウドの Claude もここには届くので、**外から見えることはクラウドで先に確かめ、TODO.md の `ローカル:` の行に「クラウドから」と書いてよい。**
 
 ```bash
 uv run python tools/check_pi.py          # --all で samples/ の全部
@@ -147,9 +147,9 @@ uv run python tools/check_pi.py          # --all で samples/ の全部
 画面は Playwright の Chromium で `/bg/` を開けば見られる。
 クラウドの環境によっては、プロキシが ts.net を通さず `Tunnel connection failed: 403` になる（2026-10-14、引き継ぎ先のアカウントで確認）。
 そのときでも、Claude の WebFetch ツールでは GET（`/bg/version` など）が読めることがある（2026-10-14、同じアカウントで確認）。
-POST（`/analyze-photo`）は送れないので、読み取りの確認は Pi の Claude Code に任せる。
+POST（`/analyze-photo`）は送れないので、読み取りの確認はローカルホストで行う。
 
-クラウドからは**やらない・できない**こと（Pi の上の Claude Code かユーザーに残す）:
+クラウドからは**やらない・できない**こと（ローカルホストの Claude Code かユーザーに残す）:
 
 - `git pull` と `systemctl --user restart bganalyzer`（Pi の更新そのもの）、アプリのログ、`collected/` の中身
 - `/samples` に送ること（Pi に写真が残る）。送ってよいのはリポジトリで公開している `samples/` の写真だけ
