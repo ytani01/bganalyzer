@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-065、TODO-066、TODO-067、TODO-069、TODO-072。** これまでに 65 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-073`。**
+**残っている項目: TODO-025、TODO-030、TODO-065、TODO-066、TODO-067、TODO-069、TODO-072、TODO-073。** これまでに 65 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-074`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
 ---
@@ -120,6 +120,26 @@ float の OpenCV（`HoughLinesP`・`LineSegmentDetector` など）も候補に�
 普通の盤を壊すおそれがある。読み取りはどの CPU でも同じ結果にする（CLAUDE.md の「精度の確認」）。
 
 **無駄を省く工夫:** ずらし方は数通りに絞り、全サンプル 1 回。TODO-071 の測る道具（`archives/agents/TODO-071/`）のうち使えるものは使い回す
+
+## TODO-073. 同じ写真が 2 組入っているサンプルを整理する
+
+| | main | 担当 |
+|---|---|---|
+| 見込み | Opus 5.5 / effort medium | main（作業）+ verifier（Haiku 5.5 / medium） |
+
+TODO-071 の測定で分かった（2026-10-16）。精度の集計（`evaluate.py`・`check_accuracy.py`）で同じ写真を 2 回数えている。
+
+- `collected-s5dd7x.jpg` と `tv-vegas-open.jpg`: md5 が同じ
+- `collected-h8ilqt.jpg` と `commons-tavli-red-diamond.jpg`: ファイルは違うが、四隅の候補と測った値が全部同じ。同じ写真の大きさ違いらしい
+
+- [ ] h8ilqt と tavli-red-diamond が同じ写真かを確かめる（写真を並べた画像と、`*.truth.json` の盤面の比較）
+- [ ] どちらを残すかを聞く
+- [ ] 消す方の写真と `*.truth.json` を消し、`check_accuracy.py --update`・`trace_cpu.py --update` で基準を書き直す。README の「精度」の表も直す
+
+**何を決めるか:** 消すか、消すならどちらを残すか（`commons-` は出典と note があり、`collected-` はユーザーが直した盤面）。
+**いつ聞くか:** 同じ写真だと確かめたあと。
+
+**無駄を省く工夫:** 確かめるのは 2 組だけ。全サンプルの重複探しは md5 と写真の大きさを揃えた比較を 1 回
 
 ---
 
