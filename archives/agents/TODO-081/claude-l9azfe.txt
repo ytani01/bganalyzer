@@ -1,0 +1,41 @@
+collected-l9azfe.truth.json: 24/24 points correct (claude-sonnet-5-5, 22 s)
+--- answer
+Reading the board from the bottom player's view, left to right on each edge.
+
+**Bottom row, left half (points 1-6)**
+1. Dark triangle with 2 dark checkers.
+2. White triangle, empty.
+3. Dark triangle with 2 dark checkers.
+4. White triangle with 2 dark checkers.
+5. Dark triangle, empty.
+6. White triangle with 2 dark checkers.
+
+**Bottom row, right half (points 7-12)**
+7. Dark triangle, empty.
+8. White triangle, empty.
+9. Dark triangle, empty.
+10. White triangle, empty.
+11. Dark triangle, empty.
+12. White triangle at the far right with 5 light checkers stacked.
+
+**Top row, left half (points 1-6)**
+1. White triangle with 2 dark checkers.
+2. Dark triangle, empty.
+3. White triangle, empty.
+4. Dark triangle, empty.
+5. White triangle, empty.
+6. Dark triangle with 5 light checkers.
+
+**Top row, right half (points 7-12)**
+7. White triangle, empty.
+8. Dark triangle with 3 light checkers.
+9. White triangle, empty.
+10. Dark triangle with 1 light checker.
+11. White triangle, empty.
+12. Dark triangle with 5 dark checkers.
+
+**Bar:** 1 light checker sits on the bar. There are no dark checkers on the bar.
+
+**Totals:** dark is 8 + 2 + 5 = 15, and light is 5 + 5 + 3 + 1 + 1 = 15, so both sides account for all their checkers.
+
+{"bottom": [[2,"dark"],[0,null],[2,"dark"],[2,"dark"],[0,null],[2,"dark"],[0,null],[0,null],[0,null],[0,null],[0,null],[5,"light"]], "top": [[2,"dark"],[0,null],[0,null],[0,null],[0,null],[5,"light"],[0,null],[3,"light"],[0,null],[1,"light"],[0,null],[5,"dark"]], "bar": {"dark": 0, "light": 1}}

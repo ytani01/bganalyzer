@@ -1,0 +1,13 @@
+-- circles
+photo5.truth.json: 22/24 points correct, bar ok
+   point  1: truth -2  got +0
+   point  6: truth -2  got +0
+-- --slots
+photo5.truth.json: 22/24 points correct, bar ok
+   point  6: truth -2  got -5
+   point 19: truth -2  got -5
+-- --section
+photo5.truth.json: 21/24 points correct, bar ok
+   point  6: truth -2  got -4
+   point 18: truth -5  got -4
+   point 19: truth -2  got -4

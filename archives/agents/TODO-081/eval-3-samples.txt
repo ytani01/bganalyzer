@@ -1,0 +1,83 @@
+-- circles
+collected-4b88u3.truth.json: 13/24 points correct, bar ok
+   point  2: truth -1  got +0
+   point  3: truth +1  got -1
+   point  5: truth -3  got +0
+   point  6: truth +0  got -2
+   point 12: truth +1  got +0
+   point 17: truth -1  got +0
+   point 18: truth +5  got +4
+   point 19: truth +0  got +3
+   point 20: truth +3  got +0
+   point 23: truth +0  got -4
+   point 24: truth -4  got +0
+collected-3wo2ot.truth.json: 18/24 points correct, bar ok
+   point  4: truth -2  got +2
+   point  6: truth -3  got +3
+   point 10: truth +1  got +0
+   point 22: truth +3  got +0
+   point 23: truth +2  got +0
+   point 24: truth +2  got +0
+collected-l9azfe.truth.json: 18/24 points correct, bar ok
+   point  3: truth +2  got +3
+   point  6: truth +2  got +3
+   point 12: truth -5  got -6
+   point 13: truth +5  got +6
+   point 15: truth -1  got +2
+   point 19: truth -5  got -6
+-- slots
+collected-4b88u3.truth.json: 11/24 points correct, bar ok
+   point  1: truth +5  got +4
+   point  3: truth +1  got +4
+   point  5: truth -3  got +4
+   point  6: truth +0  got -3
+   point 12: truth +1  got +0
+   point 13: truth -1  got +0
+   point 17: truth -1  got +0
+   point 19: truth +0  got +4
+   point 20: truth +3  got -1
+   point 21: truth +0  got +4
+   point 22: truth +0  got -1
+   point 23: truth +0  got -4
+   point 24: truth -4  got +3
+collected-3wo2ot.truth.json: 18/24 points correct, bar ok
+   point  2: truth -1  got +1
+   point  3: truth -1  got +1
+   point 10: truth +1  got +0
+   point 22: truth +3  got +0
+   point 23: truth +2  got +0
+   point 24: truth +2  got +0
+collected-l9azfe.truth.json: 20/24 points correct, bar ok
+   point 12: truth -5  got -6
+   point 13: truth +5  got +6
+   point 19: truth -5  got -6
+   point 24: truth +2  got -2
+-- section
+collected-4b88u3.truth.json: 13/24 points correct, bar ok
+   point  2: truth -1  got -2
+   point  3: truth +1  got +4
+   point  5: truth -3  got +0
+   point  6: truth +0  got -3
+   point 12: truth +1  got +0
+   point 17: truth -1  got +0
+   point 19: truth +0  got +3
+   point 20: truth +3  got +0
+   point 21: truth +0  got +4
+   point 23: truth +0  got -3
+   point 24: truth -4  got +1
+collected-3wo2ot.truth.json: 19/24 points correct, bar ok
+   point  2: truth -1  got +0
+   point 10: truth +1  got +0
+   point 22: truth +3  got +0
+   point 23: truth +2  got +0
+   point 24: truth +2  got +0
+collected-l9azfe.truth.json: 16/24 points correct, bar ok
+   point  1: truth +2  got +0
+   point  3: truth +2  got +0
+   point  4: truth +2  got -3
+   point  6: truth +2  got +3
+   point 12: truth -5  got -6
+   point 13: truth +5  got +6
+   point 17: truth -3  got -4
+   point 19: truth -5  got -6
+

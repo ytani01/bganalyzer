@@ -1,0 +1,46 @@
+# 2026-10-17、collected-3wo2ot の正解を直したあと。1 つ目が円、残りの 2 つが slots と section（並行に流したので、どちらがどちらかは不明。どちらも 10）
+collected-3wo2ot.truth.json: 10/24 points correct, bar ok
+   point  1: truth -1  got +0
+   point  2: truth -2  got -1
+   point  3: truth -2  got -1
+   point  4: truth -3  got +2
+   point  5: truth -2  got -1
+   point  6: truth -4  got +3
+   point 10: truth +2  got +0
+   point 14: truth -1  got +0
+   point 18: truth +1  got +0
+   point 19: truth +1  got +0
+   point 20: truth +1  got +0
+   point 22: truth +4  got +0
+   point 23: truth +3  got +0
+   point 24: truth +3  got +0
+collected-3wo2ot.truth.json: 10/24 points correct, bar ok
+   point  1: truth -1  got +0
+   point  2: truth -2  got +0
+   point  3: truth -2  got +1
+   point  4: truth -3  got +2
+   point  5: truth -2  got +1
+   point  6: truth -4  got +3
+   point 10: truth +2  got +0
+   point 14: truth -1  got +0
+   point 18: truth +1  got +0
+   point 19: truth +1  got +0
+   point 20: truth +1  got +0
+   point 22: truth +4  got +0
+   point 23: truth +3  got +0
+   point 24: truth +3  got +0
+collected-3wo2ot.truth.json: 10/24 points correct, bar ok
+   point  1: truth -1  got +0
+   point  2: truth -2  got -1
+   point  3: truth -2  got -1
+   point  4: truth -3  got +2
+   point  5: truth -2  got +1
+   point  6: truth -4  got +3
+   point 10: truth +2  got +0
+   point 14: truth -1  got +0
+   point 18: truth +1  got +0
+   point 19: truth +1  got +0
+   point 20: truth +1  got +0
+   point 22: truth +4  got +0
+   point 23: truth +3  got +0
+   point 24: truth +3  got +0
