@@ -258,7 +258,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .history-list img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; background: #000; }
 .history-list .sub { color: var(--muted); font-size: 13px; display: block; }
 .history-list .del { width: 44px; height: 44px; padding: 0; font-size: 18px; }
-.die, .arrows { pointer-events: none; }   /* taps go to the point under the dice */
+.die, .arrows, .way { pointer-events: none; }   /* taps go to the point under the dice */
 .board-wrap svg .cube-num { font-size: 15px; font-weight: bold; fill: #222; text-anchor: middle; }
 .result .answer { font-size: 20px; margin: 4px 0; }
 #cube-side label { display: flex; align-items: center; gap: 6px; }
