@@ -468,6 +468,7 @@ async function renderHistory() {
 function go(step) {
   if (step !== "photo" && !(history.state && history.state.bg)) history.pushState({ bg: true }, "");
   if (step === "photo") historyShown++;
+  if (step !== "outcome") stopSpeaking();   // the stop button is only on the result screen
   update({ step });
   if (step === "corners") requestAnimationFrame(() => redraw(drawCorners));   // once the layout has settled
   window.scrollTo(0, 0);
