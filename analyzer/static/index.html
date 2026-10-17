@@ -106,12 +106,6 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
         <button data-value="right">右から</button><button data-value="left">左から</button>
       </div>
     </div>
-    <!-- 明るい駒のホームの隅をタップする。ホームの左右と手前の駒の色が一度に決まる。どの隅も選んでいなければ「自動」（TODO-126） -->
-    <div class="opt">
-      <span class="opt-label">ホーム<small>明るい駒が上がる隅</small></span>
-      <svg id="home-pick" class="home-pick" viewBox="0 0 120 80"></svg>
-      <div class="seg" data-name="homePick"><button data-value="auto">自動</button></div>
-    </div>
     <!-- 畳まずに出す（TODO-093） -->
     <div class="row"><span id="claude-note" class="note" hidden>写真が Anthropic に送られます</span></div>
     <!-- 盤面の画面の「ゲーム」（#match）は、この画面を開いている間ここへ移す（TODO-093） -->
@@ -154,17 +148,11 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
         </div>
       </div>
     </div>
-    <div class="panel">
-    <!-- 四隅の画面と同じ。奥の隅を押すと手前の駒の色が入れ替わる（TODO-126） -->
-    <div class="opt">
-      <span class="opt-label">ホーム<small>明るい駒が上がる隅</small></span>
-      <svg id="home-svg" class="home-pick" viewBox="0 0 120 80"></svg>
-    </div>
     <p id="home-note" class="note" hidden></p>
-    </div>
 
-    <div class="panel">
-    <h2 class="panel-title">解析の設定</h2>
+    <!-- 盤面図のマッチの表示・キューブ・ダイスをタップすると、下から出るシート（TODO-113） -->
+    <div id="sheet-match" class="sheet" hidden>
+    <div class="sheet-head"><span>ゲーム</span><button type="button" class="sheet-close" aria-label="閉じる">✕</button></div>
     <!-- マッチの長さとスコア（TODO-066）。この端末に残す。マネーに戻せる。解析結果の画面では直せない（直すときは戻る。TODO-086）。四隅の画面ではそちらへ移す（TODO-093） -->
     <div id="board-match">
     <div id="match" class="opt match">
@@ -177,6 +165,9 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </span>
     </div>
     </div>
+    </div>
+    <div id="sheet-cube" class="sheet" hidden>
+    <div class="sheet-head"><span>キューブ</span><button type="button" class="sheet-close" aria-label="閉じる">✕</button></div>
     <fieldset>
       <div class="opt">
         <span class="opt-label">キューブ</span>
@@ -191,6 +182,9 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </div>
       <p id="cube-help" class="note"></p>
     </fieldset>
+    </div>
+    <div id="sheet-roll" class="sheet" hidden>
+    <div class="sheet-head"><span>ダイス</span><button type="button" class="sheet-close" aria-label="閉じる">✕</button></div>
     <div class="opt">
       <span class="opt-label" id="onroll-label">次に振る人</span>
       <div class="seg" data-name="onRoll">
@@ -205,6 +199,11 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </div>
       <span id="dice-note" class="from-photo" title="写真から読み取った目" hidden>写真</span>
     </div>
+    </div>
+
+    <div class="panel">
+    <h2 class="panel-title">解析の設定</h2>
+    <p class="note">ゲーム・キューブ・ダイスは、盤面図のそれぞれをタップして直します。置き場をタップするとホームの左右が、PIP をタップすると手前と奥の駒の色が入れ替わります。</p>
     <div class="opt">
       <span class="opt-label">読みの深さ</span>
       <div class="seg" data-name="plies">
