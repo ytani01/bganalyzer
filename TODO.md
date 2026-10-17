@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-067、TODO-079、TODO-101、TODO-105、TODO-113、TODO-121、TODO-124、TODO-126。** これまでに 116 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-127`。**
+**残っている項目: TODO-025、TODO-030、TODO-067、TODO-079、TODO-101、TODO-105、TODO-113、TODO-121、TODO-124、TODO-126、TODO-127。** これまでに 116 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-128`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
 ---
@@ -172,6 +172,22 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 - [ ] ローカル: 両方の画面で 4 つの隅を押すと、矢印の向きとホーム・手前の駒の色が押した隅どおりに変わり、読み取りと解析の結果もそれに合う
 
 **無駄を省く工夫:** 認識（recognizer）は変えない。隅は同じコードを通るので、確かめは各画面で手前・奥の 1 つずつと「自動」を 1 回。値は `evaluate` で `BgApp.state` をまとめて読む
+
+---
+
+## TODO-127. live_view の窓で「ファイルに書き出す」を押したら、~/Downloads に保存する
+
+| | main | 担当 |
+|---|---|---|
+| 見込み | Opus 5.5 / effort medium | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium） |
+
+2026-10-18 ユーザーの指示。`tools/live_view.py` の窓は Playwright が開いたもので、ダウンロードは Playwright の一時フォルダに置かれ、窓を閉じると消える（Playwright の仕様）。
+`page.on("download", ...)` で受けて `~/Downloads` へ `save_as` する。
+
+- [ ] live_view の窓のダウンロードを `~/Downloads` に保存する（同じ名前があれば上書きしない）
+- [ ] tools のドキュメント（CLAUDE.md の live_view の行や docs にある説明）に保存先を書き足す
+
+**無駄を省く工夫:** アプリ（analyzer）は変えないので版は上げない。確かめは live_view で写真を 1 枚読んで「ファイルに書き出す」を 1 回押し、写真と `.truth.json` の 2 つが `~/Downloads` に残るかだけ。
 
 ---
 
