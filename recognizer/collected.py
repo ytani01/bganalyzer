@@ -1,4 +1,4 @@
-"""Measure the pairs kept with 「Pi に残す」 again, and drop old ones read right (docs/raspi.md).
+"""Measure the pairs kept with 「サーバーに保存する」 again, and drop old ones read right (docs/raspi.md).
 
     uv run python recognizer/collected.py collected            # on the Pi
     uv run python recognizer/collected.py collected --force    # even without NEW new pairs

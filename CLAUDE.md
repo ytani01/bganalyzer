@@ -31,7 +31,7 @@ uv run -q --no-project --with playwright python tools/live_view.py   # スマホ
   `points[i]` は手前側から見たポイント i+1、正が white、負が black。
   認識と解析で揃えている
 - 写真はサーバーで処理するだけで、保存も外へ送ることもしない。例外は次の 2 つだけ
-  - **PWA の設定で「Pi に残す」をオンにしたとき**: 解析するたびに写真と直した盤面を Pi の `collected/` に保存する（`POST /samples`、
+  - **盤面の画面の「サーバーに［保存する］」のとき（既定。2026-10-17 ユーザーが既定を保存するに変えた。TODO-112）**: 解析するたびに写真と直した盤面を Pi の `collected/` に保存する（`POST /samples`、
     `BG_SAMPLES_DIR` を設定したサーバーだけ。2026-10-14 ユーザーが決めた）。`collected/` はリポジトリに自動では入れない
   - **四隅の画面で「Claude に選ばせる」を押したとき**: その写真を `claude -p` に渡す（Anthropic に送られる。`POST /claude-corners`、
     `BG_CLAUDE` を設定したサーバーだけ。2026-10-17 ユーザーが決めた。TODO-082）

@@ -22,6 +22,8 @@ SAMPLE = "screen1"   # an app screenshot with dice (4-2): read the same every ti
 # before the app's scripts: record what would be spoken, and no share sheet (a PC: download instead)
 INIT = """
 window.__spoken = [];
+// saving on the server is the app's default (TODO-112): off here, or every run would leave a pair in collected/
+try { if (!localStorage.getItem("collect")) localStorage.setItem("collect", "off"); } catch (_) { /* no storage */ }
 if (window.speechSynthesis) speechSynthesis.speak = (u) => { window.__spoken.push(u.text); };
 // Google's voice through /speech (TODO-111): note the sentence asked for, and play nothing
 HTMLMediaElement.prototype.play = function () {
@@ -66,12 +68,6 @@ def read_photo(page, cube=None):
     return truth
 
 
-def reveal(page, selector):
-    """Open the folded 「その他」 the control is in (TODO-086), as a person would: by its summary."""
-    summary = page.locator(selector).locator("xpath=ancestor::details[not(@open)]/summary")
-    if summary.count():
-        summary.first.click()
-
 
 def show_outcome(page):
     page.click("#analyze")
@@ -104,12 +100,11 @@ def check_speech(browser):
 
 
 def check_export(browser, *scripts):
-    """PI-014: 「精度改善用に書き出す」 gives the photo and a truth.json that matches the screen."""
+    """PI-014: 「ファイルに書き出す」 gives the photo and a truth.json that matches the screen."""
     page = open_app(browser, *scripts)
     truth = read_photo(page)
     files, downloads = {}, []
     page.on("download", lambda d: downloads.append(d))
-    reveal(page, "#export-sample")
     page.click("#export-sample")
     for _ in range(100):   # both come at once
         if len(downloads) >= 2:
@@ -138,14 +133,13 @@ def evaluate(path):
 
 
 def check_collect(browser):
-    """PI-015: with 「Pi に残す」 on, analysing keeps one pair in collected/ (off: nothing)."""
+    """PI-015: with 「サーバーに保存する」 on, analysing keeps one pair in collected/ (off: nothing)."""
     out = []
     for mode in ("off", "on"):
         before = collected()
         page = open_app(browser)
         read_photo(page)
-        seg = f'.seg[data-name="collect"] [data-value="{mode}"]'   # in 「その他の設定」: shown only when the Pi keeps samples
-        reveal(page, seg)
+        seg = f'.seg[data-name="collect"] [data-value="{mode}"]'   # in 「読み取りの改善」: shown only when the server keeps samples
         page.click(seg)
         show_outcome(page)
         page.wait_for_timeout(2000)   # sendSample does not hold up the result

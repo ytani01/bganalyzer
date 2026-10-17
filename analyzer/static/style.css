@@ -305,11 +305,9 @@ select { min-height: 44px; font-family: inherit; }
 label:has(> input[type="checkbox"]) { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 input[type="checkbox"] { width: 20px; height: 20px; margin: 0; }
 
-/* What is used less often, folded (TODO-086). */
-details.more { margin: 12px 0; }
-details.more > summary { padding: 10px 0; line-height: 24px; font-size: 15px; color: var(--muted); cursor: pointer; }   /* 44px high, with its marker */
-details.panel.more { padding-top: 0; padding-bottom: 0; }
-details.panel.more[open] { padding-bottom: 8px; }
+/* 読み取りの改善 (TODO-112): hidden when neither part shows; a blank line between the two */
+#improve:not(:has(> div:not([hidden]))) { display: none; }
+#collect-opt:not([hidden]) + #export-opt { margin-top: 1.5em; }
 
 /* The sides' names (白/黒, app.js): a tap goes to their button (.seg reads the button's own data-value). */
 .nm-white, .nm-black { pointer-events: none; }
