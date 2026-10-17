@@ -54,7 +54,7 @@ const BgResult = (() => {
         `<tr><td>エクイティ</td><td>${r.equity.white.toFixed(3)}</td><td>${r.equity.black.toFixed(3)}</td></tr>` +
         `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
     }
-    out += `<p class="note">gnubg ${r.plies}手読み・勝率とエクイティはキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はマネーゲーム（ジャコビー・ルールあり）") : ""}。` +
+    out += `<p class="note">gnubg ${r.plies}手読み・勝率とエクイティはキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はアンリミテッド（ジャコビー・ルールあり）") : ""}。` +
       `Position ID: <code>${esc(r.position_id)}</code></p>`;
     return out;
   }

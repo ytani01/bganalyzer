@@ -358,7 +358,7 @@ def test_match_in_the_result_words():
     }}""")
     assert "ポイントマッチ" not in out["speech"]   # TODO-099: the score is on the board, not read out
     assert "キューブの判断はマッチのスコアで" in out["cubeNote"]
-    assert "ポイントマッチ" not in out["money"][0] and "マネーゲーム（ジャコビー・ルールあり）" in out["money"][1]
+    assert "ポイントマッチ" not in out["money"][0] and "アンリミテッド（ジャコビー・ルールあり）" in out["money"][1]
     assert "白の人はダブルしてもしなくてもよいです。" in out["optional"][0]
     assert "白の人は <b>ダブルしてもしなくてもよい</b>" in out["optional"][1]
 
