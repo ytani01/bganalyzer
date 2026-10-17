@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.69.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.69.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -264,14 +264,16 @@ part((s) => (s.step !== "corners" || scanning() ? undefined : [photoId(s), s.cor
 // ---- the board screen
 part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColour], (s) => {
   if (!s.board) return;
-  // Only when the counts do not add up, a short mark under the board (TODO-088): more than 15, or fewer
-  // read from a photo (borne off, or missed); no checkers at all.
+  // The counts over the board, always (TODO-088, TODO-125): more than 15 in red, fewer read from a photo
+  // (borne off, or missed) in yellow, with a ⚠ only then; no checkers at all counts as fewer.
   const { onW, onB } = BgBoard.counts(s.board);
-  const off = (on) => on > 15 || (s.fromPhoto && on < 15);
-  const mark = !onW && !onB ? ["盤に駒がありません"]
-    : [["white", onW], ["black", onB]].filter(([, on]) => off(on)).map(([side, on]) => `${NAME[side]} ${on}/15`);
-  $("count-mark").hidden = !mark.length;
-  $("count-mark").textContent = mark.length ? `⚠ ${mark.join("・")}` : "";
+  const cls = (on) => (on > 15 ? "many" : s.fromPhoto && on < 15 ? "few" : "");
+  const mark = !onW && !onB ? [["盤に駒がありません", "few"]]
+    : [["white", onW], ["black", onB]].map(([side, on]) => [`${NAME[side]} ${on}/15`, cls(on)]);
+  const warn = mark.some(([, c]) => c) ? "⚠ " : "";
+  $("count-mark").hidden = false;
+  $("count-mark").replaceChildren(...mark.map(([text, c], i) =>
+    Object.assign(document.createElement("span"), { className: c, textContent: `${i ? "・" : warn}${text}` })));
   // the server's notes on the photo (e.g. taken at a steep angle)
   const warns = s.fromPhoto ? s.warnings : [];
   $("errors").hidden = !warns.length;
