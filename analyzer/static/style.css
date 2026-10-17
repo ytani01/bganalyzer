@@ -74,8 +74,12 @@ header .app-name { font-size: 16px; font-weight: bold; white-space: nowrap; flex
   background: var(--card); border-top: 1px solid var(--line);
   padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
 }
-.actbar:not(:has(> :not([hidden]))) { display: none; }
+.actbar:not(:has(> :not([hidden]):not(.actrow), > .actrow > :not([hidden]))) { display: none; }
 .actbar > * { width: 100%; max-width: 688px; margin: 0 auto; }
+/* 戻る on the left of the screen's buttons, which share the rest of the line (TODO-107) */
+.actrow { display: flex; gap: 8px; }
+.actrow > .act { flex: 1; min-width: 0; }
+.actrow:not(:has(> :not([hidden]))) { display: none; }
 .act {
   appearance: none;
   background: var(--accent);
@@ -103,17 +107,19 @@ header .app-name { font-size: 16px; font-weight: bold; white-space: nowrap; flex
 #match-score[hidden], #crawford-opt[hidden] { display: none; }
 .back {
   appearance: none;
-  background: rgba(255,255,255,.18);
-  color: var(--accent-fg);
-  border: 1px solid rgba(255,255,255,.45);
+  flex: none;
+  align-self: center;
+  background: var(--card);
+  color: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: 10px;
   min-height: 44px;
   padding: 6px 14px 6px 10px;
   font-size: 16px;
+  font-family: inherit;
   cursor: pointer;
-  margin-left: -6px;
 }
-.back:active { background: rgba(255,255,255,.3); }
+.back:active { opacity: .8; }
 #steps { display: flex; gap: 6px; font-size: 13px; margin-top: 6px; }
 #steps span { padding: 2px 10px; border-radius: 999px; opacity: .65; white-space: nowrap; }
 #steps span.done { opacity: .85; }
