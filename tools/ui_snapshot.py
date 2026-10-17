@@ -66,7 +66,7 @@ SNAP = """() => {
                     'export-sample', 'history']) shown[id] = vis(id);
   return {
     step: [...document.querySelectorAll('section.step')].filter((s) => !s.hidden).map((s) => s.id),
-    shown, segs, title: txt('title'), sheet: BgApp.state.sheet,
+    shown, segs, title: txt('title'), sheet: [...document.querySelectorAll('.sheet')].filter((e) => !e.hidden).map((e) => e.id)[0] || null,
     cornerHelp: html('corner-help'), recognizeDisabled: vis('recognize') ? el('recognize').disabled : null,
     canvas: vis('photo-canvas') ? hash(el('photo-canvas').toDataURL()) : null,
     countMark: txt('count-mark'), errors: txt('errors'), homeNote: txt('home-note'), editor: txt('editor-title'),
@@ -109,12 +109,15 @@ class Run:
         self.page.alerts.clear()
         self.snaps.append([name, s])
 
-    def sheet_for(self, selector=None):     # open the sheet the selector is in (TODO-113), or close the one open
-        self.page.evaluate("""(q) => {
-          let e = null; try { e = q && document.querySelector(q); } catch (_) {}
-          const sh = e && e.closest('.sheet'), want = sh ? sh.id.slice('sheet-'.length) : null;
-          if (BgApp.state.sheet !== want) BgApp.update({ sheet: want });
+    def sheet_for(self, selector=None):     # open the sheet the selector is in (TODO-113), or close the one open, by taps
+        want, shown = self.page.evaluate("""(q) => {
+          const sh = q && document.querySelector(q)?.closest('.sheet');
+          return [sh ? sh.id : null, [...document.querySelectorAll('.sheet')].find((e) => !e.hidden)?.id || null];
         }""", selector)
+        if shown and shown != want:
+            self.page.click(f"#{shown} .sheet-close")
+        if want and shown != want:
+            self.page.locator(f'#board-svg [data-part="{want[len("sheet-"):]}"]').first.click()
 
     def click(self, selector):
         self.sheet_for(selector)
@@ -227,7 +230,6 @@ def flow_photo(r):
     truth = json.loads((ROOT / f"samples/{SAMPLE}.truth.json").read_text())
     r.page.set_input_files("#file", str(ROOT / "samples" / truth["image"]))
     r.wait_corners(); r.snap("corners found")
-    r.page.evaluate("t => BgApp.update({ homePick: t.home, bottomColour: t.bottom_colour })", truth)   # nothing picks them on the screen (TODO-113)
     r.go("#recognize", "board"); r.snap("photo read")
     r.click("#photo-side"); r.snap("photo hidden")
     r.click("#photo-side"); r.snap("photo beside")

@@ -53,7 +53,7 @@ const state = {
   edit: null,          // while the photo is being edited (TODO-070): {turn (quarter turns clockwise), angle (degrees, -45..45), rect ([x0, y0, x1, y1] as fractions of the turned photo) or null}
   dragging: false,     // a finger is on the corners
   homePick: "auto",    // the home sent with the photo: "auto" (guess from the checkers), or "left"/"right" as kept with a photo picked before TODO-113
-  bottomColour: 1,     // 0 = the darker checkers are 手前's, 1 = the lighter ones
+  bottomColour: Number(stored("bottomColour", ["0", "1"], "1")),   // 0 = the darker checkers are 手前's, 1 = the lighter ones (kept on this phone, TODO-113)
   geometry: null,      // where the recognizer found the board: {corners (image px), columns, bar (fractions), photo, from}
   // the board
   board: null,         // {points[24], bar_white, bar_black} (board.js)
@@ -282,7 +282,7 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColo
   // which side 手前's home board was read on, and whether it was guessed
   const side = s.home === "right" ? "右" : "左";
   const g = s.fromPhoto && s.homeGuess;
-  const doubtful = !!g && Math.abs(g.margin) < 1;   // only then: the setting above shows the side (TODO-086)
+  const doubtful = !!g && Math.abs(g.margin) < 1;   // only then: the side is said under the board (TODO-086)
   $("home-note").hidden = !doubtful;
   $("home-note").textContent = doubtful ? `ホームの左右を決められず、${side}にしました。違えば盤面図の置き場をタップしてください。` : "";
 });
@@ -346,10 +346,15 @@ part((s) => s.board && [s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube
 
 // ---- a tap on a part around the board picture (TODO-113): the trays flip the home's side, a pip count
 // swaps the checkers' owners (the board keeps its colours), the match, the cube and the dice open their sheet
+// (the side and the colour are what this photo is read with again, and the colour also the next photo's)
 function tapPart(kind) {
-  if (kind === "home") setHome(state.home === "right" ? "left" : "right");
-  else if (kind === "colour") {
+  if (kind === "home") {
+    const home = state.home === "right" ? "left" : "right";
+    setHome(home);
+    update({ homePick: home });
+  } else if (kind === "colour") {
     editBoard(BgBoard.swapColours);
+    keep("bottomColour", state.bottomColour ? "0" : "1");
     update({ bottomColour: state.bottomColour ? 0 : 1 });
   } else update({ sheet: kind });
 }
@@ -516,7 +521,7 @@ function go(step) {
   if (step !== "photo" && !(history.state && history.state.bg)) history.pushState({ bg: true }, "");
   if (step === "photo") historyShown++;
   if (step !== "outcome") stopSpeaking();   // the stop button is only on the result screen
-  update({ step });
+  update({ step, sheet: null });   // a sheet open on the board screen is closed when it is left (TODO-113)
   if (step === "corners") requestAnimationFrame(() => redraw(drawCorners));   // once the layout has settled
   window.scrollTo(0, 0);
 }
