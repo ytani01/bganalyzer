@@ -52,7 +52,7 @@ const state = {
   sideFrom: storedSide().sideFrom,   // from the near player's right or left; "" until asked
   edit: null,          // while the photo is being edited (TODO-070): {turn (quarter turns clockwise), angle (degrees, -45..45), rect ([x0, y0, x1, y1] as fractions of the turned photo) or null}
   dragging: false,     // a finger is on the corners
-  homePick: "auto",    // the home sent with the photo: "auto" (guess from the checkers), or "left"/"right" as kept with a photo picked before TODO-113
+  homePick: "auto",    // the home sent with the photo: "auto" (guess from the checkers) for a new one; "left"/"right" once a tray is tapped (TODO-113), or as kept with a photo picked before
   bottomColour: Number(stored("bottomColour", ["0", "1"], "1")),   // 0 = the darker checkers are 手前's, 1 = the lighter ones (kept on this phone, TODO-113)
   geometry: null,      // where the recognizer found the board: {corners (image px), columns, bar (fractions), photo, from}
   // the board
@@ -614,7 +614,7 @@ function startPhoto(file, bitmap, kept, historyId, historyScale) {
     homePick: (kept && (kept.homePick || kept.home)) || "auto",
     home: kept ? kept.home || "right" : state.home,
     homeGuess: kept ? kept.homeGuess || null : state.homeGuess,
-    bottomColour: kept ? kept.bottomColour ?? 1 : state.bottomColour,
+    bottomColour: kept ? kept.bottomColour ?? 1 : Number(stored("bottomColour", ["0", "1"], "1")),   // a new photo: the colour kept on this phone
     onRoll: kept ? kept.onRoll || "white" : state.onRoll,
     warnings: (kept && kept.warnings) || [],
     board: (kept && kept.board) || null,

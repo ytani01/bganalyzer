@@ -37,6 +37,8 @@ INIT = """
 window.__spoken = [];
 // saving on the server is the app's default (TODO-112): off here, or every run would leave a pair in collected/
 try { if (!localStorage.getItem("collect")) localStorage.setItem("collect", "off"); } catch (_) { /* no storage */ }
+// 手前's colour is kept on the phone (TODO-113): each flow starts from the lighter checkers, whatever ran before it
+try { localStorage.removeItem("bottomColour"); } catch (_) { /* no storage */ }
 if (window.speechSynthesis) speechSynthesis.speak = (u) => { window.__spoken.push(u.text); };
 // Google's voice through /speech (TODO-111): note the sentence asked for, and play nothing
 HTMLMediaElement.prototype.play = function () {

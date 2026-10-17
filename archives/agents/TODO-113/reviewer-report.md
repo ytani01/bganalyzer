@@ -75,3 +75,44 @@
 - `style.css:276-277` + `board-view.js:212-213, 220, 228-229` の PIP・マッチ・スコアの `"pointer-events": "none"`: shrink。これらの札は盤の外の行にあり、下に `.hit` が無いので `none` で通す先が無い。属性を消せば `.tap *` も要らず、`.die` を 276 行から外せば 277 行は `cursor: pointer` だけになる。（好みの範囲）
 
 net: -3 lines possible.
+
+---
+
+# 2 回目（782b1c0 だけ）
+
+コードを読んで確かめた。ui_snapshot の記録とアプリの画面は流していない。
+
+## 要修正
+
+1. `tools/ui_snapshot.py:194`、`228-233`（flow_photo が screen1 を逆の色で読む）
+   - 何が: flow_manual の `r.part("colour")` が、アプリの `keep("bottomColour", "0")` で localStorage に「手前は暗い駒」を残す。
+     `record` はすべての flow で同じ `ctx`（279 行）を使い、`INIT` は `collect` しか触らないので、次の flow_photo の新しいページでは
+     `state.bottomColour` が 0 で始まる（app.js:56）。新しい写真はこの色で読み（app.js:612）、screen1 の正解は `bottom_colour: 1`、
+     `home: left`。前は flow_photo が正解の色とホームを入れていたが、それを消したので、逆の色で読み、ホームも逆に推測しかねない
+     （recognizer/README.md:228）。
+   - 結果: `record ... manual photo` と `record ... photo` で、photo の記録が変わる。flow を流す順が同じなら毎回同じ記録にはなるので、
+     比べること自体はできる。ただし、写真の flow が正解どおりに読めていることを前提にした記録ではなくなる。
+   - 根拠: コードを読んで確認（FLOWS の順は manual → photo → history、268 行）。実際に記録を取って読み違うかは未確認。
+
+## 検討
+
+2. `analyzer/README.md:62`「手前の駒の色は端末に覚えた色（盤面の画面で最後に選んだ色。初めは明るい駒）で読む」
+   - 履歴から写真を開くと、`state.bottomColour` がその写真の色になる（app.js:612 の `kept.bottomColour`。`keep` は呼ばない）。
+     その後の新しい写真は、端末に覚えた色ではなく `state.bottomColour`（開いた履歴の写真の色）で読む。localStorage の値が
+     使われるのは、アプリを開いた直後の `state` の初期値だけ。README の書き方と、この場合だけ食い違う。実害は未確認。
+3. `analyzer/static/app.js:55` の `homePick` のコメント「or "left"/"right" as kept with a photo picked before TODO-113」
+   - 置き場のタップでも "left"/"right" になる（app.js:352-354）ようになったので、コメントが足りない。
+
+## 問題なし（1 行ずつ）
+
+- `stored`・`keep` は 25・28 行の `const` で、`state`（38 行〜）より前にある。`Number(stored("bottomColour", ["0", "1"], "1"))` は 0 か 1。
+- PIP のタップ: `keep` に渡す値は入れ替えた後の色（`state.bottomColour ? "0" : "1"` を `update` の前に計算）で合っている。
+- 置き場のタップ: `setHome` の後に `homePick` を同じ値にする。読み直すと直した左右で読み、新しい写真は `startPhoto` で "auto" に戻る（609 行）。前の写真の "left"/"right" も、置き場で入れ替えられるようになった。
+- `go()` の `sheet: null`: 戻る（`goBack` → `go`）、読み取り後の `go("board")`、解析の `go("outcome")` のどれでも閉じる。
+- シートの位置: `--bar-h` は `ResizeObserver` で `#actbar` の高さを追い続ける（app.js:1284-1286）ので、「解析する」の上の理由の行が増えてもシートはバーの上に出る。
+- `style.css:276-277`: `.die` を外しても、結果の画面は `#result-svg` の `none` で、写真の盤面図はダイスを描かない。コメントも今と合う。
+- `ui_snapshot.py` の `sheet_for`: 開いているシートと要るシートが違うときだけ ✕ → 盤面図の部品をタップする。シートの外のもの（四隅の画面の `#match` も、そのときは `#corners-match` にある）なら閉じるだけ。✕ そのもののクリックは、そのシートが開いていれば何もしない。`BgApp` は SNAP も含めて使っていない（docstring どおり）。
+- `recognizer/README.md:16`、`app.js:285` のコメント、analyzer/README.md のシートとダイスの 5 段目の記述は、実装と合っている。
+- TODO.md:120 にチェックが入った。
+
+作り込みすぎ: なし
