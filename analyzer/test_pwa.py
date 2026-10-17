@@ -79,10 +79,12 @@ def test_result_words():
       who: [R.rollWho([3, 1]), R.rollWho(null)],
       esc: R.esc('<a href="x">&</a>'),
       move: R.moveToSpeech("bar/22* 13/8(2) 6/off"),
+      kana: R.moveToSpeech("25/20 10/4 17/off"),
     }""")
     assert out["who"] == ["振った", "次に振る"]
     assert out["esc"] == "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;"
-    assert out["move"] == "バーから22でヒット、13から8へ2枚、6から上がり"
+    assert out["move"] == "バーからにじゅうにでヒット、じゅうさんからはちへに枚、ろくから上がり"
+    assert out["kana"] == "にじゅうごからにじゅう、じゅうからよん、じゅうななから上がり"   # TODO-132: no bare digits
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
@@ -118,7 +120,7 @@ def test_speech_reads_who_rolls_next_first():
     # TODO-106: spoken without "の人"; a cube decision names the side itself, so who rolls is not read
     assert out["noDice"].startswith("次は白の番です。")
     assert out["noDice"].count("の番です。") == 1
-    assert out["dice"].startswith("白の 3 1 の最善手は、バーから22でヒット")
+    assert out["dice"].startswith("白の さん いち の最善手は、バーからにじゅうにでヒット")
     assert "番です" not in out["dice"]
     assert "かなり有利" in out["dice"] and "ギャモン勝ちの見込み" in out["dice"] and "ピップ数では白が大きくリード" in out["dice"]
     assert out["take"].startswith("黒のダブルに、白はテイクです。")
@@ -126,7 +128,7 @@ def test_speech_reads_who_rolls_next_first():
     assert out["over"] == "白の勝ちで、ゲームは終わっています。"
     assert out["double"].startswith("白はダブルすべきで、黒はテイクです。")
     assert out["noDouble"].startswith("白はまだダブルしないほうがよいです。")
-    assert out["none"].startswith("白の 6 6 は、とても悪い目です。動かせる手がありません。")
+    assert out["none"].startswith("白の ろく ろく は、とても悪い目です。動かせる手がありません。")
     assert "白がほぼ勝ちです。" in out["sure"]
 
 
@@ -158,13 +160,13 @@ def test_result_html():
         "+0.601・とても良い目", "+0.600・良い目", "+0.300・ふつうの目", "-0.290・ふつうの目", "-0.301・悪い目", "-0.600・悪い目",
         "-0.601・とても悪い目"]   # as gnubg: beyond the levels, not at them
     assert out["luck"][0].index("最善手（") < out["luck"][0].index("Luck ") < out["luck"][0].index('<ol class="moves">')
-    assert out["luckSpeech"].startswith("白の 3 1 は、とても悪い目です。最善手は、バーから22でヒット、13から8へ2枚、6から上がりです。")
+    assert out["luckSpeech"].startswith("白の さん いち は、とても悪い目です。最善手は、バーからにじゅうにでヒット、じゅうさんからはちへに枚、ろくから上がりです。")
     assert ["目です" in s for s in out["plainSpeech"]] == [False, False, True, True]   # TODO-100: an ordinary roll is not read out
     assert "Luck" not in out["moves"] and "目です" not in out["rolledSpeech"]   # no luck in the result: nothing shown
     # TODO-096: with dice, the double that was due before the roll comes before the best move
     assert out["rolled"].index("<h2>キューブ（振る前）</h2>") < out["rolled"].index("最善手（白・ダイス 3-1）")
     assert "白の人は振る前に <b>ダブルすべきだった</b>" in out["rolled"]
-    assert out["rolledSpeech"].startswith("白は振る前にダブルすべきでした。ダブルされたら、黒はパスです。白の 3 1 の最善手は")
+    assert out["rolledSpeech"].startswith("白は振る前にダブルすべきでした。ダブルされたら、黒はパスです。白の さん いち の最善手は")
     assert '<ol class="moves"><li data-k="0" class="on">bar/22* 13/8(2) 6/off' in out["moves"]
     assert "最善手（白・ダイス 3-1）" in out["moves"]
     assert "ピップ リード" not in out["moves"] and "振ったのは" not in out["moves"]   # TODO-086: the table and the heading say it
