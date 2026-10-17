@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.69.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.70.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -175,8 +175,8 @@ part((s) => s.busy, (s) => {
 });
 
 // ---- segmented buttons: each shows the state of its name
-part((s) => [s.homePick, s.home, s.bottomColour, s.onRoll, s.cube.at, s.collect, s.plies, s.sideFrom], (s) => {
-  const value = { homePick: s.homePick, home: s.home, bottomColour: s.bottomColour, onRoll: s.onRoll, cubeAt: s.cube.at,
+part((s) => [s.homePick, s.onRoll, s.cube.at, s.collect, s.plies, s.sideFrom], (s) => {
+  const value = { homePick: s.homePick, onRoll: s.onRoll, cubeAt: s.cube.at,
                   collect: s.collect, plies: s.plies, sideFrom: s.sideFrom };
   for (const seg of document.querySelectorAll(".seg")) {
     for (const b of seg.children) b.classList.toggle("on", b.dataset.value === String(value[seg.dataset.name]));
@@ -194,6 +194,50 @@ part((s) => s.bottomColour, (s) => {
     root.setProperty(`--white-${k}`, `var(--${w}-${k})`);
     root.setProperty(`--black-${k}`, `var(--${b}-${k})`);
   }
+});
+
+// ---- the home corner (TODO-126): a small board with the lighter checkers' way as a U, and a dot in each
+// corner. The tapped corner is the lighter checkers' home: its row tells 手前's colour, its column the home's side.
+// corner: "near-left", "far-right", ... or null (none chosen: no U).
+function drawHomePick(svg, corner) {
+  const [row, col] = corner ? corner.split("-") : [];
+  const dot = (r, c) => {
+    const on = r === row && c === col;
+    return `<circle cx="${c === "left" ? 12 : 108}" cy="${r === "far" ? 12 : 68}" r="${on ? 7 : 5}" fill="${on ? "var(--accent)" : "var(--felt)"}" stroke="var(--accent)" stroke-width="2"/>`;
+  };
+  let u = "";
+  if (corner) {
+    const left = col === "left", [y0, y1] = row === "near" ? [20, 60] : [60, 20];
+    const xHome = left ? 24 : 96, xTurn = left ? 76 : 44, dir = left ? -1 : 1, head = 10;
+    const sweep = (xTurn > xHome) === (y1 > y0) ? 1 : 0;
+    const d = `M${xHome},${y0} H${xTurn} A20,20 0 0 ${sweep} ${xTurn},${y1} H${xHome - dir * head}`;
+    const tip = `${xHome},${y1} ${xHome - dir * head},${y1 - 7} ${xHome - dir * head},${y1 + 7}`;
+    u = `<path d="${d}" fill="none" stroke="var(--light-rim)" stroke-width="8" stroke-linecap="round"/>
+      <polygon points="${tip}" fill="var(--light-rim)" stroke="var(--light-rim)" stroke-width="3" stroke-linejoin="round"/>
+      <path d="${d}" fill="none" stroke="var(--light-chk)" stroke-width="4" stroke-linecap="round"/>
+      <polygon points="${tip}" fill="var(--light-chk)"/>`;
+  }
+  // each quarter of the board is the tap area of its corner
+  const areas = ["far-left", "far-right", "near-left", "near-right"].map((k) =>
+    `<rect data-corner="${k}" x="${k.endsWith("left") ? 0 : 60}" y="${k.startsWith("far") ? 0 : 40}" width="60" height="40" fill="transparent"/>`);
+  svg.innerHTML = `<rect x="3" y="3" width="114" height="74" rx="4" fill="var(--felt)" stroke="var(--frame)" stroke-width="3"/>
+    <line x1="60" y1="3" x2="60" y2="77" stroke="var(--frame)" stroke-width="3"/>${u}
+    ${["far", "near"].flatMap((r) => ["left", "right"].map((c) => dot(r, c))).join("")}${areas.join("")}`;
+}
+const cornerOf = (bottomColour, home) => `${bottomColour ? "near" : "far"}-${home}`;
+function onCorner(svg, pick) {
+  svg.addEventListener("click", (e) => {
+    const k = e.target.dataset && e.target.dataset.corner;
+    if (k) pick(k.split("-")[1], k.startsWith("near") ? 1 : 0);
+  });
+}
+part((s) => [s.homePick, s.bottomColour], (s) =>
+  drawHomePick($("home-pick"), s.homePick === "auto" ? null : cornerOf(s.bottomColour, s.homePick)));
+part((s) => [s.home, s.bottomColour], (s) => drawHomePick($("home-svg"), cornerOf(s.bottomColour, s.home)));
+onCorner($("home-pick"), (home, bottomColour) => update({ homePick: home, bottomColour }));
+onCorner($("home-svg"), (home, bottomColour) => {
+  if (bottomColour !== state.bottomColour) swapColours();
+  setHome(home);
 });
 
 // ---- the corners screen
@@ -1199,10 +1243,12 @@ document.addEventListener("pointerdown", (e) => {
 }, true);
 addEventListener("pointerup", () => setTimeout(() => { closingPalette = false; }));
 addEventListener("scroll", closePalette, { passive: true });
-$("swap-colours").addEventListener("click", () => {
+// The checkers read as 手前's are 奥's: the board keeps its colours, their owners swap.
+function swapColours() {
   editBoard(BgBoard.swapColours);
   update({ bottomColour: 1 - state.bottomColour });
-});
+}
+$("swap-colours").addEventListener("click", swapColours);
 // The board was read with the home on the wrong side: mirror it left to right.
 function setHome(v) {
   if (v === state.home) return;
@@ -1231,8 +1277,6 @@ $("crawford").addEventListener("change", () => setMatch({ crawford: $("crawford"
 const SEGMENTS = {
   homePick: (v) => update({ homePick: v }),
   sideFrom: setSideFrom,
-  home: setHome,
-  bottomColour: (v) => update({ bottomColour: Number(v) }),
   onRoll: setOnRoll,
   cubeAt: (v) => setCube({ at: v }),
   collect: (v) => { keep("collect", v); update({ collect: v }); },

@@ -206,7 +206,7 @@ def flow_photo(r):
     truth = json.loads((ROOT / f"samples/{SAMPLE}.truth.json").read_text())
     r.page.set_input_files("#file", str(ROOT / "samples" / truth["image"]))
     r.wait_corners(); r.snap("corners found")
-    r.seg("homePick", truth["home"]); r.seg("bottomColour", str(truth["bottom_colour"]))
+    r.click(f'#home-pick [data-corner="{"near" if truth["bottom_colour"] else "far"}-{truth["home"]}"]')   # TODO-126
     r.go("#recognize", "board"); r.snap("photo read")
     r.click("#photo-side"); r.snap("photo hidden")
     r.click("#photo-side"); r.snap("photo beside")
