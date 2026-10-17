@@ -3,10 +3,22 @@ import os
 import shutil
 from pathlib import Path
 
+import cv2
+import pytest
+
 import analysis  # noqa: F401  puts recognizer/ on sys.path
 import collected
+import import_collected
 
 SAMPLES = Path(__file__).resolve().parent.parent / "samples"
+
+
+@pytest.fixture(autouse=True)
+def sent(monkeypatch):
+    """The pairs measure() hands to import_collected (which would push and merge a PR)."""
+    got = []
+    monkeypatch.setattr(collected, "to_samples", lambda d, names: got.extend(names))
+    return got
 
 
 def make(d, name, mtime, **change):
@@ -19,7 +31,7 @@ def make(d, name, mtime, **change):
         os.utime(d / f"{name}.{ext}", (mtime, mtime))
 
 
-def test_keeps_misreads_and_the_newest_read_right(tmp_path, monkeypatch):
+def test_keeps_misreads_and_the_newest_read_right(tmp_path, monkeypatch, sent):
     # 4 read right (r0 oldest .. r3 newest) and 2 misread (oldest of all); keep 2 read right
     for i in range(4):
         make(tmp_path, f"user-r{i}", 1000 + i)
@@ -27,10 +39,18 @@ def test_keeps_misreads_and_the_newest_read_right(tmp_path, monkeypatch):
         make(tmp_path, f"user-w{i}", 10 + i)
     monkeypatch.setattr(collected, "misreads", lambda p: ["ポイント 5"] if "-w" in p.name else [])
     monkeypatch.setattr(collected, "KEEP_RIGHT", 2)
+    monkeypatch.delenv("BG_IMPORT", raising=False)
+    assert collected.measure(tmp_path, force=True) == "measured" and sent == []   # not on the Pi
+    monkeypatch.setenv("BG_IMPORT", "1")
     assert collected.measure(tmp_path, force=True) == "measured"
     left = sorted(p.name for p in tmp_path.glob("user-*"))
     assert left == sorted(f"user-{n}.{e}" for n in ("r2", "r3", "w0", "w1") for e in ("png", "truth.json"))
     assert "## user-w0.truth.json" in (tmp_path / "report.md").read_text()
+    assert sorted(sent) == ["user-w0.truth.json", "user-w1.truth.json"]   # only the misread go to samples/
+    sent.clear()
+    monkeypatch.setattr(collected, "misreads", lambda p: ["読めなかった"] if "w0" in p.name else ["ポイント 5"] if "-w" in p.name else [])
+    collected.measure(tmp_path, force=True)
+    assert sent == ["user-w1.truth.json"]   # check_accuracy.py would stop on one the recognizer cannot read
 
 
 def test_counts_new_pairs(tmp_path, monkeypatch):
@@ -56,3 +76,93 @@ def test_a_truth_sent_by_anyone_is_not_used_and_not_shown(tmp_path):
     assert "IGNORE" not in report and "user-bad.truth.json" in report and "user-bad2.truth.json" in report
     assert "user-bad3.truth.json" in report and "読めなかった" not in report
     assert "## user-ok.truth.json" not in report   # screen1 is read right
+
+
+def other(d, name, mtime):
+    """A pair like make()'s, with another photo."""
+    make(d, name, mtime)
+    img = cv2.imread(str(d / f"{name}.png"))
+    img[0, :len(name)] = 255 - img[0, :len(name)]   # another photo for each name
+    cv2.imwrite(str(d / f"{name}.png"), img)
+
+
+def test_import_picks_new_photos_the_oldest_first(tmp_path, monkeypatch):
+    s = tmp_path / "s"
+    s.mkdir()
+    make(tmp_path, "user-1-aaa", 30)
+    make(tmp_path, "user-2-bbb", 10)   # the same photo as aaa, sent again: only the older one
+    other(tmp_path, "user-3-ccc", 20)
+    make(tmp_path, "user-4-ddd", 5)
+    (tmp_path / "user-4-ddd.png").write_bytes(b"not an image")
+    other(tmp_path, "user-5-x-ccc", 25)   # another pair that would be collected-ccc too
+    other(tmp_path, "user-6-", 1)   # no id: collected-.png
+    names = [f"user-{n}.truth.json" for n in ("1-aaa", "2-bbb", "3-ccc", "4-ddd", "5-x-ccc", "6-")]
+    assert import_collected.pick(tmp_path, names, s) == ["user-2-bbb.truth.json", "user-3-ccc.truth.json"]
+    monkeypatch.setattr(import_collected, "MAX", 1)
+    assert import_collected.pick(tmp_path, names, s) == ["user-2-bbb.truth.json"]
+
+
+def test_import_skips_what_samples_has(tmp_path):
+    s = tmp_path / "s"
+    s.mkdir()
+    make(tmp_path, "user-1-aaa", 30)
+    make(tmp_path, "user-2-bbb", 10)
+    other(tmp_path, "user-3-ccc", 20)
+    (s / "collected-bbb.truth.json").write_text("{}")
+    assert import_collected.pick(tmp_path, ["user-1-aaa.truth.json"], s) == []   # the photo of collected-bbb
+    (s / "collected-ccc.truth.json").write_text("{}")
+    assert import_collected.pick(tmp_path, ["user-3-ccc.truth.json"], s) == []   # the id: sent again with another photo
+    (s / "collected-bbb.truth.json").unlink(), (s / "collected-ccc.truth.json").unlink()
+    shutil.copy(SAMPLES / "screen1.png", s / "screen1.png")   # a photo of samples/ sent as it is
+    assert import_collected.pick(tmp_path, ["user-1-aaa.truth.json", "user-3-ccc.truth.json"], s) == ["user-3-ccc.truth.json"]
+
+
+def test_import_paints_outside_the_board_and_keeps_only_the_fields_of_samples(tmp_path):
+    make(tmp_path, "user-1-aaa", 10, dice=[6, 2], spam="https://example.com", read={"points": [0] * 24, "spam": "x"}, cube={"at": "centre", "spam": "x"})
+    samples = tmp_path / "s"
+    samples.mkdir()
+    import_collected.add(tmp_path, "user-1-aaa.truth.json", samples)
+    t = json.loads((samples / "collected-aaa.truth.json").read_text())
+    assert t["dice"] == [6, 2] and "spam" not in json.dumps(t) and t["read"] == {"points": [0] * 24} and t["cube"] == {"at": "centre"}
+    img, orig = cv2.imread(str(samples / "collected-aaa.png")), cv2.imread(str(SAMPLES / "screen1.png"))
+    assert t["image"] == "collected-aaa.png" and img.shape == orig.shape
+    (x0, y0), (x2, y2) = t["corners_TL_TR_BR_BL"][0], t["corners_TL_TR_BR_BL"][2]
+    assert img[:max(int(y0) - 3, 1)].max() == 0 and img[int(y2) + 3:].max() == 0   # above and below the board
+    cy, cx = int((y0 + y2) / 2), int((x0 + x2) / 2)
+    assert (img[cy, cx] == orig[cy, cx]).all()   # inside, as it was
+
+
+def test_a_truth_with_corners_not_finite_is_not_used():
+    t = json.loads((SAMPLES / "screen1.truth.json").read_text())
+    assert collected.valid(t)
+    for v in (float("nan"), float("inf")):
+        t["corners_TL_TR_BR_BL"][0] = [v, 0]
+        assert not collected.valid(t)
+
+
+def test_import_merges_on_the_latest_main(monkeypatch):
+    # the checks show up late, and main moves once while they run: waited for again, the newest head merged
+    heads, checks, calls = iter(["a", "b", "b", "b"]), iter([(1, "no checks reported"), (0, ""), (0, "")]), []
+    class R:
+        def __init__(self, out="", code=0, err=""):
+            self.stdout, self.returncode, self.stderr = out, code, err
+    def gh(*a):
+        calls.append(a)
+        if a[1] == "view":
+            return R(json.dumps({"headRefOid": next(heads)}))
+        if a[1] == "checks":
+            code, err = next(checks)
+            return R(code=code, err=err)
+        return R()
+    monkeypatch.setattr(import_collected.time, "sleep", lambda s: None)
+    logs = []
+    import_collected.merge("u", gh, logs.append)
+    assert [a[1] for a in calls].count("checks") == 3 and logs == ["u: merged"]
+    assert ("pr", "merge", "u", "--merge", "--match-head-commit", "b") in calls
+    calls.clear()
+
+    def failing(*a):
+        calls.append(a)
+        return R(code=1) if a[1] == "checks" else R()
+    import_collected.merge("u", failing, logs.append)
+    assert logs[-1] == "u: checks failed, left open" and calls and not any(a[1] == "merge" for a in calls)

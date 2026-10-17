@@ -187,7 +187,7 @@ PWA の盤面の画面の「読み取りの改善」が「サーバーに［保�
 | やること | コマンド（`bganalyzer` フォルダで） |
 |---|---|
 | 何組あるか | `ls collected/*.truth.json \| wc -l` |
-| 今の認識で測る | `uv run python recognizer/collected.py collected --force` → `collected/report.md` |
+| 今の認識で測る | `uv run python recognizer/collected.py collected --force` → `collected/report.md`（`BG_IMPORT` を付けると取り込みまで進む） |
 | しきい値を試す（数時間。TODO-030） | `nice -n 19 uv run python recognizer/tune.py --collected collected --out collected/tune.md` → `collected/tune.md` |
 | 直した所の多い写真を見る | `grep -o '"fixed_points": \[[^]]*\]' collected/*.truth.json` |
 
@@ -201,11 +201,20 @@ flowchart TD
   B -- いいえ --> Z[何もしない]
   B -- はい --> C[全部の組を測り直し、collected/report.md に書く]
   C --> D[読み違いの無い組は新しい 50 組だけ残し、古いものを消す]
+  D --> E{読み違いのある組がある? BG_IMPORT を設定した開発機?}
+  E -- いいえ --> Y[ここまで]
+  E -- はい --> F[import_collected.py: 10 組まで samples/ に入れ、PR を作り、チェックが通ればマージ]
 ```
 
 - 読み違いのある組は直す材料なので消しません。読み違いの無い組は、直したことでほかが悪くならないかを確かめるのに使います。
 - `/samples` は公開で誰でも送れるので、正解の形が違う組は測らず、`report.md` には正解の中の文字を出しません（組の名前はサーバーが付けたもの）。
 - 認識を直すのは、Pi の Claude Code に「collected の report を見て直して」と頼んだときです（自動ではしません）。
+- 読み違いのある組は、`BG_IMPORT` を設定したサーバー（開発機だけ。誰でも送れる Pi では設定しない）で `recognizer/import_collected.py` が `samples/collected-<id>` に入れます（TODO-114）。
+  設定は `systemctl --user edit bganalyzer` で `Environment=BG_IMPORT=1` を足します（下の「Claude に選ばせる」と同じやり方）。古い組から 1 回に 10 組まで、
+  `samples/` に同じ名前か同じ写真があるもの、画像として読めないものは除きます。前の取り込みの PR が開いたままなら何もしません（チェックが落ちたとき、main とぶつかったとき、チェックを待つ間にサービスを再起動したとき。開発機は main を pull するたびに再起動するので、残った PR は見てマージするか閉じてください）。盤の外を正解の四隅で黒く塗り、EXIF は入れません。
+  `origin/main` の別の worktree で `accuracy_baseline.json` と `recognizer/README.md` の「精度」の表を書き直し、PR を作って、
+  `test`・`accuracy` が通り、最新の main を取り込んでも通ればマージします（落ちたとき・main とぶつかったときは PR を開いたまま残す）。この機械の `gh` のログインで push します。
+  したことは `collected/import.log` に残ります。盤の上に写った手や物、直し忘れた正解はそのまま公開されます。
 - すぐに測るときは `uv run python recognizer/collected.py collected --force`。自動の測り直しが落ちたときの理由は `collected/measure.log` に残ります。
 - `collected/` を `recognizer/evaluate.py` で測ると、正解の中の文字がそのまま出て、形の違う組で止まります。`report.md` を使ってください。
 - **しきい値を試す**（`recognizer/tune.py`）: 認識のしきい値を 1 つずつ 0.8・0.9・1.1・1.2 倍にして、`samples/` と `collected/` の組を全部読み直し、
@@ -214,8 +223,7 @@ flowchart TD
   一部だけ試すときは `--params checkers.CIRCLE_MIN_SCORE,checkers.STACK_SKEW --steps 0.9,1.1`。
 - 測り直しは API の子プロセスとして、いちばん低い優先度（`nice -n 19`）で動きます。
 
-リポジトリの `samples/` へは自動では入れません。公開リポジトリなので、入れる写真は人の顔などが写っていないものを選んで、
-PR で足します（[CLAUDE.md](../CLAUDE.md)）。
+`samples/` は公開しています。自動で入った組に見せたくないものが写っていたら、その組を手で塗るか消す PR を出してください（[CLAUDE.md](../CLAUDE.md)）。
 
 ## 同じ Pi で別のアプリも公開する
 
