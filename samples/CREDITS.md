@@ -27,7 +27,8 @@ CC BY-SA の写真（とその縮小版）は同じ CC BY-SA で配布します�
 | `commons-lg-cube-dice.jpg` | [Backgammon lg.jpg](https://commons.wikimedia.org/wiki/File:Backgammon_lg.jpg) | Ptkfgs | Public domain（PD-self） |
 | `commons-wooden-dice.jpg` | [Wooden backgammon (27095563797).jpg](https://commons.wikimedia.org/wiki/File:Wooden_backgammon_(27095563797).jpg) | The Unwinder | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) |
 
-`collected-*` はユーザーが PWA の「Pi に残す」で集めた写真と、スマホで直した盤面です（TODO-030）。人・配信の画面・投稿者・アバター・氏名・人の腕が写っていた 8 枚は、盤の外を黒く塗りました（写真の大きさと四隅の座標は元のまま）。EXIF は入れていません。
+`collected-*` はユーザーが PWA の「サーバーに保存する」で集めた写真と、スマホで直した盤面です（TODO-030）。人・配信の画面・投稿者・アバター・氏名・人の腕が写っていた 8 枚は、手で盤の外を黒く塗りました（写真の大きさと四隅の座標は元のまま）。EXIF は入れていません。
+2026-10-17 からは、開発機のサーバーに送られた組のうち読み違いのあるものを `recognizer/import_collected.py` が自動で入れます（送るのはユーザーとは限りません）。盤の外は正解の四隅で黒く塗り、EXIF は入れません（TODO-114）。
 Las Vegas Open の配信の画面（`collected-2aunci`・`collected-si3vsd`）は、盤の映像を画像のまま残すとユーザーが決めました（2026-10-15。`external/` の URL だけにはしない）。
 photo2〜4 はユーザーが撮った写真、screen1・screen2 はアプリの画面とツイートの画像（盤以外は塗りつぶし）です。
 

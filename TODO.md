@@ -134,9 +134,9 @@ TODO-078 は直さずに閉じた（対応しない）。対局者の横から�
 - git の操作は、作業中のチェックアウトを触らないよう、別の worktree で行う
 
 - [x] どこで、いつ動かすか、push の手段を調べて案を出し、ユーザーに決めてもらう
-- [ ] 取り込みの道具を作る（選ぶ・塗る・足す・基準・表・PR・マージ）
-- [ ] 動かす仕組み（測り直しのあとに続けて）と、`CLAUDE.md`・`docs/raspi.md`・`samples/CREDITS.md` の書き換え
-- [ ] ローカル: 開発機の `collected/` で 1 回動かし、PR ができてマージされる
+- [x] 取り込みの道具を作る（選ぶ・塗る・足す・基準・表・PR・マージ）
+- [x] 動かす仕組み（測り直しのあとに続けて）と、`CLAUDE.md`・`docs/raspi.md`・`samples/CREDITS.md` の書き換え
+- [ ] ローカル: 開発機の `bganalyzer.service` に `systemctl --user edit` で `Environment=BG_IMPORT=1` を足し、`collected/` で 1 回動かして、PR ができてマージされる
 
 **無駄を省く工夫:** 試しは `collected/` の 2〜3 組で。全サンプルの精度は CI の accuracy に任せる
 

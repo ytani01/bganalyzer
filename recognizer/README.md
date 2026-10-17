@@ -659,6 +659,7 @@ dark-homeleft の 15、leather-cups の 9・21、rollup-oblique の 2・4・10�
 - `exact.py` どの CPU でも同じ結果になる計算（射影変換、写し直し、直線、k-means。TODO-046）
 - `slots.py` 位置ごとに判定する読み方の試作（アプリでは使わない。float の計算が残っていて、CPU で結果が変わりうる）
 - `collected.py` Pi の `collected/` を測り直し、読み違いの無い古い組を消す（新しい組が 10 たまるとサーバーが起動する）
+- `import_collected.py` `collected.py` が測ったあと、読み違いのある組を `samples/collected-*` に入れて PR をマージまで進める（`BG_IMPORT` を設定した開発機だけ。TODO-114）
 - `../samples/photoN.truth.json` ユーザー提供の写真（photoN.jpg）を目視で読んだ正解と四隅
 - `../samples/commons-*.truth.json` Wikimedia Commons の写真の正解と四隅（出典は `../samples/CREDITS.md`）
 - `../samples/external/*.truth.json` リポジトリに入れない盤面図の URL と正解（`evaluate.py` が画像を取ってくる）

@@ -4,12 +4,13 @@
     uv run python recognizer/collected.py collected --force    # even without NEW new pairs
 
 The server starts it after saving a pair, when NEW pairs came since the last time (analyzer/app.py).
-Writes report.md next to the pairs. Pairs with a misread are kept (they are what to fix); pairs read
+Writes report.md next to the pairs, then, with BG_IMPORT set, adds the misread ones to samples/ (import_collected.py).
+Pairs with a misread are kept (they are what to fix); pairs read
 right are kept up to KEEP_RIGHT, the newest: they tell whether a fix makes others worse.
 Anyone can send a pair (/samples is public), so a truth is used only when its fields have the expected
 types, and no text from it goes into the report: names are the server's (user-<letters, digits, ->).
 """
-import json, re, sys, time
+import json, math, os, re, sys, time
 from pathlib import Path
 
 NEW = 10           # measure again after this many new pairs
@@ -34,7 +35,7 @@ def new_pairs(d):
 
 def valid(t):
     """Whether a truth has what evaluate.py reads, with the expected types."""
-    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
+    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
     try:
         cube = t.get("cube")
         return (len(t["points"]) == 24 and all(type(n) is int for n in t["points"] + [t["bar_white"], t["bar_black"]])
@@ -87,7 +88,15 @@ def measure(d, force=False):
         lines += ["## 正解の形が違う組（測っていない）", ""] + [f"- {n}" for n in bad] + [""]
     (d / REPORT).write_text("\n".join(lines))
     (d / STATE).write_text(json.dumps(sorted(left)))
+    if wrong and os.environ.get("BG_IMPORT"):   # the development machine only (TODO-114)
+        to_samples(d, [n for n, why in wrong.items() if why != ["読めなかった"]])   # the recognizer stops on those
     return "measured"
+
+
+def to_samples(d, names):
+    """Into samples/, up to the PR's merge. What it did goes to import.log."""
+    import import_collected
+    import_collected.run(d, names)
 
 
 if __name__ == "__main__":
