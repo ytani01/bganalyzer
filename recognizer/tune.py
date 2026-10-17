@@ -8,7 +8,7 @@ settings are tried together. Nothing in the code is changed: the report says wha
 goes in as a PR like any other change to the recognizer (CLAUDE.md: the accuracy baseline).
 
   uv run python recognizer/tune.py                                   # samples/ (not the synthetic copies)
-  uv run python recognizer/tune.py --collected collected             # and the pairs kept with 「Pi に残す」 (on the Pi)
+  uv run python recognizer/tune.py --collected collected             # and the pairs kept with 「サーバーに保存する」 (on the Pi)
   uv run python recognizer/tune.py --params checkers.CIRCLE_MIN_SCORE,checkers.STACK_SKEW --steps 0.9,1.1
   uv run python recognizer/tune.py --only photo2,photo3 --out tune.md
 
@@ -121,7 +121,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--params", help="comma-separated module.NAME (default: PARAMS)")
     ap.add_argument("--steps", help="comma-separated factors (default: 0.8,0.9,1.1,1.2)")
-    ap.add_argument("--collected", help="a folder of pairs kept with 「Pi に残す」 (user-*.truth.json)")
+    ap.add_argument("--collected", help="a folder of pairs kept with 「サーバーに保存する」 (user-*.truth.json)")
     ap.add_argument("--only", help="comma-separated sample names from samples/ (default: all real ones)")
     ap.add_argument("--jobs", type=int, default=None)
     ap.add_argument("--out", default=None, help="write the report here too (Markdown)")

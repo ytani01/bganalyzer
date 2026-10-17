@@ -1,7 +1,7 @@
 """POST /samples: photos with their corrected boards, kept to measure and improve the recognizer (TODO-030).
 
-Off unless BG_SAMPLES_DIR is set (bganalyzer.service sets it), and the app sends them only when the user
-turns it on. Each photo is one id: a later send replaces the earlier one. When enough new pairs have
+Off unless BG_SAMPLES_DIR is set (bganalyzer.service sets it), and the app sends them unless the user
+turns it off (サーバーに［保存しない］; saving is the default since TODO-112). Each photo is one id: a later send replaces the earlier one. When enough new pairs have
 come, they are measured again in a child process (recognizer/collected.py).
 """
 from __future__ import annotations

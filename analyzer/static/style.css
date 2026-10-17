@@ -305,7 +305,6 @@ select { min-height: 44px; font-family: inherit; }
 label:has(> input[type="checkbox"]) { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 input[type="checkbox"] { width: 20px; height: 20px; margin: 0; }
 
-/* What is used less often, folded (TODO-086). */
 /* 読み取りの改善 (TODO-112): hidden when neither part shows; a blank line between the two */
 #improve:not(:has(> div:not([hidden]))) { display: none; }
 #collect-opt:not([hidden]) + #export-opt { margin-top: 1.5em; }

@@ -257,8 +257,16 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColo
   const doubtful = !!g && Math.abs(g.margin) < 1;   // only then: the setting above shows the side (TODO-086)
   $("home-note").hidden = !doubtful;
   $("home-note").textContent = doubtful ? `ホームの左右を決められず、${side}にしました。違えば選び直してください。` : "";
-  $("export-opt").hidden = !s.fromPhoto;
 });
+
+// 読み取りの改善 (TODO-112): only for a board read from a photo; saving it on the server only where the
+// server keeps them (/version's samples)
+let serverKeepsSamples = false;
+const drawImprove = (s) => {
+  $("collect-opt").hidden = !(serverKeepsSamples && s.fromPhoto);
+  $("export-opt").hidden = !s.fromPhoto;
+};
+part((s) => [s.fromPhoto], drawImprove);
 
 part((s) => [s.paintSide, s.undo.length], (s) => {
   for (const b of $("paint-side").children) b.classList.toggle("on", b.dataset.value === s.paintSide);
@@ -905,7 +913,7 @@ async function sampleOf(name) {
 
 // Keep this photo and its board on the server, when the user has turned that on. Never in the way.
 async function sendSample() {
-  if (state.collect !== "on" || !state.fromPhoto || !state.board || !state.historyId) return;
+  if (!serverKeepsSamples || state.collect !== "on" || !state.fromPhoto || !state.board || !state.historyId) return;
   try {
     const id = state.historyId;
     const { blob, ext, truth } = await sampleOf(`user-${id}`);
@@ -1198,7 +1206,8 @@ BgApi.version().then((v) => {
   // the note before the commit: on a narrow screen the end is cut off, and the note matters more
   $("hdr-version").textContent = `a${APP_VERSION} · r${v.recognizer}` + note + (v.commit ? ` · ${v.commit}` : "");
   $("hdr-version").classList.toggle("old", cmp !== 0);
-  $("collect-opt").hidden = !v.samples;
+  serverKeepsSamples = !!v.samples;
+  redraw(drawImprove);
   $("claude-corners").hidden = $("claude-note").hidden = !v.claude;
 }).catch(() => {});
 

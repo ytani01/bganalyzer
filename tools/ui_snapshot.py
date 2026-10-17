@@ -35,6 +35,8 @@ WAIT = 180000        # ms: a reading or an analysis on the Pi
 # before the app's scripts: record what would be spoken, and no share sheet
 INIT = """
 window.__spoken = [];
+// saving on the server is the app's default (TODO-112): off here, or every run would leave a pair in collected/
+try { if (!localStorage.getItem("collect")) localStorage.setItem("collect", "off"); } catch (_) { /* no storage */ }
 if (window.speechSynthesis) speechSynthesis.speak = (u) => { window.__spoken.push(u.text); };
 // Google's voice through /speech (TODO-111): note the sentence asked for, and play nothing
 HTMLMediaElement.prototype.play = function () {
@@ -107,13 +109,7 @@ class Run:
         self.page.alerts.clear()
         self.snaps.append([name, s])
 
-    def reveal(self, selector):   # open the folded 「その他」 the control is in (TODO-086), by its summary
-        summary = self.page.locator(selector).locator("xpath=ancestor::details[not(@open)]/summary")
-        if summary.count():
-            summary.first.click()
-
     def click(self, selector):
-        self.reveal(selector)
         self.page.click(selector)
 
     def seg(self, name, value):
