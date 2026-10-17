@@ -95,6 +95,8 @@ def check_speech(browser):
     read_photo(page)
     show_outcome(page)
     page.click("#speak")
+    # every sentence asked for: the button turns back when the last one has ended
+    page.wait_for_function("document.querySelector('#speak').getAttribute('aria-pressed') === 'false'")
     spoken = page.evaluate("window.__spoken")
     text = "".join(spoken)   # one sentence per /speech request (TODO-111)
     ok = len(spoken) >= 1 and "最善手" in text and not re.search(r"[%％]|勝率|\d+\s*ピップ|\d+\.\d", text)
