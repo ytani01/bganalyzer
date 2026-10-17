@@ -109,9 +109,10 @@ TODO-077 で、`recognizer/checkers.py` の `column_texture` は、行の中央�
 最初は「手前の壁の上端を取る」として立てたが、傾きの大きい 6 枚（`view_tilt_deg` 42〜61°）で `corners.find_corners` を測ると、その外れ方は無かった（2026-10-17、ユーザーと決めて差し替えた）:
 photo5・collected-5wxq9t は見つからない、photo6 は右半分だけ、commons-rollup-oblique・collected-4b88u3 は盤と違う場所を囲む。commons-nardy-midgame はほぼ合う（右の辺が内側に 56〜113px）。
 
-- [ ] 外れる 5 枚で、正解の四角形が候補（`_h_lines`・縦の線）に入っているか、入っていれば点数で負ける理由を調べる
-- [ ] 直し方を決めて実装する（recognizer の版、README の四隅の推定の節も）
-- [ ] `check_corners.py` で今より悪くならないことを確かめる
+- [x] 外れる 5 枚で、正解の四角形が候補（`_h_lines`・縦の線）に入っているか、入っていれば点数で負ける理由を調べる
+- [x] 直し方を決めて実装する（recognizer の版、README の四隅の推定の節も）
+- [x] `check_corners.py` で今より悪くならないことを確かめる
+- [ ] ローカル: アプリで photo5 を読み込むと、最初の四隅が盤を囲む（今は長方形から始まる）
 
 **何を決めるか:** 原因ごとに直すか、一部は対応しないか。**いつ聞くか:** 調べたあと。
 
