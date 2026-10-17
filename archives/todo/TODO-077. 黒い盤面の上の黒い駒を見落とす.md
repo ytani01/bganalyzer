@@ -5,8 +5,14 @@
 | 見込み | Opus 5.5 / effort high | main（測定・実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 | 実施 | Opus 5.5 / effort high | main（測定・実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 
-TOKENS_TABLE
+| 担当 | モデル | effort | input | output | cache_creation | cache_read | 割合 |
+|------|--------|--------|-------|--------|----------------|------------|------|
+| main | Opus 5.5 | high | 88 | 22,800 | 106,913 | 4,116,071 | 89% |
+| reviewer | Opus 5.5 | high | 20 | 3,719 | 52,159 | 344,174 | 8% |
+| verifier | Haiku 5.5 | medium | 10 | 2,857 | 31,627 | 98,923 | 3% |
+| 合計 |  |  | 118 | 29,376 | 190,699 | 4,559,168 | 計 4,779,361 |
 
+- 立ててから着手まで別の項目を挟んだので、`--since '2026-10-17 08:23:50'`（着手した時刻）から数えた
 - reviewer と verifier は定義（`~/.claude/agents/`）のモデル・effort のまま（reviewer は opus / high、verifier は haiku / medium）
 
 ## きっかけ
