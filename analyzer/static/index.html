@@ -55,13 +55,15 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <ul>
         <li>盤の<b>真上から</b>、盤全体が画面いっぱいに入るように撮る</li>
         <li>影や照明の反射が強い所を避ける</li>
-        <li>ダイスやカップは盤の外に置く</li>
+        <li>手前の人が写真の下になる向きで撮る（バーが縦になるように）。向きが違うときは、四隅の画面で 90° 回せる</li>
+        <li>ダイスは、見やすい位置に置く</li>
+        <li>カップなど、不要なものはボードの外に置く</li>
       </ul>
     </details>
     <div id="history" hidden>
       <h2 class="history-title">最近の写真</h2>
       <ul id="history-list" class="history-list"></ul>
-      <p class="note">最近の 10 枚を、この端末の中だけに残します。</p>
+      <p class="note">最近の 100 枚を、この端末の中だけに残します。</p>
     </div>
     <p class="note">写真はサーバーで読み取るだけで、保存しません。</p>
   </section>
@@ -253,6 +255,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <div id="hdr-reuse" hidden>
     <button id="to-board" class="act reuse" type="button">前に読み取った盤面を開く<small>読み取り直さずに、直した所もそのまま</small></button>
   </div>
+  <!-- 盤面の画面だけ。オンなら、解析して結果の画面に移ったら読み上げる（TODO-115。選んだほうを端末に覚える） -->
+  <label id="auto-speak-opt" hidden><input type="checkbox" id="auto-speak"> 解析後、自動で読み上げる</label>
   <!-- 戻るは、その画面のボタンの左に今までと同じ大きさで（TODO-107。前はヘッダーにあった） -->
   <div class="actrow">
     <button id="back" class="back" type="button" aria-label="前の画面に戻る" hidden>‹ 戻る</button>
