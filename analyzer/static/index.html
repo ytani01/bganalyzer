@@ -256,6 +256,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <button id="to-board" class="act reuse" type="button">前に読み取った盤面を開く<small>読み取り直さずに、直した所もそのまま</small></button>
   </div>
   <!-- 盤面の画面だけ。オンなら、解析して結果の画面に移ったら読み上げる（TODO-115。選んだほうを端末に覚える） -->
+  <!-- 盤面の画面で、解析できない理由（駒が多い・駒が無い・クロフォードのキューブ）。そのあいだ「解析する」はグレーアウト（TODO-116） -->
+  <div id="analyze-why" class="analyze-why" role="status" hidden></div>
   <label id="auto-speak-opt" hidden><input type="checkbox" id="auto-speak"> 解析後、自動で読み上げる</label>
   <!-- 戻るは、その画面のボタンの左に今までと同じ大きさで（TODO-107。前はヘッダーにあった） -->
   <div class="actrow">

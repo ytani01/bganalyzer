@@ -95,6 +95,7 @@ header .app-name { font-size: 16px; font-weight: bold; white-space: nowrap; flex
 }
 .act:active { opacity: .8; }
 .act:disabled { opacity: .45; cursor: default; }
+.analyze-why { white-space: pre-line; color: var(--warn-fg); font-size: 14px; }
 .act.on { background: var(--card); color: var(--accent); }
 .act.speak { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .act.speak svg { width: 20px; height: 20px; flex: none; }
