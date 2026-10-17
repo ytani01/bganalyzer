@@ -124,7 +124,9 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 スマホ（Pixel）で「写真を選ぶ」を押すと、写真を複数選べる画面が出る（2026-10-18 ユーザー）。
 `analyzer/static/index.html` の `<input id="file" type="file" accept="image/*">` に `multiple` は付いていないので、Android と Chrome の写真選択の画面がそう出していると見ている（未確認）。
 
-- [ ] なぜ複数選択の画面になるかを調べる（Chrome・Android の写真選択の画面の動き）
+- [x] なぜ複数選択の画面になるかを調べる（Chrome・Android の写真選択の画面の動き）
+  - 2026-10-18: Chrome の `ui/android/.../SelectFileDialog.java` は、`multiple` の無い input では `showPhotoPicker` に `allowMultiple=false` を渡している。ページ側で 1 枚に絞る指定は出ていて、ほかに付けられる属性も無い。Chrome・Android の不具合の報告は見つからなかった
+  - 本当に複数選択の画面か（チェック欄があるか、1 枚押すと戻るか）を Pixel の画面で見てから決める（2026-10-18 ユーザー）
 - [ ] 1 枚だけ選ぶ画面にできるか、できるなら直す（analyzer の版と `APP_VERSION` も）
 - [ ] スマホ: Pixel で「写真を選ぶ」が 1 枚だけ選ぶ画面になる
 
