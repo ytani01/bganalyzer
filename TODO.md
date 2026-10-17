@@ -149,9 +149,11 @@ TODO-077 で、`recognizer/checkers.py` の `column_texture` は、行の中央�
 - D. Google 翻訳の読み上げ（`translate_tts`）: Google の声で Android に近い。公式でない API で止まることがあり、文を Google に送る（`CLAUDE.md` の外へ送るものの例外に足す）
 - ほか、VOICEVOX（自然だが Pi には重い）、Google Cloud Text-to-Speech（API キーと課金が要る）
 
-- [ ] 同じ読み上げ文 2〜3 個（`archives/agents/TODO-106/speech_samples.js` から）で、候補の声を開発機で作り、ユーザーに聞き比べてもらう（Open JTalk などを入れるのはユーザー）
-- [ ] 方式を決めて実装する（今のブラウザの音声合成は予備に残すか、も決める。analyzer の版、`APP_VERSION`、README）
+- [x] 同じ読み上げ文 2〜3 個（`archives/agents/TODO-106/speech_samples.js` から）で、候補の声を開発機で作り、ユーザーに聞き比べてもらう（Open JTalk などを入れるのはユーザー）
+- [x] 方式を決めて実装する（今のブラウザの音声合成は予備に残すか、も決める。analyzer の版、`APP_VERSION`、README）
 - [ ] ローカル: live_view の窓で「読み上げ」を押すと鳴る
+
+**決めたこと（2026-10-17）:** 短い文 3 つで聞き比べ、ユーザーが Google 翻訳の声を選んだ。サーバーが 1 文ずつ中継し（`GET /speech`）、失敗したら残りをブラウザの音声合成で読む。
 
 **何を決めるか:** どの声（方式）にするか、今の方式を予備に残すか。**いつ聞くか:** 聞き比べたあと。
 

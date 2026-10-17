@@ -36,6 +36,13 @@ WAIT = 180000        # ms: a reading or an analysis on the Pi
 INIT = """
 window.__spoken = [];
 if (window.speechSynthesis) speechSynthesis.speak = (u) => { window.__spoken.push(u.text); };
+// Google's voice through /speech (TODO-111): note the sentence asked for, and play nothing
+HTMLMediaElement.prototype.play = function () {
+  const text = new URL(this.src, location.href).searchParams.get("text");
+  if (text) window.__spoken.push(text);
+  setTimeout(() => this.dispatchEvent(new Event("ended")));
+  return Promise.resolve();
+};
 delete Navigator.prototype.canShare; delete Navigator.prototype.share;
 """
 
