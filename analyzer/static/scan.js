@@ -60,10 +60,10 @@
   const DEFAULT_STAGE_MS = 500;
   const STAGE_MS = {
     // the search for the corners, after a photo is loaded (/find-corners)
-    edges: 500,       // 横の縁（奥と手前）の候補の直線
-    uprights: 500,    // 縦の縁（左右）の候補の直線
-    candidates: 500,  // 盤らしい四角形の候補を比べる
-    corners: 500,     // 四隅が決まる
+    edges: 200,       // 横の縁（奥と手前）の候補の直線
+    uprights: 200,    // 縦の縁（左右）の候補の直線
+    candidates: 200,  // 盤らしい四角形の候補を比べる
+    corners: 200,     // 四隅が決まる
     // the reading (/analyze-photo)
     fit: 500,          // 四隅の合わせ直し（枠の線で 2 回、三角形の並びで 2 回。1 回ごとに。四隅を固定したときは 1 回）
     board: 500,       // 枠と列（段階を流さないサーバーのとき）
