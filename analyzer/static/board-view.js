@@ -6,6 +6,9 @@
 // playing area instead of the drawn board and checkers), dice, onRoll, cube {at, value},
 // move {hops, mover} (arrows of a best move, BgMoves.hops), match {length (0: a money game), white,
 // black, crawford} (BgCube.fixMatch)}.
+// onPart (the board screen only): called with "home" (a tray), "colour" (a pip count), "match", "cube"
+// or "roll" (the dice) when that part is tapped. With it, the match line is there in a money game too
+// ("アンリミテッド") and the dice before a roll as dashed "?" (TODO-113).
 "use strict";
 
 const BgBoardView = (() => {
@@ -54,17 +57,27 @@ const BgBoardView = (() => {
 
   const checkerFill = (side) => (side === "white" ? "var(--white-chk)" : "var(--black-chk)");
 
-  function draw(svg, scene, onSelect) {
+  // A part around the board that onPart is called for when tapped.
+  function tapPart(e, kind, onPart) {
+    if (onPart) {
+      e.classList.add("tap");
+      e.dataset.part = kind;
+      e.addEventListener("click", () => onPart(kind));
+    }
+    return e;
+  }
+
+  function draw(svg, scene, onSelect, onPart) {
     svg.textContent = "";
     const { board: b, home, photo } = scene;
-    const match = scene.match && scene.match.length ? scene.match : null;
+    const match = scene.match && (scene.match.length || onPart) ? scene.match : null;
     const y0 = VIEW.y - (match ? MATCH_H : 0), h = VIEW.h + (match ? MATCH_H : 0);
     svg.setAttribute("viewBox", `0 ${y0} 660 ${h}`);
     el("rect", { x: 0, y: y0, width: 660, height: h, fill: "var(--card)" }, svg);
-    if (match) drawMatch(svg, match, home, y0);
+    if (match) drawMatch(svg, match, home, y0, onPart);
     el("rect", { x: B.x0 - 6, y: B.y0 - 6, width: RIGHT - B.x0 + 12, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
     for (const side of ["white", "black"]) {
-      el("rect", { x: trayX(home), y: rowY(side), width: TRAY.w, height: ROW.h, rx: 4, fill: "var(--felt)", stroke: "var(--frame)", "stroke-width": 4 }, svg);
+      tapPart(el("rect", { x: trayX(home), y: rowY(side), width: TRAY.w, height: ROW.h, rx: 4, fill: "var(--felt)", stroke: "var(--frame)", "stroke-width": 4 }, svg), "home", onPart);
     }
     if (photo) {
       el("image", { href: photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
@@ -77,9 +90,9 @@ const BgBoardView = (() => {
     if (photo) return;   // the photo shows the checkers itself
     if (scene.onRoll) drawWay(svg, scene.onRoll, home);
     drawBorneOff(svg, b, home);
-    drawPips(svg, b, home);
-    if (scene.dice) drawDice(svg, scene.dice, scene.onRoll);
-    drawCube(svg, scene.cube, home);
+    drawPips(svg, b, home, onPart);
+    if (scene.dice || onPart) drawDice(svg, scene.dice, scene.onRoll, onPart);
+    drawCube(svg, scene.cube, home, onPart);
     if (scene.move) drawMove(svg, scene.move, home);
   }
 
@@ -190,39 +203,47 @@ const BgBoardView = (() => {
 
   // Each side's pip count in its own row, on a plate of its checker colour beside the tray it bears
   // off to, clear of the cubes (TODO-090).
-  function drawPips(svg, b, home) {
+  function drawPips(svg, b, home, onPart) {
     const pips = BgBoard.pips(b), w = 96, gap = 4;
     const x = home === "right" ? trayX(home) - gap - w : trayX(home) + TRAY.w + gap;
     for (const side of ["white", "black"]) {
       const y = rowY(side);
-      el("rect", { x, y: y + 2, width: w, height: ROW.h - 4, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, svg);
-      el("text", { x: x + w / 2, y: y + ROW.h / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg).textContent = `PIP ${pips[side]}`;
+      const g = tapPart(el("g", {}, svg), "colour", onPart);
+      el("rect", { x, y: y + 2, width: w, height: ROW.h - 4, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, g);
+      el("text", { x: x + w / 2, y: y + ROW.h / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, g).textContent = `PIP ${pips[side]}`;
     }
   }
 
   // The match on a line of its own above 奥's row, and each side's score in its own row at the end
   // away from home, inside the cube (TODO-099).
-  function drawMatch(svg, m, home, y0) {
-    el("text", { x: BAR_X, y: y0 + MATCH_H / 2 + 2, class: "match-n", "pointer-events": "none" }, svg).textContent =
-      `${m.length} ポイントマッチ` + (m.crawford ? "（クロフォード）" : "");
+  function drawMatch(svg, m, home, y0, onPart) {
+    tapPart(el("text", { x: BAR_X, y: y0 + MATCH_H / 2 + 2, class: "match-n", "pointer-events": "none" }, svg), "match", onPart).textContent =
+      (m.length ? `${m.length} ポイントマッチ` + (m.crawford ? "（クロフォード）" : "") : "アンリミテッド") + (onPart ? " ▾" : "");
+    if (!m.length) return;
     const w = 56, gap = 4, cube = 30;
     const x = home === "right" ? B.x0 + cube + gap : RIGHT - cube - gap - w;
     for (const side of ["white", "black"]) {
       const y = rowY(side);
-      el("rect", { x, y: y + 2, width: w, height: ROW.h - 4, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, svg);
-      el("text", { x: x + w / 2, y: y + ROW.h / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, svg).textContent = `${m[side]} 点`;
+      const g = tapPart(el("g", {}, svg), "match", onPart);
+      el("rect", { x, y: y + 2, width: w, height: ROW.h - 4, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, g);
+      el("text", { x: x + w / 2, y: y + ROW.h / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, g).textContent = `${m[side]} 点`;
     }
   }
 
   // The dice where the side on roll throws them: in its own right-hand field (手前: the right one in
-  // the picture, 奥: the left one), in its checker colour.
-  function drawDice(svg, dice, side) {
+  // the picture, 奥: the left one), in its checker colour. No dice (before a roll): dashed, with "?".
+  function drawDice(svg, dice, side, onPart) {
     const size = 34;
     const field = side === "white" ? B.x0 + 6 * B.pw + B.bar : B.x0;
     const cx = field + 3 * B.pw, cy = (B.y0 + B.y1) / 2;
-    dice.forEach((d, k) => {
+    (dice || [0, 0]).forEach((d, k) => {
       const x = cx + (k ? 6 : -size - 6), y = cy - size / 2;
-      const g = el("g", { class: "die" }, svg);
+      const g = tapPart(el("g", { class: "die" }, svg), "roll", onPart);
+      if (!d) {
+        el("rect", { x, y, width: size, height: size, rx: 6, fill: `var(--${side}-chk)`, "fill-opacity": 0.25, stroke: "#0006", "stroke-width": 1.5, "stroke-dasharray": "4 3" }, g);
+        el("text", { x: x + size / 2, y: y + size / 2 + 7, class: "die-q" }, g).textContent = "?";
+        return;
+      }
       el("rect", { x, y, width: size, height: size, rx: 6, fill: `var(--${side}-chk)`, stroke: "#0006", "stroke-width": 1.5 }, g);
       for (const [px, py] of PIPS[d]) {
         el("circle", { cx: x + size / 2 + px * size * 0.27, cy: y + size / 2 + py * size * 0.27, r: size * 0.09, fill: `var(--${side}-fg)` }, g);
@@ -232,11 +253,11 @@ const BgBoardView = (() => {
 
   // The doubling cube in its owner's row at the end away from the tray; while nobody owns it, in
   // 手前's row under the bar, showing 64.
-  function drawCube(svg, cube, home) {
+  function drawCube(svg, cube, home, onPart) {
     const size = 30;
     const x = cube.at === "centre" ? BAR_X - size / 2 : home === "right" ? B.x0 : RIGHT - size;
     const y = rowY(cube.at === "black" ? "black" : "white") + (ROW.h - size) / 2;
-    const g = el("g", { class: "die" }, svg);
+    const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
     el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g).textContent = cube.at === "centre" ? "64" : String(cube.value);
   }

@@ -13,7 +13,7 @@
 ```mermaid
 flowchart LR
     subgraph phone["スマホ（ブラウザ）"]
-        pwa["PWA（analyzer/static/）<br/>撮影・四隅の確認<br/>自分の色・ホーム側の指定<br/>認識結果の手修正・結果表示"]
+        pwa["PWA（analyzer/static/）<br/>撮影・四隅の確認<br/>認識結果の手修正<br/>（ホーム側・自分の色も）・結果表示"]
     end
 
     subgraph server["解析サーバー（Python）"]

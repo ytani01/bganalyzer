@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.70.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.71.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -52,8 +52,8 @@ const state = {
   sideFrom: storedSide().sideFrom,   // from the near player's right or left; "" until asked
   edit: null,          // while the photo is being edited (TODO-070): {turn (quarter turns clockwise), angle (degrees, -45..45), rect ([x0, y0, x1, y1] as fractions of the turned photo) or null}
   dragging: false,     // a finger is on the corners
-  homePick: "auto",    // the choice on the corners screen: "auto" (guess from the checkers), "left" or "right"
-  bottomColour: 1,     // 0 = the darker checkers are 手前's, 1 = the lighter ones
+  homePick: "auto",    // the home sent with the photo: "auto" (guess from the checkers) for a new one; "left"/"right" once a tray is tapped (TODO-113), or as kept with a photo picked before
+  bottomColour: Number(stored("bottomColour", ["0", "1"], "1")),   // 0 = the darker checkers are 手前's, 1 = the lighter ones (kept on this phone, TODO-113)
   geometry: null,      // where the recognizer found the board: {corners (image px), columns, bar (fractions), photo, from}
   // the board
   board: null,         // {points[24], bar_white, bar_black} (board.js)
@@ -77,6 +77,7 @@ const state = {
   result: null,        // what /analyze returned
   resultFor: null,     // inputsKey() of what it was worked out for
   resultDice: null,
+  sheet: null,         // the settings open from the bottom (TODO-113): "match", "cube", "roll" or null
   moveShown: 0,        // the move in the result's list drawn as arrows
   // settings
   photoView: "side",   // the photo on the board screen: "side" (next to the board) or "off"
@@ -175,8 +176,8 @@ part((s) => s.busy, (s) => {
 });
 
 // ---- segmented buttons: each shows the state of its name
-part((s) => [s.homePick, s.onRoll, s.cube.at, s.collect, s.plies, s.sideFrom], (s) => {
-  const value = { homePick: s.homePick, onRoll: s.onRoll, cubeAt: s.cube.at,
+part((s) => [s.onRoll, s.cube.at, s.collect, s.plies, s.sideFrom], (s) => {
+  const value = { onRoll: s.onRoll, cubeAt: s.cube.at,
                   collect: s.collect, plies: s.plies, sideFrom: s.sideFrom };
   for (const seg of document.querySelectorAll(".seg")) {
     for (const b of seg.children) b.classList.toggle("on", b.dataset.value === String(value[seg.dataset.name]));
@@ -194,55 +195,6 @@ part((s) => s.bottomColour, (s) => {
     root.setProperty(`--white-${k}`, `var(--${w}-${k})`);
     root.setProperty(`--black-${k}`, `var(--${b}-${k})`);
   }
-});
-
-// ---- the home corner (TODO-126): a small board with the lighter checkers' way as a U, and a dot in each
-// corner. The tapped corner is the lighter checkers' home: its row tells 手前's colour, its column the home's side.
-// corner: "near-left", "far-right", ...; auto (none chosen): no U, and the two dots of the corner's row lit
-// faintly, to show 手前's colour all the same.
-function drawHomePick(svg, corner, auto = false) {
-  const [row, col] = corner.split("-");
-  const dot = (r, c) => {
-    const on = r === row && (auto || c === col);
-    return `<circle cx="${c === "left" ? 12 : 108}" cy="${r === "far" ? 12 : 68}" r="${on && !auto ? 7 : 5}" fill="${on ? "var(--accent)" : "var(--felt)"}" fill-opacity="${auto && on ? 0.4 : 1}" stroke="var(--accent)" stroke-width="2"/>`;
-  };
-  let u = "";
-  if (!auto) {
-    const left = col === "left", [y0, y1] = row === "near" ? [20, 60] : [60, 20];
-    const xHome = left ? 24 : 96, xTurn = left ? 76 : 44, dir = left ? -1 : 1, head = 10;
-    const sweep = (xTurn > xHome) === (y1 > y0) ? 1 : 0;
-    const d = `M${xHome},${y0} H${xTurn} A20,20 0 0 ${sweep} ${xTurn},${y1} H${xHome - dir * head}`;
-    const tip = `${xHome},${y1} ${xHome - dir * head},${y1 - 7} ${xHome - dir * head},${y1 + 7}`;
-    u = `<path d="${d}" fill="none" stroke="var(--light-rim)" stroke-width="8" stroke-linecap="round"/>
-      <polygon points="${tip}" fill="var(--light-rim)" stroke="var(--light-rim)" stroke-width="3" stroke-linejoin="round"/>
-      <path d="${d}" fill="none" stroke="var(--light-chk)" stroke-width="4" stroke-linecap="round"/>
-      <polygon points="${tip}" fill="var(--light-chk)"/>`;
-  }
-  // each quarter of the board is the tap area of its corner
-  const areas = ["far-left", "far-right", "near-left", "near-right"].map((k) =>
-    `<rect data-corner="${k}" x="${k.endsWith("left") ? 0 : 60}" y="${k.startsWith("far") ? 0 : 40}" width="60" height="40" fill="transparent"/>`);
-  svg.innerHTML = `<rect x="3" y="3" width="114" height="74" rx="4" fill="var(--felt)" stroke="var(--frame)" stroke-width="3"/>
-    <line x1="60" y1="3" x2="60" y2="77" stroke="var(--frame)" stroke-width="3"/>${u}
-    ${["far", "near"].flatMap((r) => ["left", "right"].map((c) => dot(r, c))).join("")}${areas.join("")}`;
-}
-const cornerOf = (bottomColour, home) => `${bottomColour ? "near" : "far"}-${home}`;
-function onCorner(svg, pick) {
-  svg.addEventListener("click", (e) => {
-    const k = e.target.dataset && e.target.dataset.corner;
-    if (k) pick(k.split("-")[1], k.startsWith("near") ? 1 : 0);
-  });
-}
-part((s) => [s.homePick, s.bottomColour], (s) =>
-  drawHomePick($("home-pick"), cornerOf(s.bottomColour, s.homePick === "auto" ? "left" : s.homePick), s.homePick === "auto"));
-part((s) => [s.home, s.bottomColour], (s) => drawHomePick($("home-svg"), cornerOf(s.bottomColour, s.home)));
-onCorner($("home-pick"), (home, bottomColour) => update({ homePick: home, bottomColour }));
-onCorner($("home-svg"), (home, bottomColour) => {
-  // the checkers read as 手前's are 奥's: the board keeps its colours, their owners swap
-  if (bottomColour !== state.bottomColour) {
-    editBoard(BgBoard.swapColours);
-    update({ bottomColour });
-  }
-  setHome(home);
 });
 
 // ---- the corners screen
@@ -330,9 +282,9 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColo
   // which side 手前's home board was read on, and whether it was guessed
   const side = s.home === "right" ? "右" : "左";
   const g = s.fromPhoto && s.homeGuess;
-  const doubtful = !!g && Math.abs(g.margin) < 1;   // only then: the setting above shows the side (TODO-086)
+  const doubtful = !!g && Math.abs(g.margin) < 1;   // only then: the side is said under the board (TODO-086)
   $("home-note").hidden = !doubtful;
-  $("home-note").textContent = doubtful ? `ホームの左右を決められず、${side}にしました。違えば選び直してください。` : "";
+  $("home-note").textContent = doubtful ? `ホームの左右を決められず、${side}にしました。違えば盤面図の置き場をタップしてください。` : "";
 });
 
 // after the part above: it sets NAME from 手前's colour
@@ -388,9 +340,28 @@ part((s) => s.board && [s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube
   $("photo-wrap").hidden = !side;
   $("boards").classList.toggle("two", side);
   if (side) BgBoardView.draw($("photo-svg"), { ...scene, photo });   // for looking: taps do nothing (TODO-088)
-  BgBoardView.draw($("board-svg"), { ...scene, move: null }, select);   // the best move only on the result screen (TODO-092)
+  BgBoardView.draw($("board-svg"), { ...scene, move: null }, select, tapPart);   // the best move only on the result screen (TODO-092)
   BgBoardView.draw($("result-svg"), scene, select);   // the result screen's copy (taps are off there by CSS)
 });
+
+// ---- a tap on a part around the board picture (TODO-113): the trays flip the home's side, a pip count
+// swaps the checkers' owners (the board keeps its colours), the match, the cube and the dice open their sheet
+// (the side and the colour are what this photo is read with again, and the colour also the next photo's)
+function tapPart(kind) {
+  if (kind === "home") {
+    const home = state.home === "right" ? "left" : "right";
+    setHome(home);
+    update({ homePick: home });
+  } else if (kind === "colour") {
+    editBoard(BgBoard.swapColours);
+    keep("bottomColour", state.bottomColour ? "0" : "1");
+    update({ bottomColour: state.bottomColour ? 0 : 1 });
+  } else update({ sheet: kind });
+}
+part((s) => [s.sheet, s.step], (s) => {
+  for (const k of ["match", "cube", "roll"]) $(`sheet-${k}`).hidden = !(s.step === "board" && s.sheet === k);
+});
+for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("click", () => update({ sheet: null }));
 
 // ---- what the analysis is asked
 part((s) => [s.dice, s.diceFromPhoto, cubeOffered(s)], (s) => {
@@ -550,7 +521,7 @@ function go(step) {
   if (step !== "photo" && !(history.state && history.state.bg)) history.pushState({ bg: true }, "");
   if (step === "photo") historyShown++;
   if (step !== "outcome") stopSpeaking();   // the stop button is only on the result screen
-  update({ step });
+  update({ step, sheet: null });   // a sheet open on the board screen is closed when it is left (TODO-113)
   if (step === "corners") requestAnimationFrame(() => redraw(drawCorners));   // once the layout has settled
   window.scrollTo(0, 0);
 }
@@ -639,11 +610,11 @@ function startPhoto(file, bitmap, kept, historyId, historyScale) {
     cornersFixed: [false, false, false, false], edit: null,   // not kept with the photo
     // the way this photo was taken, as kept with it (photos kept before 0.68.0: from the near player's side)
     ...(kept ? { sideMode: !!kept.sideMode, sideFrom: kept.sideFrom || storedSide().sideFrom } : storedSide()),
-    // entries from before 0.6.0 kept only the side picked
-    homePick: (kept && (kept.homePick || kept.home)) || (kept ? "auto" : state.homePick),
+    // a new photo: guessed by the server (nothing picks it since TODO-113); entries from before 0.6.0 kept only the side picked
+    homePick: (kept && (kept.homePick || kept.home)) || "auto",
     home: kept ? kept.home || "right" : state.home,
     homeGuess: kept ? kept.homeGuess || null : state.homeGuess,
-    bottomColour: kept ? kept.bottomColour ?? 1 : state.bottomColour,
+    bottomColour: kept ? kept.bottomColour ?? 1 : Number(stored("bottomColour", ["0", "1"], "1")),   // a new photo: the colour kept on this phone
     onRoll: kept ? kept.onRoll || "white" : state.onRoll,
     warnings: (kept && kept.warnings) || [],
     board: (kept && kept.board) || null,
@@ -1274,7 +1245,6 @@ for (const side of ["white", "black"]) {
 $("crawford").addEventListener("change", () => setMatch({ crawford: $("crawford").checked }));
 
 const SEGMENTS = {
-  homePick: (v) => update({ homePick: v }),
   sideFrom: setSideFrom,
   onRoll: setOnRoll,
   cubeAt: (v) => setCube({ at: v }),

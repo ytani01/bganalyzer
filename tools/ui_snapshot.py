@@ -37,6 +37,8 @@ INIT = """
 window.__spoken = [];
 // saving on the server is the app's default (TODO-112): off here, or every run would leave a pair in collected/
 try { if (!localStorage.getItem("collect")) localStorage.setItem("collect", "off"); } catch (_) { /* no storage */ }
+// 手前's colour is kept on the phone (TODO-113): each flow starts from the lighter checkers, whatever ran before it
+try { localStorage.removeItem("bottomColour"); } catch (_) { /* no storage */ }
 if (window.speechSynthesis) speechSynthesis.speak = (u) => { window.__spoken.push(u.text); };
 // Google's voice through /speech (TODO-111): note the sentence asked for, and play nothing
 HTMLMediaElement.prototype.play = function () {
@@ -66,7 +68,7 @@ SNAP = """() => {
                     'export-sample', 'history']) shown[id] = vis(id);
   return {
     step: [...document.querySelectorAll('section.step')].filter((s) => !s.hidden).map((s) => s.id),
-    shown, segs, title: txt('title'),
+    shown, segs, title: txt('title'), sheet: [...document.querySelectorAll('.sheet')].filter((e) => !e.hidden).map((e) => e.id)[0] || null,
     cornerHelp: html('corner-help'), recognizeDisabled: vis('recognize') ? el('recognize').disabled : null,
     canvas: vis('photo-canvas') ? hash(el('photo-canvas').toDataURL()) : null,
     countMark: txt('count-mark'), errors: txt('errors'), homeNote: txt('home-note'), editor: txt('editor-title'),
@@ -109,16 +111,33 @@ class Run:
         self.page.alerts.clear()
         self.snaps.append([name, s])
 
+    def sheet_for(self, selector=None):     # open the sheet the selector is in (TODO-113), or close the one open, by taps
+        want, shown = self.page.evaluate("""(q) => {
+          const sh = q && document.querySelector(q)?.closest('.sheet');
+          return [sh ? sh.id : null, [...document.querySelectorAll('.sheet')].find((e) => !e.hidden)?.id || null];
+        }""", selector)
+        if shown and shown != want:
+            self.page.click(f"#{shown} .sheet-close")
+        if want and shown != want:
+            self.page.locator(f'#board-svg [data-part="{want[len("sheet-"):]}"]').first.click()
+
     def click(self, selector):
+        self.sheet_for(selector)
         self.page.click(selector)
+
+    def part(self, kind):                   # a tap on a part around the board picture: home, colour, match, cube, roll
+        self.sheet_for()
+        self.page.locator(f'#board-svg [data-part="{kind}"]').first.click()
 
     def seg(self, name, value):
         self.click(f'.seg[data-name="{name}"] [data-value="{value}"]')
 
     def point(self, k, svg="#board-svg"):   # the middle of the k-th tap area of a board picture (24, 25: the bar)
+        self.sheet_for()
         self.page.locator(f"{svg} .hit").nth(k).click()
 
     def tap(self, k, level, svg="#board-svg"):   # level 1..5 from the board's edge (the bar's middle) of the k-th tap area
+        self.sheet_for()
         hit = self.page.locator(f"{svg} .hit").nth(k)
         top = k < 12 or k == 24                  # 0..11 the upper row, 12..23 the lower, 24/25 the bar's halves
         f = (level - 0.5) * 38 / 196             # the level's middle, as a fraction of the half
@@ -128,9 +147,11 @@ class Run:
         hit.click(position={"x": box["width"] / 2, "y": box["height"] * (f if top else 1 - f)})
 
     def number(self, k):                    # the number of the k-th point: empties it
+        self.sheet_for()
         self.page.locator("#board-svg .hit-num").nth(k).click()
 
     def hold(self, k):                      # the palette of the k-th tap area (a right click, as a long press)
+        self.sheet_for()
         self.page.locator("#board-svg .hit").nth(k).click(button="right")
 
     def pick(self, n, side=None):           # in the palette: the colour, then the count
@@ -139,6 +160,7 @@ class Run:
         self.page.click(f'#palette-counts [data-n="{n}"]')
 
     def choose(self, selector, value):
+        self.sheet_for(selector)
         self.page.select_option(selector, value)
 
     def wait_step(self, step):
@@ -171,8 +193,12 @@ def flow_manual(r):
     r.tap(25, 1); r.tap(24, 2); r.snap("bar")
     r.hold(24); r.pick(0); r.snap("bar: 奥 0 from the palette")
     r.click("#undo"); r.click("#undo"); r.snap("undo twice")
-    r.click('#home-svg [data-corner="far-right"]'); r.snap("swap colours")   # 手前 dark, home right (TODO-126)
-    r.click('#home-svg [data-corner="far-left"]'); r.snap("home left")       # then only mirrored
+    r.part("colour"); r.snap("swap colours")   # 手前 dark (TODO-113)
+    r.part("home"); r.snap("home left")        # mirrored
+    r.part("roll"); r.snap("dice sheet")
+    r.part("cube"); r.snap("cube sheet")
+    r.part("match"); r.snap("match sheet")
+    r.click("#sheet-match .sheet-close"); r.snap("sheet closed")
     r.choose("#die1", "3"); r.snap("one die")
     r.choose("#die2", "1"); r.snap("dice 3-1")
     r.seg("onRoll", "black"); r.snap("on roll 奥")
@@ -206,7 +232,6 @@ def flow_photo(r):
     truth = json.loads((ROOT / f"samples/{SAMPLE}.truth.json").read_text())
     r.page.set_input_files("#file", str(ROOT / "samples" / truth["image"]))
     r.wait_corners(); r.snap("corners found")
-    r.click(f'#home-pick [data-corner="{"near" if truth["bottom_colour"] else "far"}-{truth["home"]}"]')   # TODO-126
     r.go("#recognize", "board"); r.snap("photo read")
     r.click("#photo-side"); r.snap("photo hidden")
     r.click("#photo-side"); r.snap("photo beside")
