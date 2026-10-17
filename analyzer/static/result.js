@@ -123,7 +123,7 @@ const BgResult = (() => {
     if (r.cube && r.cube.rolled) parts.push(cubeText);   // as on the screen, before the best move (TODO-096)
     const bestMove = r.moves && dice;   // read early: it is what the player wants to hear
     if (bestMove) {
-      const roll = `${NAME[r.on_roll]}の ${dice[0]} ${dice[1]}`;
+      const roll = `${NAME[r.on_roll]}の ${kana(dice[0])} ${kana(dice[1])}`;
       const luck = r.luck != null && luckWords(r.luck);
       const lucky = luck && luck !== "ふつうの目";   // an ordinary roll is not worth saying (TODO-100)
       const best = r.moves.length ? `最善手は、${moveToSpeech(r.moves[0].move)}です。` : "動かせる手がありません。";
@@ -152,16 +152,23 @@ const BgResult = (() => {
     return s;
   }
 
-  // "bar/22* 13/8(2) 6/off" -> "バーから22でヒット、13から8へ2枚、6から上がり"
+  // Numbers are spoken as kana: the voices read a bare "2" as に or ツー, "4" and "7" two ways too (TODO-132)
+  const DIGIT = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+  function kana(n) {
+    n = Number(n);
+    return n < 10 ? DIGIT[n] : (n >= 20 ? DIGIT[Math.floor(n / 10)] : "") + "じゅう" + DIGIT[n % 10];
+  }
+
+  // "bar/22* 13/8(2) 6/off" -> "バーからにじゅうにでヒット、じゅうさんからはちへに枚、ろくから上がり"
   function moveToSpeech(move) {
     return move.trim().split(/\s+/).map((step) => {
       const m = step.match(/^(.*?)(?:\((\d+)\))?$/);
       const pts = m[1].split("/").map((x) => {
         const hit = x.endsWith("*");
         const n = x.replace("*", "").toLowerCase();
-        return (n === "bar" ? "バー" : n === "off" ? "上がり" : n) + (hit ? "でヒット" : "");
+        return (n === "bar" ? "バー" : n === "off" ? "上がり" : kana(n)) + (hit ? "でヒット" : "");
       });
-      return pts.join("から") + (m[2] ? `へ${m[2]}枚` : "");
+      return pts.join("から") + (m[2] ? `へ${kana(m[2])}枚` : "");
     }).join("、");
   }
 
