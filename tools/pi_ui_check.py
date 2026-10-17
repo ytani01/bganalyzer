@@ -83,14 +83,14 @@ def check_double(browser):
 
 
 def check_speech(browser):
-    """PI-013: what the 読み上げ button reads is a short summary, without percentages or pips."""
+    """PI-013: what the 読み上げ button reads is a short summary, without percentages or pip counts."""
     page = open_app(browser)
     read_photo(page)
     show_outcome(page)
     page.click("#speak")
     spoken = page.evaluate("window.__spoken")
     text = " ".join(spoken)
-    ok = len(spoken) == 1 and "最善手" in text and not re.search(r"[%％]|勝率|ピップ|\d+\.\d", text)
+    ok = len(spoken) == 1 and "最善手" in text and not re.search(r"[%％]|勝率|\d+\s*ピップ|\d+\.\d", text)
     return ok, f"spoken={spoken!r} alerts={page.alerts}"
 
 

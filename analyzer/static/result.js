@@ -119,13 +119,12 @@ const BgResult = (() => {
       const roll = `${NAME[r.on_roll]}の ${dice[0]} ${dice[1]}`;
       const luck = r.luck != null && luckWords(r.luck);
       const lucky = luck && luck !== "ふつうの目";   // an ordinary roll is not worth saying (TODO-100)
-      if (!r.moves.length) parts.push(`${roll} では、動かせる手がありません。`);
-      else if (lucky) parts.push(`${roll} は、${luck}です。最善手は、${moveToSpeech(r.moves[0].move)}です。`);
-      else parts.push(`${roll} の最善手は、${moveToSpeech(r.moves[0].move)}です。`);
-      if (lucky && !r.moves.length) parts.push(`${luck}です。`);
+      const best = r.moves.length ? `最善手は、${moveToSpeech(r.moves[0].move)}です。` : "動かせる手がありません。";
+      parts.push(lucky ? `${roll} は、${luck}です。${best}` : r.moves.length ? `${roll} の${best}` : `${roll} では、${best}`);
     } else if (!r.game_over && !(cubeText && !r.cube.rolled)) {
-      // who rolls next is read first (TODO-052); a cube decision names the side itself
-      parts.push(dice ? `振ったのは${NAME[r.on_roll]}です。` : `次は${NAME[r.on_roll]}の番です。`);
+      // who rolls next is read first (TODO-052); a cube decision names the side itself. With dice there
+      // is always a best move (or none to make), unless the game is over
+      parts.push(`次は${NAME[r.on_roll]}の番です。`);
     }
     if (cubeText && !r.cube.rolled) parts.push(cubeText);
     parts.push(r.game_over ? `${NAME[r.favourite]}の勝ちで、ゲームは終わっています。` : standingToSpeech(r));

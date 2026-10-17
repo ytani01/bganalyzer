@@ -95,6 +95,10 @@ def test_speech_reads_who_rolls_next_first():
       take: R.speechText({{...{r}, moves: null, cube: {{question: "take", doubler: "black", taker: "white", value: 1, take: true, double: true}}}}, null),
       tooGood: R.speechText({{...{r}, moves: null, cube: {{question: "double", doubler: "white", taker: "black", value: 1, take: false, double: false, too_good: true}}}}, null),
       over: R.speechText({{...{r}, game_over: true}}, null),
+      double: R.speechText({{...{r}, moves: null, cube: {{question: "double", doubler: "white", taker: "black", value: 1, take: true, double: true}}}}, null),
+      noDouble: R.speechText({{...{r}, moves: null, cube: {{question: "double", doubler: "white", taker: "black", value: 1, take: true, double: false}}}}, null),
+      none: R.speechText({{...{r}, moves: [], luck: -0.7}}, [6, 6]),
+      sure: R.speechText({{...{r}, probabilities: {{...{r}.probabilities, white: {{win: 95, gammon: 10}}}}}}, null),
     }}""")
     # TODO-106: spoken without "の人"; a cube decision names the side itself, so who rolls is not read
     assert out["noDice"].startswith("次は白の番です。")
@@ -105,6 +109,10 @@ def test_speech_reads_who_rolls_next_first():
     assert out["take"].startswith("黒のダブルに、白はテイクです。")
     assert out["tooGood"].startswith("白はダブルせず、ギャモンを狙う方がよいです。")
     assert out["over"] == "白の勝ちで、ゲームは終わっています。"
+    assert out["double"].startswith("白はダブルすべきで、黒はテイクです。")
+    assert out["noDouble"].startswith("白はまだダブルしない方がよいです。")
+    assert out["none"].startswith("白の 6 6 は、とても悪い目です。動かせる手がありません。")
+    assert "白がほぼ勝ちです。" in out["sure"]
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
