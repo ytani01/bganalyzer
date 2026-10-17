@@ -26,10 +26,11 @@ from analysis import DEFAULT_PLIES, Position, analyze, names_ja, other, parse_po
 from claude_corners import claude_command, router as claude_router
 from models import AnalyzeRequest, Board
 from samples import router as samples_router, samples_dir
+from speech import router as speech_router
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.62.3"
+__version__ = "0.63.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -44,6 +45,7 @@ app = FastAPI(title="bganalyzer", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(samples_router)
 app.include_router(claude_router)
+app.include_router(speech_router)
 log = logging.getLogger("uvicorn.error")   # uvicorn's access log has the status but not why
 
 

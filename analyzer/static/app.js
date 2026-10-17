@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.62.3";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.63.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -145,7 +145,7 @@ part((s) => [s.step, s.fromPhoto && !!s.board, !!s.result], (s) => {
   $("recognize").hidden = s.step !== "corners";
   $("hdr-reuse").hidden = !(s.step === "corners" && s.fromPhoto && s.board);
   $("analyze").hidden = s.step !== "board";
-  $("speak").hidden = !(s.step === "outcome" && s.result && window.speechSynthesis);
+  $("speak").hidden = !(s.step === "outcome" && s.result);
 });
 
 // scanning: the reading overlay is drawn on the photo, so the screen is not darkened and the text sits low
@@ -537,7 +537,7 @@ function setMatch(patch) {
 }
 
 function setResult(result, dice) {
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  stopSpeaking();
   update({ result, resultDice: dice || null, resultFor: result ? inputsKey() : null, moveShown: 0 });
 }
 
@@ -954,20 +954,52 @@ async function exportSample() {
 }
 
 // ================================================================ reading the result aloud
-// The browser's own speech (Web Speech API): free, nothing to set up, and on Android's Chrome it is
-// Google's voice. Nothing is sent to our server.
+// Google Translate's voice through our server (/speech, TODO-111): the same voice on every phone. One
+// sentence per request (it takes about 200 characters). When that fails, the rest is read in the
+// browser's own voice (Web Speech API), which depends on the phone.
+
+let speaking = null;   // the Audio reading the sentences, or null
 
 function toggleSpeaking() {
+  if (!state.result) return;
+  if (speaking || (window.speechSynthesis && speechSynthesis.speaking)) { stopSpeaking(); return; }
+  const sentences = BgResult.speechText(state.result, state.resultDice).split("。").filter((s) => s.trim()).map((s) => s + "。");
+  const audio = new Audio();
+  speaking = audio;
+  speakLabel(true);
+  let k = 0;
+  const next = () => {
+    if (speaking !== audio) return;
+    if (k === sentences.length) { stopSpeaking(); return; }
+    audio.src = BgApi.url("speech?text=" + encodeURIComponent(sentences[k++]));
+    audio.play().catch(fallback);
+  };
+  const fallback = () => {
+    if (speaking !== audio) return;
+    speaking = null;
+    speakWithBrowser(sentences.slice(k - 1).join(""));
+  };
+  audio.onended = next;
+  audio.onerror = fallback;
+  next();
+}
+
+function stopSpeaking() {
+  if (speaking) { speaking.onended = speaking.onerror = null; speaking.pause(); speaking = null; }
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  speakLabel(false);
+}
+
+function speakWithBrowser(text) {
   const synth = window.speechSynthesis;
-  if (!synth || !state.result) return;
-  if (synth.speaking) { synth.cancel(); return; }
-  const u = new SpeechSynthesisUtterance(BgResult.speechText(state.result, state.resultDice));
+  if (!synth) { speakLabel(false); return; }
+  const u = new SpeechSynthesisUtterance(text);
   u.lang = "ja-JP";
   const voices = synth.getVoices().filter((v) => /^ja/i.test(v.lang));
   const voice = voices.find((v) => /google/i.test(v.name)) || voices[0];
   if (voice) u.voice = voice;
-  u.onstart = () => speakLabel(true);
   u.onend = u.onerror = () => speakLabel(false);
+  speakLabel(true);
   synth.speak(u);
 }
 

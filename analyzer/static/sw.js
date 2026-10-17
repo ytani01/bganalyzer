@@ -22,6 +22,9 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
+  // the spoken sentences (TODO-111): one per request, not kept (they would pile up, and offline the
+  // fallback below would answer with another sentence's voice)
+  if (url.href.startsWith(new URL("speech", self.registration.scope).href)) return;
   // no-cache: ask the server even when the browser's own cache thinks its copy is fresh
   e.respondWith(fetch(e.request, { cache: "no-cache" })
     .then((res) => {

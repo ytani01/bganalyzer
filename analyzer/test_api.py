@@ -856,3 +856,27 @@ def test_claude_corners_timeout_kills_it(monkeypatch, tmp_path):
         with pytest.raises(ProcessLookupError):
             os.kill(pid, 0)
     assert claude_corners._running is False
+
+
+def test_speech_is_google_translate_voice(monkeypatch):
+    # TODO-111: one sentence goes to translate_tts and its audio comes back; a refusal is 502 (the app then
+    # reads with the browser's voice); more than one piece's worth of text is refused here
+    import io
+    import urllib.request
+    import speech
+
+    asked = []
+
+    def fake(req, timeout):
+        asked.append(req.full_url)
+        if "refuse" in req.full_url:
+            raise OSError("429")
+        return io.BytesIO(b"ID3 mp3")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake)
+    r = client.get("/speech", params={"text": "黒はテイクです。"})
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/mpeg" and r.content == b"ID3 mp3"
+    assert asked[0].startswith(speech.TTS_URL + "?") and "tl=ja" in asked[0] and "q=%E9%BB%92" in asked[0]
+    assert client.get("/speech", params={"text": "refuse"}).status_code == 502
+    assert client.get("/speech", params={"text": "あ" * (speech.TEXT_MAX + 1)}).status_code == 422
+    assert len(asked) == 2

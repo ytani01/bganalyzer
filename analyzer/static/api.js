@@ -74,5 +74,5 @@ const BgApi = (() => {
     return res.ok ? res.json() : null;
   }
 
-  return { post, postJson, postStages, scaleGeometry, version };
+  return { post, postJson, postStages, scaleGeometry, version, url };
 })();

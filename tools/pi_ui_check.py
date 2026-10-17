@@ -23,6 +23,13 @@ SAMPLE = "screen1"   # an app screenshot with dice (4-2): read the same every ti
 INIT = """
 window.__spoken = [];
 if (window.speechSynthesis) speechSynthesis.speak = (u) => { window.__spoken.push(u.text); };
+// Google's voice through /speech (TODO-111): note the sentence asked for, and play nothing
+HTMLMediaElement.prototype.play = function () {
+  const text = new URL(this.src, location.href).searchParams.get("text");
+  if (text) window.__spoken.push(text);
+  setTimeout(() => this.dispatchEvent(new Event("ended")));
+  return Promise.resolve();
+};
 delete Navigator.prototype.canShare; delete Navigator.prototype.share;
 """
 # a share sheet that refuses the files, as Chrome on Android does for a .json
@@ -89,8 +96,8 @@ def check_speech(browser):
     show_outcome(page)
     page.click("#speak")
     spoken = page.evaluate("window.__spoken")
-    text = " ".join(spoken)
-    ok = len(spoken) == 1 and "最善手" in text and not re.search(r"[%％]|勝率|\d+\s*ピップ|\d+\.\d", text)
+    text = "".join(spoken)   # one sentence per /speech request (TODO-111)
+    ok = len(spoken) >= 1 and "最善手" in text and not re.search(r"[%％]|勝率|\d+\s*ピップ|\d+\.\d", text)
     return ok, f"spoken={spoken!r} alerts={page.alerts}"
 
 
