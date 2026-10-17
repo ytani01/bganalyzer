@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.64.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.65.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -73,6 +73,7 @@ const state = {
   moveShown: 0,        // the move in the result's list drawn as arrows
   // settings
   photoView: "side",   // the photo on the board screen: "side" (next to the board) or "off"
+  autoSpeak: stored("autoSpeak", ["on", "off"], "off") === "on",   // read the result aloud once analysed (kept on this phone, TODO-115)
   collect: stored("collect", ["on", "off"], "on"),   // "on": keep the photo and the fixed board on the server (on unless turned off, TODO-112)
   // where the photo is kept on this phone (history.js)
   historyId: null,
@@ -141,10 +142,12 @@ part((s) => s.step, (s) => {
 
 // The bottom bar carries the screen's main action (and reading aloud once there is a result), so it
 // can be pressed without scrolling down (TODO-086).
-part((s) => [s.step, s.fromPhoto && !!s.board, !!s.result], (s) => {
+part((s) => [s.step, s.fromPhoto && !!s.board, !!s.result, s.autoSpeak], (s) => {
   $("recognize").hidden = s.step !== "corners";
   $("hdr-reuse").hidden = !(s.step === "corners" && s.fromPhoto && s.board);
   $("analyze").hidden = s.step !== "board";
+  $("auto-speak-opt").hidden = s.step !== "board";
+  $("auto-speak").checked = s.autoSpeak;
   $("speak").hidden = !(s.step === "outcome" && s.result);
 });
 
@@ -875,8 +878,9 @@ async function analyze() {
   if (crawfordCube()) { alert(CRAWFORD_CUBE); return; }
   update({ selected: null });   // done editing
   sendSample();
+  if (state.autoSpeak) unlockSpeech();
   // The result on hand still fits the board and settings (e.g. worked out when the photo was read): just show it.
-  if (state.result && !resultStale()) { go("outcome"); return; }
+  if (state.result && !resultStale()) { go("outcome"); autoSpeak(); return; }
   const text = state.plies === "3" ? "3手読みで解析しています（しばらくかかります）…" : "解析しています…";
   await withBusy(text, async () => {
     try {
@@ -886,6 +890,7 @@ async function analyze() {
       if (dice) body.dice = dice;
       setResult(await BgApi.postJson("analyze", body), dice);
       go("outcome");
+      autoSpeak();
     } catch (err) {
       alert("解析に失敗しました: " + err.message);
     }
@@ -959,34 +964,53 @@ async function exportSample() {
 // sentence per request (it takes about 200 characters). When that fails, the rest is read in the
 // browser's own voice (Web Speech API), which depends on the phone.
 
-let speaking = null;   // the Audio reading the sentences, or null
+// One Audio for every reading: a phone plays sound only right after a tap, but an element once played
+// from a tap may play again later (TODO-115: reading aloud when the analysis comes back seconds later).
+const player = new Audio();
+let speaking = null;   // the reading going on (a token object), or null
+const SILENCE = "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
 
 function toggleSpeaking() {
   if (!state.result) return;
   if (speaking || (window.speechSynthesis && speechSynthesis.speaking)) { stopSpeaking(); return; }
+  startSpeaking();
+}
+
+function startSpeaking() {
   const sentences = BgResult.speechText(state.result, state.resultDice).split("。").filter((s) => s.trim()).map((s) => s + "。");
-  const audio = new Audio();
-  speaking = audio;
+  const run = {};
+  speaking = run;
   speakLabel(true);
   let k = 0;
   const next = () => {
-    if (speaking !== audio) return;
+    if (speaking !== run) return;
     if (k === sentences.length) { stopSpeaking(); return; }
-    audio.src = BgApi.url("speech?text=" + encodeURIComponent(sentences[k++]));
-    audio.play().catch(fallback);
+    player.src = BgApi.url("speech?text=" + encodeURIComponent(sentences[k++]));
+    player.play().catch(fallback);
   };
   const fallback = () => {
-    if (speaking !== audio) return;
+    if (speaking !== run) return;
     speaking = null;
     speakWithBrowser(sentences.slice(k - 1).join(""));
   };
-  audio.onended = next;
-  audio.onerror = fallback;
+  player.onended = next;
+  player.onerror = fallback;
   next();
 }
 
+// Called on the tap of 解析する: plays nothing, so the player and the browser's voice may speak once
+// the result is in.
+function unlockSpeech() {
+  stopSpeaking();
+  player.src = SILENCE;
+  player.play().catch(() => {});
+  if (window.speechSynthesis) speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+}
+
+const autoSpeak = () => { if (state.autoSpeak && state.result) startSpeaking(); };
+
 function stopSpeaking() {
-  if (speaking) { speaking.onended = speaking.onerror = null; speaking.pause(); speaking = null; }
+  if (speaking) { player.onended = player.onerror = null; player.pause(); speaking = null; }
   if (window.speechSynthesis) speechSynthesis.cancel();
   speakLabel(false);
 }
@@ -1158,6 +1182,11 @@ for (const seg of document.querySelectorAll(".seg")) {
 }
 
 $("analyze").addEventListener("click", analyze);
+$("auto-speak").addEventListener("change", () => {
+  const on = $("auto-speak").checked;
+  keep("autoSpeak", on ? "on" : "off");
+  update({ autoSpeak: on });
+});
 $("result").addEventListener("click", (e) => {   // a row of the best moves: its arrows on the board
   const li = e.target.closest(".moves li");
   if (!li) return;
