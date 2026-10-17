@@ -57,8 +57,8 @@ def read_photo(page, cube=None):
     truth = json.loads((ROOT / f"samples/{SAMPLE}.truth.json").read_text())
     page.set_input_files("#file", str(ROOT / "samples" / truth["image"]))
     page.wait_for_function("BgApp.state.cornerGuess !== 'finding'", timeout=60000)
-    page.click(f'.seg[data-name="homePick"] [data-value="{truth["home"]}"]')
-    page.click(f'.seg[data-name="bottomColour"] [data-value="{truth["bottom_colour"]}"]')
+    near = "near" if truth["bottom_colour"] else "far"   # the corner of the lighter checkers' home (TODO-126)
+    page.click(f'#home-pick [data-corner="{near}-{truth["home"]}"]')
     page.evaluate("c => BgApp.update({ corners: c, cornersMoved: true })", truth["corners_TL_TR_BR_BL"])
     if cube:   # a cube set by hand before reading, as when reading again after setting it
         page.evaluate("c => BgApp.update({ cube: c })", cube)

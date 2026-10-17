@@ -106,17 +106,11 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
         <button data-value="right">右から</button><button data-value="left">左から</button>
       </div>
     </div>
+    <!-- 明るい駒のホームの隅をタップする。ホームの左右と手前の駒の色が一度に決まる。どの隅も選んでいなければ「自動」（TODO-126） -->
     <div class="opt">
-      <span class="opt-label">手前のホーム<small>（上がる側）</small></span>
-      <div class="seg" data-name="homePick">
-        <button data-value="auto">自動</button><button data-value="left">左</button><button data-value="right">右</button>
-      </div>
-    </div>
-    <div class="opt">
-      <span class="opt-label">手前の駒の色</span>
-      <div class="seg" data-name="bottomColour">
-        <button data-value="0">暗い方</button><button data-value="1">明るい方</button>
-      </div>
+      <span class="opt-label">ホーム<small>明るい駒が上がる隅</small></span>
+      <svg id="home-pick" class="home-pick" viewBox="0 0 120 80"></svg>
+      <div class="seg" data-name="homePick"><button data-value="auto">自動</button></div>
     </div>
     <!-- 畳まずに出す（TODO-093） -->
     <div class="row"><span id="claude-note" class="note" hidden>写真が Anthropic に送られます</span></div>
@@ -161,11 +155,10 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </div>
     </div>
     <div class="panel">
+    <!-- 四隅の画面と同じ。奥の隅を押すと手前の駒の色が入れ替わる（TODO-126） -->
     <div class="opt">
-      <span class="opt-label"><span class="nm-white">白</span>のホーム<small>（上がる側）</small></span>
-      <div class="seg" data-name="home">
-        <button data-value="left">左</button><button data-value="right">右</button>
-      </div>
+      <span class="opt-label">ホーム<small>明るい駒が上がる隅</small></span>
+      <svg id="home-svg" class="home-pick" viewBox="0 0 120 80"></svg>
     </div>
     <p id="home-note" class="note" hidden></p>
     </div>
@@ -223,7 +216,6 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 
     <!-- 盤面の操作。見出しは付けず、ボタンを横に並べる（TODO-112。前は閉じた「その他の設定」の中） -->
     <div class="row wrap">
-      <button id="swap-colours" class="button small">色を入れ替え</button>
       <button id="reset-start" class="button small">初期配置</button>
     </div>
     <!-- 読み取りの改善（TODO-112）。中のどちらも出ないときは隠れる -->

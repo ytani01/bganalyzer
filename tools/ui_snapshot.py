@@ -171,8 +171,8 @@ def flow_manual(r):
     r.tap(25, 1); r.tap(24, 2); r.snap("bar")
     r.hold(24); r.pick(0); r.snap("bar: 奥 0 from the palette")
     r.click("#undo"); r.click("#undo"); r.snap("undo twice")
-    r.click("#swap-colours"); r.snap("swap colours")
-    r.seg("home", "left"); r.snap("home left")
+    r.click('#home-svg [data-corner="far-right"]'); r.snap("swap colours")   # 手前 dark, home right (TODO-126)
+    r.click('#home-svg [data-corner="far-left"]'); r.snap("home left")       # then only mirrored
     r.choose("#die1", "3"); r.snap("one die")
     r.choose("#die2", "1"); r.snap("dice 3-1")
     r.seg("onRoll", "black"); r.snap("on roll 奥")
@@ -206,7 +206,7 @@ def flow_photo(r):
     truth = json.loads((ROOT / f"samples/{SAMPLE}.truth.json").read_text())
     r.page.set_input_files("#file", str(ROOT / "samples" / truth["image"]))
     r.wait_corners(); r.snap("corners found")
-    r.seg("homePick", truth["home"]); r.seg("bottomColour", str(truth["bottom_colour"]))
+    r.click(f'#home-pick [data-corner="{"near" if truth["bottom_colour"] else "far"}-{truth["home"]}"]')   # TODO-126
     r.go("#recognize", "board"); r.snap("photo read")
     r.click("#photo-side"); r.snap("photo hidden")
     r.click("#photo-side"); r.snap("photo beside")
