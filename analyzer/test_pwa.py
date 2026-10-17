@@ -82,24 +82,29 @@ def test_result_words():
     }""")
     assert out["who"] == ["振った", "次に振る"]
     assert out["esc"] == "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;"
-    assert out["move"] == "バーから22でヒット、13から8を2つ、6から上がり"
+    assert out["move"] == "バーから22でヒット、13から8へ2枚、6から上がり"
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
 def test_speech_reads_who_rolls_next_first():
-    # TODO-052: without a best move, "次に振るのは…" is the first thing read aloud
+    # TODO-052: without a best move, who rolls next ("次は…の番です") is the first thing read aloud
     r = json.dumps(_RESULT)
     out = _result_js(f"""{{
       noDice: R.speechText({r}, null),
       dice: R.speechText({r}, [3, 1]),
       take: R.speechText({{...{r}, moves: null, cube: {{question: "take", doubler: "black", taker: "white", value: 1, take: true, double: true}}}}, null),
+      tooGood: R.speechText({{...{r}, moves: null, cube: {{question: "double", doubler: "white", taker: "black", value: 1, take: false, double: false, too_good: true}}}}, null),
+      over: R.speechText({{...{r}, game_over: true}}, null),
     }}""")
-    assert out["noDice"].startswith("次に振るのは白の人です。")
-    assert out["noDice"].count("のは白の人です。") == 1
-    assert out["dice"].startswith("白の人、ダイス 3 1の最善手は、バーから22でヒット")
-    assert "振るのは" not in out["dice"]
-    assert "かなり有利" in out["dice"] and "ギャモン勝ち" in out["dice"] and "大きくリード" in out["dice"]
-    assert out["take"].startswith("次に振るのは白の人です。白の人はテイクです。")
+    # TODO-106: spoken without "の人"; a cube decision names the side itself, so who rolls is not read
+    assert out["noDice"].startswith("次は白の番です。")
+    assert out["noDice"].count("の番です。") == 1
+    assert out["dice"].startswith("白の 3 1 の最善手は、バーから22でヒット")
+    assert "番です" not in out["dice"]
+    assert "かなり有利" in out["dice"] and "ギャモン勝ちの見込み" in out["dice"] and "ピップ数では白が大きくリード" in out["dice"]
+    assert out["take"].startswith("黒のダブルに、白はテイクです。")
+    assert out["tooGood"].startswith("白はダブルせず、ギャモンを狙う方がよいです。")
+    assert out["over"] == "白の勝ちで、ゲームは終わっています。"
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
@@ -130,13 +135,13 @@ def test_result_html():
         "+0.601・とても良い目", "+0.600・良い目", "+0.300・ふつうの目", "-0.290・ふつうの目", "-0.301・悪い目", "-0.600・悪い目",
         "-0.601・とても悪い目"]   # as gnubg: beyond the levels, not at them
     assert out["luck"][0].index("最善手（") < out["luck"][0].index("Luck ") < out["luck"][0].index('<ol class="moves">')
-    assert "最善手は、バーから22でヒット、13から8を2つ、6から上がり。とても悪い目です。" in out["luckSpeech"]
+    assert out["luckSpeech"].startswith("白の 3 1 は、とても悪い目です。最善手は、バーから22でヒット、13から8へ2枚、6から上がりです。")
     assert ["目です" in s for s in out["plainSpeech"]] == [False, False, True, True]   # TODO-100: an ordinary roll is not read out
     assert "Luck" not in out["moves"] and "目です" not in out["rolledSpeech"]   # no luck in the result: nothing shown
     # TODO-096: with dice, the double that was due before the roll comes before the best move
     assert out["rolled"].index("<h2>キューブ（振る前）</h2>") < out["rolled"].index("最善手（白・ダイス 3-1）")
     assert "白の人は振る前に <b>ダブルすべきだった</b>" in out["rolled"]
-    assert out["rolledSpeech"].startswith("振る前に白の人はダブルすべきでした。ダブルされたら黒の人はパスです。白の人、ダイス 3 1の最善手は")
+    assert out["rolledSpeech"].startswith("白は振る前にダブルすべきでした。ダブルされたら、黒はパスです。白の 3 1 の最善手は")
     assert '<ol class="moves"><li data-k="0" class="on">bar/22* 13/8(2) 6/off' in out["moves"]
     assert "最善手（白・ダイス 3-1）" in out["moves"]
     assert "ピップ リード" not in out["moves"] and "振ったのは" not in out["moves"]   # TODO-086: the table and the heading say it
@@ -359,7 +364,7 @@ def test_match_in_the_result_words():
     assert "ポイントマッチ" not in out["speech"]   # TODO-099: the score is on the board, not read out
     assert "キューブの判断はマッチのスコアで" in out["cubeNote"]
     assert "ポイントマッチ" not in out["money"][0] and "アンリミテッド（ジャコビー・ルールあり）" in out["money"][1]
-    assert "白の人はダブルしてもしなくてもよいです。" in out["optional"][0]
+    assert out["optional"][0].startswith("次は白の番です。") and "ダブル" not in out["optional"][0]   # TODO-106: not read out
     assert "白の人は <b>ダブルしてもしなくてもよい</b>" in out["optional"][1]
 
 
@@ -371,7 +376,7 @@ def test_names_follow_the_colour():
       speech: R.speechText({r}, null), html: R.html({r}, [3, 1]),
       back: (R.setNames(1), R.NAME.white),
     }})""")
-    assert out["speech"].startswith("次に振るのは黒の人です。")
+    assert out["speech"].startswith("次は黒の番です。")
     assert "<th>黒</th><th>白</th>" in out["html"] and "最善手（黒・ダイス 3-1）" in out["html"]
     assert out["back"] == "白"
 
