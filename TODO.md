@@ -142,7 +142,7 @@ TODO-077 で、`recognizer/checkers.py` の `column_texture` は、行の中央�
 
 ヘッダーにある「‹ 戻る」（`#back`）を、画面の下のボタンの並び（`#actbar`。「盤面を読み取る」「解析する」「読み上げ」）の左に移す。大きさは今と同じ（2026-10-17 ユーザーが決めた）。
 
-- [ ] 移す（`analyzer/static/index.html`・`style.css`・必要なら `app.js`。analyzer の版、`APP_VERSION`）
+- [x] 移す（`analyzer/static/index.html`・`style.css`・必要なら `app.js`。analyzer の版、`APP_VERSION`）
 - [ ] ローカル: 四隅・盤面・結果の画面で、戻るが下のボタンの左に今と同じ大きさで出て、押すと前の画面に戻る
 
 **無駄を省く工夫:** 確かめるのは、戻るが出る画面を代表 1 つずつ（下に別のボタンがある画面と、`#hdr-reuse` が出る四隅の画面）。画面の大きさはスマホの幅 1 つだけ
