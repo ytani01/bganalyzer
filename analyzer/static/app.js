@@ -264,15 +264,16 @@ part((s) => (s.step !== "corners" || scanning() ? undefined : [photoId(s), s.cor
 // ---- the board screen
 part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColour], (s) => {
   if (!s.board) return;
-  // Only when the counts do not add up, a short mark over the board (TODO-088): more than 15 in red, or fewer
-  // read from a photo (borne off, or missed) in yellow; no checkers at all counts as fewer (TODO-125).
+  // The counts over the board, always (TODO-088, TODO-125): more than 15 in red, fewer read from a photo
+  // (borne off, or missed) in yellow, with a ⚠ only then; no checkers at all counts as fewer.
   const { onW, onB } = BgBoard.counts(s.board);
-  const off = (on) => on > 15 || (s.fromPhoto && on < 15);
+  const cls = (on) => (on > 15 ? "many" : s.fromPhoto && on < 15 ? "few" : "");
   const mark = !onW && !onB ? [["盤に駒がありません", "few"]]
-    : [["white", onW], ["black", onB]].filter(([, on]) => off(on)).map(([side, on]) => [`${NAME[side]} ${on}/15`, on > 15 ? "many" : "few"]);
-  $("count-mark").hidden = !mark.length;
-  $("count-mark").replaceChildren(...mark.map(([text, cls], i) =>
-    Object.assign(document.createElement("span"), { className: cls, textContent: `${i ? "・" : "⚠ "}${text}` })));
+    : [["white", onW], ["black", onB]].map(([side, on]) => [`${NAME[side]} ${on}/15`, cls(on)]);
+  const warn = mark.some(([, c]) => c) ? "⚠ " : "";
+  $("count-mark").hidden = false;
+  $("count-mark").replaceChildren(...mark.map(([text, c], i) =>
+    Object.assign(document.createElement("span"), { className: c, textContent: `${i ? "・" : warn}${text}` })));
   // the server's notes on the photo (e.g. taken at a steep angle)
   const warns = s.fromPhoto ? s.warnings : [];
   $("errors").hidden = !warns.length;

@@ -145,7 +145,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <div id="boards" class="boards">
       <div id="photo-wrap" class="board-wrap" hidden><svg id="photo-svg" viewBox="0 0 660 440"></svg></div>
       <div id="board-pin" class="board-pin">
-        <!-- 駒の数が合わないときだけ出す短い印。盤面図の上に出す（TODO-088、TODO-125） -->
+        <!-- 白・黒の駒の数。盤面図の上にいつも出し、合わない側だけ色を付ける（TODO-088、TODO-125） -->
         <div id="count-mark" class="count-mark" role="status" hidden></div>
         <div class="board-wrap"><svg id="board-svg" viewBox="0 0 660 440"></svg></div>
         <div id="editor" class="editor">
