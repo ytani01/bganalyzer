@@ -1,5 +1,6 @@
 # 全サンプルを流すコマンド。当たると ~/.claude/hooks/full-run-guard.py が利用者の確認を出す（~/.claude の TODO-037）
+# python で起動したときだけ当てる（sed・rg でファイル名を書いただけでは当てない。TODO-119）
 # 基準の書き直し（--update）は CLAUDE.md の手順なので除く
-check_accuracy\.py(?![^\n]*--update)
+python\S*[ \t]+(?:-\S+[ \t]+)*\S*check_accuracy\.py(?![^\n]*--update)
 # 引数なし（オプションだけ）の evaluate.py
-evaluate\.py(?:[ \t]+--\S+)*[ \t]*(?:$|[;&|)"'`])
+python\S*[ \t]+(?:-\S+[ \t]+)*\S*evaluate\.py(?:[ \t]+--\S+)*[ \t]*(?:$|[;&|)"'`])
