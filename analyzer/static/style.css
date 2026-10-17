@@ -249,6 +249,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .result table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0; }
 .result th, .result td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: right; }
 .result th:first-child, .result td:first-child { text-align: left; }
+.result td.sub { padding-left: 1.5em; }   /* the parts of the win above (TODO-128) */
 .result ol { padding-left: 24px; margin: 4px 0; }
 .result .moves li { cursor: pointer; padding: 4px 6px; border-radius: 6px; }
 .result .moves li.on { background: color-mix(in srgb, var(--sel) 35%, transparent); font-weight: bold; }
