@@ -25,6 +25,10 @@ const BgResult = (() => {
     return { word: c.value > 1 ? "リダブル" : "ダブル", take: c.take ? "テイク" : "パス" };
   }
 
+  // an indented row of the win table: f(one side's probabilities), to one decimal like the server's
+  const sub = (p, label, f) => `<tr><td class="sub">${label}</td>` +
+    ["white", "black"].map((c) => `<td>${Math.round(10 * f(p[c])) / 10}%</td>`).join("") + "</tr>";
+
   // Top to bottom (TODO-090): the summary, the winning chances as a bar, the cube decision or the
   // best move, then the table of the numbers.
   function html(r, dice) {
@@ -49,8 +53,10 @@ const BgResult = (() => {
     if (!r.game_over) {
       out += `<table><tr><th></th><th>${NAME.white}</th><th>${NAME.black}</th></tr>` +
         `<tr><td>勝率</td><td>${p.white.win}%</td><td>${p.black.win}%</td></tr>` +
-        `<tr><td>うちギャモン勝ち</td><td>${p.white.gammon}%</td><td>${p.black.gammon}%</td></tr>` +
-        `<tr><td>うちバックギャモン勝ち</td><td>${p.white.backgammon}%</td><td>${p.black.backgammon}%</td></tr>` +
+        // gnubg's gammon includes backgammons: split the win into parts that add up to it (TODO-128)
+        sub(p, "シングル勝ち", (q) => q.win - q.gammon) +
+        sub(p, "ギャモン勝ち", (q) => q.gammon - q.backgammon) +
+        sub(p, "バックギャモン勝ち", (q) => q.backgammon) +
         `<tr><td>エクイティ</td><td>${r.equity.white.toFixed(3)}</td><td>${r.equity.black.toFixed(3)}</td></tr>` +
         `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
     }

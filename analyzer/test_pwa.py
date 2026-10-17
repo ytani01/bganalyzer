@@ -86,6 +86,16 @@ def test_result_words():
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_win_table_splits_gammons():
+    # TODO-128: gnubg's gammon includes backgammons; the rows under 勝率 don't overlap and add up to it
+    html = _result_js(f"R.html({json.dumps(_RESULT)}, null)")
+    assert "うち" not in html
+    assert '<td class="sub">シングル勝ち</td><td>50%</td><td>17%</td>' in html
+    assert '<td class="sub">ギャモン勝ち</td><td>29%</td><td>2.9%</td>' in html
+    assert '<td class="sub">バックギャモン勝ち</td><td>1%</td><td>0.1%</td>' in html
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
 def test_speech_reads_who_rolls_next_first():
     # TODO-052: without a best move, who rolls next ("次は…の番です") is the first thing read aloud
     r = json.dumps(_RESULT)
