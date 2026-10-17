@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.68.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.69.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -233,7 +233,7 @@ part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess, !!s.edit
   const fit = "点を動かして盤の内側の四隅に合わせてください。";
   const again = "盤が小さいときは下の「画像を編集」で切り抜いてください。";   // only when the board was not found (TODO-088)
   $("corner-help").innerHTML = s.edit
-    ? "向きを直し、盤のまわりを斜めにドラッグして囲んでください。"
+    ? "角度を直し、盤のまわりをドラッグして囲んでください。四角の角や辺をドラッグすると直せます。"
     : n < 4
     ? `枠の内側の四隅を、手前から見て <b>${n + 1}. ${CORNER_NAMES[n]}</b> の順にタップしてください。`
     : s.cornerGuess === "finding" || s.cornerGuess === "again" ? "盤の四隅を探しています…"
@@ -250,6 +250,7 @@ part((s) => [s.sideMode, s.sideFrom], (s) => {
 });
 part((s) => s.edit && s.edit.angle, (s) => {
   $("edit-tools").hidden = !s.edit;
+  $("turn-tools").hidden = !!s.edit;
   $("corner-tools").hidden = !!s.edit;
   if (!s.edit) return;
   $("edit-angle").value = String(s.edit.angle);
@@ -643,8 +644,7 @@ async function forgetPhoto(id) {
 
 // The edited photo (TODO-070) is the photo from now on: what is sent, kept in the history and on the
 // Pi. The corners are looked for again in it; the rest (the board read, the settings) stays.
-async function applyEdit() {
-  const e = state.edit;
+async function applyEdit(e = state.edit) {
   if (!e.turn && !e.angle && !e.rect) { update({ edit: null }); return; }
   search++;   // a search for the corners still running: its answer is the old photo's (nor kept in the history meanwhile)
   await withBusy("画像を作っています…", async () => {
@@ -1155,15 +1155,10 @@ $("side-mode").addEventListener("change", () => setSideMode($("side-mode").check
 $("photo-side").addEventListener("change", () => update({ photoView: $("photo-side").checked ? "side" : "off" }));   // a checkbox (TODO-094)
 $("edit-start").addEventListener("click", () => { stopOverlay("corners"); update({ edit: { turn: 0, angle: 0, rect: null } }); });
 $("edit-cancel").addEventListener("click", () => update({ edit: null }));
-$("edit-done").addEventListener("click", applyEdit);
-// a quarter turn turns the rectangle drawn with the photo
-for (const [id, q] of [["edit-right", 1], ["edit-left", 3]]) {
-  $(id).addEventListener("click", () => {
-    const { turn, rect: r } = state.edit;
-    const rect = r && (q === 1 ? [1 - r[3], r[0], 1 - r[1], r[2]] : [r[1], 1 - r[2], r[3], 1 - r[0]]);
-    update({ edit: { ...state.edit, turn: (turn + q) % 4, rect } });
-  });
-}
+$("edit-done").addEventListener("click", () => applyEdit());
+// a quarter turn is applied at once (TODO-122)
+$("edit-right").addEventListener("click", () => applyEdit({ turn: 1, angle: 0, rect: null }));
+$("edit-left").addEventListener("click", () => applyEdit({ turn: 3, angle: 0, rect: null }));
 $("edit-angle").addEventListener("input", () => update({ edit: { ...state.edit, angle: Number($("edit-angle").value) } }));
 $("find-again").addEventListener("click", findAgain);
 $("claude-corners").addEventListener("click", claudeCorners);
