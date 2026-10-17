@@ -107,10 +107,10 @@ def test_speech_reads_who_rolls_next_first():
     assert "番です" not in out["dice"]
     assert "かなり有利" in out["dice"] and "ギャモン勝ちの見込み" in out["dice"] and "ピップ数では白が大きくリード" in out["dice"]
     assert out["take"].startswith("黒のダブルに、白はテイクです。")
-    assert out["tooGood"].startswith("白はダブルせず、ギャモンを狙う方がよいです。")
+    assert out["tooGood"].startswith("白はダブルせず、ギャモンを狙うほうがよいです。")
     assert out["over"] == "白の勝ちで、ゲームは終わっています。"
     assert out["double"].startswith("白はダブルすべきで、黒はテイクです。")
-    assert out["noDouble"].startswith("白はまだダブルしない方がよいです。")
+    assert out["noDouble"].startswith("白はまだダブルしないほうがよいです。")
     assert out["none"].startswith("白の 6 6 は、とても悪い目です。動かせる手がありません。")
     assert "白がほぼ勝ちです。" in out["sure"]
 

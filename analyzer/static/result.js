@@ -110,8 +110,8 @@ const BgResult = (() => {
         : c.question === "take" ? `${d}の${word}に、${t}は${take}です。`
           : c.double ? `${d}は${word}すべきで、${t}は${take}です。`
             : c.optional ? ""
-              : c.too_good ? `${d}は${word}せず、ギャモンを狙う方がよいです。`
-                : `${d}はまだ${word}しない方がよいです。`;
+              : c.too_good ? `${d}は${word}せず、ギャモンを狙うほうがよいです。`
+                : `${d}はまだ${word}しないほうがよいです。`;
     }
     if (r.cube && r.cube.rolled) parts.push(cubeText);   // as on the screen, before the best move (TODO-096)
     const bestMove = r.moves && dice;   // read early: it is what the player wants to hear

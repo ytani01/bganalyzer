@@ -182,7 +182,7 @@ TODO-077 で、`recognizer/checkers.py` の `column_texture` は、行の中央�
 読み上げの文の「ダブルせず、ギャモンを狙う方がよいです」「まだダブルしない方がよいです」を、Google の読み上げが「かたが」と読む（2026-10-17 ユーザーの報告）。
 読み上げの文（`analyzer/static/result.js` の `speechText`）だけ「ほうが」に直す。結果の画面の表は「方が」のまま（2026-10-17 ユーザーが決めた）。
 
-- [ ] 直す（`result.js`、`analyzer/test_pwa.py`。analyzer の版、`APP_VERSION`）
+- [x] 直す（`result.js`、`analyzer/test_pwa.py`。analyzer の版、`APP_VERSION`）
 - [ ] スマホ: ダブルしない方がよい局面で読み上げると「ほうが」と読む
 
 **無駄を省く工夫:** 確かめるのは `uv run pytest analyzer/test_pwa.py` と、`rg` で読み上げの文に「方が」が残っていないことだけ。音は実機で聞く
