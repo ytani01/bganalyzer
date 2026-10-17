@@ -158,7 +158,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認はロー
 
 ## Claude に四隅を選ばせる（任意）
 
-四隅の画面に「Claude に選ばせる」ボタンを出せます（TODO-082）。押すとサーバーが `claude -p` に写真を渡し、Claude が選んだ四隅に点を置きます。
+四隅の画面に「Claude で検出」ボタンを出せます（TODO-082）。押すとサーバーが `claude -p` に写真を渡し、Claude が選んだ四隅に点を置きます。
 **押したときだけ、写真が Anthropic に送られます。** 使った分は、Pi で `claude` にログインしているアカウントの利用枠から引かれます。
 
 1. Pi に Claude Code を入れ、`claude` を一度起動してログインしておく（`which claude` でパスを確かめる。ふつうは `~/.local/bin/claude`）
