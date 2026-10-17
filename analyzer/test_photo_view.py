@@ -121,7 +121,9 @@ def test_stage_times_are_in_one_table():
     out = json.loads(subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout)
     stages = {"edges", "uprights", "candidates", "corners", "fit", "board", "tips", "checkers", "counts", "dice", "cube"}
     assert set(out["ms"]) == stages
-    assert set(out["ms"].values()) == {500} and out["dflt"] == 500   # every stage: half a second (2026-10-16)
+    corners = {"edges", "uprights", "candidates", "corners"}
+    assert {out["ms"][k] for k in corners} == {200}   # the search for the corners: 0.2 s each (TODO-124)
+    assert {out["ms"][k] for k in stages - corners} == {500} and out["dflt"] == 500   # the reading: half a second (2026-10-16)
 
 
 def test_analyze_photo_returns_cube_square():
@@ -277,7 +279,7 @@ def test_overlays_show_stages_in_turn_with_only_numbers():
     r = subprocess.run(["node", "-e", _SCAN_HARNESS, str(STATIC / "scan.js")], capture_output=True, text=True, check=True)
     out = json.loads(r.stdout)
     assert out["corners"]["seen"] == ["edges", "uprights", "candidates", "corners"]
-    assert out["corners"]["doneAt"] == pytest.approx(2000, abs=4 * 20)        # 0.5 s each; each stage may end up to a frame (16 ms) late
+    assert out["corners"]["doneAt"] == pytest.approx(800, abs=4 * 20)         # 0.2 s each; each stage may end up to a frame (16 ms) late
     assert out["reading"]["seen"] == ["fit", "tips", "checkers", "counts", "dice", "cube"]
     assert out["reading"]["doneAt"] == pytest.approx(2 * 300 + 5 * 500, abs=7 * 20)   # fit made 0.3 s
     # no words on the photo: only the numbers counted and the dice read (ai1, 2026-10-15)
