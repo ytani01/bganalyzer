@@ -93,6 +93,11 @@ def test_win_table_splits_gammons():
     assert '<td class="sub">シングル勝ち</td><td>50%</td><td>17%</td>' in html
     assert '<td class="sub">ギャモン勝ち</td><td>29%</td><td>2.9%</td>' in html
     assert '<td class="sub">バックギャモン勝ち</td><td>1%</td><td>0.1%</td>' in html
+    # rounded like the server (0.4 - 0.1 is not 0.3 in floats), never below 0 (each number is rounded on its own)
+    r = {**_RESULT, "probabilities": {**_RESULT["probabilities"], "black": {"win": 0.3, "gammon": 0.4, "backgammon": 0.1}}}
+    html = _result_js(f"R.html({json.dumps(r)}, null)")
+    assert '<td class="sub">シングル勝ち</td><td>50%</td><td>0%</td>' in html
+    assert '<td class="sub">ギャモン勝ち</td><td>29%</td><td>0.3%</td>' in html
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")

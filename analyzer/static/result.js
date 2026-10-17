@@ -25,9 +25,10 @@ const BgResult = (() => {
     return { word: c.value > 1 ? "リダブル" : "ダブル", take: c.take ? "テイク" : "パス" };
   }
 
-  // an indented row of the win table: f(one side's probabilities), to one decimal like the server's
+  // an indented row of the win table: f(one side's probabilities), to one decimal like the server's.
+  // The server rounds each number on its own, so a difference can come out a little below 0.
   const sub = (p, label, f) => `<tr><td class="sub">${label}</td>` +
-    ["white", "black"].map((c) => `<td>${Math.round(10 * f(p[c])) / 10}%</td>`).join("") + "</tr>";
+    ["white", "black"].map((c) => `<td>${Math.max(0, Math.round(10 * f(p[c])) / 10)}%</td>`).join("") + "</tr>";
 
   // Top to bottom (TODO-090): the summary, the winning chances as a bar, the cube decision or the
   // best move, then the table of the numbers.
