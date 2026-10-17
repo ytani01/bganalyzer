@@ -171,8 +171,8 @@ def flow_manual(r):
     r.tap(25, 1); r.tap(24, 2); r.snap("bar")
     r.hold(24); r.pick(0); r.snap("bar: 奥 0 from the palette")
     r.click("#undo"); r.click("#undo"); r.snap("undo twice")
-    r.click("#swap-colours"); r.snap("swap colours")
-    r.click('#home-svg [data-corner="far-left"]'); r.snap("home left")   # after the swap 手前 is dark: far-left only mirrors (TODO-126)
+    r.click('#home-svg [data-corner="far-right"]'); r.snap("swap colours")   # 手前 dark, home right (TODO-126)
+    r.click('#home-svg [data-corner="far-left"]'); r.snap("home left")       # then only mirrored
     r.choose("#die1", "3"); r.snap("one die")
     r.choose("#die2", "1"); r.snap("dice 3-1")
     r.seg("onRoll", "black"); r.snap("on roll 奥")

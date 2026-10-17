@@ -198,15 +198,16 @@ part((s) => s.bottomColour, (s) => {
 
 // ---- the home corner (TODO-126): a small board with the lighter checkers' way as a U, and a dot in each
 // corner. The tapped corner is the lighter checkers' home: its row tells 手前's colour, its column the home's side.
-// corner: "near-left", "far-right", ... or null (none chosen: no U).
-function drawHomePick(svg, corner) {
-  const [row, col] = corner ? corner.split("-") : [];
+// corner: "near-left", "far-right", ...; auto (none chosen): no U, and the two dots of the corner's row lit
+// faintly, to show 手前's colour all the same.
+function drawHomePick(svg, corner, auto = false) {
+  const [row, col] = corner.split("-");
   const dot = (r, c) => {
-    const on = r === row && c === col;
-    return `<circle cx="${c === "left" ? 12 : 108}" cy="${r === "far" ? 12 : 68}" r="${on ? 7 : 5}" fill="${on ? "var(--accent)" : "var(--felt)"}" stroke="var(--accent)" stroke-width="2"/>`;
+    const on = r === row && (auto || c === col);
+    return `<circle cx="${c === "left" ? 12 : 108}" cy="${r === "far" ? 12 : 68}" r="${on && !auto ? 7 : 5}" fill="${on ? "var(--accent)" : "var(--felt)"}" fill-opacity="${auto && on ? 0.4 : 1}" stroke="var(--accent)" stroke-width="2"/>`;
   };
   let u = "";
-  if (corner) {
+  if (!auto) {
     const left = col === "left", [y0, y1] = row === "near" ? [20, 60] : [60, 20];
     const xHome = left ? 24 : 96, xTurn = left ? 76 : 44, dir = left ? -1 : 1, head = 10;
     const sweep = (xTurn > xHome) === (y1 > y0) ? 1 : 0;
@@ -232,11 +233,15 @@ function onCorner(svg, pick) {
   });
 }
 part((s) => [s.homePick, s.bottomColour], (s) =>
-  drawHomePick($("home-pick"), s.homePick === "auto" ? null : cornerOf(s.bottomColour, s.homePick)));
+  drawHomePick($("home-pick"), cornerOf(s.bottomColour, s.homePick === "auto" ? "left" : s.homePick), s.homePick === "auto"));
 part((s) => [s.home, s.bottomColour], (s) => drawHomePick($("home-svg"), cornerOf(s.bottomColour, s.home)));
 onCorner($("home-pick"), (home, bottomColour) => update({ homePick: home, bottomColour }));
 onCorner($("home-svg"), (home, bottomColour) => {
-  if (bottomColour !== state.bottomColour) swapColours();
+  // the checkers read as 手前's are 奥's: the board keeps its colours, their owners swap
+  if (bottomColour !== state.bottomColour) {
+    editBoard(BgBoard.swapColours);
+    update({ bottomColour });
+  }
   setHome(home);
 });
 
@@ -1243,12 +1248,6 @@ document.addEventListener("pointerdown", (e) => {
 }, true);
 addEventListener("pointerup", () => setTimeout(() => { closingPalette = false; }));
 addEventListener("scroll", closePalette, { passive: true });
-// The checkers read as 手前's are 奥's: the board keeps its colours, their owners swap.
-function swapColours() {
-  editBoard(BgBoard.swapColours);
-  update({ bottomColour: 1 - state.bottomColour });
-}
-$("swap-colours").addEventListener("click", swapColours);
 // The board was read with the home on the wrong side: mirror it left to right.
 function setHome(v) {
   if (v === state.home) return;
