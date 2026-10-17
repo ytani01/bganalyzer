@@ -34,7 +34,7 @@ SAMPLES = os.path.join(HERE, "..", "samples")
 PARAMS = [
     "checkers.CIRCLE_MIN_SCORE", "checkers.LONE_MIN_SCORE", "checkers.STACK_SKEW", "checkers.GAP_MIN_SCORE",
     "checkers.OUTLINE_SUPPORT", "checkers.PATTERN_SUPPORT", "checkers.PATTERN_DISTINCT", "checkers.BAR_COLOUR_TOL",
-    "checkers.LONE_COLOUR_TOL", "geometry.COL_MIN_SCORE", "checkers.TEX_MIN", "checkers.TEX_HIDDEN", "checkers.TEX_SHOWN",
+    "checkers.LONE_COLOUR_TOL", "geometry.COL_MIN_SCORE", "checkers.TEX_MIN", "checkers.TEX_MIN_COVERED", "checkers.TEX_HIDDEN", "checkers.TEX_SHOWN",
     "dice.PIP_CONTRAST", "cube.MIDDLE", "cube_value.SCORE_MIN", "cube_value.GAP_MIN",
 ]
 STEPS = (0.8, 0.9, 1.1, 1.2)
