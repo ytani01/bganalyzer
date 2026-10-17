@@ -145,7 +145,7 @@ TODO-077 で、`recognizer/checkers.py` の `column_texture` は、行の中央�
 ユーザーの言うとおり Pixel 9a を想定した大きさにする（2026-10-17）。Playwright の端末一覧に Pixel 9a は無いので、
 画面 1080×2424・密度 2.625（CSS で 412×923）から、同じ作りの Pixel 8a（412×839）と同じ割合で Chrome の表示領域を 412×848 とする。
 
-- [ ] `live_view.py` の大きさと密度を直す（`docs/raspi.md` の書き方も）
+- [x] `live_view.py` の大きさと密度を直す（`docs/raspi.md` の書き方も）
 - [ ] ローカル: live_view を起動し、窓が画面に収まる
 
 **無駄を省く工夫:** 道具 1 本の定数だけで、確かめるのは窓の大きさを 1 回読むことだけ。ほかの道具（`pi_ui_check.py` などの 412×915）は変えない

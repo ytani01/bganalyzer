@@ -15,7 +15,10 @@ from playwright.sync_api import Error, sync_playwright
 
 URL = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BG_URL", "http://127.0.0.1:8000/")
 CHROMIUM = os.environ.get("BG_CHROMIUM", "/usr/bin/chromium")
-PHONE = {"width": 412, "height": 915}   # as tools/pi_ui_check.py
+# a Pixel 9a (1080 x 2424 at 2.625: 412 x 923 CSS px) less Chrome's bars, in the proportion of Playwright's
+# Pixel 8a (412 x 839 of 914). 412 x 915 with the window's frame did not fit a 1080-high screen (TODO-110)
+PHONE = {"width": 412, "height": 848}
+DENSITY = 2.625
 CDP_PORT = 9222   # other tools drive this browser with BG_CDP=http://127.0.0.1:9222, to be watched here
 EVERY_MS = 2000
 
@@ -33,7 +36,7 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=CHROMIUM, headless=False, args=[f"--remote-debugging-port={CDP_PORT}"])
         # no service worker: it would keep serving the old app.js after an update
-        context = browser.new_context(viewport=PHONE, is_mobile=True, has_touch=True, device_scale_factor=2,
+        context = browser.new_context(viewport=PHONE, is_mobile=True, has_touch=True, device_scale_factor=DENSITY,
                                       service_workers="block")
         page = context.new_page()
         seen = commit()
