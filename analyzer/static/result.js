@@ -98,33 +98,36 @@ const BgResult = (() => {
     return `<p>${what} ${pct}%・${words}</p>`;
   }
 
-  // A short spoken summary, not the numbers: the screen keeps the percentages and pips.
+  // A short spoken summary, not the numbers: the screen keeps the percentages and pips. Spoken, the sides
+  // are just 白 and 黒, without the screen's "の人" (TODO-106).
   function speechText(r, dice) {
     const parts = [];
     let cubeText = "";
     if (r.cube) {
-      const c = r.cube, { word, take } = cubeWords(c);
-      cubeText = c.rolled ? `振る前に${NAME[c.doubler]}の人は${word}すべきでした。${word}されたら${NAME[c.taker]}の人は${take}です。`
-        : c.question === "take"
-        ? `${NAME[c.taker]}の人は${take}です。`
-        : c.double ? `${NAME[c.doubler]}の人は${word}、${NAME[c.taker]}の人は${take}です。`
-          : c.optional ? `${NAME[c.doubler]}の人は${word}してもしなくてもよいです。`
-            : `${NAME[c.doubler]}の人はまだ${word}しません。`;
+      const c = r.cube, { word, take } = cubeWords(c), d = NAME[c.doubler], t = NAME[c.taker];
+      // a double that may or may not be made is not worth saying (TODO-106)
+      cubeText = c.rolled ? `${d}は振る前に${word}すべきでした。${word}されたら、${t}は${take}です。`
+        : c.question === "take" ? `${d}の${word}に、${t}は${take}です。`
+          : c.double ? `${d}は${word}すべきで、${t}は${take}です。`
+            : c.optional ? ""
+              : c.too_good ? `${d}は${word}せず、ギャモンを狙う方がよいです。`
+                : `${d}はまだ${word}しない方がよいです。`;
     }
     if (r.cube && r.cube.rolled) parts.push(cubeText);   // as on the screen, before the best move (TODO-096)
     const bestMove = r.moves && dice;   // read early: it is what the player wants to hear
-    if (!bestMove) {   // without a best move, who rolls next is read first (TODO-052)
-      parts.push(`${rollWho(dice)}のは${NAME[r.on_roll]}の人です。`);
-    } else {
-      const who = `${NAME[r.on_roll]}の人、ダイス ${dice[0]} ${dice[1]}`;
-      parts.push(r.moves.length
-        ? `${who}の最善手は、${moveToSpeech(r.moves[0].move)}。`
-        : `${who}では動かせる手がありません。`);
+    if (bestMove) {
+      const roll = `${NAME[r.on_roll]}の ${dice[0]} ${dice[1]}`;
       const luck = r.luck != null && luckWords(r.luck);
-      if (luck && luck !== "ふつうの目") parts.push(`${luck}です。`);   // an ordinary roll is not worth saying (TODO-100)
+      const lucky = luck && luck !== "ふつうの目";   // an ordinary roll is not worth saying (TODO-100)
+      const best = r.moves.length ? `最善手は、${moveToSpeech(r.moves[0].move)}です。` : "動かせる手がありません。";
+      parts.push(lucky ? `${roll} は、${luck}です。${best}` : r.moves.length ? `${roll} の${best}` : `${roll} では、${best}`);
+    } else if (!r.game_over && !(cubeText && !r.cube.rolled)) {
+      // who rolls next is read first (TODO-052); a cube decision names the side itself. With dice there
+      // is always a best move (or none to make), unless the game is over
+      parts.push(`次は${NAME[r.on_roll]}の番です。`);
     }
     if (cubeText && !r.cube.rolled) parts.push(cubeText);
-    parts.push(r.game_over ? `${NAME[r.favourite]}の勝ちで終局しています。` : standingToSpeech(r));
+    parts.push(r.game_over ? `${NAME[r.favourite]}の勝ちで、ゲームは終わっています。` : standingToSpeech(r));
     return parts.join("");
   }
 
@@ -132,17 +135,17 @@ const BgResult = (() => {
   function standingToSpeech(r) {
     const fav = r.favourite, p = r.probabilities[fav], pips = r.pips;
     const w = p.win;
-    let s = w >= 90 ? `${NAME[fav]}がほぼ勝ちの局面です。`
+    let s = w >= 90 ? `${NAME[fav]}がほぼ勝ちです。`
       : w >= 75 ? `${NAME[fav]}がかなり有利です。`
         : w >= 60 ? `${NAME[fav]}が有利です。`
           : w >= 53 ? `${NAME[fav]}がやや有利です。`
             : "ほぼ互角です。";
-    if (w >= 53 && p.gammon >= 25) s += "ギャモン勝ちも十分ありえます。";
-    if (pips.leader && pips.difference >= 20) s += `レースは${NAME[pips.leader]}が大きくリードしています。`;
+    if (w >= 53 && p.gammon >= 25) s += "ギャモン勝ちの見込みも十分あります。";
+    if (pips.leader && pips.difference >= 20) s += `ピップ数では${NAME[pips.leader]}が大きくリードしています。`;
     return s;
   }
 
-  // "bar/22* 13/8(2) 6/off" -> "バーから22でヒット、13から8を2つ、6から上がり"
+  // "bar/22* 13/8(2) 6/off" -> "バーから22でヒット、13から8へ2枚、6から上がり"
   function moveToSpeech(move) {
     return move.trim().split(/\s+/).map((step) => {
       const m = step.match(/^(.*?)(?:\((\d+)\))?$/);
@@ -151,7 +154,7 @@ const BgResult = (() => {
         const n = x.replace("*", "").toLowerCase();
         return (n === "bar" ? "バー" : n === "off" ? "上がり" : n) + (hit ? "でヒット" : "");
       });
-      return pts.join("から") + (m[2] ? `を${m[2]}つ` : "");
+      return pts.join("から") + (m[2] ? `へ${m[2]}枚` : "");
     }).join("、");
   }
 
