@@ -37,6 +37,8 @@ TOP_OVER_BOTTOM = (0.45, 1.05)    # the far end's width against the near end's
 TALL = (0.5, 2.0)                 # the area's height (along the points) against its width at the bottom
 SAME = 0.006                      # two long edges nearer than this in the middle (against the width) are one
 BANDS = 5                         # where the long edges are looked for: bands from these many starts and ends
+WEAK = 0.7                        # the normal search's corners scoring below this: tried from beside too (TODO-134;
+                                  # photo5 from beside 0.46 normally, 1.1 from beside; photos from the front about 1.0)
 
 # ---------------------------------------------------------------- reading --
 GH = 400                # the ground view's height (along the points, both rows), px
@@ -143,6 +145,34 @@ def find_corners_side(img, side="right", progress=None, fixed=None, crop=None):
         progress(stage, {"corners": order(data["corners"])} if stage == "corners" else data)
     q = C.find_corners(img, progress and told, fixed and order(list(fixed)), crop, search=_guess)
     return q and order(q)
+
+
+def _score(img, q):
+    """How much the area inside q looks like a board (corners._structure); -1 for nothing found."""
+    if q is None:
+        return -1
+    small, s = C.shrink(img)
+    v, _ = C._view(small, np.float64(q) * s, C.RW, C.RH, 0)
+    return -1 if v is None else C._structure(v)
+
+
+def find_corners_any(img, progress=None):
+    """(corners, side) for a photo the user has not said is taken from beside (TODO-134): the normal
+    search, and when what it finds scores below WEAK (or nothing), also from the right and the left;
+    the best scoring is taken (side None: the normal one). corners None: nothing found any way.
+    progress as find_corners's; the searches tried again tell of their stages but their corners only
+    as the answer (a "corners" stage at the end, when another way won)."""
+    q = C.find_corners(img, progress)
+    best = (_score(img, q), q, None)
+    if best[0] >= WEAK:
+        return q, None
+    told = progress and (lambda stage, data: stage != "corners" and progress(stage, data))
+    for side in ("right", "left"):
+        q = find_corners_side(img, side, told)
+        best = max(best, (_score(img, q), q, side), key=lambda b: b[0])
+    if progress and best[2] and best[1]:
+        progress("corners", {"corners": best[1]})
+    return best[1], best[2]
 
 
 # ---------------------------------------------------------------- reading --

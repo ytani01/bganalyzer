@@ -30,7 +30,7 @@ from speech import router as speech_router
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.73.2"
+__version__ = "0.74.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -144,9 +144,11 @@ async def find_corners_endpoint(
     side: str | None = Form(None, description="right or left: taken from beside the board, from the near player's right or left (TODO-120); empty: from the near player's side"),
 ):
     """A guess at the playing area's corners (TL, TR, BR, BL), for the app to show before the user
-    adjusts them, or again after (fixed, crop). corners is null when no board was found."""
+    adjusts them, or again after (fixed, crop). corners is null when no board was found. Without side,
+    fixed or crop, a photo taken from beside is found too (TODO-134): side is then "right" or "left"
+    (else null), and the corners are named that way."""
     from corners import find_corners  # recognizer (OpenCV); imported lazily
-    from side import find_corners_side
+    from side import find_corners_any, find_corners_side
 
     side = _side(side)
     img = await _decode(image)
@@ -163,11 +165,14 @@ async def find_corners_endpoint(
 
     def find(progress=None):
         if side:
-            return find_corners_side(img, side, progress, fixed=f, crop=c)
-        return find_corners(img, progress, fixed=f, crop=c)
+            return {"corners": find_corners_side(img, side, progress, fixed=f, crop=c), "side": side}
+        if f is None and c is None:
+            q, s = find_corners_any(img, progress)
+            return {"corners": q, "side": s}
+        return {"corners": find_corners(img, progress, fixed=f, crop=c), "side": None}
     if stream:
-        return _stream(lambda progress: {"corners": find(progress)} | size)
-    return {"corners": find()} | size
+        return _stream(lambda progress: find(progress) | size)
+    return find() | size
 
 
 @app.post("/analyze-photo")

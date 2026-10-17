@@ -275,6 +275,7 @@ def test_api_find_corners():
     assert (j["width"], j["height"]) == (small.shape[1], small.shape[0])
     truth = json.loads((samples / "photo2.truth.json").read_text())["corners_TL_TR_BR_BL"]
     assert _corner_error(j["corners"], np.multiply(truth, f), small.shape) < 0.035
+    assert j["side"] is None   # a photo from the front stays so (TODO-134)
 
     blank = cv2.imencode(".png", np.full((300, 400, 3), 200, np.uint8))[1].tobytes()
     assert client.post("/find-corners", files={"image": ("b.png", blank)}).json()["corners"] is None

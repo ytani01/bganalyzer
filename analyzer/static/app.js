@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.73.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.74.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -625,7 +625,7 @@ function startPhoto(file, bitmap, kept, historyId, historyScale) {
   setResult(null);
   persist(true);   // now the most recent
   go("corners");
-  if (guess) guessCorners(file);
+  if (guess) guessCorners(file, true);
 }
 
 async function loadPhoto(file) {
@@ -781,22 +781,26 @@ function stopOverlay(kind) {
 
 let search = 0;   // bumped by each search for the corners: only the latest one's answer is taken
 
-async function guessCorners(file) {
+// switchSide (a photo just opened): found as taken from beside (TODO-134), the switches are turned that way
+// for this photo (not kept on this phone); not when the user has just changed them (cornersAgain).
+async function guessCorners(file, switchSide = false) {
   const id = ++search;
+  const way = [state.sideMode, state.sideFrom];   // changed by the user meanwhile: theirs stays
   const [iw, ih] = imageSize(state.photo.bitmap);
   const mine = startOverlay("corners", [[0, 0], [iw, 0], [iw, ih], [0, ih]]);   // (the search for the last photo stops)
-  let corners = null;
+  let corners = null, side = null;
   try {
     const { fd, scale } = await cornersForm();   // the guess is steadier from the larger image
     const data = await BgApi.postStages("find-corners", fd, (ev) => mine && mine.scan.push(BgApi.scaleGeometry(ev, scale)));
     if (data.corners) corners = data.corners.map(([x, y]) => [x / scale, y / scale]);
+    side = data.side || null;
     if (mine && data.streamed && state.photo.file === file) await mine.scan.done();   // every stage shown (or tapped)
   } catch (_) { /* keep the rectangle */ }
   if (overlay === mine) stopOverlay();
   // the user may have moved on to another photo, or started on the corners already
   if (id !== search || state.photo.file !== file || state.cornerGuess !== "finding") return;
   if (state.cornersMoved) update({ cornerGuess: "moved" });
-  else if (corners) update({ corners, cornerGuess: "found" });
+  else if (corners) update({ corners, cornerGuess: "found", ...(switchSide && side && state.sideMode === way[0] && state.sideFrom === way[1] ? { sideMode: true, sideFrom: side } : {}) });
   else update({ cornerGuess: "default" });
   redraw(drawCorners);
 }

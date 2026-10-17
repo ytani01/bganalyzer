@@ -97,6 +97,22 @@ def test_api_find_corners_takes_the_side(raw):
     assert client.post("/find-corners", files={"image": ("b.jpg", jpg)}, data={"side": "up"}).status_code == 422
 
 
+def test_api_find_corners_finds_the_side(raw):
+    """Not said to be taken from beside (TODO-134): the normal search scores low, so it is looked for from
+    beside too, and found from the right, named so."""
+    img, _, _ = raw
+    jpg = cv2.imencode(".jpg", img)[1].tobytes()
+    res = client.post("/find-corners", files={"image": ("b.jpg", jpg)}, data={"stream": "true"})
+    events = [json.loads(line) for line in res.text.splitlines()]
+    found = events[-1]["result"]
+    assert found["side"] == "right"
+    assert found["corners"] == side.find_corners_side(cv2.imdecode(np.frombuffer(jpg, np.uint8), cv2.IMREAD_COLOR), "right")
+    assert events[-2] == {"stage": "corners", "corners": found["corners"]}   # the last corners shown are the answer
+    # looking again (fixed) is done the normal way: not turned to beside
+    fixed = [found["corners"][0], None, None, None]
+    assert client.post("/find-corners", files={"image": ("b.jpg", jpg)}, data={"fixed": json.dumps(fixed)}).json()["side"] is None
+
+
 @pytest.mark.parametrize("sent, passed", [({"side": "left"}, "left"), ({"side": ""}, None), ({}, None)])
 def test_api_analyze_photo_passes_the_side(monkeypatch, sent, passed):
     seen = {}
