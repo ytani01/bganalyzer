@@ -5,7 +5,12 @@
 | 見込み | Opus 5.5 / effort high | main（案・実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 | 実施 | Opus 5.5 / effort high | main（案・実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 
-TOKENS_TABLE
+| 担当 | モデル | effort | input | output | cache_creation | cache_read | 割合 |
+|------|--------|--------|-------|--------|----------------|------------|------|
+| main | Opus 5.5 | high | 130 | 51,967 | 80,484 | 27,259,350 | 95% |
+| reviewer | Opus 5.5 | high | 38 | 2,965 | 68,292 | 942,784 | 4% |
+| verifier | Haiku 5.5 | medium | 32 | 3,728 | 49,865 | 504,837 | 2% |
+| 合計 |  |  | 200 | 58,660 | 198,641 | 28,706,971 | 計 28,964,472 |
 
 - reviewer と verifier は定義（`~/.claude/agents/`）のモデル・effort のまま（reviewer は opus / high、verifier は haiku / medium）
 - TODO-111・113・114 と並行して進めたので、範囲にはそちらの分も入っている
