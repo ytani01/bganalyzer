@@ -158,12 +158,6 @@ const CRAWFORD_CUBE = "クロフォードのゲームではダブルできませ
 // What stops the board from being analysed: 「解析する」 is greyed out, with the reasons above it (TODO-116).
 const analyzeErrors = (s = state) =>
   s.board ? [...BgBoard.errors(s.board, NAME), ...(crawfordCube(s) ? [CRAWFORD_CUBE] : [])] : [];
-part((s) => [s.step, s.board, s.match.crawford, s.cube.at], (s) => {
-  const errs = s.step === "board" ? analyzeErrors(s) : [];
-  $("analyze").disabled = !!errs.length;
-  $("analyze-why").hidden = !errs.length;
-  $("analyze-why").textContent = errs.join("\n");
-});
 
 // scanning: the reading overlay is drawn on the photo, so the screen is not darkened and the text sits low
 part((s) => s.busy, (s) => {
@@ -274,6 +268,14 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColo
   const doubtful = !!g && Math.abs(g.margin) < 1;   // only then: the setting above shows the side (TODO-086)
   $("home-note").hidden = !doubtful;
   $("home-note").textContent = doubtful ? `ホームの左右を決められず、${side}にしました。違えば選び直してください。` : "";
+});
+
+// after the part above: it sets NAME from 手前's colour
+part((s) => [s.step, s.board, s.match.crawford, s.cube.at, s.bottomColour], (s) => {
+  const errs = s.step === "board" ? analyzeErrors(s) : [];
+  $("analyze").disabled = !!errs.length;
+  $("analyze-why").hidden = !errs.length;
+  $("analyze-why").textContent = errs.join("\n");
 });
 
 // 読み取りの改善 (TODO-112): only for a board read from a photo; saving it on the server only where the
