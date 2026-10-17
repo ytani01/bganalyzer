@@ -42,3 +42,19 @@
 
 - `scratchpad/fake_server108.py`（8002 番で起動し、確認後に停止、PID 865144、ポートは解放済み）
 - `scratchpad/fake108.log`、`scratchpad/live.log`、`scratchpad/docs-cmd.log`
+
+## 追加分（コミット 18948cc: CDP 9222 と BG_CDP）
+
+| 確認 | 期待 | 実測 | 判定 |
+|---|---|---|---|
+| live_view 起動後 8 秒で `127.0.0.1:9222/json/version` が返る | 返る | 返った（Chrome/154.0.8037.97、`live.log` は `http://127.0.0.1:8000/ at 19f6808`） | 一致 |
+| `BG_CDP` ありで `pi_ui_check.py speech` が OK | OK | `version: {... 'commit': '19f6808' ...}` / `OK   speech: spoken=[...] alerts=[]` / `exit=0` | 一致 |
+| 実行中、page が 2 つ以上になる | 2 以上 | 開始前 1（8000）、t=1〜5 秒は 3。内訳は 8000 の窓、`/version` を読むための窓、確認の窓と推測（確認の窓の URL は記録が切れて未確認） | 一致（内訳は一部推測） |
+| 終わったあとは 8000 の 1 つだけ | 1 つ | `http://127.0.0.1:8000/` の page 1 つ（残りは `browser_ui` の omnibox） | 一致 |
+| `BG_CDP` なしで `pi_ui_check.py speech` が OK | OK | `OK   speech` / `exit=0`、9222 の窓は変わらず | 一致 |
+
+食い違い・注意点:
+
+- 手順 1 の前に、9222 番は別の live_view（PID 869908、`timeout 90`、13:25:34 開始、親 PID 1290）が使っていた。自分で起動したものではないので止めず、その timeout で終わるのを待った（13:27:05 に終了を確認）。その後、自分の live_view（`timeout 120`、PID 871332 と子 871334）を起動して確認し、確認後に両方を PID で止めた。9222 は解放済み。
+- 手順 2 の page 数の記録は 1 秒おきで、確認が数秒で終わったため、途中の URL を全部は残せていない（`cdp-sample.txt` は URL を 260 文字で切っている）。
+- 8000 番のサービスは止めず、再起動もしていない。確認で読んだだけ。
