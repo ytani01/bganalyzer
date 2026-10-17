@@ -144,8 +144,8 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 2026-10-18 ユーザーの指示。`tools/live_view.py` の窓は Playwright が開いたもので、ダウンロードは Playwright の一時フォルダに置かれ、窓を閉じると消える（Playwright の仕様）。
 `page.on("download", ...)` で受けて `~/Downloads` へ `save_as` する。
 
-- [ ] live_view の窓のダウンロードを `~/Downloads` に保存する（同じ名前があれば上書きしない）
-- [ ] tools のドキュメント（CLAUDE.md の live_view の行や docs にある説明）に保存先を書き足す
+- [x] live_view の窓のダウンロードを `~/Downloads` に保存する（同じ名前があれば上書きしない）
+- [x] tools のドキュメント（CLAUDE.md の live_view の行や docs にある説明）に保存先を書き足す
 
 **無駄を省く工夫:** アプリ（analyzer）は変えないので版は上げない。確かめは live_view で写真を 1 枚読んで「ファイルに書き出す」を 1 回押し、写真と `.truth.json` の 2 つが `~/Downloads` に残るかだけ。
 

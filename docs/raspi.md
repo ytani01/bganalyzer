@@ -100,7 +100,7 @@ tailscale funnel status
 | ログを見る | `journalctl _SYSTEMD_USER_UNIT=bganalyzer.service -f`（`adm` グループに入っていれば sudo は要らない。`journalctl --user` では見えない） |
 | 止める | `systemctl --user stop bganalyzer`（Pi を再起動すると、また立ち上がる） |
 | 公開の設定を見る | `tailscale funnel status` |
-| 開発機で画面を開いておく | `uv run -q --no-project --with playwright python tools/live_view.py`（スマホ（Pixel 9a）の大きさ 412×848 の Chromium の窓で開き、サービスが別のコミットで動き出すたびに再読み込みする。窓を閉じると終わる。別の URL は引数で。開いている間は、`tools/pi_ui_check.py`・`tools/ui_snapshot.py` に `BG_CDP=http://127.0.0.1:9222` を付けて動かすと、見えない Chromium の代わりにこのブラウザの中に窓を開いて操作するので、確認の様子が見える） |
+| 開発機で画面を開いておく | `uv run -q --no-project --with playwright python tools/live_view.py`（スマホ（Pixel 9a）の大きさ 412×848 の Chromium の窓で開き、サービスが別のコミットで動き出すたびに再読み込みする。窓を閉じると終わる。別の URL は引数で。窓の中でダウンロードしたファイル（「ファイルに書き出す」など）は `~/Downloads` に保存する（同じ名前があれば `名前 (1).拡張子` のように変える）。開いている間は、`tools/pi_ui_check.py`・`tools/ui_snapshot.py` に `BG_CDP=http://127.0.0.1:9222` を付けて動かすと、見えない Chromium の代わりにこのブラウザの中に窓を開いて操作するので、確認の様子が見える） |
 
 - Pi を再起動しても、落ちても、systemd がアプリを自動で立ち上げ直します（`Restart=always`）。
 - 更新は `main` を pull して依存を揃え、立ち上げ直すだけです。`bganalyzer.service` が変わったときだけは、「2.」の `sed` から `enable --now` までをやり直し、`systemctl --user restart bganalyzer` します。
