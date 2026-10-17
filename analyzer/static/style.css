@@ -228,7 +228,9 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .chip.black { background: var(--black-chk); }
 
 /* The checkers that do not add up, under the board (TODO-088). */
-.count-mark { color: #c62828; font-weight: bold; font-size: 14px; margin: 4px 0 0; }
+.count-mark { font-weight: bold; font-size: 14px; margin: 0 0 4px; }
+.count-mark .many { color: #c62828; }
+.count-mark .few { color: #c99a00; }
 /* 写真: the value beside it is still the one read from the photo (TODO-088). */
 .from-photo { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; white-space: nowrap; }
 .alert { background: var(--warn-bg); color: var(--warn-fg); border-radius: 10px; padding: 8px 12px; margin: 8px 0; font-size: 14px; }

@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.69.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.69.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -264,14 +264,15 @@ part((s) => (s.step !== "corners" || scanning() ? undefined : [photoId(s), s.cor
 // ---- the board screen
 part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColour], (s) => {
   if (!s.board) return;
-  // Only when the counts do not add up, a short mark under the board (TODO-088): more than 15, or fewer
-  // read from a photo (borne off, or missed); no checkers at all.
+  // Only when the counts do not add up, a short mark over the board (TODO-088): more than 15 in red, or fewer
+  // read from a photo (borne off, or missed) in yellow; no checkers at all counts as fewer (TODO-125).
   const { onW, onB } = BgBoard.counts(s.board);
   const off = (on) => on > 15 || (s.fromPhoto && on < 15);
-  const mark = !onW && !onB ? ["盤に駒がありません"]
-    : [["white", onW], ["black", onB]].filter(([, on]) => off(on)).map(([side, on]) => `${NAME[side]} ${on}/15`);
+  const mark = !onW && !onB ? [["盤に駒がありません", "few"]]
+    : [["white", onW], ["black", onB]].filter(([, on]) => off(on)).map(([side, on]) => [`${NAME[side]} ${on}/15`, on > 15 ? "many" : "few"]);
   $("count-mark").hidden = !mark.length;
-  $("count-mark").textContent = mark.length ? `⚠ ${mark.join("・")}` : "";
+  $("count-mark").replaceChildren(...mark.map(([text, cls], i) =>
+    Object.assign(document.createElement("span"), { className: cls, textContent: `${i ? "・" : "⚠ "}${text}` })));
   // the server's notes on the photo (e.g. taken at a steep angle)
   const warns = s.fromPhoto ? s.warnings : [];
   $("errors").hidden = !warns.length;
