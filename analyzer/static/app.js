@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.65.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.66.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -151,6 +151,14 @@ part((s) => [s.step, s.fromPhoto && !!s.board, !!s.result, s.autoSpeak], (s) => 
   $("speak").hidden = !(s.step === "outcome" && s.result);
 });
 
+// No doubling in the Crawford game: the server refuses a cube on one side then (TODO-066).
+const crawfordCube = (s = state) => s.match.crawford && s.cube.at !== "centre";
+const CRAWFORD_CUBE = "クロフォードのゲームではダブルできません。キューブを「中央」にするか、「ゲーム」のクロフォードを外してください。";
+
+// What stops the board from being analysed: 「解析する」 is greyed out, with the reasons above it (TODO-116).
+const analyzeErrors = (s = state) =>
+  s.board ? [...BgBoard.errors(s.board, NAME), ...(crawfordCube(s) ? [CRAWFORD_CUBE] : [])] : [];
+
 // scanning: the reading overlay is drawn on the photo, so the screen is not darkened and the text sits low
 part((s) => s.busy, (s) => {
   $("busy").hidden = !s.busy;
@@ -260,6 +268,14 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColo
   const doubtful = !!g && Math.abs(g.margin) < 1;   // only then: the setting above shows the side (TODO-086)
   $("home-note").hidden = !doubtful;
   $("home-note").textContent = doubtful ? `ホームの左右を決められず、${side}にしました。違えば選び直してください。` : "";
+});
+
+// after the part above: it sets NAME from 手前's colour
+part((s) => [s.step, s.board, s.match.crawford, s.cube.at, s.bottomColour], (s) => {
+  const errs = s.step === "board" ? analyzeErrors(s) : [];
+  $("analyze").disabled = !!errs.length;
+  $("analyze-why").hidden = !errs.length;
+  $("analyze-why").textContent = errs.join("\n");
 });
 
 // 読み取りの改善 (TODO-112): only for a board read from a photo; saving it on the server only where the
@@ -869,14 +885,8 @@ async function recognize() {
   }
 }
 
-// No doubling in the Crawford game: the server refuses a cube on one side then (TODO-066).
-const crawfordCube = (s = state) => s.match.crawford && s.cube.at !== "centre";
-const CRAWFORD_CUBE = "クロフォードのゲームではダブルできません。キューブを「中央」にするか、「ゲーム」のクロフォードを外してください。";
-
 async function analyze() {
-  const errs = BgBoard.errors(state.board, NAME);
-  if (errs.length) { alert(errs.join("\n")); return; }
-  if (crawfordCube()) { alert(CRAWFORD_CUBE); return; }
+  if (analyzeErrors().length) return;   // the button is greyed out then
   update({ selected: null });   // done editing
   sendSample();
   if (state.autoSpeak) unlockSpeech();

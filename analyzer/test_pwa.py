@@ -347,7 +347,9 @@ def test_match_is_in_the_board_settings_and_sent():
         assert f'id="{id_}"' in board, id_   # one place, the board screen's settings (TODO-086)
     js = (STATIC / "app.js").read_text()
     assert js.count("BgCube.matchRequest(state.match)") == 2   # /analyze and /analyze-photo
-    assert "if (crawfordCube()) { alert(CRAWFORD_CUBE); return; }" in js   # Japanese before the server's 422
+    # Japanese before the server's 422: 「解析する」 greyed out with the reason (TODO-116)
+    assert "...(crawfordCube(s) ? [CRAWFORD_CUBE] : [])" in js
+    assert '$("analyze").disabled = !!errs.length;' in js and 'id="analyze-why"' in html
     # TODO-093: the corners screen shows the same inputs, moved there while it is open
     corners = html[html.index('<section id="corners"'):html.index('<section id="board"')]
     assert '<div id="corners-match"></div>' in corners and "<details" not in corners
