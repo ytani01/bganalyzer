@@ -176,5 +176,17 @@ const BgCornersView = (() => {
     return { draw, toCanvas: (p) => toCanvas(p) };
   }
 
-  return { create };
+  // The four corners (or anything kept for each of them, TL TR BR BL) as named for a photo taken another
+  // way (TODO-120). side: null (the near player at the photo's bottom), "right" or "left" (taken from
+  // beside the board, from the near player's right or left). Each stays at its place in the photo; only
+  // which name it has changes: from the right the photo's top-right is TL, from the left its bottom-left.
+  const TURN = { right: 3, left: 1 };   // the name's index at the photo's top-left, top-right, ...: (place + TURN) % 4
+  function renamed(four, from, to) {
+    const by = (TURN[from] || 0) - (TURN[to] || 0);
+    return [0, 1, 2, 3].map((j) => four[(j + by + 4) % 4]);
+  }
+
+  return { create, renamed };
 })();
+
+if (typeof module !== "undefined") module.exports = BgCornersView;

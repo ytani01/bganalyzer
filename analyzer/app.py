@@ -30,7 +30,7 @@ from speech import router as speech_router
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.67.0"
+__version__ = "0.68.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -141,11 +141,14 @@ async def find_corners_endpoint(
     stream: bool = Form(False, description="answer as NDJSON lines: each stage of the search as it is done, then the result"),
     fixed: str | None = Form(None, description='JSON [TL, TR, BR, BL], each [x, y] the user has put in place or null: kept as they are'),
     crop: str | None = Form(None, description="x0,y0,x1,y1: look only in this part of the photo"),
+    side: str | None = Form(None, description="right or left: taken from beside the board, from the near player's right or left (TODO-120); empty: from the near player's side"),
 ):
     """A guess at the playing area's corners (TL, TR, BR, BL), for the app to show before the user
     adjusts them, or again after (fixed, crop). corners is null when no board was found."""
     from corners import find_corners  # recognizer (OpenCV); imported lazily
+    from side import find_corners_side
 
+    side = _side(side)
     img = await _decode(image)
     try:
         f = json.loads(fixed) if fixed else None
@@ -157,9 +160,14 @@ async def find_corners_endpoint(
     except Exception as e:
         raise HTTPException(422, "fixed must be 4 of [x, y] or null, crop 4 numbers") from e
     size = {"width": img.shape[1], "height": img.shape[0]}
+
+    def find(progress=None):
+        if side:
+            return find_corners_side(img, side, progress, fixed=f, crop=c)
+        return find_corners(img, progress, fixed=f, crop=c)
     if stream:
-        return _stream(lambda progress: {"corners": find_corners(img, progress, fixed=f, crop=c)} | size)
-    return {"corners": find_corners(img, fixed=f, crop=c)} | size
+        return _stream(lambda progress: {"corners": find(progress)} | size)
+    return {"corners": find()} | size
 
 
 @app.post("/analyze-photo")
@@ -179,6 +187,7 @@ async def analyze_photo(
     score_black: int = Form(0),
     crawford: bool = Form(False),
     keep_corners: bool = Form(False, description="read with the corners as given, not fitted to the frame (TODO-084)"),
+    side: str | None = Form(None, description="right or left: taken from beside the board, from the near player's right or left (TODO-120); empty: from the near player's side"),
     stream: bool = Form(False, description="answer as NDJSON lines: each stage of the reading as it is done, then the result"),
 ):
     from board import recognize  # recognizer (OpenCV); imported lazily
@@ -193,14 +202,24 @@ async def analyze_photo(
     if home not in ("left", "right", "auto"):
         raise HTTPException(422, "home must be left, right or auto")
     pts = list(zip(c[0::2], c[1::2]))
-
+    side = _side(side)
     def work(progress=None):
         pos, info = recognize(img, pts, home=home, bottom_colour=bottom_colour, progress=progress,
-                              keep_corners=keep_corners)
+                              keep_corners=keep_corners, side=side)
         return _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled, bottom_colour,
                              match_length=match_length, score_white=score_white, score_black=score_black,
                              crawford=crawford)
     return _stream(work) if stream else work()
+
+
+def _side(side: str | None) -> str | None:
+    """The side a photo was taken from beside the board ("right" / "left"), or None (empty: from the
+    near player's side)."""
+    if side in (None, ""):
+        return None
+    if side not in ("right", "left"):
+        raise HTTPException(422, "side must be right, left or empty")
+    return side
 
 
 async def _decode(image: UploadFile):

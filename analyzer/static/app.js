@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.67.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.68.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -26,6 +26,9 @@ const stored = (key, allowed, fallback) => {
   try { const v = localStorage.getItem(key); return allowed.includes(v) ? v : fallback; } catch (_) { return fallback; }
 };
 const keep = (key, value) => { try { localStorage.setItem(key, value); } catch (_) { /* private mode */ } };
+// taken from beside the board (TODO-120): the way this phone last chose, for a new photo
+const storedSide = () => ({ sideMode: stored("sideMode", ["on", "off"], "off") === "on",
+                            sideFrom: stored("sideFrom", ["right", "left"], "") });
 const storedMatch = () => {
   try { return BgCube.fixMatch(JSON.parse(localStorage.getItem("match"))); } catch (_) { return BgCube.fixMatch(null); }
 };
@@ -43,6 +46,10 @@ const state = {
   cornersMoved: false,
   cornersFixed: [false, false, false, false],   // each corner the user has dragged or tapped in: kept when looking again
   keepCorners: false,  // read with the corners as they are, not fitted to the frame (TODO-084); on once a corner is moved by hand
+  // taken from beside the board (TODO-120): the corners are looked for and the board read that way. Kept with
+  // each photo; a new photo starts the way this phone last chose (storedSide)
+  sideMode: storedSide().sideMode,
+  sideFrom: storedSide().sideFrom,   // from the near player's right or left; "" until asked
   edit: null,          // while the photo is being edited (TODO-070): {turn (quarter turns clockwise), angle (degrees, -45..45), rect ([x0, y0, x1, y1] as fractions of the turned photo) or null}
   dragging: false,     // a finger is on the corners
   homePick: "auto",    // the choice on the corners screen: "auto" (guess from the checkers), "left" or "right"
@@ -168,9 +175,9 @@ part((s) => s.busy, (s) => {
 });
 
 // ---- segmented buttons: each shows the state of its name
-part((s) => [s.homePick, s.home, s.bottomColour, s.onRoll, s.cube.at, s.collect, s.plies], (s) => {
+part((s) => [s.homePick, s.home, s.bottomColour, s.onRoll, s.cube.at, s.collect, s.plies, s.sideFrom], (s) => {
   const value = { homePick: s.homePick, home: s.home, bottomColour: s.bottomColour, onRoll: s.onRoll, cubeAt: s.cube.at,
-                  collect: s.collect, plies: s.plies };
+                  collect: s.collect, plies: s.plies, sideFrom: s.sideFrom };
   for (const seg of document.querySelectorAll(".seg")) {
     for (const b of seg.children) b.classList.toggle("on", b.dataset.value === String(value[seg.dataset.name]));
   }
@@ -235,6 +242,12 @@ part((s) => (s.dragging ? undefined : [s.corners.length, s.cornerGuess, !!s.edit
   $("recognize").disabled = n < 4 || !!s.edit;
 });
 part((s) => s.keepCorners, (s) => { $("keep-corners").checked = s.keepCorners; });
+// taken from beside (TODO-120): which side is asked only until it is chosen; it can be chosen again
+part((s) => [s.sideMode, s.sideFrom], (s) => {
+  $("side-mode").checked = s.sideMode;
+  $("side-from-row").hidden = !s.sideMode;
+  $("side-ask").hidden = !!s.sideFrom;
+});
 part((s) => s.edit && s.edit.angle, (s) => {
   $("edit-tools").hidden = !s.edit;
   $("corner-tools").hidden = !!s.edit;
@@ -426,7 +439,7 @@ function rectifiedPhoto(s) {
 const historyRecord = (s) => {
   const k = s.historyScale;
   return { corners: s.corners.map(([x, y]) => [x * k, y * k]), cornerGuess: s.cornerGuess, cornersMoved: s.cornersMoved,
-           keepCorners: s.keepCorners, trimmed: s.photo.trimmed,
+           keepCorners: s.keepCorners, trimmed: s.photo.trimmed, sideMode: s.sideMode, sideFrom: s.sideFrom,
            homePick: s.homePick, home: s.home, homeGuess: s.homeGuess, bottomColour: s.bottomColour,
            onRoll: s.onRoll, dice: diceIn(s), cube: s.cube, board: s.board, read: s.read, warnings: s.warnings };
 };
@@ -572,6 +585,8 @@ function startPhoto(file, bitmap, kept, historyId, historyScale) {
     cornerGuess: guess ? "finding" : kept.cornerGuess === "again" ? "moved" : kept.cornerGuess || "",
     cornersMoved: !!(kept && kept.cornersMoved), keepCorners: !!(kept && kept.keepCorners),
     cornersFixed: [false, false, false, false], edit: null,   // not kept with the photo
+    // the way this photo was taken, as kept with it (photos kept before 0.68.0: from the near player's side)
+    ...(kept ? { sideMode: !!kept.sideMode, sideFrom: kept.sideFrom || storedSide().sideFrom } : storedSide()),
     // entries from before 0.6.0 kept only the side picked
     homePick: (kept && (kept.homePick || kept.home)) || (kept ? "auto" : state.homePick),
     home: kept ? kept.home || "right" : state.home,
@@ -705,6 +720,7 @@ async function cornersForm() {
   const { blob, scale } = await uploadImage();
   const fd = new FormData();
   fd.append("image", blob, "board.jpg");
+  if (sideSent()) fd.append("side", sideSent());
   if (state.photo.trimmed) {
     const [iw, ih] = imageSize(state.photo.bitmap);
     fd.append("crop", `0,0,${Math.round(iw * scale)},${Math.round(ih * scale)}`);
@@ -790,6 +806,42 @@ async function findAgain() {
   redraw(drawCorners);
 }
 
+// Taken from beside (TODO-120): "right" or "left" for the server while the mode is on and the side chosen, else null.
+const sideSent = () => (state.sideMode && state.sideFrom) || null;
+
+// The corners looked for again, the way the photo is now said to be taken (the mode or its side changed;
+// was: sideSent() before). The ones the user put in place stay where they are in the photo, under the name
+// they have the new way (BgCornersView.renamed), and the others are looked for; with none put in place,
+// all four are looked for afresh.
+function cornersAgain(was) {
+  if (!state.photo || state.step !== "corners" || state.edit || was === sideSent()) return;
+  if (state.corners.length === 4 && state.cornersFixed.some(Boolean)) {
+    update({ corners: BgCornersView.renamed(state.corners, was, sideSent()),
+             cornersFixed: BgCornersView.renamed(state.cornersFixed, was, sideSent()) });
+    findAgain();
+    return;
+  }
+  update({ corners: defaultCorners(state.photo.bitmap), cornerGuess: "finding", cornersMoved: false, keepCorners: false,
+           cornersFixed: [false, false, false, false] });
+  redraw(drawCorners);
+  guessCorners(state.photo.file);
+}
+
+// The switch kept on this phone (for the next photo) and with this photo.
+function setSideMode(on) {
+  const was = sideSent();
+  keep("sideMode", on ? "on" : "off");
+  update({ sideMode: on });
+  cornersAgain(was);   // on for the first time: nothing to send until the side is chosen
+}
+
+function setSideFrom(v) {
+  const was = sideSent();
+  keep("sideFrom", v);
+  update({ sideFrom: v });
+  cornersAgain(was);
+}
+
 // Claude picks the corners (TODO-082): all 4 are replaced. Only on servers that ask Claude (/version).
 async function claudeCorners() {
   const id = ++search;   // a search still running is not taken
@@ -805,7 +857,8 @@ async function claudeCorners() {
       const fd = new FormData();
       fd.append("image", blob, "board.jpg");
       const data = await BgApi.post("claude-corners", fd, undefined, cancel.signal);
-      corners = data.corners.map(([x, y]) => [x / scale, y / scale]);
+      // Claude names them with the near player at the photo's bottom: named as this photo was taken (TODO-120)
+      corners = BgCornersView.renamed(data.corners.map(([x, y]) => [x / scale, y / scale]), null, sideSent());
     }, false, cancel);
   } catch (err) {
     if (!cancel.signal.aborted) error = err;
@@ -836,6 +889,7 @@ async function recognize() {
       fd.append("corners", state.corners.flat().map((v) => (v * scale).toFixed(1)).join(","));
       fd.append("home", state.homePick);
       if (state.keepCorners) fd.append("keep_corners", "true");
+      if (sideSent()) fd.append("side", sideSent());
       fd.append("bottom_colour", String(state.bottomColour));
       fd.append("on_roll", req.on_roll);
       if (dice) fd.append("dice", dice.join(","));
@@ -922,7 +976,7 @@ async function sampleOf(name) {
   const truth = BgSample.truth({
     image: `${name}.${ext}`, corners: state.corners.map(([x, y]) => [x * k, y * k]),
     home: state.home, bottomColour: state.bottomColour, board: state.board,
-    dice: diceIn(), cube: state.cube, read: state.read,
+    dice: diceIn(), cube: state.cube, read: state.read, side: sideSent(),
   });
   return { blob, ext, truth };
 }
@@ -1097,6 +1151,7 @@ window.addEventListener("popstate", () => {
 
 $("corner-reset").addEventListener("click", () => update({ corners: [], cornerGuess: "", cornersFixed: [false, false, false, false] }));
 $("keep-corners").addEventListener("change", () => update({ keepCorners: $("keep-corners").checked }));
+$("side-mode").addEventListener("change", () => setSideMode($("side-mode").checked));
 $("photo-side").addEventListener("change", () => update({ photoView: $("photo-side").checked ? "side" : "off" }));   // a checkbox (TODO-094)
 $("edit-start").addEventListener("click", () => { stopOverlay("corners"); update({ edit: { turn: 0, angle: 0, rect: null } }); });
 $("edit-cancel").addEventListener("click", () => update({ edit: null }));
@@ -1178,6 +1233,7 @@ $("crawford").addEventListener("change", () => setMatch({ crawford: $("crawford"
 
 const SEGMENTS = {
   homePick: (v) => update({ homePick: v }),
+  sideFrom: setSideFrom,
   home: setHome,
   bottomColour: (v) => update({ bottomColour: Number(v) }),
   onRoll: setOnRoll,

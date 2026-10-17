@@ -49,7 +49,7 @@ from position import Position
 
 # The recognizer's version (the reading code in recognizer/: board.py and the modules it uses, corners.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.23.2"
+__version__ = "0.24.0"
 
 
 def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
@@ -75,7 +75,7 @@ def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
 
 
 def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
-              a_ratio=None, debug_prefix=None, method="circles", progress=None, keep_corners=False):
+              a_ratio=None, debug_prefix=None, method="circles", progress=None, keep_corners=False, side=None):
     """corners: TL, TR, BR, BL of the playing area as seen from the bottom player.
     keep_corners: read the board as the corners give it, without fitting them to the frame's edges
     and the triangles (TODO-084); only the columns are fitted ("fit" once, by "corners").
@@ -83,10 +83,19 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     progress: called as progress(stage, data) when each stage is done ("fit" four times: the frame
     fitted to the frame's edges twice, then to the triangles twice; then "tips", "checkers", "counts",
     "dice", "cube"), with the parts of info["geometry"] it found (image pixels), for showing the
-    reading as it goes. It does not change what is read."""
-    finder = {"hough": "hough", "radial+hough": "both"}.get(method, "radial")
+    reading as it goes. It does not change what is read.
+    side: "right" or "left" for a photo taken from beside the board, from the near player's right or
+    left (side.py reads the checkers, TODO-120; the stages are "fit" once, "tips", then as above);
+    None: from the near player's side (this pipeline)."""
     emit = progress or (lambda stage, data: None)
     cv2.setRNGSeed(0)  # k-means initialisation: make runs repeatable
+    if side is not None:
+        import side as side_reader
+        H, lay, tips, circles, pitch, runs, bar, cc, board = side_reader.read_side(
+            img, corners, side, emit, debug_prefix and debug_prefix + "_side.jpg")
+        return _finish(img, corners, H, lay, tips, circles, pitch, runs, bar, cc, board, 0.0, bottom_colour,
+                       home, emit, debug_prefix, side=side)
+    finder = {"hough": "hough", "radial+hough": "both"}.get(method, "radial")
     m = 60
     corners = exact.snap(np.float64(corners).reshape(4, 2), 1 / 64)
     H0 = exact.homography(np.float64([(0, 0), (1, 0), (1, 1), (0, 1)]), corners)
@@ -159,6 +168,16 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         _, _, gy8 = lab_gradients(ground)
         runs = section.count_by_profile(ground_lab, gy8, board, lay, m, pitch, tri_map, tri_len,
                                         cc, circles, runs)
+    if debug_prefix:
+        save_debug(debug_prefix, ground, lay, m, runs, tips, circles)
+    return _finish(img, corners, H, lay, tips, circles, pitch, runs, bar, cc, board, quality, bottom_colour,
+                   home, emit, debug_prefix)
+
+
+def _finish(img, corners, H, lay, tips, circles, pitch, runs, bar, cc, board, quality, bottom_colour, home,
+            emit, debug_prefix, side=None):
+    """The position from the counts, and the dice and the cube read (recognize's last steps, for both
+    its pipeline and side.py's). H: canonical (lay, no margin) -> photo."""
     guessed = None
     if home == "auto":   # which way the checkers move: guess from where they stand
         home, margin = home_prior.guess(to_position(runs, bar, bottom_colour, "right").points)
@@ -188,9 +207,10 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
     info["geometry"]["cube"] = cube and dict(quad=geometry_square(cube, H), at=cube["at"], value=cube.get("value"))
     emit("cube", dict(cube=info["geometry"]["cube"]))
     info["tilt_deg"] = round(view_tilt_deg(corners, img.shape), 1)
-    info["warnings"] = ["oblique"] if info["tilt_deg"] > OBLIQUE_WARN_DEG else []
-    if debug_prefix:
-        save_debug(debug_prefix, ground, lay, m, runs, tips, circles)
+    # taken from beside on purpose: the warning to take it again from above would not help
+    info["warnings"] = ["oblique"] if info["tilt_deg"] > OBLIQUE_WARN_DEG and side is None else []
+    if side is not None:
+        info["side"] = side
     return pos, info
 
 

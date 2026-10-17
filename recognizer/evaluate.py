@@ -30,7 +30,8 @@ def run(path, debug=None, app=False, method="circles"):
     # which checker colour belongs to the bottom player is the user's choice in the
     # app; here take the assignment that matches the truth
     best = None
-    pos0, info = board.recognize(img, corners, home=t["home"], debug_prefix=debug, method=method)
+    # side: taken from beside the board (TODO-120), read that way
+    pos0, info = board.recognize(img, corners, home=t["home"], debug_prefix=debug, method=method, side=t.get("side"))
     pos1 = Position(points=[-n for n in pos0.points], bar_white=pos0.bar_black, bar_black=pos0.bar_white,
                     off_white=pos0.off_black, off_black=pos0.off_white)
     for pos in (pos0, pos1):

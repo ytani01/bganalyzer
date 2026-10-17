@@ -352,7 +352,7 @@ def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT)):
     return best[1]
 
 
-def find_corners(img, progress=None, fixed=None, crop=None):
+def find_corners(img, progress=None, fixed=None, crop=None, search=None):
     """TL, TR, BR, BL of the playing area in image pixels, or None if no board was found.
 
     fixed: TL, TR, BR, BL, each [x, y] the user has put in place or None; those are kept and only
@@ -363,7 +363,8 @@ def find_corners(img, progress=None, fixed=None, crop=None):
     pixels: "edges" {lines: the far / near edge candidates across the photo}, "uprights" {lines: the
     left / right edge candidates, over the band between two of those}, "candidates" {quads: the
     quadrilaterals that looked most like a board at first, best first}, "corners" {corners} (only
-    when a board is found). It does not change what is found."""
+    when a board is found). It does not change what is found.
+    search: what looks in the shrunk photo, called as guess is (side.py's for photos taken from beside, TODO-120)."""
     h, w = img.shape[:2]
     x0, y0, x1, y1 = (0, 0, w, h) if crop is None else (
         min(max(int(crop[0]), 0), w - 1), min(max(int(crop[1]), 0), h - 1),
@@ -380,7 +381,7 @@ def find_corners(img, progress=None, fixed=None, crop=None):
         if progress:
             def emit(stage, **arrays):
                 progress(stage, {k: (np.float64(v) / s + at).round(1).tolist() for k, v in arrays.items()})
-        q = guess(small, emit, [None if p is None else (np.float64(p) - at) * s for p in fixed],
+        q = (search or guess)(small, emit, [None if p is None else (np.float64(p) - at) * s for p in fixed],
                   (MIN_WIDTH, MIN_HEIGHT) if crop is None else TRIMMED)
         if q is None:
             return None

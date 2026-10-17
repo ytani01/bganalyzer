@@ -26,10 +26,10 @@ import numpy as np
 
 import corners as C
 import exact
-from board import to_position
 from checkers import add_hidden_stacks, count_from_circles, detect_checkers
 from colours import board_colours, triangle_colour_map
 from geometry import Layout, camera_from_h, find_tips
+from overlay import geometry_frame, geometry_tips
 
 # ---------------------------------------------------------------- corners --
 SLOPES = np.arange(-200, 201, 4)  # line slopes tried, in 1/200: the long edges lean up to 45 degrees
@@ -57,10 +57,16 @@ def _order(quad, side):
     return q if side == "right" else q[[2, 3, 0, 1]]
 
 
-def _guess(small):
+def _guess(small, emit=None, fixed=None, least=None):
     """The long edges first (they are long and plain in these photos), then the ends between them.
     Returns TL, TR, BR, BL as if taken from the right (photo top-right, bottom-right, bottom-left,
-    top-left), or None. The score is the normal search's (corners._structure)."""
+    top-left), or None. The score is the normal search's (corners._structure).
+    Called as corners.guess is (by corners.find_corners): emit tells of the stages ("uprights": the
+    long edges, "edges": the ends, "candidates"); fixed: corners the user has put in place (as if
+    taken from the right), kept where they are; least is not used (the long edges' distance is)."""
+    emit = emit or (lambda stage, **arrays: None)
+    fixed = fixed or [None] * 4
+    keep = [i for i in range(4) if fixed[i] is not None]
     h, w = small.shape[:2]
     gx, gy = C._gradients(small)
     up = C._Upright(gx, gy, SLOPES, 1.0)
@@ -76,7 +82,8 @@ def _guess(small):
         if all(abs(mid - (c2 + h / 2 * k2 / 200)) > SAME * w or abs(k - k2) > 12 for k2, c2 in longs):
             longs.append((k, c))
     longs.sort(key=lambda v: v[1] + h / 2 * v[0] / 200)
-    best = None
+    emit("uprights", lines=np.float64([[(c, 0), (c + h * k / 200, h)] for k, c in longs]).reshape(-1, 2, 2))
+    scored, ends_seen = [], set()
 
     def at(k, c, v):
         return c + v * k / 200
@@ -90,6 +97,7 @@ def _guess(small):
                 continue
             band = (int(xm0 + 0.03 * (xm1 - xm0)), int(xm1 - 0.03 * (xm1 - xm0)))
             ends = across.lines(max(0, band[0]), min(w, band[1]))
+            ends_seen |= {(k, c) for k, c, _ in ends}
             for a in range(len(ends)):
                 for b in range(a + 1, len(ends)):
                     top, bot = ends[a], ends[b]
@@ -99,16 +107,23 @@ def _guess(small):
                     if wb <= 0 or not TOP_OVER_BOTTOM[0] < wt / wb < TOP_OVER_BOTTOM[1] or not TALL[0] < ht / wb < TALL[1]:
                         continue
                     player = q[[1, 2, 3, 0]]          # TL, TR, BR, BL as the near player (on the left) sees it
+                    if max([exact.norm(player[n] - fixed[n]) for n in keep], default=0) > C.NEAR * max(h, w):
+                        continue   # its corners disagree with the ones the user put in place
+                    for n in keep:
+                        player[n] = fixed[n]
                     view, _ = C._view(small, player, C.RW // 2, C.RH // 2, 0)
                     if view is None:
                         continue
-                    s = C._structure(view)
-                    if best is None or s > best[0]:
-                        best = (s, player)
-    if best is None:
+                    scored.append((C._structure(view), player))
+    emit("edges", lines=np.float64([[(0, c), (w, c + w * k / 200)] for k, c in sorted(ends_seen)]).reshape(-1, 2, 2))
+    if not scored:
         return None
-    q = best[1]
+    scored.sort(key=lambda r: -r[0])
+    emit("candidates", quads=np.float64([q for _, q in scored[:C.REFINE]]).reshape(-1, 4, 2))
+    q = scored[0][1]
     cand = C._move_in(small, q)
+    for n in keep:
+        cand[n] = fixed[n]
     v, _ = C._view(small, cand, C.RW, C.RH, 0)
     v0, _ = C._view(small, q, C.RW, C.RH, 0)
     if v is not None and C._structure(v) > C._structure(v0):
@@ -116,13 +131,18 @@ def _guess(small):
     return q
 
 
-def find_corners_side(img, side="right"):
-    """TL, TR, BR, BL of the playing area (as the near player sees it) in image pixels, or None."""
-    small, s = C.shrink(img)
-    q = _guess(small)
-    if q is None:
-        return None
-    return exact.snap(_order(q / s, side), 0.1).round(1).tolist()
+def find_corners_side(img, side="right", progress=None, fixed=None, crop=None):
+    """TL, TR, BR, BL of the playing area (as the near player sees it) in image pixels, or None, from a
+    photo taken from beside the board; side: "right" or "left" (see the module's doc). As
+    corners.find_corners, with its progress stages, fixed corners and crop (corners.find_corners runs
+    this search in place of its own)."""
+    def order(q):
+        return q if side == "right" else [q[i] for i in (2, 3, 0, 1)]
+
+    def told(stage, data):
+        progress(stage, {"corners": order(data["corners"])} if stage == "corners" else data)
+    q = C.find_corners(img, progress and told, fixed and order(list(fixed)), crop, search=_guess)
+    return q and order(q)
 
 
 # ---------------------------------------------------------------- reading --
@@ -240,7 +260,8 @@ def _stack_step(circles, pw):
 
 
 def _read(img, q, aspect=None):
-    """The checkers' circles in the ground view: (ground, gw, aspect, cols, pw, lay, tips, pitch, circles)."""
+    """The checkers' circles in the ground view: (ground, Hg, gw, aspect, cols, pw, lay, tips, board, pitch,
+    circles); board: the board's colours (colours.board_colours)."""
     ground, Hg, gw = _ground(img, q, aspect)
     lab = cv2.cvtColor(ground, cv2.COLOR_BGR2Lab).astype(np.float64)
     cols, pw = _columns(lab, gw)
@@ -260,37 +281,41 @@ def _read(img, q, aspect=None):
     if len(circles) >= 4:
         pitch = float(2 * np.median([c[2] for c in circles]))
         circles = detect_checkers(ground, board, lay, GM, pitch, tri_map, tri_len)
-    return ground, gw, gw / GH, cols, pw, lay, tips, pitch, circles
+    return ground, Hg, gw, gw / GH, cols, pw, lay, tips, board, pitch, circles
 
 
-def read_side(img, corners, side="right", *, bottom_colour=0, home="right", debug=None):
-    """The position read from a photo taken from beside the board (see the module's doc): the
-    checkers on the points only (no bar, dice or cube yet). corners: TL, TR, BR, BL as the near
-    player sees them. Returns (Position, info) like board.recognize."""
-    cv2.setRNGSeed(0)
+def read_side(img, corners, side="right", emit=None, debug=None):
+    """The checkers read from a photo taken from beside the board (see the module's doc), for
+    board.recognize(side=...), which reads the dice and the cube and makes the position from them.
+    corners: TL, TR, BR, BL as the near player sees them. emit(stage, data) is told of "fit" and "tips"
+    as board.recognize's progress is. Returns (H, lay, tips, circles, pitch, runs, bar, cc, board), all in
+    the near player's canonical frame (H: from it to the photo), as board.recognize has them."""
+    emit = emit or (lambda stage, data: None)
     q = _order(corners, side)              # as if from the right
-    ground, gw, aspect, cols, pw, lay, tips, pitch, circles = _read(img, q)
+    ground, Hg, gw, aspect, cols, pw, lay, tips, board, pitch, circles = _read(img, q)
     # the checkers are round: when a stack's checkers follow one another closer or farther apart
     # than they are wide, the view from above is squeezed (the camera's focal length was guessed)
     for _ in range(ASPECT_ROUNDS):
         step, n = _stack_step(circles, pw)
         if n < ASPECT_STEPS or 1 / ASPECT_TOL < step / pitch < ASPECT_TOL:
             break
-        ground, gw, aspect, cols, pw, lay, tips, pitch, circles = _read(img, q, aspect * step / pitch)
+        ground, Hg, gw, aspect, cols, pw, lay, tips, board, pitch, circles = _read(img, q, aspect * step / pitch)
     moved, shift = _shift(circles, cols, pw)
     moved = add_hidden_stacks(ground, lay, GM, pitch, moved)
-    runs, _, cc = count_from_circles(moved, lay, pitch)
-    if debug is not None:
-        if isinstance(debug, dict):        # the steps' results, for measuring
-            debug.update(cols=cols, pw=pw, circles=circles, gw=gw)
-        else:
-            _draw(debug, ground, cols, circles, moved, runs, tips)
-    if side == "left":                     # turned half round: the far player's view
-        runs = {(11 - c, "top" if row == "bottom" else "bottom"): v for (c, row), v in runs.items()}
-    pos = to_position(runs, [0, 0], bottom_colour, home)
-    info = dict(side=side, columns=[round(float(c) / gw, 4) for c in cols], pitch=float(pitch), aspect=round(aspect, 3),
-                shift=shift, circles=len(circles), checker_lab=None if cc is None else cc.round(1).tolist())
-    return pos, info
+    H = exact.mul3(Hg, [[1, 0, GM], [0, 1, GM], [0, 0, 1]])   # canonical (no margin) -> photo
+    if side == "left":
+        # turned half round: the near player's frame is the ground view's turned about its centre
+        w, h = lay.w, lay.h
+        H = exact.mul3(H, [[-1, 0, w], [0, -1, h], [0, 0, 1]])
+        lay = Layout(a=lay.a, bar=lay.bar, h=h, cols=[float(w - x) for x in reversed(lay.cols)])
+        moved = [(w - x, h - y, *rest) for x, y, *rest in moved]
+        tips = [(11 - c, "top" if row == "bottom" else "bottom", w - x, h - y, *rest) for c, row, x, y, *rest in tips]
+    emit("fit", geometry_frame(H, lay) | dict(by="side", round=1))
+    emit("tips", dict(tips=geometry_tips(tips, H)))
+    runs, bar, cc = count_from_circles(moved, lay, pitch)
+    if debug and side == "right":          # the ground view as it is (from the left it is turned)
+        _draw(debug, ground, cols, circles, moved, runs, tips)
+    return H, lay, tips, moved, pitch, runs, bar, cc, board
 
 
 def _draw(path, ground, cols, circles, moved, runs, tips=()):

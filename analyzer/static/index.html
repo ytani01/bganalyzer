@@ -93,6 +93,14 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     </div>
     <div class="row wrap">
       <label><input type="checkbox" id="keep-corners"> 四隅を固定する</label>
+      <label><input type="checkbox" id="side-mode"> 横から撮った</label>
+    </div>
+    <!-- 横から撮った写真（TODO-120）: 手前の人から見て、どちらから撮ったか。初めてオンにしたときだけ聞き、端末に覚える -->
+    <div id="side-from-row" class="opt" hidden>
+      <span class="opt-label">撮った位置<small id="side-ask">手前の人から見て、どちらから撮りましたか</small></span>
+      <div class="seg" data-name="sideFrom">
+        <button data-value="right">右から</button><button data-value="left">左から</button>
+      </div>
     </div>
     <div class="opt">
       <span class="opt-label">手前のホーム<small>（上がる側）</small></span>

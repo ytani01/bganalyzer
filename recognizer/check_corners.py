@@ -38,7 +38,11 @@ def measure(path, app=False, crop=False, fix=0):
         mx, my = 0.15 * (x1 - x0), 0.15 * (y1 - y0)
         crop_box = (x0 - mx, y0 - my, x1 + mx, y1 + my)
     fixed = [list(p) if i < fix else None for i, p in enumerate(truth)]
-    found = corners.find_corners(img, fixed=fixed, crop=crop_box)
+    if t.get("side"):   # taken from beside the board (TODO-120)
+        import side
+        found = side.find_corners_side(img, t["side"], fixed=fixed, crop=crop_box)
+    else:
+        found = corners.find_corners(img, fixed=fixed, crop=crop_box)
     dt = time.perf_counter() - t0
     if found is None:
         return None, dt

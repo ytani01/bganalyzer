@@ -42,7 +42,8 @@ def valid(t):
                 and t["home"] in ("left", "right") and Path(t["image"]).suffix in (".jpg", ".png")
                 and len(t["corners_TL_TR_BR_BL"]) == 4 and all(len(c) == 2 and all(map(num, c)) for c in t["corners_TL_TR_BR_BL"])
                 and (t.get("dice") is None or (len(t["dice"]) == 2 and all(type(n) is int and 1 <= n <= 6 for n in t["dice"])))
-                and (cube is None or (isinstance(cube, dict) and cube.get("at") in ("white", "black", "centre"))))
+                and (cube is None or (isinstance(cube, dict) and cube.get("at") in ("white", "black", "centre")))
+                and t.get("side", "right") in ("right", "left"))   # side: taken from beside the board (TODO-120)
     except Exception:
         return False
 

@@ -51,6 +51,13 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
    待つ間の「取り消す」でやめられる。失敗したときは四隅はそのまま。
    「四隅を固定する」（TODO-084）にチェックを入れると、読み取りで四隅を枠や三角形に合わせ直さない（`keep_corners`）。
    点を手で動かすとチェックが入り、新しい写真・画像の編集・「もう一度検出」で見つかったとき・Claude の四隅では外れる。
+   「横から撮った」（TODO-120）にチェックを入れると、盤の真横（対局者の位置から 90° 回った位置）から撮った写真として四隅を探し直し、
+   読み取りもそのやり方にする（`/find-corners` と `/analyze-photo` に `side` を送る）。初めて入れたときだけ「撮った位置」（手前の人から見て右から／左から）を聞く。
+   選んだ位置とチェックは端末に覚え、次の新しい写真もそのまま始める。写真ごとにも「最近の写真」に残し、開き直したときは端末の設定より写真に残したものを使う。
+   位置はチェックが入っている間、いつでも選び直せる。チェックや位置を変えると四隅を探し直す。手で動かした隅は写真の上の場所のまま残し
+   （新しい向きでの名前に付け直す。右から撮った写真では写真の右上が左上）、残りの隅だけを探す。手で動かした隅が無ければ 4 つとも探し直す。
+   「Claude に選ばせる」の四隅（写真の下を手前とした順）も、横からのときはその向きの名前に付け直して使う。
+   モードと左右は写真ごとに履歴にも残し、開き直したときはそれで読む（端末に覚えた既定より優先。0.68.0 より前に残した写真は普通のモード）。
    手前の人のホーム側（自動/左/右。自動なら駒の並びから推測）と駒の色（暗い方/明るい方）を選んで画面の下の「盤面を読み取る」。
 3. 読み取った盤面が出るので、違うポイントやバーを盤の上で直す（TODO-059）。
    盤の番号は手番の人から見た番号（自分のホームの端が 1。奥の人の番なら、手前の人から見た n が 25−n になる。TODO-089）。最善手の棋譜の番号と揃う。
@@ -118,6 +125,7 @@ uv run uvicorn app:app --app-dir analyzer --host 0.0.0.0 --port 8000
   `user-日時.jpg` と `user-日時.truth.json`（`samples/*.truth.json` と同じ形）の 2 つのファイルにする。
   共有の画面で送れる端末（iPhone など）では共有の画面が開き、送れない端末（JSON を共有できない Android の Chrome や PC）では 2 つともダウンロードになる。サーバーには何も送らない。
   JSON には認識が読んだ盤面（`read`）と、直したポイントの番号（`fixed_points`）も入る。使い方は TODO-030。
+  横から撮った写真として読んだときは `side`（`right` か `left`）も入る（`evaluate.py`・`check_accuracy.py`・`collected.py` はそのモードで読む。TODO-120）。サーバーに保存する組（`POST /samples`）も同じ。
 - 長辺 2560px を超える写真は、ブラウザで長辺 2048px に縮めてから送る（この大きさでのサンプルの精度は [recognizer/README.md](../recognizer/README.md) の「精度」の「アプリ経由」の列）。
 - 別のホストに PWA を置くときは `?api=https://APIのURL` を付けて開く。
 - ホーム画面への追加と Service Worker は HTTPS（または localhost）のときだけ有効。
@@ -210,6 +218,10 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 `crop`（`"x0,y0,x1,y1"`。その範囲だけを、盤が範囲の大部分を占めてよいものとして探す。PWA はユーザーが切り抜いた画像のとき、画像全体を送る）。
 どちらも送った画像の画素で、形が違えば 422。`fixed` の隅はそのまま返り、残りを `crop` の中だけで探す
 （固定した隅と合う候補が無ければ `corners` は null）。送らなければ答えは今までと同じ。
+`side`（`right` か `left`。TODO-120）を送ると、盤の真横から、手前の人から見て右／左から撮った写真として探す（`recognizer/side.py`）。
+四隅の順は同じく手前の人から見た 左上・右上・右下・左下で、右から撮った写真では写真の右上・右下・左下・左上、左から撮った写真では左下・左上・右上・右下になる。
+`stream=true` の段階は、長い辺（縦の線）が先なので `uprights`・`edges`（両端）・`candidates`・`corners` の順。`fixed`・`crop` も使える。
+空か送らなければ今までと同じ。ほかの値は 422。
 
 ### `POST /claude-corners`（multipart）
 
@@ -230,10 +242,11 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 `bottom_colour`（意味は recognizer/README.md と同じ。既定 `0`。読み取りと、`summary` の白・黒の呼び方（/analyze と同じ）の両方に使う）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）、`cube_value`・`cube_owner`・`doubled`（/analyze と同じ。ただし `dice` を省いて写真からダイスが読めたときは、`doubled` を false にしてチェッカーの手を評価する）、
 `match_length`・`score_white`・`score_black`・`crawford`（/analyze と同じ）、
 `keep_corners`（`true` なら四隅を枠や三角形に合わせ直さずに読む。既定 `false`。TODO-084）、
+`side`（`right` か `left` なら盤の真横から撮った写真として読む。`corners` は /find-corners と同じ順。空か省くと今までと同じ。TODO-120。`keep_corners` は効かない）、
 `stream`（`true` なら下の応答を NDJSON で段階ごとに返す。既定 `false`）。
 
 `stream=true` の応答は `application/x-ndjson` で、1 行に 1 つ、認識の段階が終わるたびに
-`{"stage": "fit", corners, columns, bar, by, round}`（四隅の合わせ直し。`by` が `"edges"`（枠の線）で 2 回、`"triangles"`（三角形の並び）で 2 回。`keep_corners=true` では `"corners"` で 1 回だけ）、`{"stage": "tips", tips}`、`{"stage": "checkers", corners, columns, bar, checkers}`、
+`{"stage": "fit", corners, columns, bar, by, round}`（四隅の合わせ直し。`by` が `"edges"`（枠の線）で 2 回、`"triangles"`（三角形の並び）で 2 回。`keep_corners=true` では `"corners"` で 1 回だけ。`side` を送ったときは `"side"` で 1 回だけ）、`{"stage": "tips", tips}`、`{"stage": "checkers", corners, columns, bar, checkers}`、
 `{"stage": "counts", counts, home, home_guess}`、`{"stage": "dice", dice}`、`{"stage": "cube", cube}`（各値は下の `geometry` と同じ形）が来て、
 最後に `{"stage": "done", "result": 下の応答}` が来る。途中で失敗したときは最後が `{"stage": "error", "detail": 理由}`（状態は 200 のまま）。
 認識は別のスレッドで動かすので、送り終わるのは認識と解析が終わったとき。
@@ -258,7 +271,7 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 `cube`（見つけたキューブ `{"quad": 四隅, "at": "centre" か "white" か "black" か "field"}` か null）、
 `counts`（ポイントとバーで数えた駒 `[{"at": [x, y], "n": 数, "side": "white" か "black"}]`。`at` はポイントの外側の枠の上、バーはバーの上）。
 `dice`・`cube`・`counts` も演出に使うだけ。
-`warnings` は写真についての注意（日本語の文）。今は、盤を真上から 40° を超えて傾けて撮ったときに「斜めから撮った」と出る。
+`warnings` は写真についての注意（日本語の文）。今は、盤を真上から 40° を超えて傾けて撮ったときに「斜めから撮った」と出る（`side` を送ったときは出さない）。
 認識で駒数が合わないときは `analysis` が `null` になり、`errors` に理由が入ります（アプリで手修正してから
 `/analyze` を呼ぶ想定）。
 

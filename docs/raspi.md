@@ -183,6 +183,7 @@ POST（`/analyze-photo`）は送れないので、読み取りの確認はロー
 PWA の盤面の画面の「読み取りの改善」が「サーバーに［保存する］」（既定）だと、解析するたびに写真と直した後の盤面が
 `bganalyzer/collected/` に `user-<id>.jpg` と `user-<id>.truth.json` の組で入ります（同じ写真を直し直すと上書き。上限 1000 組）。
 中身は `samples/*.truth.json` と同じ形で、認識が読んだ盤面（`read`）と直したポイント（`fixed_points`）も入っています。
+横から撮った写真として読んだ組には `side`（`right` か `left`）が入り、`collected.py` もそのモードで測ります（TODO-120）。
 
 | やること | コマンド（`bganalyzer` フォルダで） |
 |---|---|

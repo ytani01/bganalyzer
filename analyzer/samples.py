@@ -56,6 +56,7 @@ async def save_sample(
         t = json.loads(truth)
         Board(points=t["points"], bar_white=t["bar_white"], bar_black=t["bar_black"])
         assert len(t["corners_TL_TR_BR_BL"]) == 4 and t["home"] in ("left", "right")
+        assert t.get("side", "right") in ("right", "left")   # only when taken from beside the board (TODO-120)
     except Exception as e:
         raise HTTPException(422, "bad truth") from e
     name = f"user-{id}"

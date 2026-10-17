@@ -5,7 +5,7 @@ For each photo: the corners found by the current detection (corners.find_corners
 over the four ways round, as it does not know the side) and by side.find_corners_side, as the largest
 distance from the truth's corners against the photo's longer side, with the time taken; the points read
 right (of 24, with the truth's corners, the better of the two colour assignments as in evaluate.py) by
-the current reading (board.recognize) and by side.read_side, and by side.read_side with the corners it found.
+the current reading (board.recognize) and by board.recognize(side=...), and by it with the corners side.find_corners_side found.
 --mirror: the photo flipped left to right and read as taken from the left (the truth flipped to match:
 the corners in the order the left side gives them, home on the other side).
 --no-current: leave out the current detection and reading (they take most of the time)."""
@@ -59,10 +59,10 @@ for path in [a for a in sys.argv[1:] if not a.startswith("--")]:
         pos, _ = board.recognize(img, truth.tolist(), home=home)
         row.append(f"{right(pos, t['points'])}/24")
     t0 = time.time()
-    pos, info = side.read_side(img, truth.tolist(), s, home=home)
-    row.append(f"{right(pos, t['points'])}/24 {time.time() - t0:.1f}s (shift {info['shift']})")
+    pos, info = board.recognize(img, truth.tolist(), home=home, side=s)
+    row.append(f"{right(pos, t['points'])}/24 {time.time() - t0:.1f}s")
     if q is not None:
-        pos2, _ = side.read_side(img, q, s, home=home)
+        pos2, _ = board.recognize(img, q, home=home, side=s)
         row.append(f"{right(pos2, t['points'])}/24")
     else:
         row.append("-")
