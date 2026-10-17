@@ -211,7 +211,7 @@ flowchart TD
 - 認識を直すのは、Pi の Claude Code に「collected の report を見て直して」と頼んだときです（自動ではしません）。
 - 読み違いのある組は、`BG_IMPORT` を設定したサーバー（開発機だけ。誰でも送れる Pi では設定しない）で `recognizer/import_collected.py` が `samples/collected-<id>` に入れます（TODO-114）。
   設定は `systemctl --user edit bganalyzer` で `Environment=BG_IMPORT=1` を足します（下の「Claude に選ばせる」と同じやり方）。古い組から 1 回に 10 組まで、
-  `samples/` に同じ名前か同じ写真があるもの、画像として読めないものは除きます。前の取り込みの PR が開いたままなら何もしません（チェックが落ちたとき、main とぶつかったとき、チェックを待つ間にサービスを再起動したとき。開発機は main を pull するたびに再起動するので、残った PR は見てマージするか閉じてください）。盤の外を正解の四隅で黒く塗り、EXIF は入れません。
+  `samples/` に同じ名前か同じ写真があるもの、画像として読めないものは除きます。前の取り込みの PR が開いたままなら何もしません（チェックが落ちたとき、main とぶつかったとき、チェックを待つ間にサービスを再起動したとき。開発機は main を pull するたびに再起動するので、残った PR は見てマージするか閉じてください）。背景の塗りつぶし処理で盤の外（正解の四隅の外）を黒くし、EXIF は入れません。
   `origin/main` の別の worktree で `accuracy_baseline.json` と `recognizer/README.md` の「精度」の表を書き直し、PR を作って、
   `test`・`accuracy` が通り、最新の main を取り込んでも通ればマージします（落ちたとき・main とぶつかったときは PR を開いたまま残す）。この機械の `gh` のログインで push します。
   したことは `collected/import.log` に残ります。盤の上に写った手や物、直し忘れた正解はそのまま公開されます。
@@ -223,7 +223,7 @@ flowchart TD
   一部だけ試すときは `--params checkers.CIRCLE_MIN_SCORE,checkers.STACK_SKEW --steps 0.9,1.1`。
 - 測り直しは API の子プロセスとして、いちばん低い優先度（`nice -n 19`）で動きます。
 
-`samples/` は公開しています。自動で入った組に見せたくないものが写っていたら、その組を手で塗るか消す PR を出してください（[CLAUDE.md](../CLAUDE.md)）。
+`samples/` は公開しています。自動で入った組に見せたくないものが写っていたら、写っていけないものを手で黒く塗りつぶすか、その組を消す PR を出してください（[CLAUDE.md](../CLAUDE.md)）。
 
 ## 同じ Pi で別のアプリも公開する
 
