@@ -203,33 +203,37 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       </div>
       <span id="dice-note" class="from-photo" title="写真から読み取った目" hidden>写真</span>
     </div>
-    </div>
-
-    <!-- 使うことが少ないもの（TODO-086）。閉じた状態で始まる -->
-    <details class="panel more">
-    <summary>その他の設定<span id="more-set"></span></summary>
-    <div class="row wrap">
-      <button id="swap-colours" class="button small">駒の色を入れ替える</button>
-      <button id="reset-start" class="button small">初期配置にする</button>
-    </div>
-    <div class="row wrap">
-      <button id="export-sample" class="button small" hidden title="写真と、直した後の盤面をファイルにします。開発者に送ると読み取りの改善に使えます">精度改善用に書き出す</button>
-    </div>
     <div class="opt">
       <span class="opt-label">読みの深さ</span>
       <div class="seg" data-name="plies">
         <button data-value="2">2手</button><button data-value="3">3手</button>
       </div>
     </div>
-    <p class="note">3手は 10 倍以上かかります。</p>
-    <div id="collect-opt" class="opt" hidden>
-      <span class="opt-label">精度の改善</span>
-      <div class="seg" data-name="collect">
-        <button data-value="off">オフ</button><button data-value="on">Pi に残す</button>
+    <p class="note">3手はより正確ですが、10 倍以上時間がかかります。</p>
+    </div>
+
+    <!-- 盤面の操作。見出しは付けず、ボタンを横に並べる（TODO-112。前は閉じた「その他の設定」の中） -->
+    <div class="row wrap">
+      <button id="swap-colours" class="button small">色を入れ替え</button>
+      <button id="reset-start" class="button small">初期配置</button>
+    </div>
+    <!-- 読み取りの改善（TODO-112）。中のどちらも出ないときは隠れる -->
+    <div id="improve" class="panel">
+    <h2 class="panel-title">読み取りの改善</h2>
+    <div id="collect-opt" hidden>
+      <p class="note">「解析する」ボタンを押したときに、写真と盤面の修正結果をサーバーに保存するようにすると、読み取りの改善に役立ちます。</p>
+      <div class="opt">
+        <span class="opt-label">サーバーに</span>
+        <div class="seg" data-name="collect">
+          <button data-value="on">保存する</button><button data-value="off">保存しない</button>
+        </div>
       </div>
     </div>
-    <p id="collect-note" class="note" hidden>「Pi に残す」だと、解析のたびに写真と盤面を Pi に保存します。</p>
-    </details>
+    <div id="export-opt" hidden>
+      <p class="note">写真と盤面の修正結果をローカルファイルに書き出すこともできます。</p>
+      <div class="row wrap"><button id="export-sample" class="button small">ファイルに書き出す</button></div>
+    </div>
+    </div>
 
   </section>
 

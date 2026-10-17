@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.63.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.64.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -73,7 +73,7 @@ const state = {
   moveShown: 0,        // the move in the result's list drawn as arrows
   // settings
   photoView: "side",   // the photo on the board screen: "side" (next to the board) or "off"
-  collect: stored("collect", ["on", "off"], "off"),  // "on": keep the photo and the fixed board on the server
+  collect: stored("collect", ["on", "off"], "on"),   // "on": keep the photo and the fixed board on the server (on unless turned off, TODO-112)
   // where the photo is kept on this phone (history.js)
   historyId: null,
   historyScale: 1,     // image px -> the stored copy's px
@@ -178,13 +178,6 @@ part((s) => s.bottomColour, (s) => {
   }
 });
 
-// What in the folded 「その他の設定」 is not as it starts, beside its name, so it shows while closed (TODO-086).
-const drawMoreSet = (s) => {
-  const set = [s.plies === "3" && "3手", s.collect === "on" && !$("collect-opt").hidden && "Pi に残す"].filter(Boolean);
-  $("more-set").textContent = set.length ? `（${set.join("・")}）` : "";
-};
-part((s) => [s.plies, s.collect], drawMoreSet);
-
 // ---- the corners screen
 const cornersView = BgCornersView.create($("photo-canvas"), {
   photo: () => (state.edit ? editPreview() : state.photo && state.photo.bitmap),
@@ -264,7 +257,7 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColo
   const doubtful = !!g && Math.abs(g.margin) < 1;   // only then: the setting above shows the side (TODO-086)
   $("home-note").hidden = !doubtful;
   $("home-note").textContent = doubtful ? `ホームの左右を決められず、${side}にしました。違えば選び直してください。` : "";
-  $("export-sample").hidden = !s.fromPhoto;
+  $("export-opt").hidden = !s.fromPhoto;
 });
 
 part((s) => [s.paintSide, s.undo.length], (s) => {
@@ -893,7 +886,7 @@ async function analyze() {
 
 // ================================================================ a sample for the recognizer (sample.js)
 // The photo and the board as fixed by hand, as two files (photo + truth.json) to send to the
-// developers so the recognizer can be measured and improved on them; with 「Pi に残す」 on, the
+// developers so the recognizer can be measured and improved on them; with 「サーバーに保存する」 on (the default, TODO-112), the
 // same pair goes to the server each time the board is analysed (POST /samples).
 
 async function sampleOf(name) {
@@ -1205,8 +1198,7 @@ BgApi.version().then((v) => {
   // the note before the commit: on a narrow screen the end is cut off, and the note matters more
   $("hdr-version").textContent = `a${APP_VERSION} · r${v.recognizer}` + note + (v.commit ? ` · ${v.commit}` : "");
   $("hdr-version").classList.toggle("old", cmp !== 0);
-  $("collect-opt").hidden = $("collect-note").hidden = !v.samples;
-  redraw(drawMoreSet);   // 「Pi に残す」 counts only where the server keeps samples
+  $("collect-opt").hidden = !v.samples;
   $("claude-corners").hidden = $("claude-note").hidden = !v.claude;
 }).catch(() => {});
 

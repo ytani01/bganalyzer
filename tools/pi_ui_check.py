@@ -104,7 +104,7 @@ def check_speech(browser):
 
 
 def check_export(browser, *scripts):
-    """PI-014: 「精度改善用に書き出す」 gives the photo and a truth.json that matches the screen."""
+    """PI-014: 「ファイルに書き出す」 gives the photo and a truth.json that matches the screen."""
     page = open_app(browser, *scripts)
     truth = read_photo(page)
     files, downloads = {}, []
@@ -138,13 +138,13 @@ def evaluate(path):
 
 
 def check_collect(browser):
-    """PI-015: with 「Pi に残す」 on, analysing keeps one pair in collected/ (off: nothing)."""
+    """PI-015: with 「サーバーに保存する」 on, analysing keeps one pair in collected/ (off: nothing)."""
     out = []
     for mode in ("off", "on"):
         before = collected()
         page = open_app(browser)
         read_photo(page)
-        seg = f'.seg[data-name="collect"] [data-value="{mode}"]'   # in 「その他の設定」: shown only when the Pi keeps samples
+        seg = f'.seg[data-name="collect"] [data-value="{mode}"]'   # in 「読み取りの改善」: shown only when the server keeps samples
         reveal(page, seg)
         page.click(seg)
         show_outcome(page)

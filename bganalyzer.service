@@ -6,7 +6,7 @@ Description=bganalyzer (API and PWA)
 
 [Service]
 WorkingDirectory=@DIR@
-# PWA の設定で「Pi に残す」をオンにしたときだけ、写真と直した盤面がここに入る（TODO-030）
+# PWA の盤面の画面の「サーバーに［保存する］」（既定）のとき、写真と直した盤面がここに入る（TODO-030、TODO-112）
 Environment=BG_SAMPLES_DIR=@DIR@/collected
 # 四隅の画面に「Claude に選ばせる」を出すときは、このファイルは変えず、systemctl --user edit bganalyzer で
 # Environment=BG_CLAUDE=%h/.local/bin/claude を足す（押すと写真が Anthropic に送られる。TODO-082、docs/raspi.md）

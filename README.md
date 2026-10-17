@@ -87,7 +87,7 @@ flowchart TB
 | `analyzer/static/` | PWA。写真を選ぶ → 四隅の初期値（`/find-corners`）をドラッグで調整（ルーペ付き）→ `/analyze-photo` → 盤面を表示してタップで修正 → `/analyze` → 勝率・ギャモン率・ピップ・最善手を表示。長辺 2560px を超える写真は 2048px に縮めて送る |
 | `analyzer/analysis.py` | 入力を確かめ、勝率・ギャモン率・エクイティ・最善手・キューブ判断を API の形に整え、日本語の要約を作る |
 | `analyzer/engine.py` | gnubg の呼び出し。gnubg はメインスレッド以外で落ちるので専用の子プロセスで動かす。キューブ判断（`hint` の表示を読む）と、gnubg が途中で切る手の補完もここ |
-| `analyzer/models.py`, `samples.py` | API のリクエストの型、`POST /samples`（「Pi に残す」の写真の保存と測り直し） |
+| `analyzer/models.py`, `samples.py` | API のリクエストの型、`POST /samples`（「サーバーに保存する」の写真の保存と測り直し） |
 | `analyzer/speech.py` | `GET /speech`。読み上げの 1 文を Google 翻訳の読み上げ（公式でない API）に送り、音声を返す（文が Google に送られる。失敗したら PWA はブラウザの音声合成で読む） |
 | `analyzer/claude_corners.py` | `POST /claude-corners`。`BG_CLAUDE` を設定したサーバーだけで、写真を `claude -p` に渡して四隅を選ばせる（押したときだけ写真が Anthropic に送られる） |
 
@@ -176,7 +176,7 @@ flowchart LR
     relay <-- "Pi から外向きの接続" --> tsd
 ```
 
-- 写真はサーバーに送って処理するだけで、保存はしません。例外は PWA の設定で「Pi に残す」をオンにしたときで、解析するたびに写真と直した盤面を Pi の `collected/` に保存します（[docs/raspi.md](docs/raspi.md)）。
+- 写真はサーバーに送って処理するだけで、保存はしません。例外は PWA の盤面の画面の「サーバーに［保存する］」のとき（既定。［保存しない］にもできる）で、解析するたびに写真と直した盤面を Pi の `collected/` に保存します（[docs/raspi.md](docs/raspi.md)）。
 - API は CORS を全オリジン許可にしているので、PWA を別ドメインから配信しても呼び出せます。
 
 ## 現状
