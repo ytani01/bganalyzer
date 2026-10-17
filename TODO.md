@@ -76,8 +76,6 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 
 **無駄を省く工夫:** 測るのは横からのサンプルだけ（`evaluate.py`・`check_corners.py` は正解の `side` を見る）。TODO-120 の試しの道具（`archives/agents/TODO-120/measure_side.py`）を使い回す
 
----
-
 ## TODO-134. 通常の向きで四隅が見つからなければ、横から撮ったモードの右・左で探し直す
 
 | | main | 担当 |
