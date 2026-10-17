@@ -248,7 +248,8 @@ def record(out, names):
     if "history" in names and "photo" not in names:
         names = [n for n in FLOWS if n in names or n == "photo"]
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROMIUM if Path(CHROMIUM).exists() else None)
+        browser = (p.chromium.connect_over_cdp(os.environ["BG_CDP"]) if os.environ.get("BG_CDP")   # tools/live_view.py's, to watch
+                   else p.chromium.launch(executable_path=CHROMIUM if Path(CHROMIUM).exists() else None))
         ctx = browser.new_context(viewport={"width": 412, "height": 915}, reduced_motion="reduce",
                                   service_workers="block", accept_downloads=True)
         ctx.add_init_script(INIT)

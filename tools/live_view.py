@@ -2,6 +2,9 @@
 commit (after a merge restarts the service). Close the window to stop (TODO-108).
 
 usage: uv run -q --no-project --with playwright python tools/live_view.py [URL]   (default: the local service)
+
+With it open, tools/pi_ui_check.py and tools/ui_snapshot.py run with BG_CDP=http://127.0.0.1:9222 drive this
+browser (in a window of their own) instead of a hidden one, so what they do can be watched.
 """
 import json
 import os
@@ -13,6 +16,7 @@ from playwright.sync_api import Error, sync_playwright
 URL = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BG_URL", "http://127.0.0.1:8000/")
 CHROMIUM = os.environ.get("BG_CHROMIUM", "/usr/bin/chromium")
 PHONE = {"width": 412, "height": 915}   # as tools/pi_ui_check.py
+CDP_PORT = 9222   # other tools drive this browser with BG_CDP=http://127.0.0.1:9222, to be watched here
 EVERY_MS = 2000
 
 
@@ -27,7 +31,7 @@ def commit():
 
 def main():
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROMIUM, headless=False)
+        browser = p.chromium.launch(executable_path=CHROMIUM, headless=False, args=[f"--remote-debugging-port={CDP_PORT}"])
         # no service worker: it would keep serving the old app.js after an update
         context = browser.new_context(viewport=PHONE, is_mobile=True, has_touch=True, device_scale_factor=2,
                                       service_workers="block")
