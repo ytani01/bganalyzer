@@ -120,18 +120,19 @@ class _Upright:
     """How many rows of a band have an edge pixel on each nearly upright line x = c + y k / 200
     (running counts per slope, stored every STEP rows, so any band is a subtraction)."""
 
-    def __init__(self, gx, gy):
+    def __init__(self, gx, gy, slopes=SLOPES, reach=0.3):
         h, w = gx.shape
+        self.slopes = slopes
         edge = ((gx > gy) & (gx > EDGE_MIN - 10)).astype(np.uint8)
         edge = cv2.dilate(edge, np.ones((1, 3), np.uint8))
         ys, xs = np.nonzero(edge)
         # ponytail: sized for slopes up to 0.3; steeper lines lose the votes past the photo's side
         # (TODO-104: sizing it to SLOPES changed nothing on the samples and takes 1.5 times the memory)
-        self.pad = pad = int(0.3 * h) + 2
+        self.pad = pad = int(reach * h) + 2   # reach: side.py looks at steeper slopes (TODO-120)
         nb = h // STEP + 1
         width = w + 2 * pad
-        self.cum = np.zeros((len(SLOPES), nb + 1, width), np.int32)
-        for i, k in enumerate(SLOPES):
+        self.cum = np.zeros((len(slopes), nb + 1, width), np.int32)
+        for i, k in enumerate(slopes):
             c = xs - _shift(ys, int(k)) + pad          # the line through (x, y) with this slope
             ok = (c >= 0) & (c < width)
             n = np.bincount((ys[ok] // STEP) * width + c[ok], minlength=nb * width)[:nb * width]
@@ -146,14 +147,14 @@ class _Upright:
         share = (self.cum[:, j1] - self.cum[:, j0]) / ((j1 - j0) * STEP)
         # where each line crosses the middle of the band: two lines near there are the same edge
         ymid = (y0 + y1) // 2
-        mid = (np.arange(share.shape[1])[None, :] - self.pad) + _shift(ymid, SLOPES[:, None])
+        mid = (np.arange(share.shape[1])[None, :] - self.pad) + _shift(ymid, self.slopes[:, None])
         sep = int(LINE_SEP * self.w)
         out = []
         for _ in range(V_LINES):
             i, c = np.unravel_index(int(np.argmax(share)), share.shape)
             if share[i, c] < V_COVER:
                 break
-            out.append((int(SLOPES[i]), int(c) - self.pad, float(share[i, c])))
+            out.append((int(self.slopes[i]), int(c) - self.pad, float(share[i, c])))
             share[np.abs(mid - mid[i, c]) <= sep] = 0
         return sorted(out, key=lambda v: v[1])
 

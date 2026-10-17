@@ -74,7 +74,9 @@ def side_guess(small):
         q = cand
     return q, n
 
-for path in sys.argv[1:]:
+if "--wide" in sys.argv:   # long edges leaning up to 45 degrees (corners.py looks up to 27)
+    C.SLOPES = np.arange(-200, 201, 4)
+for path in [a for a in sys.argv[1:] if not a.startswith("--")]:
     t = json.load(open(path))
     img = cv2.imread(str(Path(path).parent / t["image"]))
     small, s = C.shrink(img)

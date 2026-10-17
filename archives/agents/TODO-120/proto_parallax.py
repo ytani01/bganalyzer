@@ -29,7 +29,7 @@ def camera(H, shape):
     K, r1, r2, r3, t = geometry.camera_from_h(H, shape)
     R = np.stack([r1, r2, r3], 1)
     c = -R.T @ t
-    return c if c[2] > 0 else -c
+    return np.array([c[0], c[1], abs(c[2])])   # r3's sign only decides which side of the board is up
 
 def shifted(circles, lay, pitch):
     """Each circle (a checker's top, as high as the checker is thick) moved to where the checker
