@@ -89,6 +89,8 @@ const BgCornersView = (() => {
         ctx.lineWidth = 2;
         ctx.strokeRect(ax, ay, bx - ax, by - ay);
         ctx.setLineDash([]);
+        ctx.fillStyle = "#fff";   // handles on the corners: they can be picked up
+        for (const [x, y] of [[ax, ay], [bx, ay], [bx, by], [ax, by]]) ctx.fillRect(x - 5, y - 5, 10, 10);
       }
     }
 
@@ -116,13 +118,34 @@ const BgCornersView = (() => {
       ctx.stroke();
     }
 
+    // A finger near a corner or an edge of the rectangle moves that corner or edge; null elsewhere.
+    // from: the fixed corner; to: the moving one; axis: the only coordinate that follows the finger.
+    function grabTrim(e) {
+      const r = app.trimmed();
+      if (!r) return null;
+      const box = canvas.getBoundingClientRect(), px = e.clientX - box.left, py = e.clientY - box.top;
+      const [ax, ay] = toCanvas(r.slice(0, 2)), [bx, by] = toCanvas(r.slice(2));
+      const near = (a, b) => Math.abs(a - b) < GRAB;
+      const inX = px > ax - GRAB && px < bx + GRAB, inY = py > ay - GRAB && py < by + GRAB;
+      // on a small rectangle both sides can be near: the nearer one wins
+      const left = near(px, ax) && Math.abs(px - ax) <= Math.abs(px - bx), right = near(px, bx) && !left;
+      const top = near(py, ay) && Math.abs(py - ay) <= Math.abs(py - by), bottom = near(py, by) && !top;
+      const [x0, y0, x1, y1] = r;
+      if ((left || right) && (top || bottom)) {
+        return { from: [left ? x1 : x0, top ? y1 : y0], to: [left ? x0 : x1, top ? y0 : y1], axis: null };
+      }
+      if ((left || right) && inY) return { from: [left ? x1 : x0, left ? y1 : y0], to: [left ? x0 : x1, left ? y0 : y1], axis: "x" };
+      if ((top || bottom) && inX) return { from: [top ? x1 : x0, top ? y1 : y0], to: [top ? x0 : x1, top ? y0 : y1], axis: "y" };
+      return null;
+    }
+
     // A finger on a corner picks it up; elsewhere it adds the next one while there are fewer than 4.
     canvas.addEventListener("pointerdown", (e) => {
       app.onTouch();
       if (!view) return;
       if (app.trimming()) {
-        const p = toImage(e);
-        trim = { from: p, to: p, pointerId: e.pointerId };
+        trim = grabTrim(e) || { from: toImage(e), to: toImage(e), pointerId: e.pointerId };
+        trim.pointerId = e.pointerId;
         canvas.setPointerCapture(e.pointerId);
         e.preventDefault();
         return;
@@ -147,7 +170,12 @@ const BgCornersView = (() => {
     });
 
     canvas.addEventListener("pointermove", (e) => {
-      if (trim && e.pointerId === trim.pointerId) { trim.to = toImage(e); draw(); return; }
+      if (trim && e.pointerId === trim.pointerId) {
+        const p = toImage(e);
+        trim.to = trim.axis === "x" ? [p[0], trim.to[1]] : trim.axis === "y" ? [trim.to[0], p[1]] : p;
+        draw();
+        return;
+      }
       if (!drag || e.pointerId !== drag.pointerId) return;
       const corners = app.corners().map((c) => c.slice());
       corners[drag.index] = loupeAt = toImage(e);

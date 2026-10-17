@@ -72,12 +72,13 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <section id="corners" class="step" hidden>
     <p class="lead" id="corner-help"></p>
     <div class="canvas-wrap"><canvas id="photo-canvas"></canvas></div>
+    <!-- 回転: 押すたびに確定する（TODO-122）。画像の編集の最中は隠す -->
+    <div id="turn-tools" class="row wrap">
+      <button id="edit-left" class="button small">左に 90°</button>
+      <button id="edit-right" class="button small">右に 90°</button>
+    </div>
     <!-- 画像の編集（TODO-070）: 回転とトリミング。確定すると編集後の画像がそれ以降の写真になる -->
     <div id="edit-tools" hidden>
-      <div class="row wrap">
-        <button id="edit-left" class="button small">左に 90°</button>
-        <button id="edit-right" class="button small">右に 90°</button>
-      </div>
       <div class="opt">
         <span class="opt-label">細かい角度<small id="edit-angle-text">0°</small></span>
         <input id="edit-angle" class="angle" type="range" min="-45" max="45" step="0.5" value="0" aria-label="細かい角度">
