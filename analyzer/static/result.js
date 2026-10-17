@@ -30,11 +30,11 @@ const BgResult = (() => {
   const sub = (p, label, f) => `<tr><td class="sub">${label}</td>` +
     ["white", "black"].map((c) => `<td>${Math.max(0, Math.round(10 * f(p[c])) / 10)}%</td>`).join("") + "</tr>";
 
-  // Top to bottom (TODO-090): the summary, the winning chances as a bar, the cube decision or the
-  // best move, then the table of the numbers.
+  // Top to bottom (TODO-090): the winning chances as a bar, the cube decision or the best move, then
+  // the table of the numbers. No summary line: it said what these say (TODO-129).
   function html(r, dice) {
     const pips = r.pips;
-    let out = `<p class="summary">${esc(r.summary)}</p>`;
+    let out = "";
     const p = r.probabilities;
     if (!r.game_over) {
       out += `<div class="winbar"><div class="w" style="width:${p.white.win}%">${NAME.white} ${p.white.win}%</div>` +

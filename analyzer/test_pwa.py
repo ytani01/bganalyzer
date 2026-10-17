@@ -171,10 +171,10 @@ def test_result_html():
     assert "<h2>キューブ</h2>" in out["cube"] and "白の人は <b>ダブルする</b>" in out["cube"]
     assert "ダブルされたら、黒の人はパス。" in out["cube"] and "+1.200" in out["cube"]
     assert "振るのは" not in out["cube"]   # with the cube decision, the pip line stands alone
-    # TODO-090: summary, the bar of winning chances, the best move or the cube decision, then the table
+    # TODO-090: the bar of winning chances first (TODO-129: no summary), the best move or the cube decision, then the table
     for html, middle in ((out["moves"], "最善手"), (out["cube"], "<h2>キューブ</h2>")):
-        at = [html.index(s) for s in ('<p class="summary">', '<div class="winbar">', middle, "<table><tr><th></th>")]
-        assert at == sorted(at)
+        at = [html.index(s) for s in ('<div class="winbar">', middle, "<table><tr><th></th>")]
+        assert at == sorted(at) and at[0] == 0 and "手前が有利" not in html
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
