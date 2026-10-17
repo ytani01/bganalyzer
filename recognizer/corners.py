@@ -125,6 +125,8 @@ class _Upright:
         edge = ((gx > gy) & (gx > EDGE_MIN - 10)).astype(np.uint8)
         edge = cv2.dilate(edge, np.ones((1, 3), np.uint8))
         ys, xs = np.nonzero(edge)
+        # ponytail: sized for slopes up to 0.3; steeper lines lose the votes past the photo's side
+        # (TODO-104: sizing it to SLOPES changed nothing on the samples and takes 1.5 times the memory)
         self.pad = pad = int(0.3 * h) + 2
         nb = h // STEP + 1
         width = w + 2 * pad
