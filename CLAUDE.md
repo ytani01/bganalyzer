@@ -72,6 +72,13 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 公開している https://bg.tail5c266.ts.net/bg/ にはクラウドからも届くので、版・画面・公開サンプルの読み取りは
 **クラウドの Claude が `uv run python tools/check_pi.py` で先に確かめてよい**（やり方とやらないことは docs/raspi.md の「クラウドから確かめられること」）。
 
+## アプリの画面を見せるとき
+
+アプリの画面をユーザーに見せる場面では、スクリーンショットを撮って添付する代わりに、`tools/live_view.py` のブラウザを操作して見せる
+（2026-10-17 ユーザーが決めた。TODO-108）。開いていなければ live_view を起動し、Playwright から `connect_over_cdp("http://127.0.0.1:9222")` で
+そのブラウザにつないで操作する（`tools/pi_ui_check.py`・`tools/ui_snapshot.py` は `BG_CDP=http://127.0.0.1:9222` を付ける）。
+サブエージェントに画面を操作させるときも、依頼に `BG_CDP` を付けるよう書く。
+
 ## タスク管理
 
 `TODO.md` で管理する（書式は `~/.claude/CLAUDE.md` と `todo-workflow` skill）。
