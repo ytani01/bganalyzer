@@ -190,7 +190,8 @@ def test_corners_are_found_on_samples():
     # The far / near edges are the strongest straight edges, the left / right ones lines with an edge
     # in nearly every row between them; each edge is moved to the innermost strong edge nearby, and
     # the quad that frames two rows of twelve triangles best wins (TODO-028, recognizer 0.16.0).
-    # diagram-prime: the frame with the point numbers is taken (4.7%).
+    # diagram-prime: the frame with the point numbers is taken (4.7%). photo6 (oblique): its left edge
+    # slopes 0.39, past the 0.3 lines were tried at before recognizer 0.23.2 (23.3%, TODO-104).
     import cv2
     from corners import find_corners
 
@@ -198,7 +199,7 @@ def test_corners_are_found_on_samples():
     for name, most in (("photo2", 0.035), ("photo3", 0.035), ("screen2", 0.035), ("screen1", 0.035),
                        ("commons-tavli-black", 0.035), ("commons-tavli-burl", 0.035),
                        ("commons-dark-homeleft", 0.035), ("commons-diagram-prime", 0.05),
-                       ("commons-travel-case", 0.035), ("tv-vegas-open", 0.035)):
+                       ("commons-travel-case", 0.035), ("tv-vegas-open", 0.035), ("photo6", 0.05)):
         t = json.loads((samples / f"{name}.truth.json").read_text())
         img = cv2.imread(str(samples / t["image"]))
         found = find_corners(img)

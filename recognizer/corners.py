@@ -32,7 +32,7 @@ import exact
 
 DEBUG = None           # a list to collect the scored candidates in (for tuning)
 WORK_SIDE = 800        # longest side the search runs at (px)
-SLOPES = np.arange(-60, 61, 2)   # line slopes tried, in 1/200: up to 0.3 (17 degrees), steps of 0.01
+SLOPES = np.arange(-100, 101, 2)   # line slopes tried, in 1/200: up to 0.5 (27 degrees; oblique photos: photo5 0.36, photo6 0.39), steps of 0.01
 EDGE_MIN = 60          # contrast (summed over Lab's channels) of an edge pixel
 H_LINES = 6            # far / near edge candidates
 V_LINES = 8            # left / right edge candidates for each far / near pair
@@ -125,6 +125,8 @@ class _Upright:
         edge = ((gx > gy) & (gx > EDGE_MIN - 10)).astype(np.uint8)
         edge = cv2.dilate(edge, np.ones((1, 3), np.uint8))
         ys, xs = np.nonzero(edge)
+        # ponytail: sized for slopes up to 0.3; steeper lines lose the votes past the photo's side
+        # (TODO-104: sizing it to SLOPES changed nothing on the samples and takes 1.5 times the memory)
         self.pad = pad = int(0.3 * h) + 2
         nb = h // STEP + 1
         width = w + 2 * pad
