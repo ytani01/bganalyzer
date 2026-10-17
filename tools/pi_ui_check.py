@@ -163,7 +163,8 @@ CHECKS = {"double": check_double, "speech": check_speech, "export": check_export
 def main(names):
     failed = 0
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROMIUM)
+        browser = (p.chromium.connect_over_cdp(os.environ["BG_CDP"]) if os.environ.get("BG_CDP")   # tools/live_view.py's, to watch
+                   else p.chromium.launch(executable_path=CHROMIUM))
         print("version:", json.loads(browser.new_page().goto(URL + "version").text()))
         for name in names or CHECKS:
             try:

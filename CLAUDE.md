@@ -16,6 +16,7 @@ uv run python recognizer/check_accuracy.py                       # 認識の精�
 uv run python tools/check_pi.py                                  # Pi の公開サーバーを外から確かめる
 uv run -q --no-project --with playwright python tools/pi_ui_check.py   # ローカルホストで、スマホの代わりに PWA を操作して確かめる
 uv run -q --no-project --with playwright python tools/ui_snapshot.py record a.json   # PWA を操作して見える画面を記録（compare a.json b.json で 2 つの版を比べる）
+uv run -q --no-project --with playwright python tools/live_view.py   # スマホの大きさの Chromium で開いておき、サービスの版が変わるたびに再読み込み（開いている間、pi_ui_check・ui_snapshot に BG_CDP=http://127.0.0.1:9222 を付けると操作がこの窓のブラウザに見える）
 ```
 
 ## 変えないもの
