@@ -104,7 +104,11 @@ header .app-name { font-size: 16px; font-weight: bold; white-space: nowrap; flex
 .act.reuse small { display: block; font-weight: normal; font-size: 14px; }
 /* The match and its score (TODO-066): a line of the board screen's settings (TODO-086). */
 .match label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-#match-score { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+#match { gap: 4px; }
+#match .opt-label { width: auto; }
+#match-length { flex: 0 1 auto; min-width: 0; field-sizing: content; }   /* as wide as the chosen text, so the score fits on the line */
+#match-score { display: contents; }   /* length, white and black stay on one line; the Crawford check drops to the next */
+#crawford-opt { flex-basis: 100%; }
 #match-score[hidden], #crawford-opt[hidden] { display: none; }
 .back {
   appearance: none;

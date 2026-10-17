@@ -1,0 +1,43 @@
+4. version: a0.69.1 · r0.24.0 · 86990ef
+viewport 390 step corners
+1. 回転の行
+   #edit-left {'top': 403.8, 'left': 16, 'w': 81.6, 'h': 44, 'right': 97.6}
+   #edit-right {'top': 403.8, 'left': 105.6, 'w': 81.6, 'h': 44, 'right': 187.1}
+   #edit-start {'top': 403.8, 'left': 195.1, 'w': 101, 'h': 44, 'right': 296.1}
+  -> distinct tops: [403.8] SAME ROW
+claude hidden: True
+2a. 四隅の行 (Claude 非表示)
+   #corner-reset {'top': 455.8, 'left': 16, 'w': 131, 'h': 44, 'right': 147}
+   #find-again {'top': 455.8, 'left': 155, 'w': 115.6, 'h': 44, 'right': 270.6}
+  -> distinct tops: [455.8] SAME ROW
+2b. 四隅の行 (Claude の hidden を外す)
+   #corner-reset {'top': 478.3, 'left': 16, 'w': 131, 'h': 44, 'right': 147}
+   #find-again {'top': 478.3, 'left': 155, 'w': 115.6, 'h': 44, 'right': 270.6}
+   #claude-corners {'top': 530.3, 'left': 16, 'w': 153.4, 'h': 44, 'right': 169.4}
+  -> distinct tops: [478.3, 530.3] DIFFERENT ROWS
+3a. 四隅の画面 (長さ3, 0-0)
+   #match-length {'top': 694.3, 'left': 115, 'w': 168, 'h': 44, 'right': 283}
+   #score-white {'top': 694.3, 'left': 311, 'w': 43, 'h': 44, 'right': 354}
+   #score-black {'top': 746.3, 'left': 36, 'w': 43, 'h': 44, 'right': 79}
+  -> distinct tops: [694.3, 746.3] DIFFERENT ROWS
+  crawford hidden: False
+3a. 四隅の画面 (白2/3, クロフォード可)
+   #match-length {'top': 694.3, 'left': 115, 'w': 168, 'h': 44, 'right': 283}
+   #score-white {'top': 694.3, 'left': 311, 'w': 43, 'h': 44, 'right': 354}
+   #score-black {'top': 746.3, 'left': 36, 'w': 43, 'h': 44, 'right': 79}
+   #crawford-opt {'top': 746.3, 'left': 87, 'w': 124, 'h': 44, 'right': 211}
+  -> distinct tops: [694.3, 746.3] DIFFERENT ROWS
+  vw 375 scrollW 375
+3b. 盤面の画面 (長さ3, 0-0)
+   #match-length {'top': 981.5, 'left': 126, 'w': 168, 'h': 44, 'right': 294}
+   #score-white {'top': 1033.5, 'left': 47, 'w': 43, 'h': 44, 'right': 90}
+   #score-black {'top': 1033.5, 'left': 118, 'w': 43, 'h': 44, 'right': 161}
+  -> distinct tops: [981.5, 1033.5] DIFFERENT ROWS
+  crawford hidden: False
+3b. 盤面の画面 (白2/3, クロフォード可)
+   #match-length {'top': 981.5, 'left': 126, 'w': 168, 'h': 44, 'right': 294}
+   #score-white {'top': 1033.5, 'left': 47, 'w': 43, 'h': 44, 'right': 90}
+   #score-black {'top': 1033.5, 'left': 118, 'w': 43, 'h': 44, 'right': 161}
+   #crawford-opt {'top': 1033.5, 'left': 169, 'w': 124, 'h': 44, 'right': 293}
+  -> distinct tops: [981.5, 1033.5] DIFFERENT ROWS
+  vw 375 scrollW 375

@@ -1,0 +1,84 @@
+4. version: a0.69.1
+viewport 390 step corners
+1. 回転の行
+   #edit-left {'top': 403.8, 'left': 16, 'w': 81.6, 'h': 44, 'right': 97.6}
+   #edit-right {'top': 403.8, 'left': 105.6, 'w': 81.6, 'h': 44, 'right': 187.1}
+   #edit-start {'top': 403.8, 'left': 195.1, 'w': 101, 'h': 44, 'right': 296.1}
+  -> distinct tops: [403.8] SAME ROW
+claude hidden: True
+2a. 四隅の行 (Claude 非表示)
+   #corner-reset {'top': 455.8, 'left': 16, 'w': 86, 'h': 44, 'right': 102}
+   #find-again {'top': 455.8, 'left': 110, 'w': 71, 'h': 44, 'right': 181}
+  -> distinct tops: [455.8] SAME ROW
+button texts: ['やり直す', '再検出', 'Claude で検出']
+2b. 四隅の行 (Claude の hidden を外す)
+   #corner-reset {'top': 455.8, 'left': 16, 'w': 86, 'h': 44, 'right': 102}
+   #find-again {'top': 455.8, 'left': 110, 'w': 71, 'h': 44, 'right': 181}
+   #claude-corners {'top': 455.8, 'left': 189, 'w': 123.4, 'h': 44, 'right': 312.4}
+  -> distinct tops: [455.8] SAME ROW
+  select text/scrollW/clientW: ['3 ポイント', 108, 108]
+3a. 四隅の画面 長さ=3 0-0
+   #match-length {'top': 671.8, 'left': 61.6, 'w': 110.5, 'h': 44, 'right': 172.1}
+   #score-white {'top': 671.8, 'left': 196.1, 'w': 43, 'h': 44, 'right': 239.1}
+   #score-black {'top': 671.8, 'left': 263.1, 'w': 43, 'h': 44, 'right': 306.1}
+  -> distinct tops: [671.8] SAME ROW
+  crawford hidden: False
+3a. 四隅の画面 長さ=3 白=2
+   #match-length {'top': 694.3, 'left': 61.6, 'w': 110.5, 'h': 44, 'right': 172.1}
+   #score-white {'top': 694.3, 'left': 196.1, 'w': 43, 'h': 44, 'right': 239.1}
+   #score-black {'top': 694.3, 'left': 263.1, 'w': 43, 'h': 44, 'right': 306.1}
+   #crawford-opt {'top': 742.3, 'left': 16, 'w': 343, 'h': 44, 'right': 359}
+  -> distinct tops: [694.3, 742.3] DIFFERENT ROWS
+  vw 375 scrollW 375
+  select text/scrollW/clientW: ['25 ポイント', 117, 117]
+3a. 四隅の画面 長さ=25 0-0
+   #match-length {'top': 694.3, 'left': 61.6, 'w': 119.4, 'h': 44, 'right': 181}
+   #score-white {'top': 694.3, 'left': 205, 'w': 52, 'h': 44, 'right': 257}
+   #score-black {'top': 694.3, 'left': 281, 'w': 52, 'h': 44, 'right': 333}
+  -> distinct tops: [694.3] SAME ROW
+  crawford hidden: False
+3a. 四隅の画面 長さ=25 白=24
+   #match-length {'top': 694.3, 'left': 61.6, 'w': 119.4, 'h': 44, 'right': 181}
+   #score-white {'top': 694.3, 'left': 205, 'w': 52, 'h': 44, 'right': 257}
+   #score-black {'top': 694.3, 'left': 281, 'w': 52, 'h': 44, 'right': 333}
+   #crawford-opt {'top': 742.3, 'left': 16, 'w': 343, 'h': 44, 'right': 359}
+  -> distinct tops: [694.3, 742.3] DIFFERENT ROWS
+  vw 375 scrollW 375
+  select text/scrollW/clientW: ['アンリミテッド', 143, 143]
+  score hidden: True
+3a. 四隅の画面 長さ=アンリミテッド
+   #match-length {'top': 694.3, 'left': 61.6, 'w': 145.4, 'h': 44, 'right': 207}
+  -> distinct tops: [694.3] SAME ROW
+  select text/scrollW/clientW: ['3 ポイント', 108, 108]
+3b. 盤面の画面 長さ=3 0-0
+   #match-length {'top': 981.5, 'left': 72.6, 'w': 110.5, 'h': 44, 'right': 183.1}
+   #score-white {'top': 981.5, 'left': 207.1, 'w': 43, 'h': 44, 'right': 250.1}
+   #score-black {'top': 981.5, 'left': 274.1, 'w': 43, 'h': 44, 'right': 317.1}
+  -> distinct tops: [981.5] SAME ROW
+  crawford hidden: False
+3b. 盤面の画面 長さ=3 白=2
+   #match-length {'top': 981.5, 'left': 72.6, 'w': 110.5, 'h': 44, 'right': 183.1}
+   #score-white {'top': 981.5, 'left': 207.1, 'w': 43, 'h': 44, 'right': 250.1}
+   #score-black {'top': 981.5, 'left': 274.1, 'w': 43, 'h': 44, 'right': 317.1}
+   #crawford-opt {'top': 1029.5, 'left': 27, 'w': 321, 'h': 44, 'right': 348}
+  -> distinct tops: [981.5, 1029.5] DIFFERENT ROWS
+  vw 375 scrollW 375
+  select text/scrollW/clientW: ['25 ポイント', 117, 117]
+3b. 盤面の画面 長さ=25 0-0
+   #match-length {'top': 981.5, 'left': 72.6, 'w': 119.4, 'h': 44, 'right': 192}
+   #score-white {'top': 981.5, 'left': 216, 'w': 52, 'h': 44, 'right': 268}
+   #score-black {'top': 981.5, 'left': 292, 'w': 52, 'h': 44, 'right': 344}
+  -> distinct tops: [981.5] SAME ROW
+  crawford hidden: False
+3b. 盤面の画面 長さ=25 白=24
+   #match-length {'top': 981.5, 'left': 72.6, 'w': 119.4, 'h': 44, 'right': 192}
+   #score-white {'top': 981.5, 'left': 216, 'w': 52, 'h': 44, 'right': 268}
+   #score-black {'top': 981.5, 'left': 292, 'w': 52, 'h': 44, 'right': 344}
+   #crawford-opt {'top': 1029.5, 'left': 27, 'w': 321, 'h': 44, 'right': 348}
+  -> distinct tops: [981.5, 1029.5] DIFFERENT ROWS
+  vw 375 scrollW 375
+  select text/scrollW/clientW: ['アンリミテッド', 143, 143]
+  score hidden: True
+3b. 盤面の画面 長さ=アンリミテッド
+   #match-length {'top': 955.1, 'left': 72.6, 'w': 145.4, 'h': 44, 'right': 218}
+  -> distinct tops: [955.1] SAME ROW
