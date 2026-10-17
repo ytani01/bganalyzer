@@ -64,6 +64,8 @@ def clean(t):
     """The fields the samples have, of the types they have (collected.valid has checked the rest)."""
     is_int = lambda v: type(v) is int
     out = {k: t[k] for k in ("corners_TL_TR_BR_BL", "home", "points", "bar_white", "bar_black", "dice") if k in t}
+    if t.get("side") in ("right", "left"):   # taken from beside the board (TODO-120)
+        out["side"] = t["side"]
     out |= {k: t[k] for k in ("bottom_colour", "off_white", "off_black", "cube_value") if is_int(t.get(k))}
     if isinstance(t.get("cube"), dict):
         out["cube"] = {"at": t["cube"]["at"]} | ({"value": t["cube"]["value"]} if is_int(t["cube"].get("value")) else {})

@@ -120,18 +120,19 @@ class _Upright:
     """How many rows of a band have an edge pixel on each nearly upright line x = c + y k / 200
     (running counts per slope, stored every STEP rows, so any band is a subtraction)."""
 
-    def __init__(self, gx, gy):
+    def __init__(self, gx, gy, slopes=SLOPES, reach=0.3):
         h, w = gx.shape
+        self.slopes = slopes
         edge = ((gx > gy) & (gx > EDGE_MIN - 10)).astype(np.uint8)
         edge = cv2.dilate(edge, np.ones((1, 3), np.uint8))
         ys, xs = np.nonzero(edge)
         # ponytail: sized for slopes up to 0.3; steeper lines lose the votes past the photo's side
         # (TODO-104: sizing it to SLOPES changed nothing on the samples and takes 1.5 times the memory)
-        self.pad = pad = int(0.3 * h) + 2
+        self.pad = pad = int(reach * h) + 2   # reach: side.py looks at steeper slopes (TODO-120)
         nb = h // STEP + 1
         width = w + 2 * pad
-        self.cum = np.zeros((len(SLOPES), nb + 1, width), np.int32)
-        for i, k in enumerate(SLOPES):
+        self.cum = np.zeros((len(slopes), nb + 1, width), np.int32)
+        for i, k in enumerate(slopes):
             c = xs - _shift(ys, int(k)) + pad          # the line through (x, y) with this slope
             ok = (c >= 0) & (c < width)
             n = np.bincount((ys[ok] // STEP) * width + c[ok], minlength=nb * width)[:nb * width]
@@ -146,14 +147,14 @@ class _Upright:
         share = (self.cum[:, j1] - self.cum[:, j0]) / ((j1 - j0) * STEP)
         # where each line crosses the middle of the band: two lines near there are the same edge
         ymid = (y0 + y1) // 2
-        mid = (np.arange(share.shape[1])[None, :] - self.pad) + _shift(ymid, SLOPES[:, None])
+        mid = (np.arange(share.shape[1])[None, :] - self.pad) + _shift(ymid, self.slopes[:, None])
         sep = int(LINE_SEP * self.w)
         out = []
         for _ in range(V_LINES):
             i, c = np.unravel_index(int(np.argmax(share)), share.shape)
             if share[i, c] < V_COVER:
                 break
-            out.append((int(SLOPES[i]), int(c) - self.pad, float(share[i, c])))
+            out.append((int(self.slopes[i]), int(c) - self.pad, float(share[i, c])))
             share[np.abs(mid - mid[i, c]) <= sep] = 0
         return sorted(out, key=lambda v: v[1])
 
@@ -351,7 +352,7 @@ def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT)):
     return best[1]
 
 
-def find_corners(img, progress=None, fixed=None, crop=None):
+def find_corners(img, progress=None, fixed=None, crop=None, search=None):
     """TL, TR, BR, BL of the playing area in image pixels, or None if no board was found.
 
     fixed: TL, TR, BR, BL, each [x, y] the user has put in place or None; those are kept and only
@@ -362,7 +363,8 @@ def find_corners(img, progress=None, fixed=None, crop=None):
     pixels: "edges" {lines: the far / near edge candidates across the photo}, "uprights" {lines: the
     left / right edge candidates, over the band between two of those}, "candidates" {quads: the
     quadrilaterals that looked most like a board at first, best first}, "corners" {corners} (only
-    when a board is found). It does not change what is found."""
+    when a board is found). It does not change what is found.
+    search: what looks in the shrunk photo, called as guess is (side.py's for photos taken from beside, TODO-120)."""
     h, w = img.shape[:2]
     x0, y0, x1, y1 = (0, 0, w, h) if crop is None else (
         min(max(int(crop[0]), 0), w - 1), min(max(int(crop[1]), 0), h - 1),
@@ -379,7 +381,7 @@ def find_corners(img, progress=None, fixed=None, crop=None):
         if progress:
             def emit(stage, **arrays):
                 progress(stage, {k: (np.float64(v) / s + at).round(1).tolist() for k, v in arrays.items()})
-        q = guess(small, emit, [None if p is None else (np.float64(p) - at) * s for p in fixed],
+        q = (search or guess)(small, emit, [None if p is None else (np.float64(p) - at) * s for p in fixed],
                   (MIN_WIDTH, MIN_HEIGHT) if crop is None else TRIMMED)
         if q is None:
             return None

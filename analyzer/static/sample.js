@@ -13,8 +13,9 @@ const BgSample = (() => {
   }
 
   // The truth.json for one photo. s: {image (file name), corners [[x, y]] TL TR BR BL in the
-  // image's pixels, home, bottomColour, board {points, bar_white, bar_black}, dice, cube, read}.
-  // read is the board the recognizer gave before the user fixed it (null if not known).
+  // image's pixels, home, bottomColour, board {points, bar_white, bar_black}, dice, cube, read, side}.
+  // read is the board the recognizer gave before the user fixed it (null if not known); side "right" or
+  // "left" when the photo was taken from beside the board and read so (TODO-120), else left out.
   function truth(s) {
     const b = s.board;
     const onBoard = (sign) => b.points.reduce((t, n) => t + Math.max(sign * n, 0), 0);
@@ -34,6 +35,7 @@ const BgSample = (() => {
       cube: { at: (s.cube && s.cube.at) || "centre" },
     };
     if (s.cube && s.cube.at !== "centre") t.cube_value = s.cube.value;
+    if (s.side) t.side = s.side;
     if (s.read) {
       t.read = { points: s.read.points.slice(), bar_white: s.read.bar_white, bar_black: s.read.bar_black };
       t.fixed_points = b.points.map((n, i) => (n !== s.read.points[i] ? i + 1 : 0)).filter(Boolean);
