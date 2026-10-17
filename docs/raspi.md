@@ -100,6 +100,7 @@ tailscale funnel status
 | ログを見る | `journalctl _SYSTEMD_USER_UNIT=bganalyzer.service -f`（`adm` グループに入っていれば sudo は要らない。`journalctl --user` では見えない） |
 | 止める | `systemctl --user stop bganalyzer`（Pi を再起動すると、また立ち上がる） |
 | 公開の設定を見る | `tailscale funnel status` |
+| 開発機で画面を開いておく | `uv run -q --no-project --with playwright python tools/live_view.py`（スマホの大きさ 412×915 の Chromium の窓で開き、サービスが別のコミットで動き出すたびに再読み込みする。窓を閉じると終わる。別の URL は引数で） |
 
 - Pi を再起動しても、落ちても、systemd がアプリを自動で立ち上げ直します（`Restart=always`）。
 - 更新は `main` を pull して依存を揃え、立ち上げ直すだけです。`bganalyzer.service` が変わったときだけは、「2.」の `sed` から `enable --now` までをやり直し、`systemctl --user restart bganalyzer` します。

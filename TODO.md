@@ -158,7 +158,7 @@ TODO-077 で、`recognizer/checkers.py` の `column_texture` は、行の中央�
 Playwright で画面付きの Chromium（`/usr/bin/chromium`）を起動し、数秒おきに `/version` のコミット ID を見て、変わったら再読み込みする。
 古い app.js が残らないよう Service Worker は止める。窓を閉じたら終わる。
 
-- [ ] `tools/` にスクリプトを置き、`CLAUDE.md` のコマンドの一覧と `docs/raspi.md` の「ふだんの運用」に使い方を書く
+- [x] `tools/` にスクリプトを置き、`CLAUDE.md` のコマンドの一覧と `docs/raspi.md` の「ふだんの運用」に使い方を書く
 - [ ] ローカル: 起動するとスマホの大きさの窓が開き、サービスを再起動して版が変わると再読み込みされる
 
 **無駄を省く工夫:** 確かめるのは、窓の大きさと、コミット ID が変わったときに 1 回再読み込みされることだけ（`/version` を差し替えるか、サービスを 1 回再起動して見る）
