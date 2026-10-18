@@ -25,8 +25,15 @@ for the user to drag into place.
 
 The user can then look again (TODO-068): the corners they have dragged into place stay where they
 are in every candidate, and only the part of the photo they have trimmed to is looked in.
+
+Before all that, a small YOLO-pose model (corners_model.onnx, made by train_corners.py, run with
+OpenCV's dnn) guesses roughly where the corners are: candidates far from them score less, and if
+nothing is found, the search looks again only around them (TODO-136).
 """
 from __future__ import annotations
+
+import os
+import threading
 
 import cv2
 import numpy as np
@@ -69,6 +76,13 @@ FW, FH, FM = 400, 320, 40
 OUT, IN = 0.06, 0.05   # how far each edge is looked for, outwards and inwards, against the side
 NEAR = 0.05            # a candidate agrees with a fixed corner this near it, against the long side looked in
 PEAK = 0.4             # an edge counts if this strong against the strongest in the range
+# where the board roughly is, from the YOLO-pose model (TODO-136)
+MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "corners_model.onnx")
+MODEL_SIDE = 640       # the model's input (a square)
+MODEL_CONF = 0.25      # a board's confidence, at least
+MODEL_MARGIN = 0.15    # the keypoints' bounding box is widened by this share of its sides, each way
+HINT_FREE = 0.08       # a candidate's corners this far from the model's (against the long side), free
+HINT_WEIGHT = 4.0      # past that, its score goes down by this much per long side
 
 
 def shrink(img):
@@ -344,12 +358,13 @@ def _move_in(small, quad):
 
 # ---------------------------------------------------------------- the search --
 
-def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT)):
+def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT), hint=None):
     """TL, TR, BR, BL of the playing area in small's pixels (float64 4 x 2), or None.
 
     fixed: TL, TR, BR, BL, each a point (small's pixels) the user has put in place, or None: those
     stay where they are, and only the others are looked for. least: the playing area's width and
-    height, at least, against small's.
+    height, at least, against small's. hint: TL, TR, BR, BL where the model sees the board (small's
+    pixels), or None: candidates far from it score less (TODO-136).
     emit(stage, **arrays): told of each stage of the search, in small's pixels, for showing it as it
     goes ("edges", "uprights", "candidates"; see find_corners). It does not change what is found."""
     emit = emit or (lambda stage, **arrays: None)
@@ -364,6 +379,16 @@ def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT)):
 
     h, w = small.shape[:2]
     gx, gy = _gradients(small)
+
+    # the model may name the corners from another one (a board turned in the photo): each turn tried
+    hints = [] if hint is None else [np.roll(hint, k, 0) for k in range(4)]
+
+    def score(view, q):
+        s = _score(view, gx, gy, q)
+        if hints:
+            far = min(float(np.linalg.norm(q - p, axis=1).max()) for p in hints) / max(h, w)
+            s -= HINT_WEIGHT * max(0.0, far - HINT_FREE)
+        return s
     hl = _h_lines(gx, gy)
     emit("edges", lines=np.float64([[(0, c), (w, c + w * k / 200)] for k, c, _ in hl]).reshape(-1, 2, 2))
     if len(hl) < 2:
@@ -397,7 +422,7 @@ def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT)):
                     looked.add(key)
                     view, _ = _view(small, q, RW // 2, RH // 2, 0)   # a first look at half size
                     if view is not None:
-                        raw.append((_score(view, gx, gy, q), q))
+                        raw.append((score(view, q), q))
     emit("uprights", lines=np.float64([[(c + y0 * k / 200, y0), (c + y1 * k / 200, y1)]
                                        for (k, c), (y0, y1) in sorted(uprights.items())]).reshape(-1, 2, 2))
     # the best few, each edge moved to the innermost strong edge nearby, scored again
@@ -413,17 +438,17 @@ def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT)):
             view, _ = _view(small, q, RW, RH, 0)
             if view is None:
                 continue
-            s = _score(view, gx, gy, q)
+            s = score(view, q)
             if DEBUG is not None:
                 DEBUG.append((s, q, s0))
             if best is None or s > best[0]:
                 best = (s, q)
     if best is None or best[0] < MIN_SCORE:
         return None
-    return _swap(small, gx, gy, best, hl, list(uprights), keep, least)
+    return _swap(small, score, best, hl, list(uprights), keep, least)
 
 
-def _swap(small, gx, gy, best, hl, vl, keep, least):
+def _swap(small, score, best, hl, vl, keep, least):
     """best's quad with each side swapped, one at a time, for another far / near edge or upright line
     while the score goes up: the best few above are only some of the pairs of each (TODO-105). A side
     is not swapped onto a line where the strip just inside looks less like the board's interior
@@ -450,13 +475,13 @@ def _swap(small, gx, gy, best, hl, vl, keep, least):
                     continue
                 v2, _ = _view(small, q2, RW // 2, RH // 2, 0)
                 if v2 is not None:
-                    tried.append((_score(v2, gx, gy, q2), t, q2))
+                    tried.append((score(v2, q2), t, q2))
             tried.sort(key=lambda r: -r[0])
             for _, t, q2 in tried[:SWAP_TOP]:
                 v2, _ = _view(small, q2, RW, RH, 0)
                 if v2 is None:
                     continue
-                s2 = _score(v2, gx, gy, q2)
+                s2 = score(v2, q2)
                 if s2 <= s:
                     continue
                 inner = _inner(v2, i)
@@ -464,6 +489,31 @@ def _swap(small, gx, gy, best, hl, vl, keep, least):
                     s, q, sides, view, here, moves = s2, q2, t, v2, inner, moves + 1
             looked[i] = moves
     return q
+
+
+_net = None
+_net_lock = threading.Lock()
+
+
+def locate(img):
+    """TL, TR, BR, BL where the model sees the board (float64 4 x 2, image pixels), or None."""
+    global _net
+    h, w = img.shape[:2]
+    r = MODEL_SIDE / max(h, w)
+    nw, nh = round(w * r), round(h * r)
+    left, top = (MODEL_SIDE - nw) // 2, (MODEL_SIDE - nh) // 2
+    box = np.full((MODEL_SIDE, MODEL_SIDE, 3), 114, np.uint8)
+    box[top:top + nh, left:left + nw] = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_LINEAR)
+    blob = cv2.dnn.blobFromImage(box, 1 / 255, swapRB=True)
+    with _net_lock:
+        if _net is None:
+            _net = cv2.dnn.readNetFromONNX(MODEL)
+        _net.setInput(blob)
+        out = _net.forward()[0]   # 17 x anchors: cx, cy, w, h, conf, then (x, y, visibility) x 4
+    best = out[:, int(out[4].argmax())]
+    if best[4] < MODEL_CONF:
+        return None
+    return (np.float64(best[5:17]).reshape(4, 3)[:, :2] - [left, top]) / r
 
 
 def find_corners(img, progress=None, fixed=None, crop=None, search=None):
@@ -478,7 +528,13 @@ def find_corners(img, progress=None, fixed=None, crop=None, search=None):
     left / right edge candidates, over the band between two of those}, "candidates" {quads: the
     quadrilaterals that looked most like a board at first, best first}, "corners" {corners} (only
     when a board is found). It does not change what is found.
-    search: what looks in the shrunk photo, called as guess is (side.py's for photos taken from beside, TODO-120)."""
+    search: what looks in the shrunk photo, called as guess is (side.py's for photos taken from beside, TODO-120).
+
+    With no crop, no search and no fixed corner, the candidates far from where locate() sees the
+    board score less; if nothing is found, it looks again only around there (TODO-136)."""
+    hint = None
+    if crop is None and search is None and all(p is None for p in fixed or []):
+        hint = locate(img)
     h, w = img.shape[:2]
     x0, y0, x1, y1 = (0, 0, w, h) if crop is None else (
         min(max(int(crop[0]), 0), w - 1), min(max(int(crop[1]), 0), h - 1),
@@ -495,10 +551,15 @@ def find_corners(img, progress=None, fixed=None, crop=None, search=None):
         if progress:
             def emit(stage, **arrays):
                 progress(stage, {k: (np.float64(v) / s + at).round(1).tolist() for k, v in arrays.items()})
-        q = (search or guess)(small, emit, [None if p is None else (np.float64(p) - at) * s for p in fixed],
-                  (MIN_WIDTH, MIN_HEIGHT) if crop is None else TRIMMED)
+        least = (MIN_WIDTH, MIN_HEIGHT) if crop is None else TRIMMED
+        fixed_small = [None if p is None else (np.float64(p) - at) * s for p in fixed]
+        q = guess(small, emit, fixed_small, least, hint * s) if hint is not None else (search or guess)(small, emit, fixed_small, least)
         if q is None:
-            return None
+            if hint is None:
+                return None
+            (x0, y0), (x1, y1) = hint.min(0), hint.max(0)
+            mx, my = MODEL_MARGIN * (x1 - x0), MODEL_MARGIN * (y1 - y0)
+            return find_corners(img, progress, crop=(x0 - mx, y0 - my, x1 + mx, y1 + my))
         q = q / s + at
     corners = exact.snap(q, 0.1).round(1).tolist()
     if progress:

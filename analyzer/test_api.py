@@ -205,7 +205,8 @@ def test_corners_are_found_on_samples():
                        ("commons-tavli-black", 0.035), ("commons-tavli-burl", 0.035),
                        ("commons-dark-homeleft", 0.035), ("commons-diagram-prime", 0.02),
                        ("commons-travel-case", 0.015), ("tv-vegas-open", 0.035), ("photo6", 0.05),
-                       ("photo4", 0.04), ("commons-nardy-midgame", 0.035), ("collected-m5ekpe", 0.02)):
+                       ("photo4", 0.04), ("commons-nardy-midgame", 0.035), ("collected-m5ekpe", 0.02),
+                       ("synth-cube-photo4-2", 0.035)):   # 4.9 % without the model's corners (TODO-136)
         t = json.loads((samples / f"{name}.truth.json").read_text())
         img = cv2.imread(str(samples / t["image"]))
         found = find_corners(img)
@@ -241,11 +242,13 @@ def test_corners_keep_the_fixed_ones_and_look_in_the_trimmed_part():
     # a corner no candidate agrees with: nothing found (the app keeps the corners as they are)
     assert find_corners(img, fixed=[[img.shape[1] / 2, img.shape[0] / 2], None, None, None]) is None
 
-    # the board is small in this photo: found only in the part around it
+    # the board is small in this photo: found in the part around it, the user's trimming or
+    # where the model sees it (TODO-136)
     t = json.loads((samples / "collected-sj1vrx.truth.json").read_text())
     img = cv2.imread(str(samples / t["image"]))
     truth = t["corners_TL_TR_BR_BL"]
-    assert find_corners(img) is None
+    found = find_corners(img)
+    assert found is not None and _corner_error(found, truth, img.shape) < 0.036
     xs, ys = [p[0] for p in truth], [p[1] for p in truth]
     mx, my = 0.15 * (max(xs) - min(xs)), 0.15 * (max(ys) - min(ys))
     found = find_corners(img, crop=(min(xs) - mx, min(ys) - my, max(xs) + mx, max(ys) + my))

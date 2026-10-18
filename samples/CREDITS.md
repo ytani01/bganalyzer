@@ -34,3 +34,12 @@ photo2〜4 はユーザーが撮った写真、screen1・screen2 はアプリの
 
 `external/` には、リポジトリに入れられない画像（著作権のある盤面図）の出典 URL と正解だけを置いています。
 画像は `recognizer/evaluate.py` が URL から取ってきて `external/` に保存します（Git には入りません）。
+
+## 四隅のモデルの学習に使ったデータ
+
+`recognizer/corners_model.onnx`（TODO-136）は、`samples/` の写真のほかに、次のデータの写真で学習した。写真そのものはリポジトリに入れていない。
+Roboflow で Fork し、前処理と水増しなしの版を COCO で書き出して使った。四隅の印は、画像の位置の順（左上・右上・右下・左下）に並べ直した（`recognizer/train_corners.py`）。
+
+| データ | 作者 | ライセンス |
+|---|---|---|
+| [Backgammon Computer Vision Dataset](https://universe.roboflow.com/jackson-steave/backgammon-wkzbe-rwgt4-5asy9)（Roboflow Universe） | jackson-steave | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |

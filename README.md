@@ -80,7 +80,7 @@ flowchart TB
 | ファイル | 役割 |
 |---|---|
 | `recognizer/board.py` | 写真＋四隅 → 射影変換 → 三角形・縁で補正 → 駒を円として検出 → ポイントごとに数える。コマンドラインでも使える |
-| `recognizer/corners.py` | 写真から盤の遊戯面の四隅を推定する（盤の縁の直線と、2 段 12 列の三角形の並びから）。アプリが四隅の初期値に使う |
+| `recognizer/corners.py` | 写真から盤の遊戯面の四隅を推定する（盤の縁の直線と、2 段 12 列の三角形の並びから。YOLO-pose のモデル `corners_model.onnx` の四隅を手がかりにする）。アプリが四隅の初期値に使う |
 | `recognizer/position.py` | 盤面モデル（`points` 24個・バー・上がり）、gnubg Position ID の作成/読み込み、ピップ数。認識と解析の共通の型 |
 | `recognizer/synth.py`, `evaluate.py` | 精度確認用（合成画像の生成、`samples/*.truth.json` との比較） |
 | `analyzer/app.py` | HTTP API。JSON の盤面または写真を受け取り、認識・解析して返す |

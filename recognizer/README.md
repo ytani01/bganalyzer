@@ -244,6 +244,18 @@ photo1（削除済み）が難しかった理由:
 （使うと、固定した隅に合わせて歪んだ四角形が点数で勝つ）。`crop` はユーザーが囲んだ範囲で、その中だけを探し、遊戯面は範囲の幅の 5 割・高さの 4 割以上とする。
 `check_corners.py --fix N`（最初の N 個の隅を正解に置く）と `--crop`（正解の外接矩形と 15% の余白）で当たり具合を測れる（値は `archives/agents/TODO-068/README.md`）。
 
+recognizer 0.27.0（TODO-136）から、`fixed`・`crop` が無く、横から撮った写真の探し方（`side.py`）でもないときは、先に小さな YOLO-pose のモデル（`corners_model.onnx`）で盤のおおよその四隅を当てる。
+写真全体を今までどおり探し、候補の四隅がモデルの四隅から長辺の 8% より離れていれば（モデルが隅を 1 つずらした順で返しても同じに比べる）、離れた分だけ点数を下げる（`HINT_FREE`・`HINT_WEIGHT`）。
+それで見つからなければ、モデルの四隅の外接矩形を縦横に 15% ずつ広げた範囲を `crop` として探し直す（盤が小さく写った写真）。
+モデルは OpenCV の `cv2.dnn` で動かすので、依存（numpy、opencv）は増えない。1 枚 0.03 秒ほど（開発機）。
+モデルの作り方は `train_corners.py` の docstring にある。学習には `samples/` の実写真と合成の盤のほか、Roboflow Universe の
+[Backgammon（jackson-steave、CC BY 4.0）](https://universe.roboflow.com/jackson-steave/backgammon-wkzbe-rwgt4-5asy9) の写真 403 枚
+（四隅の印付き。Fork して前処理と水増しなしの版を作り、COCO で書き出したもの）を使った。写真はリポジトリに入れていない。
+
+TODO-136 で全サンプルを `check_corners.py` で測った（モデルの学習に使った写真なので甘く出る）: ずれ 3.6% 以内が 48 → 50、それより外れたものが 20 → 19、
+見つからないものが 8 → 7（collected-sj1vrx と collected-5wxq9t が見つかるようになった。5wxq9t は 22% 外れている）。3.6% 以内から外れたものは無い。
+値は `archives/agents/TODO-136/check_corners-before.txt` と `check_corners-verify.txt`。
+
 recognizer 0.16.0（TODO-028）で、三角形の色の領域を探す作り方をやめ、**盤の縁の直線から作り直した**。
 0.14.0 までの作り方（色を k-means で 8 つに分けて細長い三角形の領域を探す）は、分け方が初期値で大きく変わり、
 三角形の見えない盤や強い斜めで見つからなかった（下の表の「0.14.0 まで」）。
@@ -263,6 +275,7 @@ recognizer 0.16.0（TODO-028）で、三角形の色の領域を探す作り方�
    辺に沿った 24 区間のうち似ている割合が 0.1 より大きく下がる差し替えは採らない。利用者が置いた隅につながる辺は差し替えない。
 
 すべて整数と、どの CPU でも同じに丸まる計算（`exact.py`）なので、x86_64 と Raspberry Pi で四隅は同じになる。
+ただし recognizer 0.27.0（TODO-136）からは手がかりにするモデルの推論が float なので、機械によって四隅がわずかに変わりうる（TODO-074 で気にしないことにした）。
 時間はこのクラウド環境で 1 枚 1.0〜1.8 秒（0.14.0 までは 0.2〜1.9 秒）。
 
 当たり具合（recognizer 0.16.0。目視の四隅とのずれの最大、写真の長辺に対する割合。全 24 枚）:
@@ -713,6 +726,7 @@ photo5 を横から撮った向きに戻した写真では普通のモード 0.4
 - `checkers.py` 駒: 円を探して駒らしさで選ぶ、円にならない山を足す、ポイントとバーごとに数えて 2 色に分ける（段階 4・5）。しきい値もここ
 - `overlay.py` アプリが写真に重ねる読み取りの様子（画像の座標）とデバッグ画像
 - `corners.py` 四隅の推定（アプリの初期値）
+- `corners_model.onnx` 四隅の推定の手がかりにする YOLO-pose のモデル（TODO-136）。`train_corners.py` で作る
 - `side.py` 盤の真横から撮った写真の四隅と駒（TODO-120）
 - `section.py` 断面で数える読み方の試作（TODO-032。アプリでは使わない）
 - `radial.py` 駒の中心の候補を、半径を前提に放射対称で探す（TODO-051）
@@ -724,6 +738,7 @@ photo5 を横から撮った向きに戻した写真では普通のモード 0.4
 - `synth_cube.py` 数のわかったキューブを写真に貼り込んだ画像（`samples/synth-cube-*`、`cube_value.py` の確認用）
 - `evaluate.py` `*.truth.json` と比較して精度を出す（`--slots` で下の試作の読み方）
 - `check_accuracy.py` 精度が `accuracy_baseline.json` より下がっていないか確かめる（CI の `accuracy`。`--update` で基準を書き直す）
+- `train_corners.py` `corners_model.onnx` を学習して書き出す（ultralytics を `uv run --with` で入れて動かす。TODO-136）
 - `check_corners.py` 四隅の推定（`corners.py`）を `samples/*.truth.json` の四隅と比べる
 - `tune.py` しきい値を 1 つずつ変えて、良くなる設定を探す（上の「しきい値を試す」）
 - `exact.py` どの CPU でも同じ結果になる計算（射影変換、写し直し、直線、k-means。TODO-046）
