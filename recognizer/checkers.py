@@ -20,6 +20,7 @@ LONE_MIN_SCORE = 1.0     # ... and for a single checker with no stack to back it
 STACK_SKEW = 0.25        # max sideways step between neighbouring checkers of a stack / pitch
 GAP_MIN_SCORE = 0.6      # enough for a circle in line between two checkers of a stack
 OUTLINE_SUPPORT = 0.8    # edge support of a checker that has the colour of the spot under it
+ALIKE_SUPPORT = 0.5      # ... and of one in line with a stack down to the frame (TODO-139)
 PATTERN_SUPPORT = 0.68   # edge support of a checker whose face does not match its rim ...
 PATTERN_DISTINCT = 30    # ... and its colour distance from every empty spot
 COS_35 = 0.8191520442889918   # cos(35 degrees)
@@ -171,6 +172,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     yy, xx = np.mgrid[0:hh, 0:ww]
     tex = column_texture(gx, gy, lay, m, pitch)
     scored = []
+    alike = []   # in the colour of the empty spot, without the clear outline that would make that fine
     for x, y, r in cs[0]:
         cx, cy = x - m, y - m
         # a checker's centre lies inside the field (labels and scores on the frame do not)
@@ -210,6 +212,8 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         # is not the centre's colour: a clear outline all round in a colour no empty spot has is
         # a checker too (tv-vegas-open, TODO-044)
         patterned = support >= PATTERN_SUPPORT and distinct >= PATTERN_DISTINCT
+        if distinct < 8 and support >= ALIKE_SUPPORT and ring_same >= 0.6 and support < OUTLINE_SUPPORT:
+            alike.append((cx, cy, r, med / LAB_W, score, shown))
         if support < 0.2 or (ring_same < 0.35 and not patterned) or (distinct < 8 and (support < OUTLINE_SUPPORT or ring_same < 0.6)):
             continue
         if score < GAP_MIN_SCORE:
@@ -255,6 +259,23 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         # between two checkers, or between a stack of at least two and the frame
         if inner and (outer or (len(stack) >= 2 and depth > 0.3 * pitch)):
             out.append((cx, cy, r, med, score))
+    # a stack in the colour of the triangle under it (dark on a dark triangle) has no outline where
+    # its checkers touch: circles of that colour in line from a checker to the frame, a checker
+    # apart, are the rest of the stack (TODO-139)
+    alike = [a for a in alike if not (a[5] and drop_shown)]
+    for o in [o for o in out if o[4] >= CIRCLE_MIN_SCORE]:
+        top = o[1] < lay.h / 2
+        y, chain = o[1], []
+        while True:
+            step = [a for a in alike if abs(a[0] - o[0]) < 0.15 * pitch and 0.6 * pitch < (y - a[1] if top else a[1] - y) < 1.4 * pitch]
+            if not step:
+                break
+            a = min(step, key=lambda a: abs(abs(a[1] - y) - pitch))
+            y = a[1]
+            chain.append(a)
+        depth = y if top else lay.h - y   # the last one sits half a pitch in from the frame, not on it
+        if len(chain) >= 2 and 0.3 * pitch < depth < 1.6 * pitch and all(clear(a[0], a[1], out) for a in chain):
+            out += [a[:5] for a in chain]
     return out
 
 
