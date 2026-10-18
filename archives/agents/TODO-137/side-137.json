@@ -1,0 +1,270 @@
+{
+"collected-2aunci.truth.json": [
+null,
+0.994
+],
+"collected-3wo2ot.truth.json": [
+null,
+1.255
+],
+"collected-4b88u3.truth.json": [
+"right",
+1.091
+],
+"collected-5vutmr.truth.json": [
+null,
+1.302
+],
+"collected-5wxq9t.truth.json": [
+null,
+-1
+],
+"collected-6aj3py.truth.json": [
+null,
+0.74
+],
+"collected-94jhut.truth.json": [
+null,
+1.07
+],
+"collected-a8qvq6.truth.json": [
+null,
+1.178
+],
+"collected-ajxlol.truth.json": [
+null,
+0.828
+],
+"collected-bfqwve.truth.json": [
+null,
+1.081
+],
+"collected-dplmij.truth.json": [
+null,
+-1
+],
+"collected-er0y2w.truth.json": [
+null,
+1.316
+],
+"collected-gka56t.truth.json": [
+"left",
+0.698
+],
+"collected-jpc616.truth.json": [
+null,
+1.055
+],
+"collected-l9azfe.truth.json": [
+null,
+1.184
+],
+"collected-m5ekpe.truth.json": [
+null,
+0.95
+],
+"collected-o32w4i.truth.json": [
+null,
+0.781
+],
+"collected-q0k95c.truth.json": [
+null,
+1.059
+],
+"collected-si3vsd.truth.json": [
+null,
+0.776
+],
+"collected-sj1vrx.truth.json": [
+null,
+-1
+],
+"collected-t4ngdy.truth.json": [
+null,
+0.874
+],
+"collected-tad9pt.truth.json": [
+null,
+1.195
+],
+"collected-w8eaks.truth.json": [
+null,
+0.671
+],
+"collected-we6czo.truth.json": [
+null,
+1.03
+],
+"collected-wkky1g.truth.json": [
+null,
+0.962
+],
+"collected-xuz0xb.truth.json": [
+null,
+1.091
+],
+"collected-ydz20m.truth.json": [
+"right",
+0.809
+],
+"commons-case-dice.truth.json": [
+null,
+0.78
+],
+"commons-case-midgame.truth.json": [
+null,
+1.112
+],
+"commons-dark-homeleft.truth.json": [
+null,
+1.1
+],
+"commons-diagram-closed-bar.truth.json": [
+null,
+1.297
+],
+"commons-diagram-holding.truth.json": [
+null,
+1.179
+],
+"commons-diagram-prime.truth.json": [
+null,
+1.29
+],
+"commons-leather-cups.truth.json": [
+null,
+0.928
+],
+"commons-lg-cube-dice.truth.json": [
+null,
+1.174
+],
+"commons-nardy-midgame.truth.json": [
+null,
+1.245
+],
+"commons-rollup-oblique.truth.json": [
+"left",
+0.814
+],
+"commons-set-cube-dice.truth.json": [
+null,
+1.084
+],
+"commons-tavli-black.truth.json": [
+null,
+0.99
+],
+"commons-tavli-blue.truth.json": [
+null,
+1.106
+],
+"commons-tavli-burl.truth.json": [
+null,
+1.179
+],
+"commons-tavli-grey.truth.json": [
+null,
+1.117
+],
+"commons-tavli-red-brown.truth.json": [
+null,
+1.112
+],
+"commons-tavli-red-diamond.truth.json": [
+null,
+0.964
+],
+"commons-tavli-red-white.truth.json": [
+null,
+1.053
+],
+"commons-travel-case.truth.json": [
+null,
+1.091
+],
+"commons-wooden-dice.truth.json": [
+null,
+0.812
+],
+"photo2.truth.json": [
+null,
+0.994
+],
+"photo3.truth.json": [
+null,
+1.43
+],
+"photo4.truth.json": [
+null,
+0.579
+],
+"photo5.truth.json": [
+null,
+0.888
+],
+"photo6.truth.json": [
+null,
+1.085
+],
+"screen1.truth.json": [
+null,
+0.781
+],
+"screen2.truth.json": [
+"right",
+0.761
+],
+"synth-cube-photo2-16.truth.json": [
+null,
+1.149
+],
+"synth-cube-photo2-2.truth.json": [
+null,
+1.149
+],
+"synth-cube-photo2-32.truth.json": [
+null,
+1.149
+],
+"synth-cube-photo2-4.truth.json": [
+null,
+1.149
+],
+"synth-cube-photo2-64.truth.json": [
+null,
+1.099
+],
+"synth-cube-photo2-8.truth.json": [
+null,
+1.097
+],
+"synth-cube-photo4-16.truth.json": [
+null,
+0.565
+],
+"synth-cube-photo4-2.truth.json": [
+null,
+0.57
+],
+"synth-cube-photo4-32.truth.json": [
+null,
+0.553
+],
+"synth-cube-photo4-4.truth.json": [
+null,
+0.518
+],
+"synth-cube-photo4-64.truth.json": [
+null,
+0.584
+],
+"synth-cube-photo4-8.truth.json": [
+null,
+0.577
+],
+"tv-vegas-open.truth.json": [
+null,
+0.977
+]
+}
