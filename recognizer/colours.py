@@ -33,8 +33,6 @@ def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None, avoid=()):
             x = int(m + lay.col_x(c))
             for y0 in (m + lay.h * TRI_DEPTH * 0.3, m + lay.h * (1 - TRI_DEPTH * 0.6)):
                 px.append(lab[int(y0):int(y0 + lay.h * TRI_DEPTH * 0.3), x - 2:x + 3].reshape(-1, 3))
-    else:
-        avoid = ()
 
     def two(px):
         px = px[~np.isnan(px).any(1)]
@@ -43,11 +41,9 @@ def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None, avoid=()):
         return exact.kmeans(px.astype(np.int32), 2)[1]
     px = np.vstack(px)
     tri = two(px)
-    if len(avoid):
-        far = np.ones(len(px), bool)
-        for a in avoid:
-            far &= ~(np.linalg.norm((px - a) * LAB_W, axis=1) < AVOID_DE)   # NaN (under a checker found) stays
-        if (far & ~np.isnan(px).any(1)).sum() > 10:
+    if len(avoid) and not tips:
+        far = np.min([np.linalg.norm((px - a) * LAB_W, axis=1) for a in avoid], 0) >= AVOID_DE
+        if far.sum() > 10:
             t = two(px[far])
             # in the order found without leaving them out: with no triangle found, that order alone says which
             # points have which colour (triangle_colour_map)
