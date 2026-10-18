@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.74.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.75.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -78,6 +78,7 @@ const state = {
   resultFor: null,     // inputsKey() of what it was worked out for
   resultDice: null,
   sheet: null,         // the settings open from the bottom (TODO-113): "match", "cube", "roll" or null
+  reanalyzing: false,  // the board fixed on the result screen is being analysed again (TODO-138)
   moveShown: 0,        // the move in the result's list drawn as arrows
   // settings
   photoView: "side",   // the photo on the board screen: "side" (next to the board) or "off"
@@ -140,6 +141,10 @@ part((s) => s.step, (s) => {
   const at = STEPS.indexOf(s.step);
   for (const sec of document.querySelectorAll("section.step")) sec.hidden = sec.id !== s.step;
   $(s.step === "corners" ? "corners-match" : "board-match").appendChild($("match"));   // the same inputs on both screens (TODO-093)
+  // the board with its edit buttons and the sheets its parts open: on the result screen too, to fix it there (TODO-138)
+  const out = s.step === "outcome";
+  $(out ? "outcome-board" : "boards").appendChild($("board-pin"));
+  for (const k of ["match", "cube", "roll"]) $(out ? "outcome" : "board").appendChild($(`sheet-${k}`));
   for (const sp of document.querySelectorAll("#steps span")) {
     sp.classList.toggle("on", sp.dataset.step === s.step);
     sp.classList.toggle("done", STEPS.indexOf(sp.dataset.step) < at);
@@ -289,7 +294,7 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColo
 
 // after the part above: it sets NAME from 手前's colour
 part((s) => [s.step, s.board, s.match.crawford, s.cube.at, s.bottomColour], (s) => {
-  const errs = s.step === "board" ? analyzeErrors(s) : [];
+  const errs = s.step === "board" || s.step === "outcome" ? analyzeErrors(s) : [];
   $("analyze").disabled = !!errs.length;
   $("analyze-why").hidden = !errs.length;
   $("analyze-why").textContent = errs.join("\n");
@@ -328,7 +333,7 @@ part((s) => [s.palette, s.board, s.onRoll], (s) => {
 });
 
 // The pictures of the board: on the board screen (with the photo beside it) and on the result screen.
-part((s) => s.board && [s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube, s.photoView, moveToShow(s),
+part((s) => s.board && [s.step, s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube, s.photoView, moveToShow(s),
                         photoId(s), s.corners, s.geometry && s.geometry.corners, s.match], (s) => {
   if (!s.board) return;
   const scene = { board: s.board, home: s.home, selected: s.selected, dice: rolled(s), onRoll: s.onRoll,
@@ -340,8 +345,8 @@ part((s) => s.board && [s.board, s.home, s.selected, rolled(s), s.onRoll, s.cube
   $("photo-wrap").hidden = !side;
   $("boards").classList.toggle("two", side);
   if (side) BgBoardView.draw($("photo-svg"), { ...scene, photo });   // for looking: taps do nothing (TODO-088)
-  BgBoardView.draw($("board-svg"), { ...scene, move: null }, select, tapPart);   // the best move only on the result screen (TODO-092)
-  BgBoardView.draw($("result-svg"), scene, select);   // the result screen's copy (taps are off there by CSS)
+  // the best move only on the result screen (TODO-092), where the same board is moved to (TODO-138)
+  BgBoardView.draw($("board-svg"), { ...scene, move: s.step === "outcome" ? scene.move : null }, select, tapPart);
 });
 
 // ---- a tap on a part around the board picture (TODO-113): the trays flip the home's side, a pip count
@@ -359,7 +364,7 @@ function tapPart(kind) {
   } else update({ sheet: kind });
 }
 part((s) => [s.sheet, s.step], (s) => {
-  for (const k of ["match", "cube", "roll"]) $(`sheet-${k}`).hidden = !(s.step === "board" && s.sheet === k);
+  for (const k of ["match", "cube", "roll"]) $(`sheet-${k}`).hidden = !((s.step === "board" || s.step === "outcome") && s.sheet === k);
 });
 for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("click", () => update({ sheet: null }));
 
@@ -413,7 +418,22 @@ part((s) => [s.result, s.resultDice, s.bottomColour], (s) => {
 part((s) => [s.result && s.moveShown], (s) => {
   for (const li of document.querySelectorAll("#result .moves li")) li.classList.toggle("on", Number(li.dataset.k) === s.moveShown);
 });
-part((s) => resultStale(s), (s) => $("result").classList.toggle("stale", resultStale(s)));
+part((s) => [resultStale(s), s.reanalyzing], (s) => {
+  $("result").classList.toggle("stale", resultStale(s));
+  $("reanalyzing").hidden = !(s.step === "outcome" && resultStale(s));
+  $("reanalyzing").textContent = s.reanalyzing ? "盤面が変わったので解析し直しています…" : "盤面が変わりました。直し終わると解析し直します。";
+});
+
+// ---- fixed on the result screen (TODO-138): analysed again by itself a moment after the last fix,
+// once nothing is half done (the palette or a sheet open, a die not set while the other is)
+const REANALYZE_WAIT = 800;   // ms after the last change
+let reanalyzeTimer = null;
+part((s) => [s.step, resultStale(s) && inputsKey(s), s.plies, !!s.palette, s.sheet, s.busy && 1, analyzeErrors(s).length], (s) => {
+  clearTimeout(reanalyzeTimer);
+  const halfDie = !s.dice[0] !== !s.dice[1];
+  if (s.step !== "outcome" || !resultStale(s) || s.palette || s.sheet || s.busy || analyzeErrors(s).length || halfDie) return;
+  reanalyzeTimer = setTimeout(reanalyze, REANALYZE_WAIT);
+});
 
 // The move picked in the result's list (the best one at first) as arrows, while the result fits the board.
 function moveToShow(s) {
@@ -520,7 +540,10 @@ async function renderHistory() {
 function go(step) {
   if (step !== "photo" && !(history.state && history.state.bg)) history.pushState({ bg: true }, "");
   if (step === "photo") historyShown++;
-  if (step !== "outcome") stopSpeaking();   // the stop button is only on the result screen
+  if (step !== "outcome") {
+    stopSpeaking();   // the stop button is only on the result screen
+    if (reanalyzeAbort) reanalyzeAbort.abort();   // a fix on the result screen: analysed on the board screen instead
+  }
   update({ step, sheet: null });   // a sheet open on the board screen is closed when it is left (TODO-113)
   if (step === "corners") requestAnimationFrame(() => redraw(drawCorners));   // once the layout has settled
   window.scrollTo(0, 0);
@@ -976,16 +999,41 @@ async function analyze() {
   await withBusy(text, async () => {
     try {
       const dice = rolled();
-      const body = { board: BgBoard.copy(state.board), plies: Number(state.plies), ...BgCube.request(state.cube, state.onRoll, dice),
-                     ...BgCube.matchRequest(state.match), bottom_colour: state.bottomColour };
-      if (dice) body.dice = dice;
-      setResult(await BgApi.postJson("analyze", body), dice);
+      setResult(await BgApi.postJson("analyze", analyzeBody(dice)), dice);
       go("outcome");
       autoSpeak();
     } catch (err) {
       alert("解析に失敗しました: " + err.message);
     }
   });
+}
+
+function analyzeBody(dice) {
+  const body = { board: BgBoard.copy(state.board), plies: Number(state.plies), ...BgCube.request(state.cube, state.onRoll, dice),
+                 ...BgCube.matchRequest(state.match), bottom_colour: state.bottomColour };
+  if (dice) body.dice = dice;
+  return body;
+}
+
+// The board fixed on the result screen, analysed again without leaving it (TODO-138). The old result
+// stays, greyed out, till the new one is in; fixes made meanwhile are analysed after it.
+let reanalyzeAbort = null;
+async function reanalyze() {
+  if (state.step !== "outcome" || !resultStale() || analyzeErrors().length) return;
+  if (reanalyzeAbort) reanalyzeAbort.abort();
+  const abort = reanalyzeAbort = new AbortController();
+  const key = inputsKey(), dice = rolled();
+  update({ reanalyzing: true });
+  try {
+    const result = await BgApi.postJson("analyze", analyzeBody(dice), abort.signal);
+    if (abort.signal.aborted || inputsKey() !== key || state.step !== "outcome") return;   // fixed again meanwhile
+    setResult(result, dice);
+    sendSample();   // as 「解析する」 does: the board as fixed now
+  } catch (err) {
+    if (!abort.signal.aborted) alert("解析に失敗しました: " + err.message);
+  } finally {
+    if (reanalyzeAbort === abort) { reanalyzeAbort = null; update({ reanalyzing: false }); }
+  }
 }
 
 // ================================================================ a sample for the recognizer (sample.js)
@@ -1272,7 +1320,7 @@ $("result").addEventListener("click", (e) => {   // a row of the best moves: its
   const li = e.target.closest(".moves li");
   if (!li) return;
   update({ moveShown: Number(li.dataset.k) });
-  $("result-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  $("board-svg").scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
 speakLabel(false);
 $("speak").addEventListener("click", toggleSpeaking);

@@ -153,7 +153,7 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <!-- 盤面図のマッチの表示・キューブ・ダイスをタップすると、下から出るシート（TODO-113） -->
     <div id="sheet-match" class="sheet" hidden>
     <div class="sheet-head"><span>ゲーム</span><button type="button" class="sheet-close" aria-label="閉じる">✕</button></div>
-    <!-- マッチの長さとスコア（TODO-066）。この端末に残す。マネーに戻せる。解析結果の画面では直せない（直すときは戻る。TODO-086）。四隅の画面ではそちらへ移す（TODO-093） -->
+    <!-- マッチの長さとスコア（TODO-066）。この端末に残す。マネーに戻せる。解析結果の画面でも直せる（TODO-138）。四隅の画面ではそちらへ移す（TODO-093） -->
     <div id="board-match">
     <div id="match" class="opt match">
       <span class="opt-label">ゲーム</span>
@@ -237,11 +237,11 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
 
   </section>
 
-  <!-- 4. 解析の結果。盤面図は最善手の矢印を見るためのもので、ここでは直せない（直すときは戻る） -->
+  <!-- 4. 解析の結果。盤面の画面の盤面図（#board-pin）をここへ移し、最善手の矢印を出す。
+       ここでも同じ操作で直せ、直すと少し待って自動で解析し直す（TODO-138。前は直すときは戻った） -->
   <section id="outcome" class="step" hidden>
-    <div class="board-pin">
-      <div class="board-wrap"><svg id="result-svg" viewBox="0 0 660 440"></svg></div>
-    </div>
+    <div id="outcome-board"></div>
+    <p id="reanalyzing" class="note" role="status" hidden></p>
     <div id="result" class="result" hidden></div>
   </section>
 </main>
