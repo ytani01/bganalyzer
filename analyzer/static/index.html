@@ -238,10 +238,10 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   </section>
 
   <!-- 4. 解析の結果。盤面の画面の盤面図（#board-pin）をここへ移し、最善手の矢印を出す。
-       ここでも同じ操作で直せ、直すと下に「再解析」が出る（TODO-138。前は直すときは戻った） -->
+       ここでも同じ操作で直せ、直すと少し待って自動で解析し直す（TODO-138。前は直すときは戻った） -->
   <section id="outcome" class="step" hidden>
     <div id="outcome-board"></div>
-    <p id="reanalyzing" class="note" role="status" hidden>盤面が変わりました。下の「再解析」で解析し直します。</p>
+    <p id="reanalyzing" class="note" role="status" hidden></p>
     <div id="result" class="result" hidden></div>
   </section>
 </main>
@@ -264,8 +264,6 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <button id="analyze" class="act" type="button" hidden>解析する</button>
     <!-- 絵文字の 🔊 は端末によって絵が違い、何のボタンか分かりにくかったので、スピーカーの絵と文字で示す（中身は app.js の speakLabel） -->
     <button id="speak" class="act speak" type="button" aria-pressed="false" hidden></button>
-    <!-- 結果の画面で盤面などを直したときだけ、読み上げの隣に出す（TODO-138） -->
-    <button id="reanalyze" class="act" type="button" hidden>再解析</button>
   </div>
 </div>
 
