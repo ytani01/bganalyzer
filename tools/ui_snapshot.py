@@ -77,7 +77,7 @@ SNAP = """() => {
     paintSide: vis('paint-side') ? document.querySelector('#paint-side .on')?.dataset.value : null,
     undo: vis('undo') ? !el('undo').disabled : null,
     cubeHelp: txt('cube-help'), rollLabel: txt('onroll-label'),
-    dice: vis('die1') ? [el('die1').value, el('die2').value] : null,
+    dice: vis('die1') ? [el('die1').dataset.value, el('die2').dataset.value] : null,
     cube: vis('cube-side') ? [el('cube-value').value, el('cube-offered').checked] : null,
     boardSvg: html('board-svg'),
     photoSvg: vis('photo-svg') ? hash(el('photo-svg').innerHTML) : null,
@@ -161,6 +161,12 @@ class Run:
 
     def choose(self, selector, value):
         self.sheet_for(selector)
+        if self.page.evaluate("(q) => document.querySelector(q).classList.contains('die-pick')", selector):
+            # the dice are buttons (TODO-140): press the value, or the pressed one again to clear it
+            now = self.page.evaluate("(q) => document.querySelector(q).dataset.value", selector)
+            if value or now:
+                self.page.click(f'{selector} button[data-n="{value or now}"]')
+            return
         self.page.select_option(selector, value)
 
     def wait_step(self, step):

@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.77.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.78.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -369,8 +369,10 @@ for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("c
 
 // ---- what the analysis is asked
 part((s) => [s.dice, s.diceFromPhoto, cubeOffered(s)], (s) => {
-  $("die1").value = s.dice[0] ? String(s.dice[0]) : "";
-  $("die2").value = s.dice[1] ? String(s.dice[1]) : "";
+  for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
+    $(id).dataset.value = s.dice[k] ? String(s.dice[k]) : "";
+    for (const b of $(id).children) b.classList.toggle("on", Number(b.dataset.n) === s.dice[k]);
+  }
   $("dice-row").hidden = cubeOffered(s);   // a double offered: no dice yet (TODO-086)
   $("dice-note").hidden = !s.diceFromPhoto || cubeOffered(s);
   // with dice in, the side on roll has already rolled: "振った人", not "次に振る人" (TODO-042)
@@ -1264,9 +1266,17 @@ $("reset-start").addEventListener("click", () => {
   if (confirm("盤面を初期配置に戻しますか？")) fixBoard(BgBoard.start(), { palette: null, selected: null });
 });
 
+// The dice: a row of six buttons each, like the palette's counts (TODO-140); the one pressed again clears that die.
 for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
-  for (let d = 1; d <= 6; d++) $(id).add(new Option(String(d), String(d)));
-  $(id).addEventListener("change", () => setDie(k, $(id).value));
+  for (let d = 1; d <= 6; d++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.dataset.n = String(d); b.textContent = String(d);
+    $(id).appendChild(b);
+  }
+  $(id).addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (b) setDie(k, Number(b.dataset.n) === state.dice[k] ? 0 : b.dataset.n);
+  });
 }
 for (const v of BgCube.VALUES) $("cube-value").add(new Option(String(v), String(v)));
 $("cube-value").addEventListener("change", () => setCube({ value: Number($("cube-value").value) }));
