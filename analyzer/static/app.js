@@ -1284,7 +1284,7 @@ $("reset-start").addEventListener("click", () => {
   if (confirm("盤面を初期配置に戻しますか？")) fixBoard(BgBoard.start(), { palette: null, selected: null });
 });
 
-// The dice: a row of six die faces each, like the palette's counts (TODO-140); the one pressed again clears that die.
+// The dice: a row of six die faces each, like the palette's counts (TODO-141); the one pressed again clears that die.
 for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
   for (let d = 1; d <= 6; d++) {
     const b = document.createElement("button");

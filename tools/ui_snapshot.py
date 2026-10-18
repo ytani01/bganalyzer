@@ -162,7 +162,7 @@ class Run:
     def choose(self, selector, value):
         self.sheet_for(selector)
         if self.page.evaluate("(q) => document.querySelector(q).classList.contains('die-pick')", selector):
-            # the dice are buttons (TODO-140): press the value, or the pressed one again to clear it
+            # the dice are buttons (TODO-141): press the value, or the pressed one again to clear it
             now = self.page.evaluate("(q) => document.querySelector(q).dataset.value", selector)
             if value or now:
                 self.page.click(f'{selector} button[data-n="{value or now}"]')
