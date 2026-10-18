@@ -90,8 +90,8 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 - 試作はリポジトリの外（scratchpad の別の venv に ultralytics と CPU 版 torch）。`pyproject.toml`・`uv.lock` は変えない。測る道具と結果は `archives/agents/TODO-135/` に残す
 - 学習には `samples/*.truth.json` の四隅と `synth.py` の合成画像を使い、実写真 3 枚（photo4・photo6・collected の 1 枚）を学習から外して比べる
 
-- [ ] 学習用のデータを作り、YOLO-pose を CPU で学習する
-- [ ] 外した 3 枚で、四隅のずれ（`check_corners.py` と同じ測り方）と読めたポイントの数を、今の `corners.py`・正解の四隅と比べる
+- [x] 学習用のデータを作り、YOLO-pose を CPU で学習する
+- [x] 外した 3 枚で、四隅のずれ（`check_corners.py` と同じ測り方）と読めたポイントの数を、今の `corners.py`・正解の四隅と比べる
 - [ ] 結果を報告し、アプリに取り込むか（別項目にするか）をユーザーに決めてもらう
 
 **何を決めるか:** 取り込むかどうか（取り込むなら依存・Pi での速さ・モデルの置き場所も）。**選択肢:** 結果を見て出す。**いつ聞くか:** 比べたあと。
