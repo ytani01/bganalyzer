@@ -139,7 +139,7 @@ main { max-width: 720px; margin: 0 auto; padding: 12px 16px calc(var(--bar-h, 0p
 .row.wrap { flex-wrap: wrap; }
 .row .button.primary { flex: 1; }
 
-.button, .seg button, .editor-row button {
+.button, .seg button {
   appearance: none;
   border: 1px solid var(--line);
   background: var(--card);
@@ -201,7 +201,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .editor { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin: 6px 0 0; }
 .editor-title { font-size: 13px; color: var(--muted); }
 .editor-row { display: flex; align-items: center; gap: 8px; }
-.editor-row .undo { margin-left: auto; }
+.editor-row .undo { margin-left: auto; flex: none; white-space: nowrap; }
 .paint-side { display: flex; }
 .paint-side button {
   appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-size: 15px;

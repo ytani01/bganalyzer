@@ -188,6 +188,7 @@ def flow_manual(r):
     r.tap(0, 2); r.snap("tap level 2 of 13")
     r.tap(0, 2); r.snap("tap the top checker")
     r.tap(1, 3); r.snap("tap an empty point")
+    r.hold(2); r.pick(0, "black"); r.tap(2, 2); r.snap("奥's colour on an empty point")   # the colour last put (TODO-145)
     r.tap(18, 5); r.tap(18, 5); r.snap("5th level of 5: two more")
     r.number(5); r.snap("number: emptied")
     r.hold(17); r.snap("palette")
