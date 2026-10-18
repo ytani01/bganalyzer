@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-079、TODO-105、TODO-121、TODO-135。** これまでに 129 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-136`。**
+**残っている項目: TODO-025、TODO-030、TODO-079、TODO-105、TODO-121、TODO-136。** これまでに 130 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-137`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
 ---
@@ -76,27 +76,29 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 
 **無駄を省く工夫:** 測るのは横からのサンプルだけ（`evaluate.py`・`check_corners.py` は正解の `side` を見る）。TODO-120 の試しの道具（`archives/agents/TODO-120/measure_side.py`）を使い回す
 
-## TODO-135. YOLO で四隅を当てる方法を試作して、今の推定と比べる
+## TODO-136. YOLO で盤のおおよその位置を当て、その周りだけを corners.py で探す
 
 | | main | 担当 |
 |---|---|---|
-| 見込み | Opus 5.5 / effort high | main（試作・測定）+ verifier（Sonnet 5.5 / medium、測定の再現） |
+| 見込み | Opus 5.5 / effort high | main（設計・学習）+ implementer（Opus 5.5 / medium）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium） |
 
-今の四隅の推定（`recognizer/corners.py`）は OpenCV の四角形の候補に三角形らしさで点数を付けるので、三角形が見えにくい盤・斜めの写真・ケースの縁で外れる（TODO-105・TODO-121）。
-学習で当てる方法に替えると良くなるかを試作で確かめる。
+TODO-135 の試作で、YOLO-pose の四隅を囲む範囲（縦横に 15% 広げる。`check_corners.py --crop` と同じ）だけを `corners.py` に探させると、外した 3 枚で読めたポイントが 50 → 62 になった（四隅のずれはむしろ大きく、3 枚なので確かではない）。
+これをアプリに入れる（2026-10-18 ユーザーが決めた）。試作の道具は `archives/agents/TODO-135/`。
 
-決めたこと（2026-10-18 ユーザー）:
-- 試すのは四隅だけ。YOLO の pose（キーポイント 4 つ = TL・TR・BR・BL）で当て、駒の読み取りは今の `board.py` に四隅を渡す
-- 試作はリポジトリの外（scratchpad の別の venv に ultralytics と CPU 版 torch）。`pyproject.toml`・`uv.lock` は変えない。測る道具と結果は `archives/agents/TODO-135/` に残す
-- 学習には `samples/*.truth.json` の四隅と `synth.py` の合成画像を使い、実写真 3 枚（photo4・photo6・collected の 1 枚）を学習から外して比べる
+決めたこと（2026-10-18、ユーザーが任せた案）:
+- **モデルは ONNX にして OpenCV の `cv2.dnn` で動かす。** アプリの依存は増やさない（torch・ultralytics は Pi に入れない）。学習と書き出しの道具だけ `uv run --with ultralytics` で動かす
+- **YOLO はいつも先に使う。** 利用者が四隅を置いた・切り出したとき（`fixed`・`crop`）と、横から撮った写真の探し方（`side`）は今のまま。YOLO が盤を見つけられなければ今の探し方に戻る
+- **学習には `samples/` の実写真を全部使う**（TODO-135 で外した 3 枚も）。synth-cube-* と `samples/external` は除く
 
-- [x] 学習用のデータを作り、YOLO-pose を CPU で学習する
-- [x] 外した 3 枚で、四隅のずれ（`check_corners.py` と同じ測り方）と読めたポイントの数を、今の `corners.py`・正解の四隅と比べる
-- [ ] 結果を報告し、アプリに取り込むか（別項目にするか）をユーザーに決めてもらう
+- [ ] 学習と ONNX の書き出しの道具を `recognizer/` に置き、モデルを学習してリポジトリに入れる（5 MB ほど）
+- [ ] `corners.find_corners` で、`fixed`・`crop` が無いときに YOLO の範囲を crop として渡す（recognizer の版を上げる。README の四隅の推定の節も）
+- [ ] `check_corners.py` で前と後を 1 回ずつ測る（学習に使った写真なので甘く出ることを書き添える）
+- [ ] 開発機で `cv2.dnn` の 1 枚の時間を測る
+- [ ] ローカル: アプリで写真を選び、四隅の推定が出ること
 
-**何を決めるか:** 取り込むかどうか（取り込むなら依存・Pi での速さ・モデルの置き場所も）。**選択肢:** 結果を見て出す。**いつ聞くか:** 比べたあと。
+**何を決めるか:** `check_corners.py` で悪くなるサンプルがあったときに入れるか。**いつ聞くか:** 測ったあと。
 
-**無駄を省く工夫:** 比べるのは外した 3 枚だけ（全サンプルは測らない）。今の `corners.py` の値もその 3 枚だけ測る
+**無駄を省く工夫:** 読み取りの精度は CI の accuracy に任せる（正解の四隅で読むので、この変更では動かない）。`check_corners.py` の全サンプルは前と後の 2 回だけ。学習は 1 回（約 50 分）で、やり直すときは利用者に聞く
 
 ---
 
