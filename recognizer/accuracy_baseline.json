@@ -18,6 +18,7 @@
  "collected-galaxy-screen-4": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "collected-galaxy-screen-5": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "collected-galaxy-screen-6": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "not found"},
+ "collected-galaxy-screen-7": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "collected-green-black-case-top": {"points": 18, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "collected-green-felt-side-hand": {"points": 14, "bar": false, "home": true, "dice": "not read", "cube": "ok"},
  "collected-grey-red-top": {"points": 10, "bar": true, "home": true, "dice": "ok", "cube": "ok"},

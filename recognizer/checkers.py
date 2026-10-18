@@ -23,7 +23,11 @@ OUTLINE_SUPPORT = 0.8    # edge support of a checker that has the colour of the 
 PATTERN_SUPPORT = 0.68   # edge support of a checker whose face does not match its rim ...
 PATTERN_DISTINCT = 30    # ... and its colour distance from every empty spot
 COS_35 = 0.8191520442889918   # cos(35 degrees)
-BAR_COLOUR_TOL = 0.25    # a checker on the bar: colour distance to its cluster / distance between the clusters
+WEAK_PEAK_REL = 0.1      # peaks looked at where a stack must go on (radial.PEAK_REL elsewhere, TODO-143) ...
+WEAK_RING = 0.6          # ... their circles' ring in the face's colour
+WEAK_SUPPORT = 0.3       # ... and edge support
+WEAK_COLOUR = 12         # ... and colour distance (weighted Lab) to the stack's, or a found checker's
+BAR_COLOUR_TOL = 0.25   # a checker on the bar: colour distance to its cluster / distance between the clusters
 LONE_COLOUR_TOL = 0.3     # ... and for a single checker on a point (a triangle's base can look like one, TODO-048)
 
 
@@ -170,12 +174,13 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     hh, ww = gray.shape
     yy, xx = np.mgrid[0:hh, 0:ww]
     tex = column_texture(gx, gy, lay, m, pitch)
-    scored = []
-    for x, y, r in cs[0]:
+
+    def measure(x, y, r):
+        """(cx, cy, colour, ring_same, distinct, support, shown) of a circle, None off the field."""
         cx, cy = x - m, y - m
         # a checker's centre lies inside the field (labels and scores on the frame do not)
         if not (-0.3 * pitch < cx < lay.w + 0.3 * pitch and -0.1 * pitch < cy < lay.h + 0.1 * pitch):
-            continue
+            return None
         shown = tex.get(_slot_of(cx, cy, lay, pitch)) == "shown"
         x0, x1, y0, y1 = int(max(x - r, 0)), int(min(x + r + 1, ww)), int(max(y - r, 0)), int(min(y + r + 1, hh))
         d2 = (xx[y0:y1, x0:x1] - x) ** 2 + (yy[y0:y1, x0:x1] - y) ** 2
@@ -183,7 +188,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         inner = patch[d2 < (0.55 * r) ** 2]
         ring = patch[(d2 > (0.7 * r) ** 2) & (d2 < (0.92 * r) ** 2)]
         if len(inner) < 20 or len(ring) < 20:
-            continue
+            return None
         med = _top_colour(inner)
         ring_same = float((np.linalg.norm(ring - med, axis=1) < 22).mean())
         # what an empty spot here would look like: field, frame, or this column's triangle.
@@ -202,7 +207,14 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         else:
             expected += [Wb[1], Wb[2]]
         distinct = float(np.min(np.linalg.norm(np.float32(expected) - med, axis=1)))
-        support = edge_support(gx, gy, x, y, r)
+        return cx, cy, med, ring_same, distinct, edge_support(gx, gy, x, y, r), shown
+
+    scored = []
+    for x, y, r in cs[0]:
+        mm = measure(x, y, r)
+        if mm is None:
+            continue
+        cx, cy, med, ring_same, distinct, support, shown = mm
         score = support + 0.012 * min(distinct, 30) + 0.3 * ring_same
         # the colour of an empty spot is fine with a clear outline all round
         # (a white checker on a white triangle in a diagram)
@@ -255,7 +267,54 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         # between two checkers, or between a stack of at least two and the frame
         if inner and (outer or (len(stack) >= 2 and depth > 0.3 * pitch)):
             out.append((cx, cy, r, med, score))
+    if finder != "hough" and out:
+        out += _weak_checkers(radial.find(chans, r0, WEAK_PEAK_REL), cs[0], measure, out, lay, pitch, clear)
     return out
+
+
+def _weak_checkers(weak, cands, measure, out, lay: Layout, pitch: float, clear):
+    """Checkers whose peaks are too weak to be candidates (dark checkers on a screen, where the
+    white ones' peaks are four times higher, TODO-143), looked for only where a stack must go on:
+    between a stack that stops short of the frame and the frame, one checker at a time, in the
+    stack's colour; and a lone checker at the frame, in a found checker's colour.
+    The colour alone decides there: the stack's checkers may have the colour of the triangle
+    under them, and their rims show little (t0480x's points 12 and 19, and 1)."""
+    def depth(cy):
+        return cy if cy < lay.h / 2 else lay.h - cy
+
+    def in_line(a, b):
+        return abs(a[0] - b[0]) < 0.15 * pitch and (a[1] < lay.h / 2) == (b[1] < lay.h / 2)
+
+    def colour_gap(a, b):
+        return float(np.linalg.norm((np.float32(a) - np.float32(b)) * LAB_W))
+
+    seen = set(map(tuple, cands.tolist()))
+    found = []
+    for x, y, r in weak.tolist() if weak is not None else []:
+        mm = None if (x, y, r) in seen else measure(x, y, r)
+        if mm is not None and mm[3] >= WEAK_RING and mm[5] >= WEAK_SUPPORT:
+            cx, cy, med, ring_same, distinct, support, _ = mm
+            found.append((cx, cy, r, med / LAB_W, support + 0.012 * min(distinct, 30) + 0.3 * ring_same))
+    added = []
+    for o in out:
+        if depth(o[1]) < 1.2 * pitch or any(in_line(p, o) and depth(p[1]) < depth(o[1]) for p in out):
+            continue   # at the frame, or not the frame end of its stack
+        chain, cur = [], o
+        while depth(cur[1]) > 0.8 * pitch:
+            step = [w for w in found if in_line(w, cur) and 0.5 * pitch < depth(cur[1]) - depth(w[1]) < 1.3 * pitch
+                    and colour_gap(w[3], o[3]) < WEAK_COLOUR]
+            if not step:
+                break
+            cur = max(step, key=lambda w: depth(w[1]))   # the next checker towards the frame
+            chain.append(cur)
+        if chain and depth(cur[1]) <= 0.8 * pitch:
+            added += chain
+    for w in sorted(found, key=lambda w: -w[4]):
+        if (w[4] >= CIRCLE_MIN_SCORE and depth(w[1]) <= 0.8 * pitch and clear(w[0], w[1], out + added)
+                and not any(in_line(w, o) for o in out + added)
+                and min(colour_gap(w[3], o[3]) for o in out) < WEAK_COLOUR):
+            added.append((*w[:4], max(w[4], LONE_MIN_SCORE)))   # the colour stands in for the clearer circle
+    return added
 
 
 def add_hidden_stacks(ground_bgr, lay: Layout, m: int, pitch: float, circles):
