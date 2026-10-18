@@ -21,7 +21,7 @@
  "collected-m5ekpe": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "collected-mghnwm": {"points": 13, "bar": false, "home": true, "dice": "not read", "cube": "WRONG"},
  "collected-o32w4i": {"points": 19, "bar": false, "home": true, "dice": "ok", "cube": "ok"},
- "collected-p1vm5a": {"points": 12, "bar": true, "home": false, "dice": "not read", "cube": "ok"},
+ "collected-p1vm5a": {"points": 12, "bar": true, "home": true, "dice": "not read", "cube": "ok"},
  "collected-q0k95c": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "collected-si3vsd": {"points": 23, "bar": true, "home": true, "dice": "not read", "cube": "ok"},
  "collected-sj1vrx": {"points": 24, "bar": true, "home": true, "dice": "not read", "cube": "ok"},

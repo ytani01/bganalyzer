@@ -64,10 +64,13 @@ ALONG_OFF = 2          # how far off the side (px, either way) an edge pixel sti
 ALONG_CAP = 0.85       # past this share all the same: an outer edge nothing hides is no better than the board's, which checkers stand on
 # then each side swapped for another candidate line while the score goes up (TODO-105)
 SWAPS = 3              # rounds over the four sides, at most
+SWAP_GAIN = 0.01       # a swap raises the score by more than this, at least (a triangle's side by a screen's edge, TODO-140)
 SWAP_TOP = 2           # lines for a side scored again at full size, the best at half size
 INNER = (0.03, 0.06, 0.12)   # the strip just inside a side (0 to the first), and the one a bit further in, against the side across
 INNER_BLOCKS = 24      # blocks along a side the two strips are compared in
 INNER_SLACK = 0.1      # a swap may make the strips alike in this share of the blocks fewer, at most
+INNER_OUT, INNER_IN = 0.25, 0.75   # a far / near side with the strips alike in less than this share runs outside the board; with this share, inside (TODO-140)
+OUT_DROP = 0.1         # moving such a side inside may lower the score by this much, at most
 PLAIN_DE = 20          # colour difference (Lab) still plain
 MIN_SCORE = 0.15       # a board's structure score, at least
 REFINE = 12             # candidates (the best by structure) whose edges are moved in and scored again
@@ -477,14 +480,20 @@ def _swap(small, score, best, hl, vl, keep, least):
                 if v2 is not None:
                     tried.append((score(v2, q2), t, q2))
             tried.sort(key=lambda r: -r[0])
-            for _, t, q2 in tried[:SWAP_TOP]:
+            # a far / near side running outside the board's interior (a screen's dark rows of numbers
+            # look like the triangles' bases) may go to a line inside it that scores a bit less (TODO-140)
+            out = i % 2 == 0 and here < INNER_OUT
+            for n, (_, t, q2) in enumerate(tried if out else tried[:SWAP_TOP]):
                 v2, _ = _view(small, q2, RW, RH, 0)
                 if v2 is None:
                     continue
                 s2 = score(v2, q2)
-                if s2 <= s:
-                    continue
                 inner = _inner(v2, i)
+                if out and inner >= INNER_IN and s2 > s - OUT_DROP and s2 >= MIN_SCORE:
+                    s, q, sides, view, here, moves, out = s2, q2, t, v2, inner, moves + 1, False
+                    continue
+                if n >= SWAP_TOP or s2 <= s + SWAP_GAIN:   # the others only for moving inside
+                    continue
                 if inner >= here - INNER_SLACK:
                     s, q, sides, view, here, moves = s2, q2, t, v2, inner, moves + 1
             looked[i] = moves
