@@ -39,6 +39,9 @@ SAME = 0.006                      # two long edges nearer than this in the middl
 BANDS = 5                         # where the long edges are looked for: bands from these many starts and ends
 WEAK = 0.7                        # the normal search's corners scoring below this: tried from beside too (TODO-134;
                                   # photo5 from beside 0.46 normally, 1.1 from beside; photos from the front about 1.0)
+PART = 0.6                        # corners from beside lying this much (IoU) over a quarter of the normal search's or
+                                  # its half on one side of the bar: a part of the board it found, not taken (TODO-137;
+                                  # photo4 0.80, photos from beside 0.50 at most)
 
 # ---------------------------------------------------------------- reading --
 GH = 400                # the ground view's height (along the points, both rows), px
@@ -156,19 +159,39 @@ def _score(img, q):
     return -1 if v is None else C._structure(v)
 
 
+def _part(n, q):
+    """IoU of q with the part of n it lies most over (a quarter, or the half on one side of the bar),
+    in n's own view (a square of 2 x 2 quarters); 0 for a q not wholly before n's horizon."""
+    H = exact.homography(np.float64(n), np.float64([(0, 0), (2, 0), (2, 2), (0, 2)]))
+    w = np.float64(exact.mat(H))[2] @ np.c_[np.float64(q), np.ones(4)].T
+    if not (w > 0).all() and not (w < 0).all():
+        return 0.0
+    p = np.float32(exact.apply_h(H, q))
+    area = exact.polygon_area(p)
+    best = 0.0
+    for x0, y0, h in [(x, y, 1) for x in (0, 1) for y in (0, 1)] + [(x, 0, 2) for x in (0, 1)]:
+        both = cv2.intersectConvexConvex(p, np.float32([(x0, y0), (x0 + 1, y0), (x0 + 1, y0 + h), (x0, y0 + h)]))[0]
+        best = max(best, both / (area + h - both))
+    return best
+
+
 def find_corners_any(img, progress=None):
     """(corners, side) for a photo the user has not said is taken from beside (TODO-134): the normal
-    search, and when what it finds scores below WEAK (or nothing), also from the right and the left;
-    the best scoring is taken (side None: the normal one). corners None: nothing found any way.
+    search, and when what it finds scores below WEAK (or nothing), also from the right and the left
+    (unless over a part of the normal search's corners: PART); the best scoring is taken (side
+    None: the normal one). corners None: nothing found any way.
     progress as find_corners's; the searches tried again tell of their stages but their corners only
     as the answer (a "corners" stage at the end, when another way won)."""
     q = C.find_corners(img, progress)
     best = (_score(img, q), q, None)
     if best[0] >= WEAK:
         return q, None
+    normal = q
     told = progress and (lambda stage, data: stage != "corners" and progress(stage, data))
     for side in ("right", "left"):
         q = find_corners_side(img, side, told)
+        if q is not None and normal is not None and _part(normal, q) >= PART:
+            continue
         best = max(best, (_score(img, q), q, side), key=lambda b: b[0])
     if progress and best[2] and best[1]:
         progress("corners", {"corners": best[1]})

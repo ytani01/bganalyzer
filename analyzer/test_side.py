@@ -113,6 +113,19 @@ def test_api_find_corners_finds_the_side(raw):
     assert client.post("/find-corners", files={"image": ("b.jpg", jpg)}, data={"fixed": json.dumps(fixed)}).json()["side"] is None
 
 
+def test_api_find_corners_keeps_photo4_from_the_front():
+    """photo4 (from the front, triangles of the field's colour) scores low the normal way; from beside,
+    one row of six triangles of the board scores higher, but lies over a quarter of the normal search's
+    corners, so it is not taken (TODO-137: it was, 61% off)."""
+    t = json.loads((ROOT / "samples" / "photo4.truth.json").read_text())
+    img = cv2.imread(str(ROOT / "samples" / t["image"]))
+    f = SIZE / max(img.shape[:2])
+    img = cv2.resize(img, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
+    found = client.post("/find-corners", files={"image": ("b.jpg", cv2.imencode(".jpg", img)[1].tobytes())}).json()
+    assert found["side"] is None
+    assert _error(found["corners"], np.float64(t["corners_TL_TR_BR_BL"]) * f, img) < 0.04
+
+
 @pytest.mark.parametrize("sent, passed", [({"side": "left"}, "left"), ({"side": ""}, None), ({}, None)])
 def test_api_analyze_photo_passes_the_side(monkeypatch, sent, passed):
     seen = {}
