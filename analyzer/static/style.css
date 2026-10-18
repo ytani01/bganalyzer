@@ -289,7 +289,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .sheet {
   position: fixed; z-index: 20; left: 0; right: 0; bottom: var(--bar-h, 0px); max-width: 720px; margin: 0 auto; padding: 8px 16px 16px;
   background: var(--card); color: var(--fg); border-radius: 12px 12px 0 0; box-shadow: 0 -4px 16px #0005;
-  touch-action: none;   /* nothing in it scrolls: a swipe on it must not scroll the page below (TODO-144) */
+  touch-action: pinch-zoom;   /* nothing in it scrolls: a swipe on it must not scroll the page below, a pinch still zooms (TODO-144) */
 }
 .sheet[hidden] { display: none; }
 .sheet fieldset { border: none; margin: 0; padding: 0; }
