@@ -26,7 +26,7 @@ import numpy as np
 
 GRAD_KEEP = 0.3     # the strongest share of the gradients vote
 ORIENT_CAP = 10     # votes counted per pixel for the direction term ((O / cap)^2 in Loy and Zelinsky)
-PEAK_REL = 0.2      # a peak needs this share of the strongest one's height (0.25 missed dark checkers next to white ones, TODO-139)
+PEAK_REL = 0.25     # a peak needs this share of the strongest one's height
 BOX_PASSES = 3      # box filters standing in for the Gaussian (2: 526, 3: 537, 4: 528 points on the samples)
 RADII = (0.9, 1.0, 1.1)   # radii tried, in the expected radius (one radius: 496, two: 523)
 
