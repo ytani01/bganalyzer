@@ -483,16 +483,16 @@ def _swap(small, score, best, hl, vl, keep, least):
             # a far / near side running outside the board's interior (a screen's dark rows of numbers
             # look like the triangles' bases) may go to a line inside it that scores a bit less (TODO-140)
             out = i % 2 == 0 and here < INNER_OUT
-            for _, t, q2 in (tried if out else tried[:SWAP_TOP]):
+            for n, (_, t, q2) in enumerate(tried if out else tried[:SWAP_TOP]):
                 v2, _ = _view(small, q2, RW, RH, 0)
                 if v2 is None:
                     continue
                 s2 = score(v2, q2)
                 inner = _inner(v2, i)
-                if out and inner >= INNER_IN and s2 > s - OUT_DROP:
+                if out and inner >= INNER_IN and s2 > s - OUT_DROP and s2 >= MIN_SCORE:
                     s, q, sides, view, here, moves, out = s2, q2, t, v2, inner, moves + 1, False
                     continue
-                if s2 <= s + SWAP_GAIN:
+                if n >= SWAP_TOP or s2 <= s + SWAP_GAIN:   # the others only for moving inside
                     continue
                 if inner >= here - INNER_SLACK:
                     s, q, sides, view, here, moves = s2, q2, t, v2, inner, moves + 1
