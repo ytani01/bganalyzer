@@ -49,7 +49,7 @@ from position import Position
 
 # The recognizer's version (the reading code in recognizer/: board.py and the modules it uses, corners.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.27.1"
+__version__ = "0.27.2"
 
 
 def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
@@ -145,7 +145,7 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         mask = np.zeros(ground.shape[:2], np.uint8)
         for x, y, r, *_ in circles:
             cv2.circle(mask, (int(x + m), int(y + m)), int(r * 1.1), 1, -1)
-        board = board_colours(ground, lay, m, tips, mask.astype(bool))
+        board = board_colours(ground, lay, m, tips, mask.astype(bool), [c[3] for c in circles])
         tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, finder=finder)
     lay2 = fit_columns_to_checkers(lay, circles)

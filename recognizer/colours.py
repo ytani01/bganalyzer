@@ -9,12 +9,14 @@ import exact
 from geometry import TRI_DEPTH, Layout, plain_colour
 
 LAB_W = np.float32([0.5, 1.0, 1.0])  # lighting mostly changes L
+AVOID_DE = 12   # a pixel this near a checker's colour (weighted Lab) may be a checker missed (TODO-140)
 
 
-def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None):
+def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None, avoid=()):
     """Lab colours of the plain field, the two triangle colours and the frame.
 
-    mask: pixels to ignore (e.g. under checkers already found)."""
+    mask: pixels to ignore (e.g. under checkers already found). avoid: Lab colours of the checkers found,
+    left out of the band looked in when no triangle was found (checkers missed there are in it; TODO-140)."""
     lab = cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab).astype(np.float32)
     plain = plain_colour(lab, lay, m, mask)
     if mask is not None:
@@ -31,11 +33,22 @@ def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None):
             x = int(m + lay.col_x(c))
             for y0 in (m + lay.h * TRI_DEPTH * 0.3, m + lay.h * (1 - TRI_DEPTH * 0.6)):
                 px.append(lab[int(y0):int(y0 + lay.h * TRI_DEPTH * 0.3), x - 2:x + 3].reshape(-1, 3))
+
+    def two(px):
+        px = px[~np.isnan(px).any(1)]
+        px = px[np.linalg.norm(px - plain, axis=1) > 25] if (np.linalg.norm(px - plain, axis=1) > 25).sum() > 10 else px
+        # in integers (Lab of 8-bit pixels are whole numbers): cv2.kmeans differs by CPU
+        return exact.kmeans(px.astype(np.int32), 2)[1]
     px = np.vstack(px)
-    px = px[~np.isnan(px).any(1)]
-    px = px[np.linalg.norm(px - plain, axis=1) > 25] if (np.linalg.norm(px - plain, axis=1) > 25).sum() > 10 else px
-    # in integers (Lab of 8-bit pixels are whole numbers): cv2.kmeans differs by CPU
-    _, tri = exact.kmeans(px.astype(np.int32), 2)
+    tri = two(px)
+    if len(avoid) and not tips:
+        far = np.min([np.linalg.norm((px - a) * LAB_W, axis=1) for a in avoid], 0) >= AVOID_DE
+        if far.sum() > 10:
+            t = two(px[far])
+            # in the order found without leaving them out: with no triangle found, that order alone says which
+            # points have which colour (triangle_colour_map)
+            swap = np.linalg.norm(t[0] - tri[0]) + np.linalg.norm(t[1] - tri[1]) > np.linalg.norm(t[0] - tri[1]) + np.linalg.norm(t[1] - tri[0])
+            tri = t[::-1] if swap else t
     # frame: the strip just outside the near (bottom) edge of the field
     frames = [np.nanmedian(lab[int(m + lay.h + m * 0.3):int(m + lay.h + m * 0.8),
                             int(m):int(m + lay.w)].reshape(-1, 3), 0)]
