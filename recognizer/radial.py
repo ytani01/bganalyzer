@@ -96,9 +96,8 @@ def _maps(ch, r0):
     return S, R
 
 
-def _peaks(ch, r0, rel=None):
-    """[(x, y, r)] of a channel's symmetry peaks, strongest first (rel: PEAK_REL by default)."""
-    rel = PEAK_REL if rel is None else rel
+def _peaks(ch, r0, rel=PEAK_REL):
+    """[(x, y, r)] of a channel's symmetry peaks, strongest first."""
     key = ("peaks", hashlib.sha1(ch.tobytes()).hexdigest(), ch.shape, r0, rel)
     if key not in _cache:
         S, R = _maps(ch, r0)
@@ -115,7 +114,7 @@ def _peaks(ch, r0, rel=None):
     return _cache[key]
 
 
-def find(channels, r0, rel=None):
+def find(channels, r0, rel=PEAK_REL):
     """Candidates [(x, y, r)] like cv2.HoughCircles' (for each channel image, 8 bits)."""
     out = [c for ch in channels for c in _peaks(ch, r0, rel)]
     return np.float32(out) if out else None

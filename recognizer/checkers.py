@@ -26,8 +26,9 @@ COS_35 = 0.8191520442889918   # cos(35 degrees)
 WEAK_PEAK_REL = 0.1      # peaks looked at where a stack must go on (radial.PEAK_REL elsewhere, TODO-143) ...
 WEAK_RING = 0.6          # ... their circles' ring in the face's colour
 WEAK_SUPPORT = 0.3       # ... and edge support
-WEAK_COLOUR = 12         # ... and colour distance (weighted Lab) to the stack's checker
-BAR_COLOUR_TOL = 0.25   # a checker on the bar: colour distance to its cluster / distance between the clusters
+WEAK_COLOUR = 12         # ... and colour distance (weighted Lab) to the stack's checker; also how near a circle
+                         # must be to a checker colour to be measured in, or found only in, that colour's image
+BAR_COLOUR_TOL = 0.25    # a checker on the bar: colour distance to its cluster / distance between the clusters
 LONE_COLOUR_TOL = 0.3     # ... and for a single checker on a point (a triangle's base can look like one, TODO-048)
 
 
@@ -145,6 +146,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     """Checker tops as circles, scored by edge support and colour.
 
     finder: how candidates are found: "radial" (radial.py, TODO-051), or for comparison "hough" or "both".
+    checker_lab: the two checker colours (Lab), once read: look in each one's own image too (TODO-143).
 
     Returns list of (x, y, r, lab_median, score) in canonical coords (no margin).
     """
@@ -166,23 +168,24 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         if c is not None:
             found.append(c)
     near = []   # (colour, gx, gy) of each checker colour's closeness image (TODO-143)
-    near_only = set()   # ((x, y, r), colour index) of the circles found there
+    near_only = {}   # (x, y, r) -> indices of the colour images it was found in
     n_plain = len(found)
-    if checker_lab is not None:
+    if checker_lab is not None and finder != "hough":
         for c in checker_lab:
             dist = np.linalg.norm((lab8.astype(np.float32) - np.float32(c)) * LAB_W, axis=2)
             ch = cv2.GaussianBlur(_stretch(np.uint8(255 - np.minimum(dist, 255))), (0, 0), 2)
             f = radial.find([ch], r0)
             if f is not None:
                 found.append(f)
-                near_only |= {(tuple(p), len(near)) for p in f.tolist()}
+                for p in f.tolist():
+                    near_only.setdefault(tuple(p), []).append(len(near))
             near.append((np.float32(c) * LAB_W, cv2.Sobel(ch, cv2.CV_16S, 1, 0).astype(np.int32),
                          cv2.Sobel(ch, cv2.CV_16S, 0, 1).astype(np.int32)))
     if not found:
         return []
     cs = [np.vstack(found)]
     plain = set(map(tuple, np.vstack(found[:n_plain]).tolist())) if n_plain else set()
-    near_only = {k: i for k, i in near_only if k not in plain}
+    near_only = {k: i for k, i in near_only.items() if k not in plain}
     labf, gx, gy = lab_gradients(img_bgr)
     lab = labf * LAB_W
     Wb = board * LAB_W
@@ -234,9 +237,9 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         if mm is None:
             continue
         cx, cy, med, ring_same, distinct, support, shown = mm
-        k = near_only.get((float(x), float(y), float(r)))
-        if k is not None and np.linalg.norm(med - near[k][0]) >= WEAK_COLOUR:
-            continue   # found in a checker colour's image only: it must have that colour
+        ks = near_only.get((float(x), float(y), float(r)))
+        if ks is not None and min(np.linalg.norm(med - near[k][0]) for k in ks) >= WEAK_COLOUR:
+            continue   # found in checker colours' images only: it must have one of those colours
         score = support + 0.012 * min(distinct, 30) + 0.3 * ring_same
         # the colour of an empty spot is fine with a clear outline all round
         # (a white checker on a white triangle in a diagram)
@@ -289,7 +292,9 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         # between two checkers, or between a stack of at least two and the frame
         if inner and (outer or (len(stack) >= 2 and depth > 0.3 * pitch)):
             out.append((cx, cy, r, med, score))
-    if finder != "hough" and out:
+    # only once the colours are known: the calls before measure the checkers' size and learn the
+    # board's colours, which added checkers must not change (as add_hidden_stacks)
+    if checker_lab is not None and finder != "hough" and out:
         out += _weak_checkers(radial.find(chans, r0, WEAK_PEAK_REL), cs[0], measure, out, lay, pitch, clear)
     return out
 
@@ -309,9 +314,9 @@ def _weak_checkers(weak, cands, measure, out, lay: Layout, pitch: float, clear):
     def colour_gap(a, b):
         return float(np.linalg.norm((np.float32(a) - np.float32(b)) * LAB_W))
 
-    # the frame end of each stack that stops short of the frame by more than the count makes up
-    # for (count_from_circles counts a stack from within 2.3 pitches of the frame to the frame)
-    short = [o for o in out if depth(o[1]) >= 2 * pitch
+    # the frame end of each stack on a point that stops 2 pitches or more short of the frame
+    # (count_from_circles makes up for a stack that starts within 2.3 pitches of the frame)
+    short = [o for o in out if depth(o[1]) >= 2 * pitch and not lay.a <= o[0] <= lay.a + lay.bar
              and not any(in_line(p, o) and depth(p[1]) < depth(o[1]) for p in out)]
     if not short or weak is None:
         return []
