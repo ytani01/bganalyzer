@@ -1,2 +1,0 @@
-{"image": "photo6.jpg", "note": "Taken from beside the players at an angle, turned so that white (the near player) is at the bottom; outside the photo painted black. White has just doubled to 2 (the cube is in black's left field).", "corners_TL_TR_BR_BL": [[681,788],[1592,612],[1559,1282],[466,1341]], "home": "right", "bottom_colour": 1,
- "points": [4,0,0,0,-2,-1,-3,-3,-2,0,0,0,0,0,2,0,-1,4,1,2,0,1,1,-3], "bar_white": 0, "bar_black": 0, "off_white": 0, "off_black": 0, "dice": null, "cube": {"at": "black", "value": 2}}

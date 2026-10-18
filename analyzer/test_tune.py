@@ -28,7 +28,7 @@ def test_compare_counts_gains_and_losses():
 
 def test_a_small_run_writes_a_report(tmp_path):
     out = tmp_path / "tune.md"
-    report = tune.main(["--only", "screen1", "--params", "cube_value.GAP_MIN", "--steps", "1.2", "--jobs", "1", "--out", str(out)])
+    report = tune.main(["--only", "screen-app-grey-shot", "--params", "cube_value.GAP_MIN", "--steps", "1.2", "--jobs", "1", "--out", str(out)])
     assert out.read_text() == report
     assert "今の設定: **24/24** ポイント" in report
     assert "| cube_value.GAP_MIN | 0.1 | 0.12 | +0 | 0 | 0 |" in report

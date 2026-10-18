@@ -20,7 +20,7 @@ import board  # noqa: E402
 from evaluate import shrink_like_app  # noqa: E402
 
 DEFAULT_URL = "https://bg.tail5c266.ts.net/bg/"
-DEFAULT_SAMPLES = ["photo2", "photo3", "photo4", "screen1", "screen2"]
+DEFAULT_SAMPLES = ["photo-blue-red-top", "photo-green-felt-top", "photo-carved-brown-top", "screen-app-grey-shot", "screen-app-green-far"]
 STATIC = ["", "app.js", "style.css", "sw.js", "manifest.webmanifest", "sample.js"]
 
 

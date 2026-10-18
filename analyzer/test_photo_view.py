@@ -21,7 +21,7 @@ def test_photo_script_is_served_and_cached():
 
 
 def test_analyze_photo_returns_geometry():
-    t = json.loads((SAMPLES / "screen1.truth.json").read_text())
+    t = json.loads((SAMPLES / "screen-app-grey-shot.truth.json").read_text())
     corners = [v for xy in t["corners_TL_TR_BR_BL"] for v in xy]
     with open(SAMPLES / t["image"], "rb") as f:
         res = client.post("/analyze-photo", files={"image": (t["image"], f)},
@@ -41,7 +41,7 @@ def test_analyze_photo_returns_geometry():
     ck = g["checkers"]
     assert ck and all(r > 0 and side in ("white", "black") for _, _, r, side in ck)
     assert {side for *_, side in ck} == {"white", "black"}
-    # the dice read (screen1: 4 and 2) and the cube in the middle (found since recognizer 0.20.0) as squares in image pixels
+    # the dice read (screen-app-grey-shot: 4 and 2) and the cube in the middle (found since recognizer 0.20.0) as squares in image pixels
     assert sorted(d["value"] for d in g["dice"]) == [2, 4]
     for d in g["dice"]:
         assert len(d["quad"]) == 4 and all(min(xs) < x < max(xs) and min(ys) < y < max(ys) for x, y in d["quad"])
@@ -49,7 +49,7 @@ def test_analyze_photo_returns_geometry():
 
 
 def test_analyze_photo_streams_the_stages():
-    t = json.loads((SAMPLES / "screen2.truth.json").read_text())
+    t = json.loads((SAMPLES / "screen-app-green-far.truth.json").read_text())
     corners = ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy)
     data = {"corners": corners, "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0"}
     with open(SAMPLES / t["image"], "rb") as f:
@@ -78,7 +78,7 @@ def test_analyze_photo_streams_the_stages():
 
 def test_analyze_photo_keeps_the_corners():
     # keep_corners (TODO-084): the board read where the corners put it, fitted once (the columns only)
-    t = json.loads((SAMPLES / "screen2.truth.json").read_text())
+    t = json.loads((SAMPLES / "screen-app-green-far.truth.json").read_text())
     corners = ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy)
     data = {"corners": corners, "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0",
             "keep_corners": "true", "stream": "true"}
@@ -93,9 +93,9 @@ def test_analyze_photo_keeps_the_corners():
     assert len(g["columns"]) == 12
 
 def test_find_corners_streams_the_stages():
-    with open(SAMPLES / "photo3.jpg", "rb") as f:
+    with open(SAMPLES / "photo-green-felt-top.jpg", "rb") as f:
         body = f.read()
-    res = client.post("/find-corners", files={"image": ("photo3.jpg", body)}, data={"stream": "true"})
+    res = client.post("/find-corners", files={"image": ("photo-green-felt-top.jpg", body)}, data={"stream": "true"})
     assert res.status_code == 200 and res.headers["content-type"].startswith("application/x-ndjson")
     events = [json.loads(line) for line in res.text.splitlines()]
     assert [e["stage"] for e in events] == ["edges", "uprights", "candidates", "corners", "done"]
@@ -106,7 +106,7 @@ def test_find_corners_streams_the_stages():
     assert quads and all(len(q) == 4 for q in quads)
     result = by["done"]["result"]
     assert by["corners"]["corners"] == result["corners"]
-    plain = client.post("/find-corners", files={"image": ("photo3.jpg", body)}).json()
+    plain = client.post("/find-corners", files={"image": ("photo-green-felt-top.jpg", body)}).json()
     assert plain == result   # the same as without streaming
     h, w = plain["height"], plain["width"]
     assert all(-0.2 * w < x < 1.2 * w and -0.2 * h < y < 1.2 * h for q in quads for x, y in q)   # image pixels
@@ -127,7 +127,7 @@ def test_stage_times_are_in_one_table():
 
 
 def test_analyze_photo_returns_cube_square():
-    t = json.loads((SAMPLES / "screen2.truth.json").read_text())
+    t = json.loads((SAMPLES / "screen-app-green-far.truth.json").read_text())
     corners = [v for xy in t["corners_TL_TR_BR_BL"] for v in xy]
     with open(SAMPLES / t["image"], "rb") as f:
         res = client.post("/analyze-photo", files={"image": (t["image"], f)},
@@ -144,7 +144,7 @@ def test_analyze_photo_returns_cube_square():
 
 def test_analyze_photo_reads_the_cube_number():
     # a cube showing 16 pasted on 奥's side of the user's board (synth_cube.py), in a font the reader never saw
-    t = json.loads((SAMPLES / "synth-cube-photo2-16.truth.json").read_text())
+    t = json.loads((SAMPLES / "synth-cube-photo-blue-red-top-16.truth.json").read_text())
     corners = [v for xy in t["corners_TL_TR_BR_BL"] for v in xy]
     with open(SAMPLES / t["image"], "rb") as f:
         res = client.post("/analyze-photo", files={"image": (t["image"], f)},

@@ -80,7 +80,7 @@ def test_api_moves_bearing_off_are_whole():
 
 
 def test_api_board_matches_truth():
-    truth = json.loads((Path(__file__).parent.parent / "samples" / "photo2.truth.json").read_text())
+    truth = json.loads((Path(__file__).parent.parent / "samples" / "photo-blue-red-top.truth.json").read_text())
     res = client.post("/analyze", json={"board": {"points": truth["points"]}, "on_roll": "black"})
     assert res.status_code == 200, res.text
     j = res.json()
@@ -147,8 +147,8 @@ def test_steep_photo_is_flagged():
     # the oblique Commons photos added in TODO-017 are steep enough to be flagged too
     # and so are three of the photos collected on the Pi (TODO-030)
     steep = {"commons-nardy-midgame.truth.json", "commons-rollup-oblique.truth.json",
-             "collected-4b88u3.truth.json", "collected-5wxq9t.truth.json", "collected-ajxlol.truth.json",
-             "photo5.truth.json", "photo6.truth.json"}   # taken from beside the players (TODO-076)
+             "collected-cream-far.truth.json", "collected-tan-far.truth.json", "collected-tan-black-side-1.truth.json",
+             "photo-black-blue-oblique.truth.json", "photo-orange-black-oblique.truth.json"}   # taken from beside the players (TODO-076)
     samples = Path(__file__).resolve().parent.parent / "samples"
     for f in samples.glob("*.truth.json"):
         t = json.loads(f.read_text())
@@ -201,21 +201,21 @@ def test_corners_are_found_on_samples():
     # The far / near edges are the strongest straight edges, the left / right ones lines with an edge
     # in nearly every row between them; each edge is moved to the innermost strong edge nearby, and
     # the quad that frames two rows of twelve triangles best wins (TODO-028, recognizer 0.16.0).
-    # photo6 (oblique): its left edge slopes 0.39, past the 0.3 lines were tried at before recognizer
+    # photo-orange-black-oblique (oblique): its left edge slopes 0.39, past the 0.3 lines were tried at before recognizer
     # 0.23.2 (23.3%, TODO-104). The sides lying on edges, and each swapped for another line while the
-    # score goes up (recognizer 0.26.0, TODO-105): before, photo4 took the frame's outer edge (4.5%),
+    # score goes up (recognizer 0.26.0, TODO-105): before, photo-carved-brown-top took the frame's outer edge (4.5%),
     # diagram-prime the frame with the point numbers (4.7%), travel-case a slanted side (2.0%),
-    # nardy-midgame 6.0% and collected-m5ekpe 9.3%.
+    # nardy-midgame 6.0% and collected-galaxy-screen-3 9.3%.
     import cv2
     from corners import find_corners
 
     samples = Path(__file__).resolve().parent.parent / "samples"
-    for name, most in (("photo2", 0.035), ("photo3", 0.035), ("screen2", 0.035), ("screen1", 0.035),
+    for name, most in (("photo-blue-red-top", 0.035), ("photo-green-felt-top", 0.035), ("screen-app-green-far", 0.035), ("screen-app-grey-shot", 0.035),
                        ("commons-tavli-black", 0.035), ("commons-tavli-burl", 0.035),
                        ("commons-dark-homeleft", 0.035), ("commons-diagram-prime", 0.02),
-                       ("commons-travel-case", 0.015), ("tv-vegas-open", 0.035), ("photo6", 0.05),
-                       ("photo4", 0.04), ("commons-nardy-midgame", 0.035), ("collected-m5ekpe", 0.02),
-                       ("synth-cube-photo4-2", 0.035)):   # 4.9 % without the model's corners (TODO-136)
+                       ("commons-travel-case", 0.015), ("tv-vegas-open", 0.035), ("photo-orange-black-oblique", 0.05),
+                       ("photo-carved-brown-top", 0.04), ("commons-nardy-midgame", 0.035), ("collected-galaxy-screen-3", 0.02),
+                       ("synth-cube-photo-carved-brown-top-2", 0.035)):   # 4.9 % without the model's corners (TODO-136)
         t = json.loads((samples / f"{name}.truth.json").read_text())
         img = cv2.imread(str(samples / t["image"]))
         found = find_corners(img)
@@ -242,7 +242,7 @@ def test_corners_keep_the_fixed_ones_and_look_in_the_trimmed_part():
     from corners import find_corners
 
     samples = Path(__file__).resolve().parent.parent / "samples"
-    t = json.loads((samples / "screen1.truth.json").read_text())
+    t = json.loads((samples / "screen-app-grey-shot.truth.json").read_text())
     img = cv2.imread(str(samples / t["image"]))
     truth = t["corners_TL_TR_BR_BL"]
     found = find_corners(img, fixed=[truth[0], truth[1], None, None])
@@ -253,7 +253,7 @@ def test_corners_keep_the_fixed_ones_and_look_in_the_trimmed_part():
 
     # the board is small in this photo: found in the part around it, the user's trimming or
     # where the model sees it (TODO-136)
-    t = json.loads((samples / "collected-sj1vrx.truth.json").read_text())
+    t = json.loads((samples / "collected-diagram-grey-far.truth.json").read_text())
     img = cv2.imread(str(samples / t["image"]))
     truth = t["corners_TL_TR_BR_BL"]
     found = find_corners(img)
@@ -265,7 +265,7 @@ def test_corners_keep_the_fixed_ones_and_look_in_the_trimmed_part():
 
     # trimmed to the board, the playing area fills most of it: not one of the two fields (20 % off),
     # and the stages of the search come in the photo's pixels
-    t = json.loads((samples / "screen2.truth.json").read_text())
+    t = json.loads((samples / "screen-app-green-far.truth.json").read_text())
     img = cv2.imread(str(samples / t["image"]))
     truth = t["corners_TL_TR_BR_BL"]
     xs, ys = [p[0] for p in truth], [p[1] for p in truth]
@@ -282,14 +282,14 @@ def test_api_find_corners():
     import numpy as np
 
     samples = Path(__file__).resolve().parent.parent / "samples"
-    img = cv2.imread(str(samples / "photo2.jpg"))
+    img = cv2.imread(str(samples / "photo-blue-red-top.jpg"))
     f = 2048 / max(img.shape[:2])   # the app sends large photos at this size
     small = cv2.resize(img, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
     res = client.post("/find-corners", files={"image": ("b.jpg", cv2.imencode(".jpg", small)[1].tobytes())})
     assert res.status_code == 200, res.text
     j = res.json()
     assert (j["width"], j["height"]) == (small.shape[1], small.shape[0])
-    truth = json.loads((samples / "photo2.truth.json").read_text())["corners_TL_TR_BR_BL"]
+    truth = json.loads((samples / "photo-blue-red-top.truth.json").read_text())["corners_TL_TR_BR_BL"]
     assert _corner_error(j["corners"], np.multiply(truth, f), small.shape) < 0.035
     assert j["side"] is None   # a photo from the front stays so (TODO-134)
 
@@ -344,7 +344,7 @@ def test_api_guesses_home_side():
     import cv2
 
     samples = Path(__file__).resolve().parent.parent / "samples"
-    t = json.loads((samples / "screen1.truth.json").read_text())   # home on the left
+    t = json.loads((samples / "screen-app-grey-shot.truth.json").read_text())   # home on the left
     ok, png = cv2.imencode(".png", cv2.imread(str(samples / t["image"])))
     res = client.post("/analyze-photo", files={"image": ("s.png", png.tobytes(), "image/png")},
                       data={"corners": ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy),
@@ -396,7 +396,7 @@ def test_api_reads_dice_from_the_photo():
     import cv2
 
     samples = Path(__file__).resolve().parent.parent / "samples"
-    t = json.loads((samples / "screen1.truth.json").read_text())   # dice 4-2 on the board
+    t = json.loads((samples / "screen-app-grey-shot.truth.json").read_text())   # dice 4-2 on the board
     ok, png = cv2.imencode(".png", cv2.imread(str(samples / t["image"])))
     form = {"corners": ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy),
             "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0"}
@@ -628,7 +628,7 @@ def test_api_reads_the_cube_from_the_photo():
     import cv2
 
     samples = Path(__file__).resolve().parent.parent / "samples"
-    t = json.loads((samples / "screen2.truth.json").read_text())   # cube 2 on 奥's side, dice 5-4
+    t = json.loads((samples / "screen-app-green-far.truth.json").read_text())   # cube 2 on 奥's side, dice 5-4
     ok, jpg = cv2.imencode(".jpg", cv2.imread(str(samples / t["image"])))
     form = {"corners": ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy),
             "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0"}

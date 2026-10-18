@@ -42,7 +42,7 @@ import exact
 
 DEBUG = None           # a list to collect the scored candidates in (for tuning)
 WORK_SIDE = 800        # longest side the search runs at (px)
-SLOPES = np.arange(-100, 101, 2)   # line slopes tried, in 1/200: up to 0.5 (27 degrees; oblique photos: photo5 0.36, photo6 0.39), steps of 0.01
+SLOPES = np.arange(-100, 101, 2)   # line slopes tried, in 1/200: up to 0.5 (27 degrees; oblique photos: photo-black-blue-oblique 0.36, photo-orange-black-oblique 0.39), steps of 0.01
 EDGE_MIN = 60          # contrast (summed over Lab's channels) of an edge pixel
 H_LINES = 6            # far / near edge candidates
 V_LINES = 8            # left / right edge candidates for each far / near pair

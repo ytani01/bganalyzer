@@ -27,18 +27,18 @@
 
 **無駄を省く工夫:** `tune.py` は写真がまとまってから 1 回だけ流す。`samples/` に入れた組は CI の accuracy に任せる
 
-## TODO-079. photo5 のサイコロ（緑の透明なもの）が読めない
+## TODO-079. photo-black-blue-oblique のサイコロ（緑の透明なもの）が読めない
 
 | | main | 担当 |
 |---|---|---|
 | 見込み | Opus 5.5 / effort high | main（測定・実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 
-`samples/photo5.jpg`（TODO-076）の 6・2 のサイコロを読めない。小さく透明な緑のサイコロで、バーの近くの駒の脇にある。
+`samples/photo-black-blue-oblique.jpg`（TODO-076）の 6・2 のサイコロを読めない。小さく透明な緑のサイコロで、バーの近くの駒の脇にある。
 
 - [ ] どこで崩れるかを切り分ける
 - [ ] 直すかどうかを決める（このサイコロだけの事情なら対応しないで閉じてもよい）
 
-**無駄を省く工夫:** 切り分けは photo5 だけで行う
+**無駄を省く工夫:** 切り分けは photo-black-blue-oblique だけで行う
 
 ## TODO-121. 横から撮った写真のモードの精度を上げる
 
@@ -69,9 +69,10 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 範囲は全部（collected-*・photo2〜6・screen1・2・tv-vegas-open・commons-*・synth-*・external）。
 これから `recognizer/import_collected.py` が取り込む組は、開発機の `claude -p` に写真を渡して名前を付けさせる（取り込む組は公開するので、外へ出るのは公開より前の分だけ。同日ユーザーが決めた）。
 
-- [ ] 名前の決まり（並び・語の選び方・重なったときの番号）を決めて、案の一覧を出す
-- [ ] 写真・`*.truth.json`（`image` の値）・`accuracy_baseline.json`・テスト・README・docs の参照を新しい名前にする
-- [ ] `import_collected.py` で、`claude -p` に名前を付けさせる（使えないときは今の乱数の名前）
+- [x] 名前の決まり（並び・語の選び方・重なったときの番号）を決めて、案の一覧を出す
+- [x] 写真・`*.truth.json`（`image` の値）・`accuracy_baseline.json`・テスト・README・docs の参照を新しい名前にする
+- [x] `import_collected.py` で、`claude -p` に名前を付けさせる（使えないときは今の乱数の名前）
+- [ ] ローカル: 次の自動取り込みの PR で、足した組が盤と撮り方の分かる名前（`collected-<id>` でない）になっている
 
 **無駄を省く工夫:** 読みは変わらないので精度は CI の accuracy に任せる。参照の漏れは `rg` で旧名を引いて確かめる（archives は書き換えない）
 

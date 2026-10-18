@@ -3,7 +3,7 @@ changing app.js). Only what is visible counts: a screen hidden behind another is
 
 The app is used with clicks only, as a person would (nothing inside app.js is read or called), through
 three flows: "manual" (a board set up by hand: editing, dice, cube, turn, analysis, reading aloud),
-"photo" (samples/screen1.png: corners, reading, the photo beside the board, tapping and dragging
+"photo" (samples/screen-app-grey-shot.png: corners, reading, the photo beside the board, tapping and dragging
 corners) and "history" (reopening and deleting a photo kept on the phone). After each step it keeps
 the visible screen: which parts show, their text, the board pictures (SVG), the photo canvas (a hash
 of its pixels), the result, what was read aloud and the alerts.
@@ -29,7 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 URL = os.environ.get("BG_URL", "http://127.0.0.1:8000/")
 CHROMIUM = os.environ.get("BG_CHROMIUM", "/usr/bin/chromium")
-SAMPLE = "screen1"   # an app screenshot with dice (4-2): read the same every time
+SAMPLE = "screen-app-grey-shot"   # an app screenshot with dice (4-2): read the same every time
 WAIT = 180000        # ms: a reading or an analysis on the Pi
 
 # before the app's scripts: record what would be spoken, and no share sheet

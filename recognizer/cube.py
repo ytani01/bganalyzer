@@ -19,7 +19,7 @@ import exact
 
 SIDE_MIN, SIDE_MAX = 0.45, 1.15    # cube side / checker diameter
 MARGIN = 2.2                       # how far (checker diameters) to look beyond the playing area, left and right
-MAX_MARKS = 8                      # marks on the face: photo3's "64" breaks into 5 to 7 on the Raspberry Pi
+MAX_MARKS = 8                      # marks on the face: photo-green-felt-top's "64" breaks into 5 to 7 on the Raspberry Pi
 MIN_READINGS = 4                   # brightness levels at which the block is found (the samples' other squares: 3 at most)
 MIDDLE = 0.18                      # within this share of the board's height from the middle line: in the middle
 
@@ -115,7 +115,7 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
             cv2.drawContours(g, [b["hull"]], -1, (0, 255, 255), 1)
         cv2.imwrite(debug, g)
     # the cube: the one place found at enough levels, and far more often than any other square
-    # (photo3's cube is found 6 or 7 times on x86_64, 5 on the Raspberry Pi; other squares 3 at most)
+    # (photo-green-felt-top's cube is found 6 or 7 times on x86_64, 5 on the Raspberry Pi; other squares 3 at most)
     cubes.sort(key=lambda c: -c["seen"])
     if not cubes or cubes[0]["seen"] < MIN_READINGS or (len(cubes) > 1 and cubes[1]["seen"] * 2 > cubes[0]["seen"]):
         return None

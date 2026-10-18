@@ -1,7 +1,7 @@
 """Photos with a doubling cube of a known number pasted in, for checking cube_value.py (TODO-025).
 
 No sample has a cube showing 4, 8, 16 or 32 on one side, so these are made: the user's own board
-photos (photo2, photo4) with a cube drawn in, lying flat on the board's plane (the board's four
+photos (photo-blue-red-top, photo-carved-brown-top) with a cube drawn in, lying flat on the board's plane (the board's four
 corners give its perspective), at any turn, in the trays or on the frame beside the playing area,
 on either player's side, or in a playing field. The numbers are drawn in make_cube_glyphs.TEST_FONTS,
 which the reader's templates never use. Writes samples/synth-cube-*.jpg and their .truth.json:
@@ -25,9 +25,9 @@ SAMPLES = os.path.join(HERE, "..", "samples")
 # (base photo, where the cube's centre goes as (u, v) of the playing area, side): u, v from 0 to 1
 # across and down; beyond 0..1 is outside the playing area (a tray, the frame)
 SPOTS = {
-    "photo2": [((-0.075, 0.82), "white"), ((1.06, 0.18), "black"), ((0.29, 0.52), "field"),
+    "photo-blue-red-top": [((-0.075, 0.82), "white"), ((1.06, 0.18), "black"), ((0.29, 0.52), "field"),
                ((-0.075, 0.12), "black"), ((1.06, 0.88), "white"), ((0.70, 0.47), "field")],
-    "photo4": [((0.30, 0.62), "field"), ((0.74, 0.48), "field"), ((1.035, 0.80), "white"),
+    "photo-carved-brown-top": [((0.30, 0.62), "field"), ((0.74, 0.48), "field"), ((1.035, 0.80), "white"),
                ((-0.035, 0.22), "black"), ((0.88, 0.62), "field"), ((1.035, 0.16), "black")],
 }
 FACES = [((236, 240, 244), (24, 24, 24)), ((214, 232, 240), (30, 30, 30)), ((245, 245, 245), (150, 60, 20)),

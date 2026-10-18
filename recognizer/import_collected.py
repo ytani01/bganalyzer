@@ -10,11 +10,13 @@ before under another name, a photo that cannot be read. Nothing is added while a
 is open (its checks failed, it conflicts with main, or the service was restarted while waiting: someone has to
 look at it, and merge or close it).
 The photo is painted black outside the truth's corners (its size and the corners stay), and written
-again without EXIF; of the truth, only the fields the samples have go in (anyone can send one).
+again without EXIF; of the truth, only the fields the samples have go in (anyone can send one), and the id.
+With BG_CLAUDE set, claude -p names the pair from the painted photo (what will be public anyway): its
+board and how it was taken (TODO-142). Without it, or when that fails, the pair is collected-<id>.
 The PR is brought up to date with main and merged when its checks pass; otherwise it is left open.
 What it did goes to import.log next to the pairs.
 """
-import hashlib, json, re, signal, subprocess, sys, tempfile, time
+import base64, hashlib, json, os, re, signal, subprocess, sys, tempfile, time
 from pathlib import Path
 
 import cv2
@@ -23,6 +25,12 @@ import numpy as np
 MAX = 10
 REPO = Path(__file__).resolve().parent.parent
 BRANCH = "claude/collected-import-"
+NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+){0,6}")   # what claude may name a pair (after collected-)
+PROMPT = ("This is a photo of a backgammon board, painted black outside the board. Give it a short name in English: "
+          "lowercase words joined by hyphens, first how the board looks (colours, material, or the app or stream it is), "
+          "then how it was taken: top (from above), oblique, side (from beside the players), far (the board small), "
+          "screen (a photo of a screen) or shot (a screenshot). No number at the end. Names given before: {names}. "
+          "Use the same words for a board like one of them. End with the name alone on the last line.")
 ROW = re.compile(r"^\| (?:Pi に)?集めた写真 .*$", re.M)   # the row of samples/collected-* in recognizer/README.md
 
 
@@ -39,7 +47,8 @@ def pick(d, names, samples):
     """The pairs to add, the oldest first, up to MAX: not in samples/ yet by id, no photo sent before
     under another name (same bytes as a pair already added, or as a photo in samples/), readable."""
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
-    added = lambda n: (samples / f"collected-{sample_id(n)}.truth.json").exists()
+    have = {json.loads(p.read_text()).get("id") for p in samples.glob("collected-*.truth.json")}
+    added = lambda n: sample_id(n) in have
     seen = {sha(p) for p in samples.glob("*") if p.suffix in (".jpg", ".png")}
     seen |= {sha(photo(d, n)) for n in (p.name for p in d.glob("user-*.truth.json")) if added(n)}
     out, ids = [], set()
@@ -78,14 +87,49 @@ def clean(t):
     return out
 
 
+def describe(img, samples):
+    """The name claude -p gives the photo, or None (BG_CLAUDE not set, or no name in its answer)."""
+    if not (cmd := os.environ.get("BG_CLAUDE")):
+        return None
+    names = ", ".join(sorted(p.name.removesuffix(".truth.json").removeprefix("collected-") for p in samples.glob("collected-*.truth.json")))
+    s = min(1, 1568 / max(img.shape[:2]))   # larger images are scaled down by the API anyway
+    b64 = base64.b64encode(cv2.imencode(".jpg", cv2.resize(img, None, fx=s, fy=s, interpolation=cv2.INTER_AREA))[1]).decode()
+    msg = {"type": "user", "message": {"role": "user", "content": [
+        {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
+        {"type": "text", "text": PROMPT.format(names=names or "none")}]}}
+    try:
+        with tempfile.TemporaryDirectory() as cwd:   # nothing for it to read
+            out = subprocess.run([cmd, "-p", "--model", os.environ.get("BG_CLAUDE_MODEL") or "claude-sonnet-5-5",
+                                  "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--tools", "",
+                                  "--no-session-persistence", "--setting-sources", ""],
+                                 input=json.dumps(msg) + "\n", capture_output=True, text=True, timeout=120, cwd=cwd).stdout
+        text = [r for r in map(json.loads, (l for l in out.splitlines() if l.startswith("{"))) if r.get("type") == "result"][-1]["result"]
+        last = text.strip().splitlines()[-1].strip(" `*.").removeprefix("collected-")
+    except (OSError, subprocess.TimeoutExpired, ValueError, LookupError, AttributeError):
+        return None
+    return last if NAME.fullmatch(last) else None
+
+
+def free(samples, name):
+    """name, or name-2, -3, ... when collected-<name> (or the first of a numbered run, -1) is taken."""
+    taken = lambda n: (samples / f"collected-{n}.truth.json").exists()
+    if not (taken(name) or taken(name + "-1")):
+        return name
+    k = 2
+    while taken(f"{name}-{k}"):
+        k += 1
+    return f"{name}-{k}"
+
+
 def add(d, name, samples):
-    """Write one pair to samples/ as collected-<id>; returns the new name."""
+    """Write one pair to samples/ as collected-<the name claude gives it, or the id>; returns the new name."""
     t = json.loads((d / name).read_text())
     suffix = Path(t["image"]).suffix
-    new = f"collected-{sample_id(name)}"
-    cv2.imwrite(str(samples / (new + suffix)), paint(cv2.imread(str(photo(d, name))), t["corners_TL_TR_BR_BL"]), [cv2.IMWRITE_JPEG_QUALITY, 95])
+    img = paint(cv2.imread(str(photo(d, name))), t["corners_TL_TR_BR_BL"])
+    new = "collected-" + free(samples, describe(img, samples) or sample_id(name))
+    cv2.imwrite(str(samples / (new + suffix)), img, [cv2.IMWRITE_JPEG_QUALITY, 95])
     note = f"Collected on the server ({time.strftime('%Y-%m-%d')}) and added automatically: the board as corrected by hand."
-    (samples / (new + ".truth.json")).write_text(json.dumps({"image": new + suffix, "note": note} | clean(t), ensure_ascii=False))
+    (samples / (new + ".truth.json")).write_text(json.dumps({"image": new + suffix, "id": sample_id(name), "note": note} | clean(t), ensure_ascii=False))
     return new
 
 
