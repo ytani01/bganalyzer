@@ -235,8 +235,17 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .from-photo { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; white-space: nowrap; }
 .alert { background: var(--warn-bg); color: var(--warn-fg); border-radius: 10px; padding: 8px 12px; margin: 8px 0; font-size: 14px; }
 
-.dice { display: flex; gap: 8px; }
-.dice select { font-size: 18px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); width: 80px; }
+.dice { display: flex; flex-direction: column; gap: 6px; }
+.die-pick { display: grid; grid-template-columns: repeat(6, 38px); gap: 4px; }
+.die-pick button {
+  appearance: none; border: 3px solid transparent; background: none; border-radius: 9px;
+  height: 40px; padding: 1px; cursor: pointer; display: flex;
+}
+.die-pick svg { width: 100%; height: 100%; }
+.die-pick rect { fill: var(--die-face, var(--white-chk)); stroke: #0006; stroke-width: 1.5; }
+.die-pick circle { fill: var(--die-pip, var(--white-fg)); }
+#dice-row[data-side="black"] { --die-face: var(--black-chk); --die-pip: var(--black-fg); }
+.die-pick button.on { border-color: var(--sel); background: var(--sel); }
 
 .result { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 16px 0; }
 .result.stale { opacity: .5; }
@@ -298,7 +307,6 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .opt .seg button { padding: 7px 6px; font-size: 15px; }
 .opt .note { flex-basis: 100%; margin: 0; }
 .opt .angle { flex: 1; min-width: 0; }
-.opt .dice select { width: 64px; font-size: 17px; padding: 5px 6px; }
 .panel .note { margin: 4px 0 8px; }
 
 /* Phone held upright: the header is one line (the step's name instead of the step list), and the board
