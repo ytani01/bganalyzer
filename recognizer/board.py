@@ -148,11 +148,16 @@ def recognize(img, corners, *, bottom_colour=0, home="right", bar_ratio=None,
         board = board_colours(ground, lay, m, tips, mask.astype(bool), [c[3] for c in circles])
         tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
         circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, finder=finder)
+    # look again in each checker colour's own image: a dark checker's peak can be far below
+    # a light one's (TODO-143)
+    checker_lab = count_from_circles(circles, lay, pitch)[2] if len(circles) >= 4 else None
+    if checker_lab is not None:
+        circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, finder=finder, checker_lab=checker_lab)
     lay2 = fit_columns_to_checkers(lay, circles)
     if lay2.cols != lay.cols:
         lay = lay2
         tri_map = triangle_colour_map(board, lay, m, tips, ground_lab)
-        circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, finder=finder)
+        circles = detect_checkers(ground, board, lay, m, pitch, tri_map, tri_len, finder=finder, checker_lab=checker_lab)
     # last, so that the added checkers do not change the measured pitch or the board colours
     circles = add_hidden_stacks(ground, lay, m, pitch, circles)
     runs, bar, cc = count_from_circles(circles, lay, pitch)

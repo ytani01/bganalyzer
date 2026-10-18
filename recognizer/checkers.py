@@ -141,7 +141,7 @@ def _top_colour(inner):
 
 
 def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=None, tri_len=None, drop_shown=True,
-                    finder="radial"):
+                    finder="radial", checker_lab=None):
     """Checker tops as circles, scored by edge support and colour.
 
     finder: how candidates are found: "radial" (radial.py, TODO-051), or for comparison "hough" or "both".
@@ -165,9 +165,24 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         c = radial.find(chans, r0)
         if c is not None:
             found.append(c)
+    near = []   # (colour, gx, gy) of each checker colour's closeness image (TODO-143)
+    near_only = set()   # ((x, y, r), colour index) of the circles found there
+    n_plain = len(found)
+    if checker_lab is not None:
+        for c in checker_lab:
+            dist = np.linalg.norm((lab8.astype(np.float32) - np.float32(c)) * LAB_W, axis=2)
+            ch = cv2.GaussianBlur(_stretch(np.uint8(255 - np.minimum(dist, 255))), (0, 0), 2)
+            f = radial.find([ch], r0)
+            if f is not None:
+                found.append(f)
+                near_only |= {(tuple(p), len(near)) for p in f.tolist()}
+            near.append((np.float32(c) * LAB_W, cv2.Sobel(ch, cv2.CV_16S, 1, 0).astype(np.int32),
+                         cv2.Sobel(ch, cv2.CV_16S, 0, 1).astype(np.int32)))
     if not found:
         return []
     cs = [np.vstack(found)]
+    plain = set(map(tuple, np.vstack(found[:n_plain]).tolist())) if n_plain else set()
+    near_only = {k: i for k, i in near_only if k not in plain}
     labf, gx, gy = lab_gradients(img_bgr)
     lab = labf * LAB_W
     Wb = board * LAB_W
@@ -207,7 +222,11 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         else:
             expected += [Wb[1], Wb[2]]
         distinct = float(np.min(np.linalg.norm(np.float32(expected) - med, axis=1)))
-        return cx, cy, med, ring_same, distinct, edge_support(gx, gy, x, y, r), shown
+        support = edge_support(gx, gy, x, y, r)
+        for c, ngx, ngy in near:   # in a checker's colour: its rim against what is not
+            if np.linalg.norm(med - c) < WEAK_COLOUR:
+                support = max(support, edge_support(ngx, ngy, x, y, r))
+        return cx, cy, med, ring_same, distinct, support, shown
 
     scored = []
     for x, y, r in cs[0]:
@@ -215,6 +234,9 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         if mm is None:
             continue
         cx, cy, med, ring_same, distinct, support, shown = mm
+        k = near_only.get((float(x), float(y), float(r)))
+        if k is not None and np.linalg.norm(med - near[k][0]) >= WEAK_COLOUR:
+            continue   # found in a checker colour's image only: it must have that colour
         score = support + 0.012 * min(distinct, 30) + 0.3 * ring_same
         # the colour of an empty spot is fine with a clear outline all round
         # (a white checker on a white triangle in a diagram)
