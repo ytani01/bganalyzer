@@ -67,6 +67,7 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 
 2026-10-19 ユーザーの依頼。`samples/` の名前（`collected-2aunci` など）が分かりにくいので、写っている盤や撮り方が分かる名前にする。
 範囲は全部（collected-*・photo2〜6・screen1・2・tv-vegas-open・commons-*・synth-*・external）。
+名前の決まりは `<出どころ>-<盤の特徴>-<撮り方>[-番号]`（同日ユーザーが決めた）。tv-vegas-open・commons-*・external は今の名前で特徴が分かるので変えない。
 これから `recognizer/import_collected.py` が取り込む組は、開発機の `claude -p` に写真を渡して名前を付けさせる（取り込む組は公開するので、外へ出るのは公開より前の分だけ。同日ユーザーが決めた）。
 
 - [x] 名前の決まり（並び・語の選び方・重なったときの番号）を決めて、案の一覧を出す

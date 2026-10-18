@@ -109,11 +109,11 @@ def test_import_skips_what_samples_has(tmp_path):
     make(tmp_path, "user-1-aaa", 30)
     make(tmp_path, "user-2-bbb", 10)
     other(tmp_path, "user-3-ccc", 20)
-    (s / "collected-bbb.truth.json").write_text('{"id": "bbb"}')
-    assert import_collected.pick(tmp_path, ["user-1-aaa.truth.json"], s) == []   # the photo of collected-bbb
-    (s / "collected-ccc.truth.json").write_text('{"id": "ccc"}')
+    (s / "collected-blue-top.truth.json").write_text('{"id": "bbb"}')   # the name is not the id (TODO-142)
+    assert import_collected.pick(tmp_path, ["user-1-aaa.truth.json"], s) == []   # the photo of the pair with the id bbb
+    (s / "collected-red-side.truth.json").write_text('{"id": "ccc"}')
     assert import_collected.pick(tmp_path, ["user-3-ccc.truth.json"], s) == []   # the id: sent again with another photo
-    (s / "collected-bbb.truth.json").unlink(), (s / "collected-ccc.truth.json").unlink()
+    (s / "collected-blue-top.truth.json").unlink(), (s / "collected-red-side.truth.json").unlink()
     shutil.copy(SAMPLES / "screen-app-grey-shot.png", s / "screen-app-grey-shot.png")   # a photo of samples/ sent as it is
     assert import_collected.pick(tmp_path, ["user-1-aaa.truth.json", "user-3-ccc.truth.json"], s) == ["user-3-ccc.truth.json"]
 

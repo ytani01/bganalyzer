@@ -30,7 +30,7 @@ CC BY-SA の写真（とその縮小版）は同じ CC BY-SA で配布します�
 `collected-*` はユーザーが PWA の「サーバーに保存する」で集めた写真と、スマホで直した盤面です（TODO-030）。人・配信の画面・投稿者・アバター・氏名・人の腕が写っていた 8 枚は、手で盤の外を黒く塗りました（写真の大きさと四隅の座標は元のまま）。EXIF は入れていません。
 2026-10-17 からは、開発機のサーバーに送られた組のうち読み違いのあるものを `recognizer/import_collected.py` が自動で入れます（送るのはユーザーとは限りません）。背景の塗りつぶし処理で盤の外（正解の四隅の外）を黒くし、EXIF は入れません（TODO-114）。
 Las Vegas Open の配信の画面（`collected-tv-vegas-1`・`collected-tv-vegas-2`）は、盤の映像を画像のまま残すとユーザーが決めました（2026-10-15。`external/` の URL だけにはしない）。
-photo-blue-red-top〜4 はユーザーが撮った写真、screen-app-grey-shot・screen-app-green-far はアプリの画面とツイートの画像（盤以外は塗りつぶし）です。
+photo-blue-red-top・photo-green-felt-top・photo-carved-brown-top はユーザーが撮った写真、screen-app-grey-shot・screen-app-green-far はアプリの画面とツイートの画像（盤以外は塗りつぶし）です。
 
 `external/` には、リポジトリに入れられない画像（著作権のある盤面図）の出典 URL と正解だけを置いています。
 画像は `recognizer/evaluate.py` が URL から取ってきて `external/` に保存します（Git には入りません）。
