@@ -26,7 +26,7 @@ COS_35 = 0.8191520442889918   # cos(35 degrees)
 WEAK_PEAK_REL = 0.1      # peaks looked at where a stack must go on (radial.PEAK_REL elsewhere, TODO-143) ...
 WEAK_RING = 0.6          # ... their circles' ring in the face's colour
 WEAK_SUPPORT = 0.3       # ... and edge support
-WEAK_COLOUR = 12         # ... and colour distance (weighted Lab) to the stack's, or a found checker's
+WEAK_COLOUR = 12         # ... and colour distance (weighted Lab) to the stack's checker
 BAR_COLOUR_TOL = 0.25   # a checker on the bar: colour distance to its cluster / distance between the clusters
 LONE_COLOUR_TOL = 0.3     # ... and for a single checker on a point (a triangle's base can look like one, TODO-048)
 
@@ -274,11 +274,10 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
 
 def _weak_checkers(weak, cands, measure, out, lay: Layout, pitch: float, clear):
     """Checkers whose peaks are too weak to be candidates (dark checkers on a screen, where the
-    white ones' peaks are four times higher, TODO-143), looked for only where a stack must go on:
-    between a stack that stops short of the frame and the frame, one checker at a time, in the
-    stack's colour; and a lone checker at the frame, in a found checker's colour.
-    The colour alone decides there: the stack's checkers may have the colour of the triangle
-    under them, and their rims show little (t0480x's points 12 and 19, and 1)."""
+    white ones' peaks are four times higher, TODO-143), looked for only between a stack that
+    stops short of the frame and the frame, one checker at a time, in the stack's colour.
+    The colour alone decides there: the checkers may have the colour of the triangle under
+    them, and their rims show little (t0480x's points 12 and 19)."""
     def depth(cy):
         return cy if cy < lay.h / 2 else lay.h - cy
 
@@ -288,32 +287,31 @@ def _weak_checkers(weak, cands, measure, out, lay: Layout, pitch: float, clear):
     def colour_gap(a, b):
         return float(np.linalg.norm((np.float32(a) - np.float32(b)) * LAB_W))
 
+    # the frame end of each stack that stops short of the frame by more than the count makes up
+    # for (count_from_circles counts a stack from within 2.3 pitches of the frame to the frame)
+    short = [o for o in out if depth(o[1]) >= 2 * pitch
+             and not any(in_line(p, o) and depth(p[1]) < depth(o[1]) for p in out)]
+    if not short or weak is None:
+        return []
     seen = set(map(tuple, cands.tolist()))
     found = []
-    for x, y, r in weak.tolist() if weak is not None else []:
+    for x, y, r in weak.tolist():
         mm = None if (x, y, r) in seen else measure(x, y, r)
         if mm is not None and mm[3] >= WEAK_RING and mm[5] >= WEAK_SUPPORT:
             cx, cy, med, ring_same, distinct, support, _ = mm
             found.append((cx, cy, r, med / LAB_W, support + 0.012 * min(distinct, 30) + 0.3 * ring_same))
     added = []
-    for o in out:
-        if depth(o[1]) < 1.2 * pitch or any(in_line(p, o) and depth(p[1]) < depth(o[1]) for p in out):
-            continue   # at the frame, or not the frame end of its stack
+    for o in short:
         chain, cur = [], o
         while depth(cur[1]) > 0.8 * pitch:
             step = [w for w in found if in_line(w, cur) and 0.5 * pitch < depth(cur[1]) - depth(w[1]) < 1.3 * pitch
-                    and colour_gap(w[3], o[3]) < WEAK_COLOUR]
+                    and colour_gap(w[3], o[3]) < WEAK_COLOUR and clear(w[0], w[1], out + added + chain)]
             if not step:
                 break
             cur = max(step, key=lambda w: depth(w[1]))   # the next checker towards the frame
             chain.append(cur)
         if chain and depth(cur[1]) <= 0.8 * pitch:
             added += chain
-    for w in sorted(found, key=lambda w: -w[4]):
-        if (w[4] >= CIRCLE_MIN_SCORE and depth(w[1]) <= 0.8 * pitch and clear(w[0], w[1], out + added)
-                and not any(in_line(w, o) for o in out + added)
-                and min(colour_gap(w[3], o[3]) for o in out) < WEAK_COLOUR):
-            added.append((*w[:4], max(w[4], LONE_MIN_SCORE)))   # the colour stands in for the clearer circle
     return added
 
 
