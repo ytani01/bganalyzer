@@ -78,6 +78,7 @@ const state = {
   resultFor: null,     // inputsKey() of what it was worked out for
   resultDice: null,
   sheet: null,         // the settings open from the bottom (TODO-113): "match", "cube", "roll" or null
+  reanalyzing: false,  // the board fixed on the result screen is being analysed again (TODO-138)
   moveShown: 0,        // the move in the result's list drawn as arrows
   // settings
   photoView: "side",   // the photo on the board screen: "side" (next to the board) or "off"
@@ -419,13 +420,21 @@ part((s) => [s.result, s.resultDice, s.bottomColour], (s) => {
 part((s) => [s.result && s.moveShown], (s) => {
   for (const li of document.querySelectorAll("#result .moves li")) li.classList.toggle("on", Number(li.dataset.k) === s.moveShown);
 });
-// Fixed on the result screen (TODO-138): 「再解析」 beside 「読み上げ」 analyses it again
-part((s) => [s.step, resultStale(s), analyzeErrors(s).length], (s) => {
-  const fixed = s.step === "outcome" && resultStale(s);
+part((s) => [resultStale(s), s.reanalyzing], (s) => {
   $("result").classList.toggle("stale", resultStale(s));
-  $("reanalyzing").hidden = !fixed;
-  $("reanalyze").hidden = !fixed;
-  $("reanalyze").disabled = !!analyzeErrors(s).length;
+  $("reanalyzing").hidden = !(s.step === "outcome" && resultStale(s));
+  $("reanalyzing").textContent = s.reanalyzing ? "盤面が変わったので解析し直しています…" : "盤面が変わりました。直し終わると解析し直します。";
+});
+
+// ---- fixed on the result screen (TODO-138): analysed again by itself a moment after the last fix,
+// once nothing is half done (the palette or a sheet open, a die not set while the other is)
+const REANALYZE_WAIT = 800;   // ms after the last change
+let reanalyzeTimer = null;
+part((s) => [s.step, resultStale(s) && inputsKey(s), s.plies, !!s.palette, s.sheet, s.busy && 1, analyzeErrors(s).length], (s) => {
+  clearTimeout(reanalyzeTimer);
+  const halfDie = !s.dice[0] !== !s.dice[1];
+  if (s.step !== "outcome" || !resultStale(s) || s.palette || s.sheet || s.busy || analyzeErrors(s).length || halfDie) return;
+  reanalyzeTimer = setTimeout(reanalyze, REANALYZE_WAIT);
 });
 
 // The move picked in the result's list (the best one at first) as arrows, while the result fits the board.
@@ -533,7 +542,10 @@ async function renderHistory() {
 function go(step) {
   if (step !== "photo" && !(history.state && history.state.bg)) history.pushState({ bg: true }, "");
   if (step === "photo") historyShown++;
-  if (step !== "outcome") stopSpeaking();   // the stop button is only on the result screen
+  if (step !== "outcome") {
+    stopSpeaking();   // the stop button is only on the result screen
+    if (reanalyzeAbort) reanalyzeAbort.abort();   // a fix on the result screen: analysed on the board screen instead
+  }
   update({ step, sheet: null });   // a sheet open on the board screen is closed when it is left (TODO-113)
   if (step === "corners") requestAnimationFrame(() => redraw(drawCorners));   // once the layout has settled
   window.scrollTo(0, 0);
@@ -1005,20 +1017,25 @@ function analyzeBody(dice) {
   return body;
 }
 
-// 「再解析」: the board fixed on the result screen, analysed again without leaving it (TODO-138).
+// The board fixed on the result screen, analysed again without leaving it (TODO-138). The old result
+// stays, greyed out, till the new one is in; fixes made meanwhile are analysed after it.
+let reanalyzeAbort = null;
 async function reanalyze() {
   if (state.step !== "outcome" || !resultStale() || analyzeErrors().length) return;
-  update({ selected: null, palette: null, sheet: null });
-  sendSample();   // as 「解析する」 does: the board as fixed now
-  const text = state.plies === "3" ? "3手読みで解析しています（しばらくかかります）…" : "解析しています…";
-  await withBusy(text, async () => {
-    try {
-      const dice = rolled();
-      setResult(await BgApi.postJson("analyze", analyzeBody(dice)), dice);
-    } catch (err) {
-      alert("解析に失敗しました: " + err.message);
-    }
-  });
+  if (reanalyzeAbort) reanalyzeAbort.abort();
+  const abort = reanalyzeAbort = new AbortController();
+  const key = inputsKey(), dice = rolled();
+  update({ reanalyzing: true });
+  try {
+    const result = await BgApi.postJson("analyze", analyzeBody(dice), abort.signal);
+    if (abort.signal.aborted || inputsKey() !== key || state.step !== "outcome") return;   // fixed again meanwhile
+    setResult(result, dice);
+    sendSample();   // as 「解析する」 does: the board as fixed now
+  } catch (err) {
+    if (!abort.signal.aborted) alert("解析に失敗しました: " + err.message);
+  } finally {
+    if (reanalyzeAbort === abort) { reanalyzeAbort = null; update({ reanalyzing: false }); }
+  }
 }
 
 // ================================================================ a sample for the recognizer (sample.js)
@@ -1304,7 +1321,6 @@ for (const seg of document.querySelectorAll(".seg")) {
 }
 
 $("analyze").addEventListener("click", analyze);
-$("reanalyze").addEventListener("click", reanalyze);
 $("auto-speak").addEventListener("change", () => {
   const on = $("auto-speak").checked;
   keep("autoSpeak", on ? "on" : "off");
