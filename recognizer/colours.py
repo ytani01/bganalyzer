@@ -33,15 +33,26 @@ def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None, avoid=()):
             x = int(m + lay.col_x(c))
             for y0 in (m + lay.h * TRI_DEPTH * 0.3, m + lay.h * (1 - TRI_DEPTH * 0.6)):
                 px.append(lab[int(y0):int(y0 + lay.h * TRI_DEPTH * 0.3), x - 2:x + 3].reshape(-1, 3))
-        px = np.vstack(px)
-        for a in avoid:
-            far = np.linalg.norm((px - a) * LAB_W, axis=1) >= AVOID_DE
-            px = px[far] if far.sum() > 10 else px
+    else:
+        avoid = ()
+
+    def two(px):
+        px = px[~np.isnan(px).any(1)]
+        px = px[np.linalg.norm(px - plain, axis=1) > 25] if (np.linalg.norm(px - plain, axis=1) > 25).sum() > 10 else px
+        # in integers (Lab of 8-bit pixels are whole numbers): cv2.kmeans differs by CPU
+        return exact.kmeans(px.astype(np.int32), 2)[1]
     px = np.vstack(px)
-    px = px[~np.isnan(px).any(1)]
-    px = px[np.linalg.norm(px - plain, axis=1) > 25] if (np.linalg.norm(px - plain, axis=1) > 25).sum() > 10 else px
-    # in integers (Lab of 8-bit pixels are whole numbers): cv2.kmeans differs by CPU
-    _, tri = exact.kmeans(px.astype(np.int32), 2)
+    tri = two(px)
+    if len(avoid):
+        far = np.ones(len(px), bool)
+        for a in avoid:
+            far &= ~(np.linalg.norm((px - a) * LAB_W, axis=1) < AVOID_DE)   # NaN (under a checker found) stays
+        if (far & ~np.isnan(px).any(1)).sum() > 10:
+            t = two(px[far])
+            # in the order found without leaving them out: with no triangle found, that order alone says which
+            # points have which colour (triangle_colour_map)
+            swap = np.linalg.norm(t[0] - tri[0]) + np.linalg.norm(t[1] - tri[1]) > np.linalg.norm(t[0] - tri[1]) + np.linalg.norm(t[1] - tri[0])
+            tri = t[::-1] if swap else t
     # frame: the strip just outside the near (bottom) edge of the field
     frames = [np.nanmedian(lab[int(m + lay.h + m * 0.3):int(m + lay.h + m * 0.8),
                             int(m):int(m + lay.w)].reshape(-1, 3), 0)]
