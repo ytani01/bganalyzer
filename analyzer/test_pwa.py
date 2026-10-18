@@ -520,5 +520,7 @@ def test_board_can_be_fixed_on_the_result_screen():
     assert '<div id="outcome-board"></div>' in outcome and "result-svg" not in html
     js = (STATIC / "app.js").read_text()
     assert '$(out ? "outcome-board" : "boards").appendChild($("board-pin"));' in js
-    assert "reanalyzeTimer = setTimeout(reanalyze, REANALYZE_WAIT);" in js
-    assert "if (abort.signal.aborted || inputsKey() !== key" in js
+    # TODO-138: fixed there, 「再解析」 shows beside 「読み上げ」
+    assert '<button id="reanalyze" class="act" type="button" hidden>再解析</button>' in html
+    assert '$("reanalyze").addEventListener("click", reanalyze);' in js
+    assert '$("reanalyze").hidden = !fixed;' in js
