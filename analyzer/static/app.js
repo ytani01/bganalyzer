@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.79.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.80.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -309,8 +309,7 @@ const drawImprove = (s) => {
 };
 part((s) => [s.fromPhoto], drawImprove);
 
-part((s) => [s.paintSide, s.undo.length], (s) => {
-  for (const b of $("paint-side").children) b.classList.toggle("on", b.dataset.value === s.paintSide);
+part((s) => [s.undo.length], (s) => {
   $("undo").disabled = !s.undo.length;
 });
 
@@ -1244,10 +1243,6 @@ $("recognize").addEventListener("click", recognize);
 $("hdr-reuse").addEventListener("click", () => go("board"));
 $("to-board").addEventListener("click", () => go("board"));
 
-$("paint-side").addEventListener("click", (e) => {
-  const v = e.target.closest("button")?.dataset.value;
-  if (v) update({ paintSide: v });
-});
 $("undo").addEventListener("click", () => {
   if (!state.undo.length) return;
   update({ board: state.undo[state.undo.length - 1], undo: state.undo.slice(0, -1), palette: null, selected: null });

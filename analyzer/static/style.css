@@ -200,7 +200,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 
 .editor { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin: 6px 0 0; }
 .editor-title { font-size: 13px; color: var(--muted); }
-.editor-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.editor-row { display: flex; align-items: center; gap: 8px; }
 .editor-row .undo { margin-left: auto; }
 .paint-side { display: flex; }
 .paint-side button {

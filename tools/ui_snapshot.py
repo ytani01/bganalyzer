@@ -74,7 +74,6 @@ SNAP = """() => {
     countMark: txt('count-mark'), errors: txt('errors'), homeNote: txt('home-note'), editor: txt('editor-title'),
     palette: vis('palette') ? [txt('palette-title'), ...['#palette-side .on', '#palette-counts .on'].map((q) => {
       const e = document.querySelector(q); return e && (e.dataset.value || e.dataset.n); })] : null,
-    paintSide: vis('paint-side') ? document.querySelector('#paint-side .on')?.dataset.value : null,
     undo: vis('undo') ? !el('undo').disabled : null,
     cubeHelp: txt('cube-help'), rollLabel: txt('onroll-label'),
     dice: vis('die1') ? [el('die1').dataset.value, el('die2').dataset.value] : null,
@@ -189,7 +188,6 @@ def flow_manual(r):
     r.tap(0, 2); r.snap("tap level 2 of 13")
     r.tap(0, 2); r.snap("tap the top checker")
     r.tap(1, 3); r.snap("tap an empty point")
-    r.click('#paint-side [data-value="black"]'); r.tap(2, 2); r.snap("奥's colour on an empty point")
     r.tap(18, 5); r.tap(18, 5); r.snap("5th level of 5: two more")
     r.number(5); r.snap("number: emptied")
     r.hold(17); r.snap("palette")
