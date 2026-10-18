@@ -11,9 +11,12 @@ the triangles' bases end, and its left and right edges. The search:
 3. Each quadrilateral from two of each is scored on how well it frames two rows of twelve
    triangles: seen from straight above, the points' columns (with a bar between the two fields)
    are compared with a triangle's shape, in how far each pixel is from the plain colour of the
-   field, and the band between the rows of tips must be plain all the way across.
+   field, and the band between the rows of tips must be plain all the way across; and on how much
+   of its sides lies on edges (a line across a frame's two edges does not; TODO-105).
 4. The best few are tried again with each edge moved to the innermost strong edge nearby (frames
    have lips and bevels, and the outer edge is often the stronger one); the best of all wins.
+5. Its sides are swapped one at a time for other candidate lines while the score goes up, the right
+   pair of each kind being sometimes outside the best few (TODO-105).
 
 Everything is in integers or in float operations that round the same on every CPU (exact.py),
 so x86_64 and the Raspberry Pi find the same corners. Boards without visible triangles may
@@ -48,6 +51,16 @@ RW, RH = 208, 160
 DEPTH = 0.40           # a triangle's length against the playing area's height
 BARS = (0.0, 0.03, 0.06, 0.09, 0.12, 0.15, 0.18)   # bar widths tried, against the playing area's width
 W_PLAIN = 0.6   # weight of a plain band between the tips
+W_ALONG = 0.4   # weight of the quad's sides lying on edges (not on a line across them; TODO-105)
+ALONG = 40             # points looked at along each side
+ALONG_OFF = 2          # how far off the side (px, either way) an edge pixel still counts
+ALONG_CAP = 0.85       # past this share all the same: an outer edge nothing hides is no better than the board's, which checkers stand on
+# then each side swapped for another candidate line while the score goes up (TODO-105)
+SWAPS = 3              # rounds over the four sides, at most
+SWAP_TOP = 2           # lines for a side scored again at full size, the best at half size
+INNER = (0.03, 0.06, 0.12)   # the strip just inside a side (0 to the first), and the one a bit further in, against the side across
+INNER_BLOCKS = 24      # blocks along a side the two strips are compared in
+INNER_SLACK = 0.1      # a swap may make the strips alike in this share of the blocks fewer, at most
 PLAIN_DE = 20          # colour difference (Lab) still plain
 MIN_SCORE = 0.15       # a board's structure score, at least
 REFINE = 12             # candidates (the best by structure) whose edges are moved in and scored again
@@ -170,8 +183,8 @@ def _meet(hl, vl):
 # ---------------------------------------------------------------- structure score --
 
 def _point_templates(RW, RH):
-    """For each bar width: the 24 points' pixels (rows, columns: index arrays) and their triangle
-    template (zero mean, unit length), and which field each is in."""
+    """For each bar width: the 24 points' pixels (indices into the view's pixels, row by row) and
+    their triangle template (zero mean, unit length), and which field each is in."""
     out = {}
     half = RH // 2
     for bar in BARS:
@@ -195,7 +208,7 @@ def _point_templates(RW, RH):
                     cols.append(np.tile(np.clip(xs, 0, RW - 1), half))
                     tmpl.append(t)
                     field.append(f)
-        out[bar] = (a, np.array(rows), np.array(cols), np.array(tmpl), np.array(field))
+        out[bar] = (a, np.array(rows) * RW + np.array(cols), np.array(tmpl), np.array(field))
     return out
 
 
@@ -209,13 +222,13 @@ def _structure(rect):
     a triangle's shape, for the best bar width (-1..1)."""
     lab = cv2.cvtColor(rect, cv2.COLOR_BGR2Lab).astype(np.int32)
     best = -1.0
-    for bar, (a, rows, cols, tmpl, field) in _TEMPLATES[(RW, RH)].items():
+    for bar, (a, pixels, tmpl, field) in _TEMPLATES[(RW, RH)].items():
         plain = np.empty((2, 3), np.float64)
         for f, f0 in enumerate((0.0, a + bar * RW)):
             mid = lab[int(0.46 * RH):int(0.54 * RH), int(f0 + 0.05 * a):int(f0 + 0.95 * a)].reshape(-1, 3)
             plain[f] = np.median(mid, 0)
-        d = lab[rows, cols] - plain[field][:, None, :]          # (24, pixels of a point, 3)
-        v = np.sqrt((d * d).sum(2))
+        d = np.take(lab.reshape(-1, 3), pixels, 0) - plain[field][:, None, :]   # (24, pixels of a point, 3)
+        v = np.sqrt(np.einsum("ijk,ijk->ij", d, d))   # exact: the squares are quarters (TODO-105)
         # between the rows of tips the field is plain, all the way across both fields
         band = lab[int(0.45 * RH):int(0.55 * RH)]
         plain_share = 0.0
@@ -227,6 +240,64 @@ def _structure(rect):
         c = (v * tmpl).sum(1) / np.where(n > 0, n, 1)
         best = max(best, float(c.sum() / len(c)) + W_PLAIN * plain_share)
     return best
+
+
+def _along(gx, gy, quad):
+    """Share of points along the quad's sides with an edge pixel running the side's way within
+    ALONG_OFF pixels, up to ALONG_CAP: low for a line that only crosses edges (two parallel edges of
+    a frame, TODO-105)."""
+    h, w = gx.shape
+    a = np.float64(quad)
+    d = np.roll(a, -1, 0) - a                    # top, right, bottom, left
+    n = np.stack([-d[:, 1], d[:, 0]], 1) / np.maximum(1e-9, np.sqrt((d * d).sum(1)))[:, None]
+    t = (np.arange(ALONG) + 0.5) / ALONG
+    s = np.arange(-ALONG_OFF, ALONG_OFF + 1)
+    p = a[:, None, None] + t[None, :, None, None] * d[:, None, None] + s[None, None, :, None] * n[:, None, None]
+    x, y = np.round(p[..., 0]).astype(np.int64), np.round(p[..., 1]).astype(np.int64)   # (side, point, offset)
+    ok = (x >= 0) & (x < w) & (y >= 0) & (y < h)
+    x, y = np.clip(x, 0, w - 1), np.clip(y, 0, h - 1)
+    upright = (np.arange(4) % 2 == 1)[:, None, None]   # right and left run up and down: contrast across columns
+    g = np.where(upright, gx[y, x], gy[y, x])
+    o = np.where(upright, gy[y, x], gx[y, x])
+    found = (ok & (g > EDGE_MIN) & (g > o)).any(2)
+    return min(ALONG_CAP, int(found.sum()) / (4 * ALONG))
+
+
+def _score(view, gx, gy, quad):
+    """A candidate's score: its view's structure, and its sides lying on edges."""
+    return _structure(view) + W_ALONG * _along(gx, gy, quad)
+
+
+def _inner(view, i):
+    """Share of blocks along side i of the view (top, right, bottom, left) where the strip just
+    inside it looks like the one a bit further in: low when the side runs outside the board's
+    interior (along a frame, a case, an app's bar; TODO-105)."""
+    lab = cv2.cvtColor(view, cv2.COLOR_BGR2Lab).astype(np.int32)
+    a = (lab, lab.transpose(1, 0, 2)[::-1], lab[::-1], lab.transpose(1, 0, 2))[i]
+    n, m = a.shape[:2]
+    edge, deep = a[:max(1, int(INNER[0] * n))], a[int(INNER[1] * n):int(INNER[2] * n)]
+    alike = 0
+    for j in range(INNER_BLOCKS):
+        c0, c1 = j * m // INNER_BLOCKS, (j + 1) * m // INNER_BLOCKS
+        e = np.median(edge[:, c0:c1].reshape(-1, 3), 0) - np.median(deep[:, c0:c1].reshape(-1, 3), 0)
+        alike += (e * e).sum() < (1.5 * PLAIN_DE) ** 2
+    return alike / INNER_BLOCKS
+
+
+def _sides(q):
+    """The quad's sides as lines (k, c): top and bottom y = c + x k / 200, left and right x = c + y k / 200."""
+    def h(a, b):
+        k = 200 * (b[1] - a[1]) / (b[0] - a[0])
+        return k, a[1] - a[0] * k / 200
+    def v(a, b):
+        k = 200 * (b[0] - a[0]) / (b[1] - a[1])
+        return k, a[0] - a[1] * k / 200
+    return [h(q[0], q[1]), v(q[1], q[2]), h(q[3], q[2]), v(q[0], q[3])]
+
+
+def _corners(sides):
+    top, right, bottom, left = sides
+    return np.float64([_meet(top, left), _meet(top, right), _meet(bottom, right), _meet(bottom, left)])
 
 
 def _view(small, quad, w, h, m):
@@ -326,7 +397,7 @@ def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT)):
                     looked.add(key)
                     view, _ = _view(small, q, RW // 2, RH // 2, 0)   # a first look at half size
                     if view is not None:
-                        raw.append((_structure(view), q))
+                        raw.append((_score(view, gx, gy, q), q))
     emit("uprights", lines=np.float64([[(c + y0 * k / 200, y0), (c + y1 * k / 200, y1)]
                                        for (k, c), (y0, y1) in sorted(uprights.items())]).reshape(-1, 2, 2))
     # the best few, each edge moved to the innermost strong edge nearby, scored again
@@ -342,14 +413,57 @@ def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT)):
             view, _ = _view(small, q, RW, RH, 0)
             if view is None:
                 continue
-            s = _structure(view)
+            s = _score(view, gx, gy, q)
             if DEBUG is not None:
                 DEBUG.append((s, q, s0))
             if best is None or s > best[0]:
                 best = (s, q)
     if best is None or best[0] < MIN_SCORE:
         return None
-    return best[1]
+    return _swap(small, gx, gy, best, hl, list(uprights), keep, least)
+
+
+def _swap(small, gx, gy, best, hl, vl, keep, least):
+    """best's quad with each side swapped, one at a time, for another far / near edge or upright line
+    while the score goes up: the best few above are only some of the pairs of each (TODO-105). A side
+    is not swapped onto a line where the strip just inside looks less like the board's interior
+    (_inner), nor at a corner the user has put in place."""
+    h, w = small.shape[:2]
+    s, q = best
+    sides = _sides(q)
+    view, _ = _view(small, q, RW, RH, 0)
+    moves, looked = 0, [-1] * 4   # a side's lines need no second look while the other three stay
+    for _ in range(SWAPS):
+        for i in range(4):
+            if i in keep or (i + 1) % 4 in keep or looked[i] == moves:
+                continue
+            here = _inner(view, i)
+            tried = []   # (score at half size, sides, quad), as the first look in guess
+            for line in (hl if i % 2 == 0 else vl):
+                t = list(sides)
+                t[i] = line[:2]
+                q2 = _corners(t)
+                wid = (exact.norm(q2[1] - q2[0]) + exact.norm(q2[2] - q2[3])) / 2
+                hgt = (exact.norm(q2[3] - q2[0]) + exact.norm(q2[2] - q2[1])) / 2
+                # as guess's candidates (which take the height between the far and near lines)
+                if hgt <= 0 or not ASPECT[0] < wid / hgt < ASPECT[1] or wid < least[0] * w or hgt < least[1] * h:
+                    continue
+                v2, _ = _view(small, q2, RW // 2, RH // 2, 0)
+                if v2 is not None:
+                    tried.append((_score(v2, gx, gy, q2), t, q2))
+            tried.sort(key=lambda r: -r[0])
+            for _, t, q2 in tried[:SWAP_TOP]:
+                v2, _ = _view(small, q2, RW, RH, 0)
+                if v2 is None:
+                    continue
+                s2 = _score(v2, gx, gy, q2)
+                if s2 <= s:
+                    continue
+                inner = _inner(v2, i)
+                if inner >= here - INNER_SLACK:
+                    s, q, sides, view, here, moves = s2, q2, t, v2, inner, moves + 1
+            looked[i] = moves
+    return q
 
 
 def find_corners(img, progress=None, fixed=None, crop=None, search=None):

@@ -192,16 +192,20 @@ def test_corners_are_found_on_samples():
     # The far / near edges are the strongest straight edges, the left / right ones lines with an edge
     # in nearly every row between them; each edge is moved to the innermost strong edge nearby, and
     # the quad that frames two rows of twelve triangles best wins (TODO-028, recognizer 0.16.0).
-    # diagram-prime: the frame with the point numbers is taken (4.7%). photo6 (oblique): its left edge
-    # slopes 0.39, past the 0.3 lines were tried at before recognizer 0.23.2 (23.3%, TODO-104).
+    # photo6 (oblique): its left edge slopes 0.39, past the 0.3 lines were tried at before recognizer
+    # 0.23.2 (23.3%, TODO-104). The sides lying on edges, and each swapped for another line while the
+    # score goes up (recognizer 0.26.0, TODO-105): before, photo4 took the frame's outer edge (4.5%),
+    # diagram-prime the frame with the point numbers (4.7%), travel-case a slanted side (2.0%),
+    # nardy-midgame 6.0% and collected-m5ekpe 9.3%.
     import cv2
     from corners import find_corners
 
     samples = Path(__file__).resolve().parent.parent / "samples"
     for name, most in (("photo2", 0.035), ("photo3", 0.035), ("screen2", 0.035), ("screen1", 0.035),
                        ("commons-tavli-black", 0.035), ("commons-tavli-burl", 0.035),
-                       ("commons-dark-homeleft", 0.035), ("commons-diagram-prime", 0.05),
-                       ("commons-travel-case", 0.035), ("tv-vegas-open", 0.035), ("photo6", 0.05)):
+                       ("commons-dark-homeleft", 0.035), ("commons-diagram-prime", 0.02),
+                       ("commons-travel-case", 0.015), ("tv-vegas-open", 0.035), ("photo6", 0.05),
+                       ("photo4", 0.04), ("commons-nardy-midgame", 0.035), ("collected-m5ekpe", 0.02)):
         t = json.loads((samples / f"{name}.truth.json").read_text())
         img = cv2.imread(str(samples / t["image"]))
         found = find_corners(img)
