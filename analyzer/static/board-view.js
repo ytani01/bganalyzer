@@ -333,5 +333,5 @@ const BgBoardView = (() => {
     return increasing(plain) ? plain : null;
   }
 
-  return { PLAY, draw, columnAnchors };
+  return { PLAY, PIPS, draw, columnAnchors };
 })();
