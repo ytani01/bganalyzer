@@ -127,6 +127,15 @@ def test_server_exit_stops_gnubg_helper():
     assert helpers and not any(p.is_alive() for p in helpers)
 
 
+def test_startup_logs_versions(caplog, monkeypatch):
+    import app as app_module
+    from board import __version__ as recognizer_version
+    monkeypatch.setattr(app_module, "git_commit", lambda: None)   # no .git: still starts
+    with caplog.at_level("INFO", logger="uvicorn.error"), TestClient(app):
+        pass
+    assert f"analyzer {app_module.__version__}, recognizer {recognizer_version}, commit None" in caplog.text
+
+
 def test_steep_photo_is_flagged():
     # The top-down samples and screenshots are fine. photo1 (removed for privacy) was taken at
     # a steep angle and read badly: its tapped corners and image size are kept here.
