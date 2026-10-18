@@ -10,7 +10,7 @@ goes in as a PR like any other change to the recognizer (CLAUDE.md: the accuracy
   uv run python recognizer/tune.py                                   # samples/ (not the synthetic copies)
   uv run python recognizer/tune.py --collected collected             # and the pairs kept with 「サーバーに保存する」 (on the Pi)
   uv run python recognizer/tune.py --params checkers.CIRCLE_MIN_SCORE,checkers.STACK_SKEW --steps 0.9,1.1
-  uv run python recognizer/tune.py --only photo2,photo3 --out tune.md
+  uv run python recognizer/tune.py --only photo-blue-red-top,photo-green-felt-top --out tune.md
 
 Each try reads every sample once, so the whole run is (parameters x steps + 2) readings of all the
 samples: hours on the Raspberry Pi. Run it there when the photos have piled up (docs/raspi.md).

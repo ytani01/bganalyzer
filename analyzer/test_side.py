@@ -1,6 +1,6 @@
 """Photos taken from beside the board (TODO-120): recognizer/side.py, the API's side and the PWA's switch.
 
-samples/ has no photo taken from beside; photo5 was, and was turned to put the bar upright: turned back
+samples/ has no photo taken from beside; photo-black-blue-oblique was, and was turned to put the bar upright: turned back
 (as archives/agents/TODO-120/raw.py does) it is one, taken from the near player's right."""
 import json
 import shutil
@@ -30,8 +30,8 @@ SIZE = 2048   # the longest side the app sends
 
 @pytest.fixture(scope="module")
 def raw():
-    """photo5 as taken (from the near player's right), at the size the app sends, and its truth."""
-    t = json.loads((ROOT / "samples" / "photo5.truth.json").read_text())
+    """photo-black-blue-oblique as taken (from the near player's right), at the size the app sends, and its truth."""
+    t = json.loads((ROOT / "samples" / "photo-black-blue-oblique.truth.json").read_text())
     img = cv2.imread(str(ROOT / "samples" / t["image"]))
     h = img.shape[0]
     img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
@@ -114,10 +114,10 @@ def test_api_find_corners_finds_the_side(raw):
 
 
 def test_api_find_corners_keeps_photo4_from_the_front():
-    """photo4 (from the front, triangles of the field's colour) scores low the normal way; from beside,
+    """photo-carved-brown-top (from the front, triangles of the field's colour) scores low the normal way; from beside,
     one row of six triangles of the board scores higher, but lies over a quarter of the normal search's
     corners, so it is not taken (TODO-137: it was, 61% off)."""
-    t = json.loads((ROOT / "samples" / "photo4.truth.json").read_text())
+    t = json.loads((ROOT / "samples" / "photo-carved-brown-top.truth.json").read_text())
     img = cv2.imread(str(ROOT / "samples" / t["image"]))
     f = SIZE / max(img.shape[:2])
     img = cv2.resize(img, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
@@ -222,7 +222,7 @@ def test_samples_api_checks_the_side(monkeypatch, tmp_path):
 
 
 def test_collected_checks_and_keeps_the_side():
-    t = json.loads((ROOT / "samples" / "screen1.truth.json").read_text())
+    t = json.loads((ROOT / "samples" / "screen-app-grey-shot.truth.json").read_text())
     assert collected.valid(t) and collected.valid(t | {"side": "right"}) and collected.valid(t | {"side": "left"})
     assert not collected.valid(t | {"side": "up"}) and not collected.valid(t | {"side": None})
     assert import_collected.clean(t | {"side": "left"})["side"] == "left"

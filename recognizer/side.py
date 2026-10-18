@@ -38,10 +38,10 @@ TALL = (0.5, 2.0)                 # the area's height (along the points) against
 SAME = 0.006                      # two long edges nearer than this in the middle (against the width) are one
 BANDS = 5                         # where the long edges are looked for: bands from these many starts and ends
 WEAK = 0.7                        # the normal search's corners scoring below this: tried from beside too (TODO-134;
-                                  # photo5 from beside 0.46 normally, 1.1 from beside; photos from the front about 1.0)
+                                  # photo-black-blue-oblique from beside 0.46 normally, 1.1 from beside; photos from the front about 1.0)
 PART = 0.6                        # corners from beside lying this much (IoU) over a quarter of the normal search's or
                                   # its half on one side of the bar: a part of the board it found, not taken (TODO-137;
-                                  # photo4 0.80, photos from beside 0.50 at most)
+                                  # photo-carved-brown-top 0.80, photos from beside 0.50 at most)
 
 # ---------------------------------------------------------------- reading --
 GH = 400                # the ground view's height (along the points, both rows), px

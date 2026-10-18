@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 URL = os.environ.get("BG_URL", "http://127.0.0.1:8000/")          # elsewhere: the app under test
 CHROMIUM = os.environ.get("BG_CHROMIUM", "/usr/bin/chromium")    # elsewhere: a Chromium there
 COLLECTED = ROOT / "collected"
-SAMPLE = "screen1"   # an app screenshot with dice (4-2): read the same every time
+SAMPLE = "screen-app-grey-shot"   # an app screenshot with dice (4-2): read the same every time
 
 # before the app's scripts: record what would be spoken, and no share sheet (a PC: download instead)
 INIT = """

@@ -2,7 +2,7 @@
 
 YOLO-pose with one class (board): box = the corners' bounding box, 4 keypoints = TL, TR, BR, BL
 of the playing area as in samples/*.truth.json. All the real photos are used (synth-cube-*, made
-from photo2 / photo4, and samples/external are left out), each with copies under a random
+from photo-blue-red-top / photo-carved-brown-top, and samples/external are left out), each with copies under a random
 perspective; many collected-* have the outside of the board filled with black, so in the copies
 that black is replaced by a random background. synth.py's boards are added, and the photos of any
 COCO exports given (a polygon round the playing area each, as Roboflow's; TODO-136). corners.py runs the

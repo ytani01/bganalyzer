@@ -122,7 +122,7 @@ uv run -q --no-project --with playwright python tools/pi_ui_check.py           #
 uv run -q --no-project --with playwright python tools/pi_ui_check.py collect   # 名前を並べると、その確認だけ
 ```
 
-1 つ失敗すると終了コードが 1 になる。どれも `samples/screen1.png`（ダイス 4-2 の写ったアプリの画面）を読み取ってから確かめる。
+1 つ失敗すると終了コードが 1 になる。どれも `samples/screen-app-grey-shot.png`（ダイス 4-2 の写ったアプリの画面）を読み取ってから確かめる。
 
 | 名前 | 確かめること |
 |---|---|
@@ -210,7 +210,7 @@ flowchart TD
 - 読み違いのある組は直す材料なので消しません。読み違いの無い組は、直したことでほかが悪くならないかを確かめるのに使います。
 - `/samples` は公開で誰でも送れるので、正解の形が違う組は測らず、`report.md` には正解の中の文字を出しません（組の名前はサーバーが付けたもの）。
 - 認識を直すのは、Pi の Claude Code に「collected の report を見て直して」と頼んだときです（自動ではしません）。
-- 読み違いのある組は、`BG_IMPORT` を設定したサーバー（開発機だけ。誰でも送れる Pi では設定しない）で `recognizer/import_collected.py` が `samples/collected-<id>` に入れます（TODO-114）。
+- 読み違いのある組は、`BG_IMPORT` を設定したサーバー（開発機だけ。誰でも送れる Pi では設定しない）で `recognizer/import_collected.py` が `samples/collected-*` に入れます（TODO-114）。名前は、`BG_CLAUDE` があれば盤の外を塗った写真を `claude -p` に見せて、盤の見た目と撮り方から付けます（例: `collected-blue-felt-oblique`。重なれば `-2`…）。無いときや失敗したときは `collected-<id>`（TODO-142）。
   設定は `systemctl --user edit bganalyzer` で `Environment=BG_IMPORT=1` を足します（下の「Claude に選ばせる」と同じやり方）。古い組から 1 回に 10 組まで、
   `samples/` に同じ名前か同じ写真があるもの、画像として読めないものは除きます。前の取り込みの PR が開いたままなら何もしません（チェックが落ちたとき、main とぶつかったとき、チェックを待つ間にサービスを再起動したとき。開発機は main を pull するたびに再起動するので、残った PR は見てマージするか閉じてください）。背景の塗りつぶし処理で盤の外（正解の四隅の外）を黒くし、EXIF は入れません。
   `origin/main` の別の worktree で `accuracy_baseline.json` と `recognizer/README.md` の「精度」の表を書き直し、PR を作って、

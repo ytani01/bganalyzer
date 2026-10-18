@@ -85,8 +85,8 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
   gnubg の Python モジュールにキューブ判断の関数がないので、解析の子プロセスで `hint` コマンドの表示を読む（`analyzer/engine.py`）。
   キューブが片側にあってダイスが無ければ「その側がダブルされた」とみなしてテイク／パスを判定する。写真からはキューブの場所だけ読み
   （`recognizer/cube.py`）、数字は読まない（片側なら 2 とし、画面で直す）。
-- **認識精度（24ポイント中）:** 元の写真で photo2 23、photo3 24、photo4 24、スクショ2枚 24、photo1（斜め撮影）14（photo1 は 2026-10-13 に顔が写っていたためファイルも履歴も削除した）。
-  PWA は長辺 2560px を超える写真を 2048px に縮めて送る。その写真では photo1 18、photo2 23、photo3 24、photo4 23
+- **認識精度（24ポイント中）:** 元の写真で photo-blue-red-top 23、photo-green-felt-top 24、photo-carved-brown-top 24、スクショ2枚 24、photo1（斜め撮影）14（photo1 は 2026-10-13 に顔が写っていたためファイルも履歴も削除した）。
+  PWA は長辺 2560px を超える写真を 2048px に縮めて送る。その写真では photo1 18、photo-blue-red-top 23、photo-green-felt-top 24、photo-carved-brown-top 23
   （TODO-004 で直した。完了済み）。斜めすぎる写真（40° 超）にはアプリで撮り直しを勧める警告を出す。斜めの写真の精度改善は、ユーザーが「一旦これで十分」として TODO-005 を完了にした。
 - **ユーザーの盤:** クラフト紙色の盤面、赤と紺の三角形、白い枠。駒はえんじ色と紫。えんじ色の駒と赤い三角形は
   色がほぼ同じ（Lab で差 ~8）で、色だけでは区別できない。斜めの写真が一番の弱点なので、真上から撮ってもらう。
@@ -97,7 +97,7 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
   gnubg の PyPI パッケージには arm64 の Linux の wheel もソース配布もないので、StonesAndDice/gnubg-pypi の固定したコミットから
   `.github/workflows/gnubg-wheel.yml` でビルドして Release に置き、`pyproject.toml` が aarch64 のときに使う（TODO-055）。
   gnubg の版を上げるときはそのコミットと URL も合わせる。
-- **サンプル写真:** photo1（顔が写っていた）はファイルも履歴も削除した（2026-10-13）。screen2 の第三者の投稿は
+- **サンプル写真:** photo1（顔が写っていた）はファイルも履歴も削除した（2026-10-13）。screen-app-green-far の第三者の投稿は
   盤の画像以外を塗りつぶしてあり、加工前の画像は履歴に残るが、そのままにすると決めた（TODO-003 完了、`archives/todo/`）。
   GitHub 側には photo1 の古いコミットが SHA 指定で取れる形で残っている（完全に消すには Support への依頼が要る）。
   加工前の写真を再びコミットしない。
