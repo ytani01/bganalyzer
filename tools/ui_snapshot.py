@@ -79,7 +79,7 @@ SNAP = """() => {
     cubeHelp: txt('cube-help'), rollLabel: txt('onroll-label'),
     dice: vis('die1') ? [el('die1').value, el('die2').value] : null,
     cube: vis('cube-side') ? [el('cube-value').value, el('cube-offered').checked] : null,
-    boardSvg: html('board-svg'), resultSvg: html('result-svg'),
+    boardSvg: html('board-svg'),
     photoSvg: vis('photo-svg') ? hash(el('photo-svg').innerHTML) : null,
     twoBoards: vis('boards') ? el('boards').classList.contains('two') : null,
     result: html('result'), stale: vis('result') ? el('result').classList.contains('stale') : null,

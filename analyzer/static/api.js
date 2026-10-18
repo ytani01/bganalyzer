@@ -19,7 +19,7 @@ const BgApi = (() => {
     try { return await res.json(); } catch (_) { return null; }
   }
 
-  const postJson = (path, obj) => post(path, JSON.stringify(obj), { "content-type": "application/json" });
+  const postJson = (path, obj, signal) => post(path, JSON.stringify(obj), { "content-type": "application/json" }, signal);
 
   // POST asking for the answer in stages (NDJSON lines, {"stage": ...}): onStage(ev) for each stage
   // as it arrives, and the result of the last line ({"stage": "done", "result"}), marked streamed.

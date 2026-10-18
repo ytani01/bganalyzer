@@ -511,3 +511,14 @@ def test_board_tap():
     assert out["more"] == 6 and out["more2"] == 7 and out["upTo5"] == 5 and out["max"] == 15
     assert out["level9"] == 5 and out["level0"] == 1   # levels outside 1..5 are taken as the nearest
     assert out["barBlack"]["bar_black"] == 2 and out["barBlack"]["bar_white"] == 0 and out["barTop"] == 0
+
+
+def test_board_can_be_fixed_on_the_result_screen():
+    # TODO-138: the board screen's board and its sheets move to the result screen, and a fix there is analysed again
+    html = client.get("/").text
+    outcome = html[html.index('<section id="outcome"'):]
+    assert '<div id="outcome-board"></div>' in outcome and "result-svg" not in html
+    js = (STATIC / "app.js").read_text()
+    assert '$(out ? "outcome-board" : "boards").appendChild($("board-pin"));' in js
+    assert "reanalyzeTimer = setTimeout(reanalyze, REANALYZE_WAIT);" in js
+    assert "if (abort.signal.aborted || inputsKey() !== key" in js

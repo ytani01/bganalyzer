@@ -315,7 +315,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
   #photo-wrap { margin-bottom: 8px; }
   .board-pin { position: sticky; top: var(--hdr-h, 56px); z-index: 4; background: var(--bg); padding: 4px 0 6px; }
 }
-#result-svg { pointer-events: none; }   /* the result screen's board is for looking; it is edited on the board screen */
+#outcome-board { display: contents; }   /* the board moved here stays sticky on a phone (TODO-138) */
 
 /* Everything pressed is at least 44px high (TODO-086). */
 select { min-height: 44px; font-family: inherit; }
