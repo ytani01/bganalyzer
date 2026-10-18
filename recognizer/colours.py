@@ -9,12 +9,14 @@ import exact
 from geometry import TRI_DEPTH, Layout, plain_colour
 
 LAB_W = np.float32([0.5, 1.0, 1.0])  # lighting mostly changes L
+AVOID_DE = 12   # a pixel this near a checker's colour (weighted Lab) may be a checker missed (TODO-140)
 
 
-def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None):
+def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None, avoid=()):
     """Lab colours of the plain field, the two triangle colours and the frame.
 
-    mask: pixels to ignore (e.g. under checkers already found)."""
+    mask: pixels to ignore (e.g. under checkers already found). avoid: Lab colours of the checkers found,
+    left out of the band looked in when no triangle was found (checkers missed there are in it; TODO-140)."""
     lab = cv2.cvtColor(ground_bgr, cv2.COLOR_BGR2Lab).astype(np.float32)
     plain = plain_colour(lab, lay, m, mask)
     if mask is not None:
@@ -31,6 +33,10 @@ def board_colours(ground_bgr, lay: Layout, m: int, tips, mask=None):
             x = int(m + lay.col_x(c))
             for y0 in (m + lay.h * TRI_DEPTH * 0.3, m + lay.h * (1 - TRI_DEPTH * 0.6)):
                 px.append(lab[int(y0):int(y0 + lay.h * TRI_DEPTH * 0.3), x - 2:x + 3].reshape(-1, 3))
+        px = np.vstack(px)
+        for a in avoid:
+            far = np.linalg.norm((px - a) * LAB_W, axis=1) >= AVOID_DE
+            px = px[far] if far.sum() > 10 else px
     px = np.vstack(px)
     px = px[~np.isnan(px).any(1)]
     px = px[np.linalg.norm(px - plain, axis=1) > 25] if (np.linalg.norm(px - plain, axis=1) > 25).sum() > 10 else px
