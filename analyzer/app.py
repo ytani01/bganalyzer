@@ -30,13 +30,17 @@ from speech import router as speech_router
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.76.0"
+__version__ = "0.77.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
 
 @asynccontextmanager
 async def lifespan(_app):
+    from board import __version__ as recognizer_version
+
+    # journalctl then shows which code a restart brought up
+    log.info("bganalyzer analyzer %s, recognizer %s, commit %s", __version__, recognizer_version, git_commit())
     yield
     shutdown()   # uvicorn re-raises SIGTERM after this, so atexit hooks never run
 
