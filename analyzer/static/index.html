@@ -137,12 +137,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
         <div id="count-mark" class="count-mark" role="status" hidden></div>
         <div class="board-wrap"><svg id="board-svg" viewBox="0 0 660 440"></svg></div>
         <div id="editor" class="editor">
-          <div id="editor-title" class="editor-title">タップした段まで置く（一番上なら 1 個減る）・番号で空に・長押しで色と数</div>
           <div class="editor-row">
-            <span class="note">空の所に置く色</span>
-            <div id="paint-side" class="paint-side">
-              <button type="button" data-value="white"><span class="chip white"></span><span class="nm-white">白</span></button><button type="button" data-value="black"><span class="chip black"></span><span class="nm-black">黒</span></button>
-            </div>
+            <span id="editor-title" class="editor-title">タップした段まで置く（一番上なら 1 個減る）・番号で空に・長押しで色と数</span>
             <button id="undo" type="button" class="button small undo" disabled>元に戻す</button>
           </div>
         </div>
