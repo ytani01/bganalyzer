@@ -1,0 +1,24 @@
+{
+  "8001": {
+    "computed_touch_action": "pinch-zoom",
+    "as_served": {
+      "before": 400,
+      "after": 400
+    },
+    "inline_auto": {
+      "before": 400,
+      "after": 652
+    }
+  },
+  "8000": {
+    "computed_touch_action": "pinch-zoom",
+    "as_served": {
+      "before": 400,
+      "after": 400
+    },
+    "inline_auto": {
+      "before": 400,
+      "after": 817
+    }
+  }
+}
