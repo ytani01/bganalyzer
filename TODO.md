@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-142、TODO-146、TODO-147。** これまでに 140 件を決着させた。
+**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121。** これまでに 143 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-148`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
@@ -58,64 +58,6 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 
 **無駄を省く工夫:** 測るのは横からのサンプルだけ（`evaluate.py`・`check_corners.py` は正解の `side` を見る）。TODO-120 の試しの道具（`archives/agents/TODO-120/measure_side.py`）を使い回す
 
-
-## TODO-142. サンプルの名前を、写真の特徴が分かる名前にする
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Opus 5.5 / effort high | main（名前の案・実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
-
-2026-10-19 ユーザーの依頼。`samples/` の名前（`collected-2aunci` など）が分かりにくいので、写っている盤や撮り方が分かる名前にする。
-範囲は全部（collected-*・photo2〜6・screen1・2・tv-vegas-open・commons-*・synth-*・external）。
-名前の決まりは `<出どころ>-<盤の特徴>-<撮り方>[-番号]`（同日ユーザーが決めた）。tv-vegas-open・commons-*・external は今の名前で特徴が分かるので変えない。
-これから `recognizer/import_collected.py` が取り込む組は、開発機の `claude -p` に写真を渡して名前を付けさせる（取り込む組は公開するので、外へ出るのは公開より前の分だけ。同日ユーザーが決めた）。
-
-- [x] 名前の決まり（並び・語の選び方・重なったときの番号）を決めて、案の一覧を出す
-- [x] 写真・`*.truth.json`（`image` の値）・`accuracy_baseline.json`・テスト・README・docs の参照を新しい名前にする
-- [x] `import_collected.py` で、`claude -p` に名前を付けさせる（使えないときは今の乱数の名前）
-- [ ] ローカル: 次の自動取り込みの PR で、足した組が盤と撮り方の分かる名前（`collected-<id>` でない）になっている
-
-**無駄を省く工夫:** 読みは変わらないので精度は CI の accuracy に任せる。参照の漏れは `rg` で旧名を引いて確かめる（archives は書き換えない）
-
----
-
-## TODO-146. 取り込んだ組を collected/ から消す
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Opus 5.5 / effort high | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
-
-2026-10-19 ユーザーの依頼。`recognizer/import_collected.py` が `samples/` に取り込んだ組を、`collected/` から消す。
-決めたこと（同日ユーザーが決めた）:
-- 消すのは PR がマージされたとき。CI が落ちて PR が開いたまま残ったときは消さない
-- 同じ写真が別の id で送り直されたときは見分けない（取り込み直すことがある）。元の写真のハッシュは残さない
-- もう取り込んである 36 組は `collected/` に残す。これから取り込む組だけを消す
-
-- [x] マージを確かめてから、取り込んだ組の写真と正解を `collected/` から消す
-- [ ] ローカル: 次の自動取り込みのあと、マージされた組が `collected/` から消え、`import.log` にそう出ている
-
-**無駄を省く工夫:** 読み取りは変わらないので精度は測らない。確かめるのは `analyzer/test_collected.py` だけ
-
----
-
-## TODO-147. 開発機の自動取り込みが、メモリ不足で止まる
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Opus 5.5 / effort high | main（実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
-
-2026-10-19 に `collected.py collected --force` を 2 回流し、2 回とも `earlyoom` に SIGTERM で止められた（11:59 は `check_accuracy.py --update`、12:10 は親の `collected.py`）。
-`recognizer/import_collected.py` が worktree で流す `check_accuracy.py --update` が、全サンプルを CPU の数（16）だけ並行して読み、1 つ 300〜400 MiB 使う。開発機はメモリ 15 GB で、ほかに 12 GB ほど使っていた。
-親が止められると、測定の子プロセスが残ってメモリを使い続けた（手で止めた）。`import.log` には `CalledProcessError` としか出ず、stderr は捨てている。
-
-- [x] 取り込みのときだけ `check_accuracy.py` の並行数を絞る（CI と手で流すときは今のまま）
-- [x] 落ちたときに、stderr の末尾を `import.log` に残す
-- 親が止められたときに残る測定の子プロセスは手当てしない（2 つずつにしたので、残っても 2 つまで）
-- [ ] ローカル: `--force` で取り込みが PR のマージまで進む（TODO-142・TODO-146 の `ローカル:` の行も一緒に確かめる）
-
-**無駄を省く工夫:** 読みは変わらないので精度は測らない。確かめるのは `analyzer/test_collected.py` と、ローカルの `--force` 1 回だけ
-
----
 
 ## 完了済み
 
