@@ -85,7 +85,7 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 アプリの画面をユーザーに見せる場面では、スクリーンショットを撮って添付する代わりに、`tools/live_view.py` のブラウザを操作して見せる
 （2026-10-17 ユーザーが決めた。TODO-108）。開いていなければ live_view を起動し、Playwright から `connect_over_cdp("http://127.0.0.1:9222")` で
 そのブラウザにつないで操作する（`tools/pi_ui_check.py`・`tools/ui_snapshot.py` は `BG_CDP=http://127.0.0.1:9222` を付ける）。
-サブエージェントに画面を操作させるときも、依頼に `BG_CDP` を付けるよう書く。
+担当（teammate）に画面を操作させるときも、依頼に `BG_CDP` を付けるよう書く。
 
 ## タスク管理
 
@@ -111,6 +111,7 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
   teammate は Agent ツールに `name` を付けて起動し、`isolation` は付けない（付けると teammate にならない）。bganalyzer だけで有効にしている（`.claude/settings.local.json`。リポジトリには入らない）。
   teammate は main と同じトップの作業ツリーで起動するので、**作業の最初に自分で `git worktree add .claude/worktrees/<名前> -b claude/<作業内容> origin/main` を作り、その中で編集・コミット・PR まで行う**。トップは main のままにする。
   同じファイルを複数の担当に同時に編集させない。
+  tmux で開いた teammate には SendMessage が無いことがあるので、main に確認を頼むときは、作業を止めて返事（終わったときの通知）で伝える。
   確認・レビューを別の担当に分ける決まり（`~/.claude/CLAUDE.md`）はそのまま。ローカルの確認は、担当がトップの作業ツリー（main のまま）で `git pull` だけ行ってから確かめる（TODO-154）
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
 - **マージ後に確かめる必要がある変更は、その PR の中で TODO.md のその項目に `- [ ] ローカル:` の行を足す**
