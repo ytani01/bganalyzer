@@ -2,8 +2,8 @@
 // nothing but the scene, so the board screen, the photo beside it and the result screen are the
 // same drawing with different scenes.
 //
-// scene: {board, home, selected (point index, "bar" or null), photo (an image URL to show in the
-// playing area instead of the drawn board and checkers), dice, onRoll, cube {at, value},
+// scene: {board, home, selected (point index, "bar" or null), photo (an image URL: draws nothing but
+// the photo in the playing area, none of the rest), dice, onRoll, cube {at, value},
 // move {hops, mover} (arrows of a best move, BgMoves.hops), match {length (0: a money game), white,
 // black, crawford} (BgCube.fixMatch)}.
 // onPart (the board screen only): called with "home" (a tray), "colour" (a pip count), "match", "cube"
