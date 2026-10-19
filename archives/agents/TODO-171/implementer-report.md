@@ -12,7 +12,8 @@
 - `analyzer/static/app.js`（`APP_VERSION` 0.93.0）
   - `:55` `colourPick` を足した（`homePick` と同じ形）。新しい写真は `"auto"`、PIP をタップして入れ替えたら `"0"`/`"1"`（`:357`）、写真の履歴にも残す（`:512`）。0.93.0 より前の履歴は、覚えていた `bottomColour` をそのまま使う（`:686`）
   - `:991` 写真を読むときに `colourPick` を送り、`:1029` 応答の `bottom_colour` を `bottomColour` にする
-  - 端末に覚える色（`keep("bottomColour")`）は、タップしたときだけ書く今のまま。写真なしで盤面を入れるときに使われる
+  - 端末に覚える色（`keep("bottomColour")`）は、タップしたときだけ書く今のまま。「手で盤面を作る」は直前の写真で読んだ色で始め、端末に覚えた色を使うのは、起動してから写真を読んでいないときだけ（2026-10-20 ユーザーが決めた。レビューの 2）
+  - 置き場をタップして home を直したら、そのとき出ていた手前の色も `colourPick` に入れ、読み直しで推測し直さない（レビューの 3）
 - `analyzer/test_api.py:476` `test_bottom_colour_is_guessed_from_the_pips`（samples の正解を色 2 通りで戻せるか、同点で default）。`:511` `test_api_guesses_home_side` を `bottom_colour=auto` にして、推測した色が正解と同じかを足した
 - `analyzer/test_pwa.py:1108` `test_photo_colour_is_guessed_unless_picked`（新しい写真は auto を送って推測を使う、履歴の写真は覚えた色を送る）。`:1010` 送った値を見るため、テストの `FormData` を記録するようにした
 - `TODO.md` の TODO-171 の節を、決まったことに合わせて書き直した（「実装する」にチェック、`- [ ] ローカル:` は残した）
@@ -52,3 +53,17 @@ home を `left`/`right` で送ったとき（PWA で置き場をタップした�
 - **指示の「141/141 組が一致」は home を正解にしたときの数で、home も推測すると 564 通り中 538（95%）。** 外れる 26 通りは 9 組。うち 3 組（collected-blue-felt-oblique、collected-cream-far、user-1792195518366-wcfrvo）は、色も home も逆にした読みのほうがピップ数が少なくなる。5 組は同点。1 組（user-1792248218172-kuetnz）は `home_prior` が正しい色でも外れる
 - README は、管理者の依頼で同じ PR に足した: `recognizer/README.md`（`--bottom-colour` の `auto` と決め方）、`analyzer/README.md`（`/analyze-photo` の `bottom_colour` と、応答の `bottom_colour`・`colour_guess`）
 - 応答の `bottom_colour` は、recognize を差し替えたテストのように `info` に色が無いと、送った値（`"auto"` もありうる）をそのまま返す。本物の recognize は必ず入れる
+
+## レビューの指摘への対応（reviewer-report.md）
+
+- 1: `analyzer/README.md` の PWA の使い方の節（読み取りの色、直した色の扱い）を実装に合わせた
+- 2: 実装は変えず、README と上の変更点の説明を「手で盤面を作るときは直前の写真の色」に合わせた
+- 3: `tapPart("home")` で `colourPick` に今の色を入れた（`app.js` の `tapPart`）
+- 4: テストを足した。壊すと落ちることを 1 回ずつ確かめた
+  - 同点は既定で 1: `test_bottom_colour_is_guessed_from_the_pips`（既定を 0 にすると落ちた）
+  - `home="auto"` で両側を比べる: 同じテストで、初期配置を home 左にした盤面（右だけで比べると色を取り違える）を使った（`sides` を `("right",)` にすると落ちた）
+  - タップで `colourPick` が決まる: `test_tapping_the_board_fixes_the_colour_sent`（PIP のタップから `colourPick` を消すと落ちた。置き場のタップから消しても落ちた）
+- 5: `analyzer/app.py` は `info["bottom_colour"]`・`info["colour_guess"]` にし、recognize を差し替える `test_api.py` の 6 か所に 2 つの値を入れた
+- `pips()` の重複: 消して `Position.pips()` を使う（`board.py` の `guess_bottom`、`check_guess.py`）
+- 検証: `uv run pytest analyzer/test_api.py analyzer/test_pwa.py analyzer/test_side.py -q` と `ruff check`・`ruff format --check`（結果は PR の更新のときのもの。`test_version_reports_both_parts_and_commit` は worktree では前から落ちる）
+- 直したあとに `check_guess.py` を流し直すと、samples が増えて 143 組 × 4 = 572 通り。色だけ 572、採用した順 546、同点 20（外れる組は前と同じ 9 組）

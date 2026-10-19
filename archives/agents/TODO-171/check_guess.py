@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "recognizer"))
 import home_prior  # noqa: E402
-from board import guess_bottom, pips, to_position  # noqa: E402
+from board import guess_bottom, to_position  # noqa: E402
 
 
 def runs_of(points, bw, bb, white, home):
@@ -40,7 +40,7 @@ def way_b(runs, bar):
     for c in (0, 1):
         home, _ = home_prior.guess(to_position(runs, bar, c, "right").points)
         p = to_position(runs, bar, c, home)
-        k = pips(p.points, p.bar_white, p.bar_black)
+        k = sum(p.pips())
         if best is None or k < best[0]:
             best = (k, p)
     return best[1]

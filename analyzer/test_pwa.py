@@ -1123,6 +1123,28 @@ def test_photo_colour_is_guessed_unless_picked():
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_tapping_the_board_fixes_the_colour_sent():
+    # TODO-171: a pip count swaps the colour and a tray the side; either way the photo is read again with
+    # the colour on screen, not guessed again
+    js = (STATIC / "app.js").read_text()
+    func = js[js.index("function tapPart(") : js.index("part((s) => [s.sheet, s.step]")]
+    script = f"""
+      let state;
+      const update = (p) => {{ state = {{ ...state, ...p }}; }};
+      const keep = () => {{}}, editBoard = () => {{}}, setHome = (home) => update({{ home }}), BgBoard = {{}};
+      {func}
+      const r = [];
+      state = {{ home: "right", bottomColour: 1, colourPick: "auto" }}; tapPart("colour"); r.push(state.colourPick);
+      state = {{ home: "right", bottomColour: 0, colourPick: "auto" }}; tapPart("colour"); r.push(state.colourPick);
+      state = {{ home: "right", bottomColour: 0, colourPick: "auto" }}; tapPart("home"); r.push(state.colourPick);
+      console.log(JSON.stringify(r));"""
+    r = subprocess.run(
+        ["node", "-e", script], capture_output=True, text=True, check=True
+    )
+    assert json.loads(r.stdout) == ["0", "1", "0"]
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
 def test_offered_cube_keeps_clear_of_checkers():
     # TODO-160: the cube just offered lies in the field of the side that doubled, at the middle unless a checker is in the way
     script = f"""

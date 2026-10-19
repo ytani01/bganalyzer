@@ -100,13 +100,6 @@ def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
     return p
 
 
-def pips(points, bar_white, bar_black) -> int:
-    """Both sides' pip counts added up (White's points numbered from its home)."""
-    w = sum((i + 1) * n for i, n in enumerate(points) if n > 0) + 25 * bar_white
-    b = sum((24 - i) * -n for i, n in enumerate(points) if n < 0) + 25 * bar_black
-    return w + b
-
-
 def guess_bottom(runs, bar, home: str, default=1):
     """Whose checkers are the bottom player's (colour index), and the fewest pips (both sides' added
     up) each colour index as the bottom player's gives: the side with fewer pips. Checkers stand
@@ -114,11 +107,7 @@ def guess_bottom(runs, bar, home: str, default=1):
     'right', or 'auto' to take the fewer of the two sides; `default` on a tie."""
     sides = ("right", "left") if home == "auto" else (home,)
     both = [
-        min(
-            pips(q.points, q.bar_white, q.bar_black)
-            for q in (to_position(runs, bar, c, h) for h in sides)
-        )
-        for c in (0, 1)
+        min(sum(to_position(runs, bar, c, h).pips()) for h in sides) for c in (0, 1)
     ]
     if both[0] == both[1]:
         return default, both

@@ -344,13 +344,13 @@ part((s) => s.board && [s.step, s.board, s.home, s.selected, rolled(s), s.onRoll
 
 // ---- a tap on a part around the board picture (TODO-113): the trays flip the home's side, a pip count
 // swaps the checkers' owners (the board keeps its colours), the match, the cube and the dice open their sheet
-// (the side and the colour are what this photo is read with again, and the colour also a board set by hand's;
-// a new photo's colour is guessed, TODO-171)
+// (the side and the colour are what this photo is read with again; flipping the side also fixes the colour
+// shown, so reading it again does not guess another, TODO-171. A new photo's colour is guessed)
 function tapPart(kind) {
   if (kind === "home") {
     const home = state.home === "right" ? "left" : "right";
     setHome(home);
-    update({ homePick: home });
+    update({ homePick: home, colourPick: String(state.bottomColour) });
   } else if (kind === "colour") {
     editBoard(BgBoard.swapColours);
     keep("bottomColour", state.bottomColour ? "0" : "1");

@@ -506,21 +506,32 @@ def test_bottom_colour_is_guessed_from_the_pips():
     # TODO-171: the bottom player's checkers are the colour that gives fewer pips in all
     from board import guess_bottom
 
+    def runs_of(points, bar_white, bar_black, white, home="right"):
+        """The columns as the recognizer counts them, White's checkers as colour index `white`."""
+        runs = {}
+        for i, n in enumerate(points):
+            if n:
+                row, c = ("bottom", 11 - i) if i < 12 else ("top", i - 12)
+                c = c if home == "right" else 11 - c
+                runs[(c, row)] = (white if n > 0 else 1 - white, abs(n))
+        bar = [0, 0]
+        bar[white], bar[1 - white] = bar_white, bar_black
+        return runs, bar
+
     samples = Path(__file__).resolve().parent.parent / "samples"
     for f in sorted(samples.glob("*.truth.json")):
         t = json.loads(f.read_text())
-        # the truth read with White's checkers as either colour index
         for white in (0, 1):
-            runs = {}
-            for i, n in enumerate(t["points"]):
-                if n:
-                    row, c = ("bottom", 11 - i) if i < 12 else ("top", i - 12)
-                    runs[(c, row)] = (white if n > 0 else 1 - white, abs(n))
-            bar = [0, 0]
-            bar[white], bar[1 - white] = t["bar_white"], t["bar_black"]
+            runs, bar = runs_of(t["points"], t["bar_white"], t["bar_black"], white)
             assert guess_bottom(runs, bar, "right")[0] == white, f.name
-    # a tie (nothing on the board): the default
-    assert guess_bottom({}, [0, 0], "auto", default=0) == (0, [0, 0])
+    # home "auto": each colour on the side with fewer pips. The start with the home on the left
+    # reads as the wrong colour if only the right were tried
+    for white in (0, 1):
+        runs, bar = runs_of(Position.start().points, 0, 0, white, "left")
+        assert guess_bottom(runs, bar, "auto")[0] == white
+        assert guess_bottom(runs, bar, "right")[0] != white
+    # a tie (nothing on the board): the lighter checkers are 手前's
+    assert guess_bottom({}, [0, 0], "auto") == (1, [0, 0])
 
 
 def test_api_guesses_home_side():
@@ -936,6 +947,8 @@ def test_api_photo_match(monkeypatch):
             {
                 "home": "right",
                 "home_guess": None,
+                "bottom_colour": 0,
+                "colour_guess": None,
                 "warnings": [],
                 "geometry": None,
                 "dice": {"values": None, "dice": []},
@@ -969,6 +982,8 @@ def test_api_photo_match(monkeypatch):
             {
                 "home": "right",
                 "home_guess": None,
+                "bottom_colour": 0,
+                "colour_guess": None,
                 "warnings": [],
                 "geometry": None,
                 "dice": {"values": None, "dice": []},
@@ -1085,6 +1100,8 @@ def test_api_cube_read_without_dice_is_a_double(monkeypatch):
         return Position.start(), {
             "home": "right",
             "home_guess": None,
+            "bottom_colour": 0,
+            "colour_guess": None,
             "warnings": [],
             "geometry": None,
             "dice": {"values": None, "dice": []},
@@ -1116,6 +1133,8 @@ def test_api_cube_read_without_dice_is_a_double(monkeypatch):
             {
                 "home": "right",
                 "home_guess": None,
+                "bottom_colour": 0,
+                "colour_guess": None,
                 "warnings": [],
                 "geometry": None,
                 "dice": {"values": None, "dice": []},
@@ -1146,6 +1165,8 @@ def test_api_cube_in_a_field_is_a_double_even_with_dice(monkeypatch):
         return Position.start(), {
             "home": "right",
             "home_guess": None,
+            "bottom_colour": 0,
+            "colour_guess": None,
             "warnings": [],
             "geometry": None,
             "dice": {"values": [3, 1], "dice": []},
@@ -1193,6 +1214,8 @@ def test_api_photo_dice_cancel_a_double_set_by_hand(monkeypatch):
         return Position.start(), {
             "home": "right",
             "home_guess": None,
+            "bottom_colour": 0,
+            "colour_guess": None,
             "warnings": [],
             "geometry": None,
             "dice": {"values": [3, 1], "dice": []},
