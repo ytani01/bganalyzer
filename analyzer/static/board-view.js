@@ -21,7 +21,7 @@ const BgBoardView = (() => {
   const ROW = { h: 32, top: -34, bottom: 442 };
   // The column beside the board on the home side (TODO-151, TODO-152), top to bottom: the cube 奥 owns, 奥's tray of
   // borne-off checkers, 奥's score, the cube in the middle, 手前's score, 手前's tray, the cube 手前 owns. 3 apart.
-  const COL = { w: 56, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 32, tray: 119, cube: 28, pad: 3 };
+  const COL = { w: 56, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 32, tray: 101, cube: 40, pad: 3 };
   const VIEW = { y: ROW.top - 4, h: ROW.bottom + ROW.h + 4 - (ROW.top - 4) };
   const MATCH_H = 26;   // the line above 奥's row for the match, only in a match (TODO-099)
   const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
@@ -192,7 +192,7 @@ const BgBoardView = (() => {
   // 手前: the bottom) toward the middle, with the count.
   function drawBorneOff(svg, b, home) {
     const { offW, offB } = BgBoard.counts(b);
-    const hgt = 5, step = 6, x = sideX(home) + 6;
+    const hgt = 4, step = 5, x = sideX(home) + 6;
     for (let [side, n] of [["white", offW], ["black", offB]]) {
       if (n <= 0) continue;
       n = Math.min(n, 15);
@@ -262,10 +262,10 @@ const BgBoardView = (() => {
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
     const crawford = match && match.length > 0 && match.crawford;
     if (crawford) {   // two lines, "Craw" over "ford", to fit the cube
-      ["Craw", "ford"].forEach((t, k) => el("text", { x: x + size / 2, y: y + size / 2 + (k ? 5.5 : -5.5), class: "cube-crawford" }, g).textContent = t);
+      ["Craw", "ford"].forEach((t, k) => el("text", { x: x + size / 2, y: y + size / 2 + (k ? 8 : -8), class: "cube-crawford" }, g).textContent = t);
       return;
     }
-    el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g).textContent = cube.at === "centre" ? "64" : String(cube.value);
+    el("text", { x: x + size / 2, y: y + size / 2 + 7.5, class: "cube-num" }, g).textContent = cube.at === "centre" ? "64" : String(cube.value);
   }
 
   // The way the side on roll goes, as a see-through U across the middle of the board (over the
