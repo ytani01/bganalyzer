@@ -45,7 +45,7 @@ from speech import router as speech_router
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.92.1"
+__version__ = "0.92.2"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -138,19 +138,29 @@ def health():
 def git_commit(git_dir: Path = REPO / ".git") -> str | None:
     """Short id of the checked-out commit, read from the files (git itself may not be installed)."""
     try:
+        if git_dir.is_file():  # a worktree: ".git" is a file saying "gitdir: <path>"
+            git_dir = (
+                git_dir.parent
+                / git_dir.read_text().strip().removeprefix("gitdir:").strip()
+            )
+        common = git_dir  # refs and packed-refs live in the main .git for a worktree
+        if (git_dir / "commondir").is_file():
+            common = git_dir / (git_dir / "commondir").read_text().strip()
         head = (git_dir / "HEAD").read_text().strip()
         if head.startswith("ref: "):
             ref = head[5:]
-            loose = git_dir / ref
-            if loose.is_file():
+            loose = next(
+                (d / ref for d in (git_dir, common) if (d / ref).is_file()), None
+            )
+            if loose:
                 head = loose.read_text().strip()
             else:
-                packed = (git_dir / "packed-refs").read_text().splitlines()
+                packed = (common / "packed-refs").read_text().splitlines()
                 head = next(
                     line.split()[0] for line in packed if line.endswith(" " + ref)
                 )
         return head[:7] if len(head) >= 7 else None
-    except (OSError, StopIteration):
+    except (OSError, StopIteration, UnicodeDecodeError):
         return None
 
 

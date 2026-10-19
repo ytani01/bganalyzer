@@ -255,6 +255,35 @@ def test_git_commit_reads_packed_and_detached_refs(tmp_path):
     assert git_commit(tmp_path / "missing") is None
 
 
+def test_git_commit_follows_a_worktree(tmp_path):
+    from app import git_commit
+
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    main_git = tmp_path / "main" / ".git"
+    wt_git = main_git / "worktrees" / "wt"
+    wt_git.mkdir(parents=True)
+    (wt_git / "commondir").write_text("../..\n")
+    (wt_git / "HEAD").write_text("ref: refs/heads/claude/x\n")
+    work = tmp_path / "wt"
+    work.mkdir()
+    (work / ".git").write_text(f"gitdir: {wt_git}\n")
+    (main_git / "packed-refs").write_text(f"{sha} refs/heads/claude/x\n")
+    assert git_commit(work / ".git") == "0123456"  # packed-refs of the main .git
+    (main_git / "refs/heads/claude").mkdir(parents=True)
+    (main_git / "refs/heads/claude/x").write_text(
+        "fedcba9876543210fedcba9876543210fedcba98\n"
+    )
+    assert git_commit(work / ".git") == "fedcba9"  # a loose ref in the main .git
+    (wt_git / "HEAD").write_text(sha + "\n")  # detached
+    assert git_commit(work / ".git") == "0123456"
+    # a relative gitdir is taken from the directory holding ".git"
+    (work / ".git").write_text("gitdir: ../main/.git/worktrees/wt\n")
+    assert git_commit(work / ".git") == "0123456"
+    (main_git / "HEAD").write_bytes(b"\xff\xfe")
+    (wt_git / "HEAD").write_bytes(b"\xff\xfe")
+    assert git_commit(work / ".git") is None  # not text: no commit id, no error
+
+
 def _corner_error(found, truth, shape):
     """Largest distance between found and true corners, as a share of the photo's long side."""
     import numpy as np
