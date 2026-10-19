@@ -1032,11 +1032,8 @@ async function recognize() {
                homeGuess: data.home_guess || null, selected: null });
       go("board");
       setResult(data.analysis, dice);
-      // the board was read but not analysed
-      if (data.analysis_error) {
-        alert(crawfordOff ? "キューブが片側に読めたので、クロフォードを外しました。「解析する」を押すと解析します。"
-                          : "解析できませんでした: " + data.analysis_error);
-      }
+      // the board was read but not analysed; the Crawford game taken off above goes without a word (TODO-153)
+      if (data.analysis_error && !crawfordOff) alert("解析できませんでした: " + data.analysis_error);
     }, !!mine);
   } catch (err) {
     alert("読み取りに失敗しました: " + err.message);
