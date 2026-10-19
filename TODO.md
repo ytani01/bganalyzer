@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-168、TODO-169。** これまでに 163 件を決着させた。
+**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-169。** これまでに 164 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-170`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
@@ -57,32 +57,6 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 **何を決めるか:** 四隅の点数の付け方と駒の数え方。**選択肢:** 写真がたまってから試して出す。**いつ聞くか:** 試したあと。
 
 **無駄を省く工夫:** 測るのは横からのサンプルだけ（`evaluate.py`・`check_corners.py` は正解の `side` を見る）。TODO-120 の試しの道具（`archives/agents/TODO-120/measure_side.py`）を使い回す
-
-## TODO-168. ruff で lint と format を通す
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Sonnet 5.5 / effort medium | implementer（Sonnet 5.5）+ verifier（Sonnet 5.5 / medium）。lint の指摘の直しで分岐や条件が変わる箇所があれば reviewer（Opus 5.5 / high）を足す |
-
-Python のコードにリンターが入っていない（`pyproject.toml` にも GitHub Actions にも設定が無い）。
-
-決めたこと（2026-10-20 ユーザー）: ruff を `uv add --dev ruff` で入れ、`ruff check`（lint）と `ruff format --check`（format）を GitHub Actions で通す。今のコードは指摘を直し、`ruff format` で整形する。
-着手は TODO-167・TODO-166 のマージの後（analyzer の Python とぶつかるため）。
-
-決めたこと（2026-10-20 ユーザー、件数を測ってから）: 世の中でよく使われている設定にする。規則は `select = ["E", "F", "I"]`（pycodestyle・pyflakes・isort）、`ignore = ["E501"]`（長い行は許す）、行の長さは既定の 88、`archives/` は対象外（`extend-exclude`）。
-測った件数（`archives/` を除く 57 ファイル）: E・F・I で整形のあとに E501 を除いて 66 件（自動で直せるのは 48）、整形が要るのは 46 ファイル。ruff 0.17 の既定の規則（C408・RUF・SIM・B など）は採らない。
-
-保つもの:
-- 整形だけのコミットと、指摘の直し（挙動が変わりうる）のコミットを分ける
-- 整形でテストや accuracy の結果が変わらない（CI で見る）。recognizer の読み取りの結果を変えない
-- 版: 整形と lint の直しで挙動が変わらないなら、analyzer・recognizer の版は上げない（直しで挙動が変わる箇所があれば、そのディレクトリの z を上げる）
-
-- [x] ruff を dev 依存に入れ、規則を決める（件数を測って利用者に聞く）
-- [x] `ruff format` で整形する（整形だけのコミット）
-- [x] lint の指摘を直す
-- [x] GitHub Actions に `ruff check` と `ruff format --check` のジョブを足す（`.github/workflows/ruff.yml`）
-
-**無駄を省く工夫:** テスト全体と accuracy は CI に任せ、手元では `uv run ruff check` と `uv run ruff format --check` だけ流す。確認は、わざと違反を 1 つ入れた差分で CI のジョブが落ちることを 1 回見れば足りる。アプリの動きは変わらないので `- [ ] ローカル:` の行は要らない
 
 ## TODO-169. 勝率の表と候補手の時点の違いを示す
 
