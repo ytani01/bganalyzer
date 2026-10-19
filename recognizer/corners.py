@@ -203,9 +203,10 @@ class _Upright:
         width = w + 2 * pad
         self.cum = np.zeros((len(slopes), nb + 1, width), np.int32)
         rows = np.arange(h)
-        # (block, line) of the upright line through (x, y), and of the slanted one: less the shift
+        # index into a slope's (block, line) counts of the line through (x, y) with slope 0
         at = (ys // STEP) * width + xs + pad
         for i, k in enumerate(slopes):
+            # with slope k, the line through (x, y) is sh further left: at - sh
             sh = _shift(rows, int(k))[ys]
             c = xs - sh
             ok = (c >= -pad) & (c < width - pad)
