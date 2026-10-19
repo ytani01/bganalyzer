@@ -125,11 +125,6 @@ header .app-name { font-size: 16px; font-weight: bold; white-space: nowrap; flex
   cursor: pointer;
 }
 .back:active { opacity: .8; }
-#steps { display: flex; gap: 6px; font-size: 13px; margin-top: 6px; }
-#steps span { padding: 2px 10px; border-radius: 999px; opacity: .65; white-space: nowrap; }
-#steps span.done { opacity: .85; }
-#steps span.done::before { content: "✓ "; }
-#steps span.on { background: var(--accent-fg); color: var(--accent); font-weight: bold; opacity: 1; }
 html { scroll-padding-bottom: var(--bar-h, 0px); }   /* what is scrolled to (a focused field) stays above the bottom bar */
 main { max-width: 720px; margin: 0 auto; padding: 12px 16px calc(var(--bar-h, 0px) + 40px); }
 .lead { font-size: 17px; }
@@ -316,10 +311,9 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .opt .angle { flex: 1; min-width: 0; }
 .panel .note { margin: 4px 0 8px; }
 
-/* Phone held upright: the header is one line (the step's name instead of the step list), and the board
+/* Phone held upright: the header is one line (the step's name), and the board
    with its edit buttons stays at the top while the settings and the result scroll under it. */
 @media (max-width: 599px) {
-  #steps { display: none; }
   .lead { font-size: 15px; margin: 4px 0 8px; }
   .row { margin: 8px 0; }
   .panel { padding: 2px 10px 6px; }

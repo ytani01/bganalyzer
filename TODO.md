@@ -67,8 +67,8 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 幅が 600px 以上のとき、ヘッダーに手順の一覧（`#steps`、「1 写真の選択」〜「4 解析結果」）と画面名の見出し（h1 `#title`）が両方出て重複している。
 2026-10-20 にユーザーが「手順の一覧」を消すと決めた。狭いとき（599px 以下）は今も一覧を隠して見出しだけなので、幅によらずその形にする。
 
-- [ ] `analyzer/static/index.html` の `<nav id="steps">`、`analyzer/static/style.css` の `#steps` の規則（128〜132 行と 322 行）、`analyzer/static/app.js` の `#steps span` を更新するループ（150〜153 行付近。`at` が他で使われていなければそれも）を削る。`rg -n "steps" analyzer/static tools` で残りが無いか見る
-- [ ] analyzer のバージョンをパッチで上げる（`analyzer/app.py` の `__version__` と `app.js` の `APP_VERSION`）
+- [x] `analyzer/static/index.html` の `<nav id="steps">`、`analyzer/static/style.css` の `#steps` の規則（128〜132 行と 322 行）、`analyzer/static/app.js` の `#steps span` を更新するループ（150〜153 行付近。`at` が他で使われていなければそれも）を削る。`rg -n "steps" analyzer/static tools` で残りが無いか見る
+- [x] analyzer のバージョンをパッチで上げる（`analyzer/app.py` の `__version__` と `app.js` の `APP_VERSION`）
 - [ ] ローカル: マージ後、ローカルホストで幅の広いウインドウで開き、ヘッダーに手順の一覧が出ないこと
 
 **無駄を省く工夫:** 確認はローカルホストで幅 1280px と 390px の 2 通りだけ（ヘッダーに一覧が無く見出しが出ていること、画面を進めると見出しが変わること）。テスト全体は CI に任せる
