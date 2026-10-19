@@ -1,0 +1,39 @@
+diff --git a/recognizer/corners.py b/recognizer/corners.py
+index 1883826..15266bc 100644
+--- a/recognizer/corners.py
++++ b/recognizer/corners.py
+@@ -79,6 +79,7 @@ ALONG_CAP = 0.85  # past this share all the same: an outer edge nothing hides is
+ # then each side swapped for another candidate line while the score goes up (TODO-105)
+ SWAPS = 3  # rounds over the four sides, at most
+ SWAP_GAIN = 0.01  # a swap raises the score by more than this, at least (a triangle's side by a screen's edge, TODO-140)
++NEAREST = True
+ SWAP_TOP = 2  # lines for a side scored again at full size, the best at half size
+ INNER = (
+     0.03,
+@@ -91,7 +92,7 @@ INNER_SLACK = (
+ )
+ INNER_OUT, INNER_IN = (
+     0.25,
+-    0.75,
++    0.6,
+ )  # a far / near side with the strips alike in less than this share runs outside the board; with this share, inside (TODO-140)
+ OUT_DROP = 0.1  # moving such a side inside may lower the score by this much, at most
+ PLAIN_DE = 20  # colour difference (Lab) still plain
+@@ -645,10 +646,15 @@ def _swap(small, score, best, hl, vl, keep, least):
+                 v2, _ = _view(small, q2, RW // 2, RH // 2, 0)
+                 if v2 is not None:
+                     tried.append((score(v2, q2), t, q2))
+-            tried.sort(key=lambda r: -r[0])
++            out = i % 2 == 0 and here < INNER_OUT
++            if out and NEAREST:
++                # TODO-175: the nearest line inside first, not the best-scoring one
++                mid = lambda l: l[1] + _shift(w // 2, int(l[0]))  # noqa: E731
++                tried.sort(key=lambda r: abs(mid(r[1][i]) - mid(sides[i])))
++            else:
++                tried.sort(key=lambda r: -r[0])
+             # a far / near side running outside the board's interior (a screen's dark rows of numbers
+             # look like the triangles' bases) may go to a line inside it that scores a bit less (TODO-140)
+-            out = i % 2 == 0 and here < INNER_OUT
+             for n, (_, t, q2) in enumerate(tried if out else tried[:SWAP_TOP]):
+                 v2, _ = _view(small, q2, RW, RH, 0)
+                 if v2 is None:

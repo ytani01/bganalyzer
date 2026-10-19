@@ -1,0 +1,26 @@
+diff --git a/recognizer/corners.py b/recognizer/corners.py
+index 1883826..fd87cd3 100644
+--- a/recognizer/corners.py
++++ b/recognizer/corners.py
+@@ -49,6 +49,7 @@ SLOPES = np.arange(
+ EDGE_MIN = 60  # contrast (summed over Lab's channels) of an edge pixel
+ H_LINES = 6  # far / near edge candidates
+ V_LINES = 8  # left / right edge candidates for each far / near pair
++H_SLOPE_SEP = 0  # far / near edge candidates this near in slope (1/200) are one edge (TODO-175)
+ LINE_SEP = 0.015  # nearest two candidates of one kind, against the photo's side
+ V_COVER = 0.45  # an upright line needs an edge pixel in this share of the rows
+ MIN_HEIGHT = 0.25  # the playing area's height, at least, against the photo's
+@@ -177,7 +178,12 @@ def _h_lines(gx, gy):
+         if acc[i, c] <= 0:
+             break
+         out.append((int(SLOPES[i]), int(c) - pad, int(acc[i, c])))
+-        acc[:, max(0, c - sep) : c + sep + 1] = 0
++        # only the slopes near this one: a line of another slope that crosses here is another edge
++        # (the frame of the rows of numbers swallowed the board's slanted edge; TODO-175)
++        mid = c + _shift(w // 2, int(SLOPES[i]))
++        for j in np.nonzero(np.abs(SLOPES - SLOPES[i]) <= H_SLOPE_SEP)[0]:
++            c0 = mid - _shift(w // 2, int(SLOPES[j]))
++            acc[j, max(0, c0 - sep) : c0 + sep + 1] = 0
+     return out
+ 
+ 

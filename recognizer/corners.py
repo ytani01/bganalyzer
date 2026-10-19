@@ -91,7 +91,7 @@ INNER_SLACK = (
 )
 INNER_OUT, INNER_IN = (
     0.25,
-    0.75,
+    0.6,
 )  # a far / near side with the strips alike in less than this share runs outside the board; with this share, inside (TODO-140)
 OUT_DROP = 0.1  # moving such a side inside may lower the score by this much, at most
 PLAIN_DE = 20  # colour difference (Lab) still plain
@@ -645,10 +645,20 @@ def _swap(small, score, best, hl, vl, keep, least):
                 v2, _ = _view(small, q2, RW // 2, RH // 2, 0)
                 if v2 is not None:
                     tried.append((score(v2, q2), t, q2))
-            tried.sort(key=lambda r: -r[0])
+            out = i % 2 == 0 and here < INNER_OUT
+            if out:
+                # the nearest line first, not the best-scoring one: the frame of a screen's rows of
+                # numbers has the board's edge just inside it, and a farther line may be the checkers' tops (TODO-175)
+                mid = sides[i][1] + _shift(w // 2, int(sides[i][0]))
+                tried.sort(
+                    key=lambda r: abs(
+                        r[1][i][1] + _shift(w // 2, int(r[1][i][0])) - mid
+                    )
+                )
+            else:
+                tried.sort(key=lambda r: -r[0])
             # a far / near side running outside the board's interior (a screen's dark rows of numbers
             # look like the triangles' bases) may go to a line inside it that scores a bit less (TODO-140)
-            out = i % 2 == 0 and here < INNER_OUT
             for n, (_, t, q2) in enumerate(tried if out else tried[:SWAP_TOP]):
                 v2, _ = _view(small, q2, RW, RH, 0)
                 if v2 is None:
