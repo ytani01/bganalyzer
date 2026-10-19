@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.85.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.86.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -653,15 +653,20 @@ function setDie(k, value) {
   update({ dice, diceFromPhoto: false, ...(offered && dice[k] ? { cube: { ...state.cube, offered: false }, cubeFromPhoto: false } : {}) });
 }
 
+// A cube put on one side takes the Crawford game off: no doubling in it, and the later choice wins (TODO-153).
 function setCube(patch) {
-  update({ cube: { ...state.cube, ...patch }, cubeFromPhoto: false });
+  const cube = { ...state.cube, ...patch };
+  if (cube.at !== "centre" && state.match.crawford) setMatch({ crawford: false });
+  update({ cube, cubeFromPhoto: false });
 }
 
 // The match and its score, from the board screen's settings: kept on this phone (TODO-066).
+// The Crawford game put in brings the cube back to the centre (TODO-153).
 function setMatch(patch) {
   const match = BgCube.fixMatch({ ...state.match, ...patch });
   keep("match", JSON.stringify(match));
-  update({ match });
+  const toCentre = match.crawford && state.cube.at !== "centre";
+  update({ match, ...(toCentre ? { cube: { ...state.cube, at: "centre" }, cubeFromPhoto: false } : {}) });
 }
 
 function setResult(result, dice) {

@@ -565,3 +565,28 @@ def test_a_die_chosen_takes_the_double_back():
     assert "const shown = cubeOffered(s) ? [0, 0] : s.dice;" in js
     assert "const dice = offered ? [0, 0] : state.dice.slice();" in js
     assert "cube: { ...state.cube, offered: false }" in js[js.index("function setDie("):]
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_crawford_and_a_cube_on_one_side_follow_the_later_choice():
+    # TODO-153: setCube / setMatch from app.js, run with a stub state
+    js = (STATIC / "app.js").read_text()
+    funcs = js[js.index("function setCube("):js.index("function setResult(")]
+    script = f"""
+      const BgCube = require({json.dumps(str(STATIC / "cube.js"))});
+      let state; const keep = () => {{}}; const update = (p) => {{ state = {{ ...state, ...p }}; }};
+      {funcs}
+      const side = {{ at: "black", value: 2, offered: false }}, centre = {{ at: "centre", value: 2, offered: true }};
+      const m = (crawford) => ({{ length: 7, white: 6, black: 3, crawford }});
+      const out = [];
+      state = {{ match: m(false), cube: side }}; setMatch({{ crawford: true }}); out.push(state);
+      state = {{ match: m(true), cube: centre }}; setCube({{ at: "white" }}); out.push(state);
+      state = {{ match: m(false), cube: side }}; setMatch({{ white: 5 }}); out.push(state);
+      state = {{ match: m(true), cube: centre }}; setCube({{ value: 4 }}); out.push(state);
+      console.log(JSON.stringify(out));"""
+    crawford_in, cube_out, other_match, other_cube = json.loads(
+        subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout)
+    assert crawford_in["match"]["crawford"] is True and crawford_in["cube"] == {"at": "centre", "value": 2, "offered": False}
+    assert cube_out["match"]["crawford"] is False and cube_out["cube"]["at"] == "white"
+    assert other_match["cube"]["at"] == "black"   # no Crawford game: the cube stays
+    assert other_cube["match"]["crawford"] is True and other_cube["cube"] == {"at": "centre", "value": 4, "offered": True}
