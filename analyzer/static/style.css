@@ -197,6 +197,12 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
   #board:not([hidden]) .boards.two #photo-wrap { margin-right: 0; }
   #board:not([hidden]) .boards.two .board-pin .board-wrap { margin-left: 0; }
 }
+/* Square corners on the side that reaches the page's edge: up to main's max-width (720px), or 1240px side by side. */
+@media (max-width: 720px) { .board-wrap { border-radius: 0; } }
+@media (min-width: 1000px) and (max-width: 1240px) {
+  #board:not([hidden]) .boards.two #photo-wrap { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  #board:not([hidden]) .boards.two .board-pin .board-wrap { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+}
 
 .editor { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin: 6px 0 0; }
 .editor-title { font-size: 13px; color: var(--muted); }
