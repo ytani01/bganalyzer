@@ -66,12 +66,12 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 
 両者のピップ数の合計が少ない向きを手前とする推測を 140 組の正解で試したら 131 組が一致した。残る 9 組を点検したところ、9 組とも正解ファイルの向き（手前の色・home）が写真と逆だった（点検の報告: `archives/agents/TODO-170/truth-check-report.md`）。
 
-- [ ] 報告の表のとおりに直す（色だけ 4 組、色と home 4 組、home だけ 1 組）
+- [x] 報告の表のとおりに直す（色だけ 4 組、色と home 4 組、home だけ 1 組）
   - samples/ の 4 組: collected-grey-red-top、collected-tan-black-side-1、collected-cork-green-side、photo-orange-black-oblique
   - collected/ の 5 組（リポジトリに入らない。手元で直すだけ）: user-1792130519864-ajxlol、user-1792243400742-p1vm5a、user-1792161634938-n8fzpw、user-1792179058872-xlkxee、user-1792407219093-7qrh2u
-- [ ] orange-black の 3 組（photo-orange-black-oblique、n8fzpw、xlkxee）は note の「白が手前」と食い違うが、点検の判断（手前は灰色、home=left）で直し、note も書き直す（2026-10-20 ユーザーが決めた）。collected-cork-green-side の note も実情に合わせる
-- [ ] samples/ の 4 組は accuracy の基準が変わるので、`check_accuracy.py --update` を同じ PR に入れる
-- [ ] 直した後の 140 組で、ピップ数の合計が少ない向きと正解が一致するかを計算して確かめる
+- [x] orange-black の 3 組（photo-orange-black-oblique、n8fzpw、xlkxee）は note の「白が手前」と食い違うが、点検の判断（手前は灰色、home=left）で直し、note も書き直す（2026-10-20 ユーザーが決めた）。collected-cork-green-side の note も実情に合わせる
+- [x] samples/ の 4 組は accuracy の基準が変わるので、`check_accuracy.py --update` を同じ PR に入れる
+- [x] 直した後の 140 組で、ピップ数の合計が少ない向きと正解が一致するかを計算して確かめる
 
 **無駄を省く工夫:** 写真の再点検はしない（済み）。認識の精度は CI の accuracy に任せる
 

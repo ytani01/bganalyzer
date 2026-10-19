@@ -70,7 +70,7 @@
  "photo-blue-red-top": {"points": 22, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "photo-carved-brown-top": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "photo-green-felt-top": {"points": 23, "bar": true, "home": true, "dice": "not read", "cube": "ok"},
- "photo-orange-black-oblique": {"points": 19, "bar": true, "home": true, "dice": "ok", "cube": "not found"},
+ "photo-orange-black-oblique": {"points": 19, "bar": true, "home": false, "dice": "ok", "cube": "not found"},
  "screen-app-green-far": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok"},
  "screen-app-grey-shot": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "synth-cube-photo-blue-red-top-16": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok", "cube_value": "ok", "synthetic": true},
