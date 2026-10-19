@@ -207,7 +207,7 @@ flowchart TD
   E -- はい --> F[import_collected.py: 10 組まで samples/ に入れ、PR を作り、チェックが通ればマージ]
 ```
 
-- 読み違いのある組は直す材料なので消しません。読み違いの無い組は、直したことでほかが悪くならないかを確かめるのに使います。
+- 読み違いのある組は直す材料なので消しません（`samples/` に取り込んでマージされた組だけ消します。下）。読み違いの無い組は、直したことでほかが悪くならないかを確かめるのに使います。
 - `/samples` は公開で誰でも送れるので、正解の形が違う組は測らず、`report.md` には正解の中の文字を出しません（組の名前はサーバーが付けたもの）。
 - 認識を直すのは、Pi の Claude Code に「collected の report を見て直して」と頼んだときです（自動ではしません）。
 - 読み違いのある組は、`BG_IMPORT` を設定したサーバー（開発機だけ。誰でも送れる Pi では設定しない）で `recognizer/import_collected.py` が `samples/collected-*` に入れます（TODO-114）。名前は、`BG_CLAUDE` があれば盤の外を塗った写真を `claude -p` に見せて、盤の見た目と撮り方から付けます（例: `collected-blue-felt-oblique`。重なれば `-2`…）。無いときや失敗したときは `collected-<id>`（TODO-142）。
@@ -215,6 +215,7 @@ flowchart TD
   `samples/` に同じ名前か同じ写真があるもの、画像として読めないものは除きます。前の取り込みの PR が開いたままなら何もしません（チェックが落ちたとき、main とぶつかったとき、チェックを待つ間にサービスを再起動したとき。開発機は main を pull するたびに再起動するので、残った PR は見てマージするか閉じてください）。背景の塗りつぶし処理で盤の外（正解の四隅の外）を黒くし、EXIF は入れません。
   `origin/main` の別の worktree で `accuracy_baseline.json` と `recognizer/README.md` の「精度」の表を書き直し、PR を作って、
   `test`・`accuracy` が通り、最新の main を取り込んでも通ればマージします（落ちたとき・main とぶつかったときは PR を開いたまま残す）。この機械の `gh` のログインで push します。
+  マージされたら、取り込んだ組の写真と正解を `collected/` から消します（PR が開いたままなら残す。TODO-146）。
   したことは `collected/import.log` に残ります。盤の上に写った手や物、直し忘れた正解はそのまま公開されます。
 - すぐに測るときは `uv run python recognizer/collected.py collected --force`。自動の測り直しが落ちたときの理由は `collected/measure.log` に残ります。
 - `collected/` を `recognizer/evaluate.py` で測ると、正解の中の文字がそのまま出て、形の違う組で止まります。`report.md` を使ってください。

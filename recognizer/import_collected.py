@@ -14,6 +14,7 @@ again without EXIF; of the truth, only the fields the samples have go in (anyone
 With BG_CLAUDE set, claude -p names the pair from the painted photo (what will be public anyway): its
 board and how it was taken (TODO-142). Without it, or when that fails, the pair is collected-<id>.
 The PR is brought up to date with main and merged when its checks pass; otherwise it is left open.
+Once merged, the pairs added go from collected/ (TODO-146): left there while the PR is open.
 What it did goes to import.log next to the pairs.
 """
 import base64, hashlib, json, os, re, signal, subprocess, sys, tempfile, time
@@ -189,14 +190,24 @@ def _run(d, names, log):
                 return log(f"could not make the PR: {made.stderr.strip()}")
             url = made.stdout.strip()
             log(f"{url}: {' '.join(added)}")
-            merge(url, gh, log)
+            if merge(url, gh, log):
+                remove(d, todo)
+                log(f"removed from collected/: {' '.join(todo)}")
         finally:
             git("worktree", "remove", "--force", str(wt))
             git("branch", "-q", "-D", branch)
 
 
+def remove(d, names):
+    """The photos and truth.json of the pairs, as collected.measure removes them."""
+    for n in names:
+        for f in d.glob(n.removesuffix(".truth.json") + ".*"):
+            f.unlink()
+
+
 def merge(url, gh, log):
     """Merge when the checks pass on the latest main (CLAUDE.md の「共同開発」); left open otherwise.
+    Whether it was merged.
     The branch goes with the merge (the repository deletes merged branches)."""
     head = lambda: json.loads(gh("pr", "view", url, "--json", "headRefOid").stdout)["headRefOid"]
     while True:
@@ -215,6 +226,7 @@ def merge(url, gh, log):
             break
     merged = gh("pr", "merge", url, "--merge", "--match-head-commit", sha)
     log(f"{url}: " + ("merged" if merged.returncode == 0 else f"not merged, left open: {merged.stderr.strip()}"))
+    return merged.returncode == 0
 
 
 if __name__ == "__main__":

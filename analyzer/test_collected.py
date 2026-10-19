@@ -182,7 +182,7 @@ def test_import_merges_on_the_latest_main(monkeypatch):
         return R()
     monkeypatch.setattr(import_collected.time, "sleep", lambda s: None)
     logs = []
-    import_collected.merge("u", gh, logs.append)
+    assert import_collected.merge("u", gh, logs.append)
     assert [a[1] for a in calls].count("checks") == 3 and logs == ["u: merged"]
     assert ("pr", "merge", "u", "--merge", "--match-head-commit", "b") in calls
     calls.clear()
@@ -190,5 +190,14 @@ def test_import_merges_on_the_latest_main(monkeypatch):
     def failing(*a):
         calls.append(a)
         return R(code=1) if a[1] == "checks" else R()
-    import_collected.merge("u", failing, logs.append)
+    assert not import_collected.merge("u", failing, logs.append)
     assert logs[-1] == "u: checks failed, left open" and calls and not any(a[1] == "merge" for a in calls)
+
+
+def test_import_removes_the_pairs_added(tmp_path):
+    for n in ("user-1-aaa", "user-1-aaab", "user-2-bbb"):
+        (tmp_path / f"{n}.jpg").write_bytes(b"")
+        (tmp_path / f"{n}.truth.json").write_text("{}")
+    import_collected.remove(tmp_path, ["user-1-aaa.truth.json"])
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "user-1-aaab.jpg", "user-1-aaab.truth.json", "user-2-bbb.jpg", "user-2-bbb.truth.json"]
