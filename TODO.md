@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-164。** これまでに 159 件を決着させた。
+**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121。** これまでに 160 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-165`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
@@ -57,28 +57,6 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 **何を決めるか:** 四隅の点数の付け方と駒の数え方。**選択肢:** 写真がたまってから試して出す。**いつ聞くか:** 試したあと。
 
 **無駄を省く工夫:** 測るのは横からのサンプルだけ（`evaluate.py`・`check_corners.py` は正解の `side` を見る）。TODO-120 の試しの道具（`archives/agents/TODO-120/measure_side.py`）を使い回す
-
----
-
-## TODO-164. ダブリングキューブの色を紺地に白にする
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Sonnet 5.5 / effort medium | implementer（Sonnet 5.5）+ reviewer + verifier（Sonnet 5.5） |
-
-盤面の画面のダブリングキューブの色が、盤の三角の色（`--tri-a` #c98f4a 薄茶、`--tri-b` #a33a2c 赤）と似ていて見分けにくい。
-見本の画像から「紺地に白」を利用者が選んだ（2026-10-20）。
-今の色は地 #f6eedb、縁と数字 #8b1a2b（`analyzer/static/board-view.js` の `drawCube` の rect、`analyzer/static/style.css` の `.cube-num` / `.cube-crawford`）。
-新しい色は地 #1f3f7a（紺）、縁と数字・Crawford の文字は #ffffff（白）。
-対象は `rg -n -e f6eedb -e 8b1a2b analyzer/` で出る箇所。キューブ以外に使っていれば変えない。
-利用者の追加の指示（2026-10-20）: ダブルの申し出中（`BgCube.offered(scene.cube)`）は、手番の向きの矢印（`drawWay`）も描かない（サイコロと同じ条件。`analyzer/static/board-view.js`）。
-分岐が変わるので、レビューの担当（reviewer）を入れる。analyzer の版を直しとして上げる（`analyzer/app.py` の `__version__` と `analyzer/static/app.js` の `APP_VERSION`）。
-
-- [x] キューブの色を変え、申し出中は矢印を描かない（analyzer の版を上げる）
-- [ ] 確認: live_view のブラウザ（`BG_CDP=http://127.0.0.1:9222`）で、真ん中・持ち主側・申し出た位置の 3 つでキューブの色が変わったことと、申し出た位置では矢印が出ないことを見る
-- [ ] ローカル: マージ後、ローカルホストで盤面の画面のキューブが紺地に白で出ることと、ダブルの申し出中に矢印が出ないこと
-
-**無駄を省く工夫:** 確認は色が変わったかだけ（3 つの位置で代表 1 回ずつ）。精度の確認は認識を変えないので要らない。テスト全体は CI に任せる
 
 ---
 
