@@ -1007,7 +1007,8 @@ def _crawford_js(cases: str):
       const startOverlay = () => failReveal ? {{ scan: {{ reveal: async () => {{ throw new Error("cancelled"); }} }} }} : null;
       const withBusy = (t, f) => f(), uploadImage = async () => ({{ blob: null, scale: 1 }}), rolled = () => null;
       const cubeOffered = (s) => BgCube.offered(s.cube), sideSent = () => "", photoId = () => "p";
-      class FormData {{ append() {{}} }}
+      let sent = {{}};
+      class FormData {{ append(k, v) {{ sent[k] = v; }} }}
       let reply;
       const BgApi = {{ postStages: async () => reply, scaleGeometry: (g) => g }};
       {funcs}
@@ -1101,6 +1102,24 @@ def test_crawford_and_a_cube_on_one_side_follow_the_later_choice():
         and not cancelled["board"]
         and cancelled["kept"] == []
     )
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_photo_colour_is_guessed_unless_picked():
+    # TODO-171: a new photo asks the server to guess 手前's colour and takes the guess; a kept one sends its own
+    out = _crawford_js("""const r = [];
+      const board = { points: Array(24).fill(0), bar_white: 0, bar_black: 0 };
+      fresh(m(false), centre); startPhoto(null, null, null); const pick = state.colourPick;
+      reply = { recognized: board, bottom_colour: 0, analysis: null }; await recognize();
+      r.push({ pick, sent: sent.bottom_colour, colour: state.bottomColour });
+      fresh(m(false), centre); startPhoto(null, null, { bottomColour: 0 }); r.push({ pick: state.colourPick });
+      fresh(m(false), centre); startPhoto(null, null, { colourPick: "auto", bottomColour: 0 }); r.push({ pick: state.colourPick });
+      console.log(JSON.stringify(r));""")
+    assert out == [
+        {"pick": "auto", "sent": "auto", "colour": 0},
+        {"pick": "0"},  # kept before 0.93.0: the colour it was read with
+        {"pick": "auto"},
+    ]
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")

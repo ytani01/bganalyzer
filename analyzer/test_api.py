@@ -502,6 +502,27 @@ def test_home_side_is_guessed_from_the_checkers():
     assert home_prior.guess([0] * 24, default="left") == ("left", 0)
 
 
+def test_bottom_colour_is_guessed_from_the_pips():
+    # TODO-171: the bottom player's checkers are the colour that gives fewer pips in all
+    from board import guess_bottom
+
+    samples = Path(__file__).resolve().parent.parent / "samples"
+    for f in sorted(samples.glob("*.truth.json")):
+        t = json.loads(f.read_text())
+        # the truth read with White's checkers as either colour index
+        for white in (0, 1):
+            runs = {}
+            for i, n in enumerate(t["points"]):
+                if n:
+                    row, c = ("bottom", 11 - i) if i < 12 else ("top", i - 12)
+                    runs[(c, row)] = (white if n > 0 else 1 - white, abs(n))
+            bar = [0, 0]
+            bar[white], bar[1 - white] = t["bar_white"], t["bar_black"]
+            assert guess_bottom(runs, bar, "right")[0] == white, f.name
+    # a tie (nothing on the board): the default
+    assert guess_bottom({}, [0, 0], "auto", default=0) == (0, [0, 0])
+
+
 def test_api_guesses_home_side():
     import cv2
 
@@ -516,13 +537,14 @@ def test_api_guesses_home_side():
         data={
             "corners": ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy),
             "home": "auto",
-            "bottom_colour": str(t["bottom_colour"]),
+            "bottom_colour": "auto",
             "plies": "0",
         },
     )
     assert res.status_code == 200, res.text
     j = res.json()
     assert j["home"] == "left" and j["home_guess"]["margin"] < -1
+    assert j["bottom_colour"] == t["bottom_colour"] and j["colour_guess"]["pips"]
     assert j["recognized"]["points"] == t["points"]
 
 

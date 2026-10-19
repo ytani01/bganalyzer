@@ -45,7 +45,7 @@ from speech import router as speech_router
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.92.2"
+__version__ = "0.93.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -272,9 +272,9 @@ async def analyze_photo(
     home: str = Form(
         "right", description="left, right or auto (guessed from the checkers)"
     ),
-    bottom_colour: int = Form(
-        0,
-        description="1: the lighter checkers are White's (called 白), 0: the darker (White is 黒)",
+    bottom_colour: str = Form(
+        "0",
+        description="1: the lighter checkers are White's (called 白), 0: the darker (White is 黒), auto: guessed from the checkers (the side with fewer pips; 1 on a tie)",
     ),
     on_roll: str = Form("white"),
     plies: int = Form(DEFAULT_PLIES),
@@ -318,6 +318,9 @@ async def analyze_photo(
         raise HTTPException(422, "corners must be 8 numbers, dice two numbers") from e
     if home not in ("left", "right", "auto"):
         raise HTTPException(422, "home must be left, right or auto")
+    if bottom_colour not in ("0", "1", "auto"):
+        raise HTTPException(422, "bottom_colour must be 0, 1 or auto")
+    colour = bottom_colour if bottom_colour == "auto" else int(bottom_colour)
     pts = list(zip(c[0::2], c[1::2]))
     side = _side(side)
 
@@ -326,7 +329,7 @@ async def analyze_photo(
             img,
             pts,
             home=home,
-            bottom_colour=bottom_colour,
+            bottom_colour=colour,
             progress=progress,
             keep_corners=keep_corners,
             side=side,
@@ -340,7 +343,7 @@ async def analyze_photo(
             cube_value,
             cube_owner,
             doubled,
-            bottom_colour,
+            info.get("bottom_colour", colour),
             match_length=match_length,
             score_white=score_white,
             score_black=score_black,
@@ -455,6 +458,8 @@ def _photo_result(
         "recognized": pos.to_dict(),
         "home": info["home"],
         "home_guess": info["home_guess"],
+        "bottom_colour": bottom_colour,
+        "colour_guess": info.get("colour_guess"),
         "errors": errors,
         "warnings": warnings,
         "geometry": info.get("geometry"),
