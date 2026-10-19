@@ -304,7 +304,7 @@ Google が断ったり届かなかったりすると 502（PWA はブラウザ�
 {"analyzer": "0.1.0", "recognizer": "0.1.0", "commit": "7bd7f55", "samples": false, "claude": false}
 ```
 
-`samples` はこのサーバーが `POST /samples` を受けるか（PWA は true のときだけ「サーバーに［保存する］［保存しない］」を出す）。
+`samples` はこのサーバーが `POST /samples` を受けるか（PWA は true のときだけ「サーバーに［保存する］［保存しない］」を出す。最初の画面の「写真は保存しません」の文も、true のときは保存することを書いた文に切り替わる）。
 `claude` は `POST /claude-corners` を受けるか（PWA は true のときだけ「Claude で検出」を出す）。
 
 analyzer（この API と PWA）と recognizer のバージョン、動いているコードの git のコミット ID（取れなければ `null`）。
