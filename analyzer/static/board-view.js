@@ -261,9 +261,11 @@ const BgBoardView = (() => {
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
     const crawford = match && match.length > 0 && match.crawford;
-    const t = el("text", { x: x + size / 2, y: y + size / 2 + (crawford ? 0 : 6), class: crawford ? "cube-crawford" : "cube-num" }, g);
-    if (crawford) { t.setAttribute("textLength", size - 4); t.setAttribute("lengthAdjust", "spacingAndGlyphs"); }
-    t.textContent = crawford ? "Crawford" : cube.at === "centre" ? "64" : String(cube.value);
+    if (crawford) {   // two lines, "Craw" over "ford", to fit the cube
+      ["Craw", "ford"].forEach((t, k) => el("text", { x: x + size / 2, y: y + size / 2 + (k ? 5.5 : -5.5), class: "cube-crawford" }, g).textContent = t);
+      return;
+    }
+    el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g).textContent = cube.at === "centre" ? "64" : String(cube.value);
   }
 
   // The way the side on roll goes, as a see-through U across the middle of the board (over the
