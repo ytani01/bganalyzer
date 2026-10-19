@@ -95,6 +95,8 @@ const diceIn = (s = state) => (s.dice[0] && s.dice[1] ? s.dice.slice() : null);
 const cubeOffered = (s = state) => BgCube.offered(s.cube);
 // The dice the analysis uses: both dice, or null while one is not set or the cube is being offered.
 const rolled = (s = state) => BgCube.usedDice(s.cube, diceIn(s));
+// One die set, the other not: waited on (a double offered uses no dice, so none are half set then)
+const halfDie = (s = state) => !cubeOffered(s) && !s.dice[0] !== !s.dice[1];
 
 // What an analysis is worked out from (but its depth): a result fits the board while this is the same.
 // (bottomColour: the server's summary names the sides by it)
@@ -390,7 +392,7 @@ for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("c
 // Listened on the sheet, so the choice's own handler has run.
 function choseInSheet(e) {
   if (e.type === "click" && !e.target.closest("button[data-value], button[data-n]")) return;
-  if (!state.dice[0] !== !state.dice[1]) return;   // one die set, the other still to choose
+  if (e.currentTarget.id === "sheet-roll" && halfDie()) return;   // one die set, the other still to choose
   update({ sheet: null });
 }
 for (const k of ["match", "cube", "roll"]) {
@@ -464,8 +466,7 @@ const REANALYZE_WAIT = 800;   // ms after the last change
 let reanalyzeTimer = null;
 part((s) => [s.step, resultStale(s) && inputsKey(s), s.plies, !!s.palette, s.busy && 1, analyzeErrors(s).length], (s) => {
   clearTimeout(reanalyzeTimer);
-  const halfDie = !s.dice[0] !== !s.dice[1];
-  if (s.step !== "outcome" || !resultStale(s) || s.palette || s.busy || analyzeErrors(s).length || halfDie) return;
+  if (s.step !== "outcome" || !resultStale(s) || s.palette || s.busy || analyzeErrors(s).length || halfDie(s)) return;
   reanalyzeTimer = setTimeout(reanalyze, REANALYZE_WAIT);
 });
 

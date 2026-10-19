@@ -207,7 +207,7 @@ def flow_manual(r):
     r.choose("#die1", "3"); r.snap("one die")
     r.choose("#die2", "1"); r.snap("dice 3-1")
     r.seg("onRoll", "black"); r.snap("on roll 奥")
-    r.seg("cubeAt", "white"); r.snap("cube 手前 offered: the dice are hidden")   # TODO-086
+    r.seg("cubeAt", "white"); r.snap("cube 手前 offered: the dice row is empty")   # TODO-086, TODO-150
     r.click("#cube-offered"); r.snap("cube 手前 owned, with dice")
     r.choose("#die1", ""); r.click("#cube-offered"); r.snap("no dice: the cube is offered")
     r.choose("#cube-value", "8"); r.snap("cube 8")
