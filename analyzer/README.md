@@ -177,7 +177,7 @@ curl -s localhost:8000/analyze -H 'content-type: application/json' \
   "pips": {"white": 167, "black": 167, "leader": null, "difference": 0},
   "probabilities": {"white": {"win": 52.5, "gammon": 14.9, "backgammon": 0.7},
                     "black": {"win": 47.5, "gammon": 12.5, "backgammon": 0.5}},
-  "equity": {"white": 0.076, "black": -0.076},
+  "equity": {"white": 0.076, "black": -0.076}, "mwc": null,
   "favourite": "white",
   "moves": [{"move": "8/5 6/5", "steps": [[8, 5], [6, 5]], "equity": 0.16}],
   "summary": "白が有利: 勝率 52.5%（ギャモン 14.9%）、ピップ 白 167 / 黒 167"
@@ -187,7 +187,9 @@ curl -s localhost:8000/analyze -H 'content-type: application/json' \
 - `moves[].steps` は手をダイス 1 つずつに分けた `[from, to]` の並び（`on_roll` の側から数えたポイント、25 = バー、0 = 上がり）。
 - 確率は %、`gammon` / `backgammon` はその側が勝つ場合の内訳（勝率に含まれる）。
 - `equity` はキューブなし（cubeless）のエクイティ。+1 が確実なシングル勝ち。マッチでは、gnubg がマッチの勝率から出すアンリミテッドと同じ尺度のエクイティ
-  （同じ局面でもスコアで変わる）。最善手の `equity` も同じ。
+  （同じ局面でもスコアで変わる。EMG）。最善手の `equity` も同じ。
+- `mwc` はマッチのとき、キューブなしでのマッチの勝率（MWC、%、小数 2 桁）を `{"white": 29.12, "black": 70.88}` のように返す。gnubg の `eq_to_mwc` で `equity` から求める。
+  アンリミテッドでは `null`。マッチでは最善手にも `mwc` が付く（アンリミテッドでは付かない。TODO-167）。
 - `match` はマッチのとき `{"length": 7, "score": {"white": 3, "black": 5}, "crawford": false}`、アンリミテッドでは `null`。
   `summary` の先頭にも「7 ポイントマッチ 白 3 対 黒 5（クロフォード）。」のように入る（白・黒は `bottom_colour` で決まる）。
 - `favourite` はエクイティが高い側（マッチでは、このゲームの勝率が高い側）。片方が15個上げ終わっていれば `game_over: true`。
@@ -206,7 +208,7 @@ curl -s localhost:8000/analyze -H 'content-type: application/json' \
   ```
 
   `question` は `"double"`（ダブルすべきか）か `"take"`（`doubled: true` のとき。テイクかパスか）。`value` はダブルする前のキューブの数、
-  `equity` はダブルする側から見たキューブありのエクイティ（ダブル前のキューブ 1 つ分を単位とする）。`too_good` はダブルせずギャモンを狙う方がよい局面。`optional` はダブルしてもしなくてもよい局面（gnubg の `Optional double`。マッチで出る）。
+  `equity` はダブルする側から見たキューブありのエクイティ（ダブル前のキューブ 1 つ分を単位とする）。`mwc` はマッチのとき、同じ 3 つをマッチの勝率（%）にしたもの、アンリミテッドでは `null`。`too_good` はダブルせずギャモンを狙う方がよい局面。`optional` はダブルしてもしなくてもよい局面（gnubg の `Optional double`。マッチで出る）。
   `proper` は gnubg の言葉そのまま。gnubg の Python モジュールにはキューブ判断を返す関数がないので、解析用の子プロセスで gnubg の
   `hint` コマンドを実行し、表示された文字を読んでいる（`engine.py` の `_cube_hint`）。
 
