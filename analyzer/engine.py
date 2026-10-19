@@ -82,8 +82,11 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
     probs = gnubg.evaluate(board, ci, ctx)
     hint = None if cube is None else _cube_hint(gnubg, pid, plies, *cube, match=match)
     if hint and match is not None:
-        # the cubeful equities are in units of the cube before the double: as ci, whose value is that cube
-        hint["mwc"] = {k: gnubg.eq_to_mwc(v, ci) for k, v in hint["equity"].items()}
+        # the cubeful equities are in units of the cube before the double (cube[0]), which can be below
+        # the cube as it is (match[3]) when the player on roll has just doubled
+        length, score, crawford = match[:3]
+        ci_hint = gnubg.cube_info(cube[0], -1, 0, length, score, int(crawford), 0)
+        hint["mwc"] = {k: gnubg.eq_to_mwc(v, ci_hint) for k, v in hint["equity"].items()}
     moves = None
     if dice is not None:
         found = gnubg.find_best_moves(board, ci, ctx, tuple(dice))

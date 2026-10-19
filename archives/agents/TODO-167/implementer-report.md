@@ -36,3 +36,24 @@
 - 候補手 1 位の数字は、マネーでは「エクイティ」とだけ書いている（キューブレスの値）。キューブレスと付けるかは reviewer に見てほしい
 - キューブの MWC は、hint から読んだ小数 3 桁のエクイティを変換するので、gnubg の表示と最大 0.01% ずれることがある
 - 範囲外（文書なので触っていない）: `analyzer/README.md:180-193` の API の説明に `mwc`（結果・候補手・キューブ）が無い。`:94` の結果の画面の説明も「エクイティ」のまま
+
+## レビューの指摘への対応（2 巡目）
+
+ユーザーが決めた 3 点を直した。
+
+1. 候補手がキューブなしであること: 注記を「最善手と勝率はキューブなし」に戻した（`analyzer/static/result.js:80`。ラベルには付けない）。
+   `analyzer/README.md:94` に同じことを書いた。テスト: `analyzer/test_pwa.py:737`
+2. キューブ 2 以上の MWC の変換: `analyzer/test_api.py` の `test_match_winning_chances_with_a_bigger_cube` を足した。
+   7 ポイント 2-4 で手前がキューブ 2 を持つ。パスなら 4-4 になるので、局面によらず `double_pass` が 50% になる
+   （1 で変換すると 3-4、4 で変換すると 6-4 になって外れる）
+3. ダブルされた局面の勝率の表: `analyzer/analysis.py:126-130` で、gnubg に渡すキューブを今の値（ダブルした後）にした。
+   キューブの判断の MWC は、ダブル前のキューブで `cube_info` を作り直して変換する（`analyzer/engine.py:84-89`）。
+   キューブレスの `equity`（EMG）も今のキューブで数えることになる。ダイスがあるときはダブルされた局面にならないので、候補手は変わらない。
+   `analyzer/README.md:192` に書いた。テストは 2 と同じ関数で、ダブルされた局面の `mwc`・`equity` が、キューブ 2 を持っているだけの局面と同じこと、
+   キューブの判断の MWC がキューブ 1 の局面と同じことを見る
+
+検証:
+- `uv run pytest analyzer/test_pwa.py`: 35 passed
+- `uv run pytest analyzer/test_api.py`: 51 passed、1 failed（`test_version_reports_both_parts_and_commit`。worktree の `.git` がファイルのため、既知）
+- 壊すと落ちるか（3 通りとも落ちた。戻してある）: gnubg に渡すキューブをダブル前の値に戻す、キューブの判断を今のキューブの `ci` で変換する、
+  キューブの判断を常にキューブ 1 で変換する

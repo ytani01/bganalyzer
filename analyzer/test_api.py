@@ -917,3 +917,19 @@ def test_match_winning_chances():
     assert len(moves) > 2 and all(m["mwc"] < 50 for m in moves)
     assert [m["mwc"] for m in moves] == sorted((m["mwc"] for m in moves), reverse=True)
     assert moves[0]["mwc"] > moves[-1]["mwc"]
+
+
+def test_match_winning_chances_with_a_bigger_cube():
+    # TODO-167: 手前 owns a 2 at 2-4 of 7. A pass gives 手前 2 points, 4-4: 50% in any position, and only if the
+    # cubeful equities are read with the cube before the redouble (1 point: 3-4, 4 points: 6-4)
+    kw = {"match_length": 7, "score_white": 2, "score_black": 4}
+    c = analyze(Position.start(), "white", plies=0, cube_value=2, cube_owner="white", **kw)["cube"]
+    assert c["value"] == 2 and c["mwc"]["double_pass"] == pytest.approx(50, abs=0.01)
+    # 黒 has just doubled 手前 at 3-5 from 1 to 2: the win table goes by the cube as it is (2), the same as when
+    # the 2 just lies on 手前's side; the cube decision by the cube before the double (the 1 in the middle)
+    kw = {"match_length": 7, "score_white": 3, "score_black": 5}
+    doubled = analyze(Position.start(), "black", plies=0, cube_value=2, cube_owner="white", doubled=True, **kw)
+    owned = analyze(Position.start(), "black", plies=0, cube_value=2, cube_owner="white", **kw)
+    one = analyze(Position.start(), "black", plies=0, **kw)
+    assert doubled["mwc"] == owned["mwc"] != one["mwc"] and doubled["equity"] == owned["equity"]
+    assert doubled["cube"]["mwc"] == one["cube"]["mwc"]

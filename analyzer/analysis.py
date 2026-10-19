@@ -121,10 +121,11 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
         ask = (before, -1 if before == 1 else 0)
     elif cube_owner in (None, on_roll):
         ask = (cube_value, -1 if cube_owner is None else 0)
-    # the match, from on_roll's side, with the cube's number for the evaluation (before a double)
+    # the match, from on_roll's side, with the cube's number for the evaluation: as it is, after a double too
+    # (the win table's MWC and EMG are for the game as it stands; the cube decision goes by ask. TODO-167)
     match = None
     if match_length:
-        match = (match_length, (score[on_roll], score[other(on_roll)]), crawford, ask[0] if ask else cube_value)
+        match = (match_length, (score[on_roll], score[other(on_roll)]), crawford, cube_value)
     (win, wg, wbg, lg, lbg, equity), hint, moves, luck, mwc = evaluate(
         pid, plies, None if dice is None else tuple(dice), max_moves, ask, match)
     for m in moves or ():

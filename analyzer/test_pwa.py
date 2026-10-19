@@ -734,6 +734,7 @@ def test_moves_as_differences_and_match_winning_chances():
     assert "<td>キューブレス エクイティ</td><td>+0.050</td><td>-0.050</td>" in m and "MWC" not in m
     assert "<span>MWC 30.12%</span>" in x and "<span>-1.42%</span>" in x and "<span>+0.00%</span>" in x
     assert "<td>キューブレス MWC</td><td>29.10%</td><td>70.90%</td>" in x
+    assert "最善手と勝率はキューブなし" in m and "最善手と勝率はキューブなし" in x   # the plays are cubeless too
     assert "<td>キューブレス EMG</td><td>+0.050</td><td>-0.050</td>" in x
     assert "<th>キューブフル エクイティ</th>" in mc and "<td>+0.500</td>" in mc and "<td>-0.250</td>" in mc
     assert "<th>キューブフル MWC</th>" in xc and "<td>29.67%</td>" in xc and "<td>40.05%</td>" in xc and "+0.500" not in xc
