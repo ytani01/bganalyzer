@@ -547,3 +547,12 @@ def test_the_settings_open_beside_the_part_tapped():
         assert hook in js
     css = (STATIC / "style.css").read_text()
     assert "bottom: var(--bar-h" not in css[css.index(".sheet {"):css.index(".sheet[hidden]")]
+
+
+def test_a_value_chosen_in_the_settings_is_taken_at_once():
+    # TODO-150: a choice closes the settings (the dice once both are set), and the result screen does not wait for them
+    js = (STATIC / "app.js").read_text()
+    assert 'if (!state.dice[0] !== !state.dice[1]) return;' in js
+    assert '$(`sheet-${k}`).addEventListener("change", choseInSheet);' in js
+    gate = js[js.index("const REANALYZE_WAIT"):js.index("reanalyzeTimer = setTimeout(reanalyze")]
+    assert "s.sheet" not in gate

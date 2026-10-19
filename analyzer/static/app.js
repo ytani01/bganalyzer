@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.82.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.83.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -386,6 +386,17 @@ addEventListener("scroll", placeSheet, { passive: true });
 const sheetSize = new ResizeObserver(placeSheet);
 for (const k of ["match", "cube", "roll"]) sheetSize.observe($(`sheet-${k}`));
 for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("click", () => update({ sheet: null }));
+// A value chosen in a sheet is taken at once and closes it, as a count does the palette; the dice once both are set (TODO-150).
+// Listened on the sheet, so the choice's own handler has run.
+function choseInSheet(e) {
+  if (e.type === "click" && !e.target.closest("button[data-value], button[data-n]")) return;
+  if (!state.dice[0] !== !state.dice[1]) return;   // one die set, the other still to choose
+  update({ sheet: null });
+}
+for (const k of ["match", "cube", "roll"]) {
+  $(`sheet-${k}`).addEventListener("click", choseInSheet);
+  $(`sheet-${k}`).addEventListener("change", choseInSheet);
+}
 
 // ---- what the analysis is asked
 part((s) => [s.dice, s.diceFromPhoto, cubeOffered(s), s.onRoll], (s) => {
@@ -447,13 +458,13 @@ part((s) => [resultStale(s), s.reanalyzing], (s) => {
 });
 
 // ---- fixed on the result screen (TODO-138): analysed again by itself a moment after the last fix,
-// once nothing is half done (the palette or a sheet open, a die not set while the other is)
+// once nothing is half done (the palette open, a die not set while the other is); a sheet left open does not wait (TODO-150)
 const REANALYZE_WAIT = 800;   // ms after the last change
 let reanalyzeTimer = null;
-part((s) => [s.step, resultStale(s) && inputsKey(s), s.plies, !!s.palette, s.sheet, s.busy && 1, analyzeErrors(s).length], (s) => {
+part((s) => [s.step, resultStale(s) && inputsKey(s), s.plies, !!s.palette, s.busy && 1, analyzeErrors(s).length], (s) => {
   clearTimeout(reanalyzeTimer);
   const halfDie = !s.dice[0] !== !s.dice[1];
-  if (s.step !== "outcome" || !resultStale(s) || s.palette || s.sheet || s.busy || analyzeErrors(s).length || halfDie) return;
+  if (s.step !== "outcome" || !resultStale(s) || s.palette || s.busy || analyzeErrors(s).length || halfDie) return;
   reanalyzeTimer = setTimeout(reanalyze, REANALYZE_WAIT);
 });
 
