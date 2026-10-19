@@ -22,7 +22,7 @@ const BgBoardView = (() => {
   // 手前 owns, 手前's pip count. 3 apart. The pip counts stick out above and below the board's frame.
   const COL = { w: 56, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 32, tray: 101, cube: 40, pip: 40, pad: 3 };
   const VIEW = { y: COL.y0 - COL.pad - COL.pip - 4, h: (COL.y1 - COL.y0) + 2 * (COL.pad + COL.pip + 4) };
-  const MATCH_H = 26;   // the line above 奥's row for the match, only in a match (TODO-099)
+  const MATCH_H = 26;   // the line above the board (and 奥's pip count) for the match, only in a match (TODO-099)
   const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
                  4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
                  6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
@@ -217,7 +217,7 @@ const BgBoardView = (() => {
     }
   }
 
-  // The match on a line of its own above 奥's row, and each side's score as a grey square-cornered card with a black number in the middle of the column (TODO-099, TODO-152, TODO-155).
+  // The match on a line of its own above the board, and each side's score as a grey square-cornered card with a black number in the middle of the column (TODO-099, TODO-152, TODO-155).
   function drawMatch(svg, m, home, y0, onPart) {
     tapPart(el("text", { x: BAR_X, y: y0 + MATCH_H / 2 + 2, class: "match-n", "pointer-events": "none" }, svg), "match", onPart).textContent =
       (m.length ? `${m.length} ポイントマッチ` + (m.crawford ? "（クロフォード）" : "") : "アンリミテッド") + (onPart ? " ▾" : "");
