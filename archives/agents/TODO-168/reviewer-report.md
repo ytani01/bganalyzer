@@ -46,3 +46,22 @@
 ## 作り込みすぎ
 
 なし。
+
+## 追加分の再レビュー（4bff3ad・2ad627e）
+
+### 要修正
+
+なし。
+
+### 検討
+
+- `docs/HANDOVER.md:32`・`docs/HANDOVER.md:59-60`（自動マージの条件）: どちらも「GitHub Actions の test が通り」としか書いていない。
+  `CLAUDE.md:125-126` は今回 `accuracy`・`ruff` も挙げたので、同じ条件の書き方が食い違っている。`accuracy` が抜けていたのは main からで、
+  今回の差分で `ruff` の分も抜けた。HANDOVER.md の 2 か所にも足すか、CLAUDE.md を見るように書き換えるか、判断が要る。
+
+### 問題の無かった点
+
+- `CLAUDE.md` のコマンド 2 行は、既存の行と同じ形（コマンドを桁を揃えて並べ、`#` のあとに説明）。マージの条件の書き方は `accuracy` と同じ並び。
+- `docs/HANDOVER.md:114` の CI の節の書き方は、`test`・`accuracy` と同じ形（ジョブ名・ワークフローのファイル・TODO 番号・いつ走るか・何を流すか）。走る条件は `ruff.yml` と合っている。
+- 2ad627e: 親コミットの木に新しい `pyproject.toml` を入れて `ruff check --fix` と `ruff format` をかけた結果が、`diff -r` で 2ad627e と完全に一致した。`.py` の差分は import の行だけで、ほかには `pyproject.toml` の 2 行しか無い。
+- import の順で読み込み時の副作用が変わる箇所: 無い。並び替えは自作のモジュールを third-party の後ろへ移しただけで、自作のモジュールどうしの順（アルファベット順）は変わっていない。`sys.path.insert` は import ではない文なので ruff は動かさず、元の位置に残っている。トップレベルで `os.environ`・`cv2.set*` などを呼ぶ自作のモジュールも無い（`rg` で確認）。
