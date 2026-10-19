@@ -80,11 +80,16 @@ def test_result_words():
       esc: R.esc('<a href="x">&</a>'),
       move: R.moveToSpeech("bar/22* 13/8(2) 6/off"),
       kana: R.moveToSpeech("25/20 10/4 17/off"),
+      via: ["24/18*/13", "24/18*/13(2)", "24/18*/13*"].map(R.moveToSpeech),
     }""")
     assert out["who"] == ["振った", "次に振る"]
     assert out["esc"] == "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;"
     assert out["move"] == "バーからにじゅうにでヒット、じゅうさんからはちへに枚、ろくから上がり"
     assert out["kana"] == "にじゅうごからにじゅう、じゅうからよん、じゅうななから上がり"   # TODO-132: no bare digits
+    # TODO-166: a hit on the way is said at the point, then the move goes on from there
+    assert out["via"] == ["にじゅうよんからじゅうはちでヒットして、じゅうさんへ",
+                          "にじゅうよんからじゅうはちでヒットして、じゅうさんへに枚",
+                          "にじゅうよんからじゅうはちでヒットして、じゅうさんでヒット"]
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
@@ -123,11 +128,11 @@ def test_speech_reads_who_rolls_next_first():
     assert out["dice"].startswith("白の さん いち の最善手は、バーからにじゅうにでヒット")
     assert "番です" not in out["dice"]
     assert "かなり有利" in out["dice"] and "ギャモン勝ちの見込み" in out["dice"] and "ピップ数では白が大きくリード" in out["dice"]
-    assert out["take"].startswith("黒のダブルに、白はテイクです。")
-    assert out["tooGood"].startswith("白はダブルせず、ギャモンを狙うほうがよいです。")
+    assert out["take"].startswith("ダブル、テイク。黒のダブルに、白はテイクです。")   # TODO-166: the players' words first
+    assert out["tooGood"].startswith("トゥーグッド、パス。白はダブルせず、ギャモンを狙うほうがよいです。")
     assert out["over"] == "白の勝ちで、ゲームは終わっています。"
-    assert out["double"].startswith("白はダブルすべきで、黒はテイクです。")
-    assert out["noDouble"].startswith("白はまだダブルしないほうがよいです。")
+    assert out["double"].startswith("ダブル、テイク。白はダブルすべきで、黒はテイクです。")
+    assert out["noDouble"].startswith("ノーダブル、テイク。白はまだダブルしないほうがよいです。")
     assert out["none"].startswith("白の ろく ろく は、とても悪い目です。動かせる手がありません。")
     assert "白がほぼ勝ちです。" in out["sure"]
 
@@ -137,24 +142,32 @@ def test_result_html():
     r = json.dumps(_RESULT)
     cube = {"question": "double", "doubler": "white", "taker": "black", "value": 1, "take": False, "double": True,
             "too_good": False, "proper": "Double, pass", "equity": {"no_double": 0.5, "double_take": 1.2, "double_pass": 1.0}}
+    lead = {"equity": {"no_double": 0.6, "double_take": 0.5, "double_pass": 1.0}}   # no double is better
     out = _result_js(f"""{{
       moves: R.html({r}, [3, 1]),
       cube: R.html({{...{r}, moves: null, cube: {json.dumps(cube)}}}, null),
-      far: [9.4, 9.6, 25.6, 29.6].map((v) => R.cubeHtml({{...{json.dumps(cube)}, double: false, proper: `No double, take (${{v}}%)`}})),
-      redouble: R.cubeHtml({{...{json.dumps(cube)}, value: 2, double: false, proper: "No redouble, take (25.6%)"}}),
-      tooGood: R.cubeHtml({{...{json.dumps(cube)}, double: false, too_good: true, proper: "Too good, pass (5.0%)"}}),
+      far: [9.4, 9.6, 25.6, 29.6].map((v) => R.cubeHtml({{...{json.dumps(cube)}, ...{json.dumps(lead)}, double: false, take: true, proper: `No double, take (${{v}}%)`}})),
+      redouble: R.cubeHtml({{...{json.dumps(cube)}, value: 2, ...{json.dumps(lead)}, double: false, take: true, proper: "No redouble, take (25.6%)"}}),
+      tooGood: R.cubeHtml({{...{json.dumps(cube)}, ...{json.dumps(lead)}, double: false, too_good: true, proper: "Too good, pass (5.0%)"}}),
+      takeQ: R.cubeHtml({{...{json.dumps(cube)}, question: "take", take: true}}),
       luck: [0.601, 0.6, 0.3, -0.29, -0.301, -0.6, -0.601].map((x) => R.html({{...{r}, luck: x}}, [3, 1])),
       luckSpeech: R.speechText({{...{r}, luck: -0.65}}, [3, 1]),
       plainSpeech: [0.3, -0.3, 0.301, -0.301].map((x) => R.speechText({{...{r}, luck: x}}, [3, 1])),
       rolled: R.html({{...{r}, cube: {json.dumps(cube | {"rolled": True})}}}, [3, 1]),
       rolledSpeech: R.speechText({{...{r}, cube: {json.dumps(cube | {"rolled": True})}}}, [3, 1]),
     }}""")
-    # TODO-097: gnubg's percentage with words; 10% and 30% start the next words
-    assert [next(w for w in ("一歩手前", "少し早い", "まだ遠い") if w in h) for h in out["far"]] == ["一歩手前", "少し早い", "少し早い", "まだ遠い"]   # by the rounded number
-    assert "ダブルまでの遠さ 26%・ダブルにはまだ少し早い" in out["far"][2] and "gnubg: No double, take (25.6%)" in out["far"][2]
-    assert "ギャモン狙いをやめてダブルするまでの遠さ 5%・ダブルの一歩手前" in out["tooGood"]
-    assert "遠さ" not in out["cube"]   # "Double, pass": gnubg gives no percentage
-    assert "リダブルまでの遠さ 26%・リダブルにはまだ少し早い" in out["redouble"]
+    # TODO-166: how far a double is from paying: the lower of double/take and double/pass, minus no double,
+    # signed (cube: 0.5 / 1.2 / 1.0 -> 1.0 - 0.5; far, redouble: 0.6 / 0.5 / 1.0 -> 0.5 - 0.6); gnubg's % is no longer used
+    assert "ダブルした場合のエクイティ差 +0.500（ダブルとノーダブルの差。マイナスはダブルすると損）" in out["cube"]
+    assert "ダブルした場合のエクイティ差 -0.100" in out["far"][2] and "gnubg: No double, take (25.6%)" in out["far"][2]
+    assert "リダブルした場合のエクイティ差 -0.100" in out["redouble"] and "ギャモン" in out["tooGood"]
+    assert "ダブルした場合のエクイティ差 -0.100" in out["tooGood"]
+    assert all(w not in "".join(out["far"]) + out["redouble"] + out["tooGood"] for w in ("遠さ", "一歩手前", "少し早い"))
+    # the cube decision in the players' words, beside the plain answer
+    assert "<b>ダブルしない</b>（ノーダブル／テイク）" in out["far"][2] and "<b>ダブルしない（ギャモン狙い）</b>（トゥーグッド／パス）" in out["tooGood"]
+    assert "<b>ダブルする</b>（ダブル／パス）" in out["cube"] and "<b>リダブルしない</b>（ノーリダブル／テイク）" in out["redouble"]
+    assert "<b>ダブルすべきだった</b>（ダブル／パス）" in out["rolled"] and "<b>テイク</b>（ダブル／テイク）" in out["takeQ"]
+    assert "gnubg 2-ply（XG の 3-ply 相当）・" in out["moves"] and "手読み" not in out["moves"]
     # TODO-098: the roll's luck by gnubg's levels, after the best move's heading; spoken in words only
     assert [h.split("Luck ")[1].split("</p>")[0] for h in out["luck"]] == [
         "+0.601・とても良い目", "+0.600・良い目", "+0.300・ふつうの目", "-0.290・ふつうの目", "-0.301・悪い目", "-0.600・悪い目",
@@ -166,7 +179,7 @@ def test_result_html():
     # TODO-096: with dice, the double that was due before the roll comes before the best move
     assert out["rolled"].index("<h2>キューブ（振る前）</h2>") < out["rolled"].index("最善手（白・ダイス 3-1）")
     assert "白の人は振る前に <b>ダブルすべきだった</b>" in out["rolled"]
-    assert out["rolledSpeech"].startswith("白は振る前にダブルすべきでした。ダブルされたら、黒はパスです。白の さん いち の最善手は")
+    assert out["rolledSpeech"].startswith("ダブル、パス。白は振る前にダブルすべきでした。ダブルされたら、黒はパスです。白の さん いち の最善手は")
     assert '<ol class="moves"><li data-k="0" class="on">bar/22* 13/8(2) 6/off' in out["moves"]
     assert "最善手（白・ダイス 3-1）" in out["moves"]
     assert "ピップ リード" not in out["moves"] and "振ったのは" not in out["moves"]   # TODO-086: the table and the heading say it

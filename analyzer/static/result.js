@@ -25,6 +25,14 @@ const BgResult = (() => {
     return { word: c.value > 1 ? "リダブル" : "ダブル", take: c.take ? "テイク" : "パス" };
   }
 
+  // The cube decision in the words players use (gnubg's own, TODO-166): "ノーダブル／テイク",
+  // "ダブル／パス", "トゥーグッド／パス", "ノーリダブル／テイク". sep joins the two (spoken: a pause).
+  function cubeLabel(c, sep = "／") {
+    const { word, take } = cubeWords(c);
+    const head = c.too_good ? "トゥーグッド" : c.double ? word : c.optional ? `オプショナル${word}` : `ノー${word}`;
+    return head + sep + take;
+  }
+
   // v to d decimals, always signed as gnubg and XG print equities and differences (TODO-167). Rounded first,
   // so a tiny negative shows as +0.000, not -0.000
   function signed(v, d) {
@@ -77,7 +85,7 @@ const BgResult = (() => {
         `<tr><td>キューブレス ${r.mwc ? "EMG" : "エクイティ"}</td><td>${signed(r.equity.white, 3)}</td><td>${signed(r.equity.black, 3)}</td></tr>` +
         `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
     }
-    out += `<p class="note">gnubg ${r.plies}手読み・最善手と勝率はキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はアンリミテッド（ジャコビー・ルールあり）") : ""}。` +
+    out += `<p class="note">gnubg ${r.plies}-ply（XG の ${r.plies + 1}-ply 相当）・最善手と勝率はキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はアンリミテッド（ジャコビー・ルールあり）") : ""}。` +
       `Position ID: <code>${esc(r.position_id)}</code></p>`;
     return out;
   }
@@ -93,13 +101,13 @@ const BgResult = (() => {
     const { word, take } = cubeWords(c);
     let out = c.rolled ? "<h2>キューブ（振る前）</h2>" : "<h2>キューブ</h2>";
     if (c.rolled) {   // with dice, shown only when a double was due (TODO-096)
-      out += `<p class="answer">${d}の人は振る前に <b>${word}すべきだった</b></p>`;
+      out += `<p class="answer">${d}の人は振る前に <b>${word}すべきだった</b>（${cubeLabel(c)}）</p>`;
       out += `<p>${word}されたら、${t}の人は${take}。</p>`;
     } else if (c.question === "take") {
-      out += `<p class="answer">${t}の人は <b>${take}</b></p>`;
+      out += `<p class="answer">${t}の人は <b>${take}</b>（${cubeLabel(c)}）</p>`;
       out += `<p>${d}の人の${word}は${c.double ? "正しい" : c.optional ? "してもしなくてもよい" : c.too_good ? "ダブルせずギャモンを狙う方がよい局面" : "早すぎる"}。</p>`;
     } else {
-      out += `<p class="answer">${d}の人は <b>${c.double ? `${word}する` : c.optional ? `${word}してもしなくてもよい` : c.too_good ? `${word}しない（ギャモン狙い）` : `${word}しない`}</b></p>`;
+      out += `<p class="answer">${d}の人は <b>${c.double ? `${word}する` : c.optional ? `${word}してもしなくてもよい` : c.too_good ? `${word}しない（ギャモン狙い）` : `${word}しない`}</b>（${cubeLabel(c)}）</p>`;
       out += `<p>${word}されたら、${t}の人は${take}。</p>`;
     }
     // a match: the match winning chances in % (TODO-167); money: the equities
@@ -111,15 +119,16 @@ const BgResult = (() => {
     return out;
   }
 
-  // gnubg's "(25.6%)" after "No double, take" or "Too good, pass" (eval.c getPercent): how often the
-  // other side would have to pass (take) wrongly for a double to pay. The smaller, the nearer a double (TODO-097).
+  // How far a double is from paying (TODO-166): the doubler's equity (a match: MWC) if the double is made,
+  // minus without it. The other side answers the double as is best for it, so the lower of take and pass
+  // counts. Below 0 the double loses; the nearer to 0, the nearer a double. This replaces gnubg's
+  // "(25.6%)" (how often the other side would have to pass wrongly), which players do not use.
   function distanceHtml(c) {
-    const m = c.proper.match(/\(([\d.]+)%\)/);
-    if (!m) return "";
-    const pct = Math.round(Number(m[1])), { word } = cubeWords(c);   // the words go by the number shown
-    const words = pct < 10 ? `${word}の一歩手前` : pct < 30 ? `${word}にはまだ少し早い` : `${word}にはまだ遠い`;
-    const what = c.too_good ? `ギャモン狙いをやめて${word}するまでの遠さ` : `${word}までの遠さ`;
-    return `<p>${what} ${pct}%・${words}</p>`;
+    const e = c.mwc || c.equity;
+    const g = Math.min(e.double_take, e.double_pass) - e.no_double;
+    if (!Number.isFinite(g)) return "";
+    const { word } = cubeWords(c);
+    return `<p>${word}した場合のエクイティ差 ${c.mwc ? `${signed(g, 2)}%` : signed(g, 3)}（${word}とノーダブルの差。マイナスは${word}すると損）</p>`;
   }
 
   // A short spoken summary, not the numbers: the screen keeps the percentages and pips. Spoken, the sides
@@ -130,12 +139,13 @@ const BgResult = (() => {
     if (r.cube) {
       const c = r.cube, { word, take } = cubeWords(c), d = NAME[c.doubler], t = NAME[c.taker];
       // a double that may or may not be made is not worth saying (TODO-106)
-      cubeText = c.rolled ? `${d}は振る前に${word}すべきでした。${word}されたら、${t}は${take}です。`
-        : c.question === "take" ? `${d}の${word}に、${t}は${take}です。`
-          : c.double ? `${d}は${word}すべきで、${t}は${take}です。`
+      const label = cubeLabel(c, "、") + "。";   // the players' words first, then the plain ones
+      cubeText = c.rolled ? `${label}${d}は振る前に${word}すべきでした。${word}されたら、${t}は${take}です。`
+        : c.question === "take" ? `${label}${d}の${word}に、${t}は${take}です。`
+          : c.double ? `${label}${d}は${word}すべきで、${t}は${take}です。`
             : c.optional ? ""
-              : c.too_good ? `${d}は${word}せず、ギャモンを狙うほうがよいです。`
-                : `${d}はまだ${word}しないほうがよいです。`;
+              : c.too_good ? `${label}${d}は${word}せず、ギャモンを狙うほうがよいです。`
+                : `${label}${d}はまだ${word}しないほうがよいです。`;
     }
     if (r.cube && r.cube.rolled) parts.push(cubeText);   // as on the screen, before the best move (TODO-096)
     const bestMove = r.moves && dice;   // read early: it is what the player wants to hear
@@ -176,16 +186,24 @@ const BgResult = (() => {
     return n < 10 ? DIGIT[n] : (n >= 20 ? DIGIT[Math.floor(n / 10)] : "") + "じゅう" + DIGIT[n % 10];
   }
 
-  // "bar/22* 13/8(2) 6/off" -> "バーからにじゅうにでヒット、じゅうさんからはちへに枚、ろくから上がり"
+  // "bar/22* 13/8(2) 6/off" -> "バーからにじゅうにでヒット、じゅうさんからはちへに枚、ろくから上がり".
+  // A hit on the way, "24/18*/13", is "にじゅうよんからじゅうはちでヒットして、じゅうさんへ" (TODO-166)
   function moveToSpeech(move) {
     return move.trim().split(/\s+/).map((step) => {
       const m = step.match(/^(.*?)(?:\((\d+)\))?$/);
       const pts = m[1].split("/").map((x) => {
-        const hit = x.endsWith("*");
         const n = x.replace("*", "").toLowerCase();
-        return (n === "bar" ? "バー" : n === "off" ? "上がり" : kana(n)) + (hit ? "でヒット" : "");
+        return { name: n === "bar" ? "バー" : n === "off" ? "上がり" : kana(n), hit: x.endsWith("*") };
       });
-      return pts.join("から") + (m[2] ? `へ${kana(m[2])}枚` : "");
+      const last = pts.length - 1;
+      let s = pts[0].name;
+      for (let i = 1; i <= last; i++) {
+        const { name, hit } = pts[i];
+        s += pts[i - 1].hit ? "、" : "から";
+        s += name + (hit ? (i < last ? "でヒットして" : "でヒット") : "");
+        if (i === last && pts[i - 1].hit && !hit && !m[2]) s += "へ";
+      }
+      return s + (m[2] ? `へ${kana(m[2])}枚` : "");
     }).join("、");
   }
 

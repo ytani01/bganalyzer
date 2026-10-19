@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.91.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.92.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -1045,7 +1045,7 @@ async function analyze() {
   if (state.autoSpeak) unlockSpeech();
   // The result on hand still fits the board and settings (e.g. worked out when the photo was read): just show it.
   if (state.result && !resultStale()) { go("outcome"); autoSpeak(); return; }
-  const text = state.plies === "3" ? "3手読みで解析しています（しばらくかかります）…" : "解析しています…";
+  const text = state.plies === "3" ? "3-ply で解析しています（しばらくかかります）…" : "解析しています…";
   await withBusy(text, async () => {
     try {
       const dice = rolled();

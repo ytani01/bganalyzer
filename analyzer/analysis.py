@@ -199,8 +199,20 @@ def summary_ja(r: dict, name: dict = NAME_JA) -> str:
     return text
 
 
+def cube_label_ja(c: dict) -> str:
+    """The cube decision in the players' words (gnubg's): ノーダブル／テイク, ダブル／パス, トゥーグッド／パス."""
+    word = "リダブル" if c["value"] > 1 else "ダブル"
+    head = ("トゥーグッド" if c["too_good"] else word if c["double"] else
+            f"オプショナル{word}" if c.get("optional") else f"ノー{word}")
+    return head + "／" + ("テイク" if c["take"] else "パス")
+
+
 def cube_summary_ja(c: dict, name: dict = NAME_JA) -> str:
-    """The cube decision in one Japanese sentence."""
+    """The cube decision in one Japanese sentence, the players' words first (TODO-166)."""
+    return f"{cube_label_ja(c)}: {_cube_sentence_ja(c, name)}"
+
+
+def _cube_sentence_ja(c: dict, name: dict) -> str:
     d, t = name[c["doubler"]], name[c["taker"]]
     word = "リダブル" if c["value"] > 1 else "ダブル"
     take = "テイク" if c["take"] else "パス"
