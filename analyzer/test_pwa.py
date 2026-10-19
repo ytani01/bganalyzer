@@ -365,7 +365,9 @@ def test_match_is_in_the_board_settings_and_sent():
     js = (STATIC / "app.js").read_text()
     assert js.count("BgCube.matchRequest(state.match)") == 2   # /analyze and /analyze-photo
     # Japanese before the server's 422: 「解析する」 greyed out with the reason (TODO-116)
-    assert "...(crawfordCube(s) ? [CRAWFORD_CUBE] : [])" in js
+    # TODO-153: no Crawford game with a cube on one side to warn of; a photo or a reading with the cube on one side takes it off
+    assert "CRAWFORD_CUBE" not in js
+    # (run in test_crawford_and_a_cube_on_one_side_follow_the_later_choice)
     assert '$("analyze").disabled = !!errs.length;' in js and 'id="analyze-why"' in html
     # TODO-093: the corners screen shows the same inputs, moved there while it is open
     corners = html[html.index('<section id="corners"'):html.index('<section id="board"')]
@@ -565,3 +567,70 @@ def test_a_die_chosen_takes_the_double_back():
     assert "const shown = cubeOffered(s) ? [0, 0] : s.dice;" in js
     assert "const dice = offered ? [0, 0] : state.dice.slice();" in js
     assert "cube: { ...state.cube, offered: false }" in js[js.index("function setDie("):]
+
+
+def _crawford_js(cases: str):
+    """Run cases in Node with setCube, setMatch, startPhoto and recognize from app.js, on a stub state (TODO-153)."""
+    js = (STATIC / "app.js").read_text()
+    funcs = "".join(js[js.index(a):js.index(b)] for a, b in [
+        ("function setCube(", "function setResult("), ("function startPhoto(", "async function loadPhoto("),
+        ("async function recognize(", "async function analyze(")])
+    script = f"""
+      const BgCube = require({json.dumps(str(STATIC / "cube.js"))});
+      const BgBoard = require({json.dumps(str(STATIC / "board.js"))});
+      let state, kept, alerts, overlay = null, failReveal = false;
+      const keep = (k, v) => {{ kept.push([k, JSON.parse(v).crawford]); }};
+      const update = (p) => {{ state = {{ ...state, ...p }}; }};
+      const noop = () => {{}}, el = {{ scrollIntoView: noop, addEventListener: noop, removeEventListener: noop }};
+      const $ = () => el, alert = (t) => alerts.push(t), go = noop, persist = noop, guessCorners = noop, stopOverlay = noop;
+      const setResult = noop, storedSide = () => ({{}}), stored = (k, a, f) => f, defaultCorners = () => [];
+      const startOverlay = () => failReveal ? {{ scan: {{ reveal: async () => {{ throw new Error("cancelled"); }} }} }} : null;
+      const withBusy = (t, f) => f(), uploadImage = async () => ({{ blob: null, scale: 1 }}), rolled = () => null;
+      const cubeOffered = (s) => BgCube.offered(s.cube), sideSent = () => "", photoId = () => "p";
+      class FormData {{ append() {{}} }}
+      let reply;
+      const BgApi = {{ postStages: async () => reply, scaleGeometry: (g) => g }};
+      {funcs}
+      const side = {{ at: "black", value: 2, offered: false }}, centre = {{ at: "centre", value: 2, offered: true }};
+      const m = (crawford) => ({{ length: 7, white: 6, black: 3, crawford }});
+      const fresh = (match, cube) => {{ state = {{ match, cube, corners: [], dice: [0, 0], onRoll: "white", homePick: "auto",
+                                                 plies: "2", bottomColour: 1, photo: {{}} }}; kept = []; alerts = []; failReveal = false; }};
+      const read = (cubeRead, error) => {{ reply = {{ recognized: {{ points: Array(24).fill(0), bar_white: 0, bar_black: 0 }},
+                                                    cube_read: cubeRead, analysis: null, analysis_error: error }}; return recognize(); }};
+      const out = (x) => ({{ crawford: state.match.crawford, cubeAt: state.cube.at, cube: state.cube, kept, alerts, board: !!state.board, ...x }});
+      (async () => {{ {cases} }})();"""
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    return json.loads(r.stdout)
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_crawford_and_a_cube_on_one_side_follow_the_later_choice():
+    # TODO-153: the later choice wins; a photo (reopened or read) with the cube on one side is the later one
+    crawford_err = "no doubling in the Crawford game: the cube stays at 1 in the middle"
+    out = _crawford_js(f"""const r = [];
+      fresh(m(false), side); setMatch({{ crawford: true }}); r.push(out());
+      fresh(m(true), centre); setCube({{ at: "white" }}); r.push(out());
+      fresh(m(true), side); setCube({{ value: 4 }}); r.push(out());              // one side already, only the number changed
+      fresh(m(false), side); setMatch({{ white: 5 }}); r.push(out());
+      fresh(m(true), centre); setCube({{ value: 4 }}); r.push(out());
+      fresh(m(true), centre); startPhoto(null, null, {{ cube: side }}); r.push(out());
+      fresh(m(true), side); startPhoto(null, null, null); r.push(out());          // a new photo: the cube in the centre
+      fresh(m(true), centre); await read({{ at: "black", value: 2 }}, {json.dumps(crawford_err)}); r.push(out());
+      fresh(m(true), centre); await read({{ at: "black", value: 2 }}, "white has 16 checkers"); r.push(out());
+      fresh(m(true), centre); await read(null, "white has 16 checkers"); r.push(out());
+      fresh(m(true), centre); failReveal = true; await read({{ at: "black", value: 2 }}, {json.dumps(crawford_err)}); r.push(out());
+      console.log(JSON.stringify(r));""")
+    crawford_in, cube_out, value_on_side, other_match, other_cube, reopened, new_photo, read, read_other, no_cube, cancelled = out
+    assert crawford_in["crawford"] is True and crawford_in["cube"] == {"at": "centre", "value": 2, "offered": False}
+    assert cube_out["crawford"] is False and cube_out["cubeAt"] == "white" and cube_out["kept"] == [["match", False]]
+    assert value_on_side["crawford"] is False and value_on_side["cube"]["value"] == 4
+    assert other_match["cubeAt"] == "black"   # no Crawford game: the cube stays
+    assert other_cube["crawford"] is True and other_cube["cube"] == {"at": "centre", "value": 4, "offered": True}
+    assert reopened["crawford"] is False and reopened["cubeAt"] == "black" and reopened["kept"] == [["match", False]]
+    assert new_photo["crawford"] is True and new_photo["cubeAt"] == "centre" and new_photo["kept"] == []
+    # read: taken off without a word, once the board is in
+    assert read["crawford"] is False and read["cubeAt"] == "black" and read["board"] and read["alerts"] == []
+    assert read_other["crawford"] is False and len(read_other["alerts"]) == 1 and "16" in read_other["alerts"][0]   # another reason: said
+    assert no_cube["crawford"] is True and len(no_cube["alerts"]) == 1
+    # the reading cut short before the board is in: the Crawford game stays
+    assert cancelled["crawford"] is True and not cancelled["board"] and cancelled["kept"] == []
