@@ -102,7 +102,7 @@ SIMD を SSE2 までに落とした x86_64 で 7 枚）。原因は浮動小数�
 
 そこで読み取り（`board.py`・`dice.py`・`cube.py`）を、どこでも同じになる計算だけで組み直した（`exact.py`）:
 
-- 画像は 8 ビットか整数のまま扱う（`cvtColor`・`GaussianBlur` は 8 ビット、`Sobel` は 16 ビット整数、範囲の引き伸ばしは NumPy の整数、箱の和は `cv2.boxFilter` の float64 で足す整数（和が 2^53 より十分小さく丸めが起きないので、足す順によらず同じ値。TODO-173））
+- 画像は 8 ビットか整数のまま扱う（`cvtColor`・`GaussianBlur` は 8 ビット、`Sobel` は 16 ビット整数、範囲の引き伸ばしと枠の縁の勾配の箱の和（`exact.box_sum`）は NumPy の整数。駒を探す `radial.py` の箱の和だけは `cv2.boxFilter` の float64 で整数を足す（和が 2^53 より十分小さく丸めが起きないので、足す順によらず同じ値。TODO-173））
 - 斜めから真上への写し直しは、元の位置を float64 の 1 演算ずつで出して 1/32 画素に切り、`cv2.remap` の整数の補間で混ぜる（`exact.warp`）
 - 射影変換・直線・逆行列は Python の float か NumPy の 1 演算ずつ（足し算の順番は NumPy が決める）で解く。RANSAC は、外れた点を除いて解き直す最小二乗に替えた
 - k-means は整数で（`exact.kmeans`。四隅の推定で TODO-028 がしたのと同じ）。色相の差は `arctan2` でなく余弦で比べる
