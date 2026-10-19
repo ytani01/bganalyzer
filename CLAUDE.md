@@ -110,6 +110,10 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
   TODO の項目を立てる・決着させる、コードや文書の変更、コミット・PR・マージ、マージ後のローカルの確認は、すべて担当（teammate）にさせる。
   teammate は Agent ツールに `name` を付けて起動し、`isolation` は付けない（付けると teammate にならない）。bganalyzer だけで有効にしている（`.claude/settings.local.json`。リポジトリには入らない。TODO-154）。
   teammate は main と同じ作業ツリー（main をトップで開いていればトップ）で起動するので、**作業の最初に自分で `git fetch` のあと `git worktree add .claude/worktrees/<名前> -b claude/<作業内容> origin/main` を作り、その中で編集・コミット・PR まで行う**。トップは main のままにする。
+  **PR をマージしたら（やめたときも）、作った本人がトップに戻って
+  `git worktree remove .claude/worktrees/<名前>` と `git branch -D claude/<作業内容>` で消す。**
+  確認の担当がその worktree で測るときは、確認が済むまで残し、マージのあとに消す。
+  マージは `gh pr merge --delete-branch` で行い、GitHub のブランチも残さない（2026-10-20 ユーザーが決めた）
   同じファイルを複数の担当に同時に編集させない。
   tmux で開いた teammate には SendMessage が無いことがあるので、main に確認を頼むときは、作業を止めて返事（終わったときの通知）で伝える。
   確認・レビューを別の担当に分ける決まり（`~/.claude/CLAUDE.md`）はそのまま。ローカルの確認は、担当がトップの作業ツリー（main のまま）で `git pull` だけ行ってから確かめる
