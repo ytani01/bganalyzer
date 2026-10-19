@@ -96,7 +96,7 @@ const BgBoardView = (() => {
     drawPoints(svg, scene, onSelect);
     drawBar(svg, scene, onSelect);
     if (photo) return;   // the photo shows the checkers itself
-    if (scene.onRoll) drawWay(svg, scene.onRoll, home);
+    if (scene.onRoll && !BgCube.offered(scene.cube)) drawWay(svg, scene.onRoll, home);   // no arrow while a double waits on take or pass, like the dice below (TODO-164)
     drawBorneOff(svg, b, home);
     drawPips(svg, b, home, onPart);
     if (!BgCube.offered(scene.cube) && (scene.dice || onPart)) drawDice(svg, scene.dice, scene.onRoll, onPart);   // none while a double waits on take or pass (TODO-156)
@@ -260,7 +260,7 @@ const BgBoardView = (() => {
 
   // The centre of a cube just offered to the side `at` (TODO-156, TODO-160): in the playing field of the other side, which doubled,
   // where it would throw its dice (as drawDice puts them). Vertically on the half of the side doubled (手前 lower, 奥 upper), as near the
-  // middle as it can with a gap of 6 to the way arrow (TODO-158). Horizontally at the middle of that field, or, if that lands on a
+  // middle as it can with a gap of 6 to where the way arrow would run (TODO-158; the arrow is not drawn then, TODO-164). Horizontally at the middle of that field, or, if that lands on a
   // checker, over the nearest point (the one nearer the bar first, in both fields) where it clears every checker (TODO-160); the middle if none does.
   // The cube's edge (2.5 wide) and the checkers' (2.5 wide) count; the checkers on the bar lie outside the field.
   const CUBE_SHIFTS = [0, 1, -1, 3, -3, 5, -5];   // from the middle, in 24s: the points (the even ones are gaps between points, never needed)
@@ -282,7 +282,7 @@ const BgBoardView = (() => {
   }
 
   // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
-  // A cube just offered is not owned yet: it lies in the playing field (offeredCubeCentre; no dice, not even the dashed "?", are drawn then),
+  // A cube just offered is not owned yet: it lies in the playing field (offeredCubeCentre; no dice, not even the dashed "?", and no way arrow are drawn then),
   // showing the doubled value (cube.value).
   // In the Crawford game it says "Crawford" instead of a number (TODO-152).
   function drawCube(svg, cube, home, onPart, match, b) {
@@ -291,7 +291,7 @@ const BgBoardView = (() => {
     const x = centre ? centre.x - size / 2 : sideX(home) + (COL.w - size) / 2;
     const y = centre ? centre.y - size / 2 : cubeY(cube.at);
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
-    el("rect", { x, y, width: size, height: size, rx: 5, fill: "#f6eedb", stroke: "#8b1a2b", "stroke-width": 2.5 }, g);
+    el("rect", { x, y, width: size, height: size, rx: 5, fill: "#1f3f7a", stroke: "#ffffff", "stroke-width": 2.5 }, g);
     const crawford = match && match.length > 0 && match.crawford;
     if (crawford) {   // two lines, "Craw" over "ford", to fit the cube
       ["Craw", "ford"].forEach((t, k) => el("text", { x: x + size / 2, y: y + size / 2 + (k ? 8 : -8), class: "cube-crawford" }, g).textContent = t);
@@ -303,6 +303,7 @@ const BgBoardView = (() => {
   // The way the side on roll goes, as a see-through U across the middle of the board (over the
   // checkers, under the dice and the cube): from its farthest point along its far row, round at the end away from home, and back
   // along its near row to home (TODO-092). 手前's far row is the upper one, 奥's the lower one.
+  // Not drawn while a double is offered: nobody is on roll until take or pass (TODO-164).
   function drawWay(svg, side, home) {
     const r = WAY.r, yTop = MID - r, yBot = MID + r;
     const right = home === "right";
