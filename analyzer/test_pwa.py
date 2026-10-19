@@ -556,3 +556,12 @@ def test_a_value_chosen_in_the_settings_is_taken_at_once():
     assert '$(`sheet-${k}`).addEventListener("change", choseInSheet);' in js
     gate = js[js.index("const REANALYZE_WAIT"):js.index("reanalyzeTimer = setTimeout(reanalyze")]
     assert "s.sheet" not in gate
+
+
+def test_a_die_chosen_takes_the_double_back():
+    # TODO-150: the dice row stays while a double is offered (empty), and a die chosen there clears "ダブルされたところ"
+    js = (STATIC / "app.js").read_text()
+    assert '$("dice-row").hidden' not in js
+    assert "const shown = cubeOffered(s) ? [0, 0] : s.dice;" in js
+    assert "const dice = offered ? [0, 0] : state.dice.slice();" in js
+    assert "cube: { ...state.cube, offered: false }" in js[js.index("function setDie("):]

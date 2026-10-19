@@ -401,11 +401,12 @@ for (const k of ["match", "cube", "roll"]) {
 // ---- what the analysis is asked
 part((s) => [s.dice, s.diceFromPhoto, cubeOffered(s), s.onRoll], (s) => {
   $("dice-row").dataset.side = s.onRoll;   // the faces in the colours of the dice on the board
+  // a double offered: no dice yet (TODO-086), but the row stays to choose them, which takes the double back (TODO-150)
+  const shown = cubeOffered(s) ? [0, 0] : s.dice;
   for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
-    $(id).dataset.value = s.dice[k] ? String(s.dice[k]) : "";
-    for (const b of $(id).children) b.classList.toggle("on", Number(b.dataset.n) === s.dice[k]);
+    $(id).dataset.value = shown[k] ? String(shown[k]) : "";
+    for (const b of $(id).children) b.classList.toggle("on", Number(b.dataset.n) === shown[k]);
   }
-  $("dice-row").hidden = cubeOffered(s);   // a double offered: no dice yet (TODO-086)
   $("dice-note").hidden = !s.diceFromPhoto || cubeOffered(s);
   // with dice in, the side on roll has already rolled: "振った人", not "次に振る人" (TODO-042)
   $("onroll-label").textContent = `${BgResult.rollWho(rolled(s))}人`;
@@ -643,10 +644,12 @@ function setOnRoll(side) {
   update({ onRoll: side, cube: offered ? { ...state.cube, at: BgBoard.other(side) } : state.cube });
 }
 
+// A die chosen while a double is offered: the double is cleared, and dice left in from before do not count (TODO-150).
 function setDie(k, value) {
-  const dice = state.dice.slice();
+  const offered = cubeOffered();
+  const dice = offered ? [0, 0] : state.dice.slice();
   dice[k] = Number(value) || 0;
-  update({ dice, diceFromPhoto: false });
+  update({ dice, diceFromPhoto: false, ...(offered && dice[k] ? { cube: { ...state.cube, offered: false }, cubeFromPhoto: false } : {}) });
 }
 
 function setCube(patch) {
@@ -1333,7 +1336,7 @@ for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
   }
   $(id).addEventListener("click", (e) => {
     const b = e.target.closest("button");
-    if (b) setDie(k, Number(b.dataset.n) === state.dice[k] ? 0 : b.dataset.n);
+    if (b) setDie(k, Number(b.dataset.n) === state.dice[k] && !cubeOffered() ? 0 : b.dataset.n);
   });
 }
 for (const v of BgCube.VALUES) $("cube-value").add(new Option(String(v), String(v)));
