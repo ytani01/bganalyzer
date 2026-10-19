@@ -167,14 +167,18 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <fieldset>
       <div class="opt">
         <span class="opt-label">キューブ</span>
-        <div class="seg" data-name="cubeAt">
-          <button data-value="centre">中央</button><button data-value="white"><span class="nm-white">白</span></button><button data-value="black"><span class="nm-black">黒</span></button>
+        <div class="seg" data-name="cubeValue" id="cube-values">
+          <button data-value="centre">中央</button><button data-value="2">2</button><button data-value="4">4</button><button data-value="8">8</button><button data-value="16">16</button><button data-value="32">32</button><button data-value="64">64</button>
         </div>
         <span id="cube-note" class="from-photo" title="写真から読み取ったキューブ" hidden>写真</span>
       </div>
-      <div id="cube-side" class="row wrap" hidden>
-        <label>キューブの数 <select id="cube-value"></select></label>
-        <label><input type="checkbox" id="cube-offered" checked> ダブルされたところ（テイクかパスか）</label>
+      <div id="cube-side" hidden>
+        <div class="seg" data-name="cubeHold">
+          <button data-value="white"><span class="nm-white">白</span>側に置く</button><button data-value="black"><span class="nm-black">黒</span>側に置く</button>
+        </div>
+        <div class="seg" data-name="cubeDouble">
+          <button data-value="white"><span class="nm-white">白</span>に対してダブル</button><button data-value="black"><span class="nm-black">黒</span>に対してダブル</button>
+        </div>
       </div>
       <p id="cube-help" class="note"></p>
     </fieldset>

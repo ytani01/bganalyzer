@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.88.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.89.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -179,8 +179,9 @@ part((s) => s.busy, (s) => {
 });
 
 // ---- segmented buttons: each shows the state of its name
-part((s) => [s.onRoll, s.cube.at, s.collect, s.plies, s.sideFrom], (s) => {
-  const value = { onRoll: s.onRoll, cubeAt: s.cube.at,
+part((s) => [s.onRoll, s.cube, s.collect, s.plies, s.sideFrom], (s) => {
+  const cube = BgCube.buttons(s.cube);
+  const value = { onRoll: s.onRoll, cubeValue: cube.number, cubeHold: cube.hold, cubeDouble: cube.double,
                   collect: s.collect, plies: s.plies, sideFrom: s.sideFrom };
   for (const seg of document.querySelectorAll(".seg")) {
     for (const b of seg.children) b.classList.toggle("on", b.dataset.value === String(value[seg.dataset.name]));
@@ -389,6 +390,7 @@ for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("c
 function choseInSheet(e) {
   if (e.type === "click" && !e.target.closest("button[data-value], button[data-n]")) return;
   if (e.currentTarget.id === "sheet-roll" && halfDie()) return;   // one die set, the other still to choose
+  if (e.target.closest('[data-name="cubeValue"] button:not([data-value="centre"])')) return;   // a cube number: the four choices follow (TODO-159)
   update({ sheet: null });
 }
 for (const k of ["match", "cube", "roll"]) {
@@ -428,8 +430,6 @@ part((s) => s.match, (s) => {
 
 part((s) => [s.cube, s.cubeFromPhoto, s.onRoll, rolled(s), s.bottomColour], (s) => {
   $("cube-side").hidden = s.cube.at === "centre";
-  $("cube-value").value = String(s.cube.value);
-  $("cube-offered").checked = s.cube.offered;
   $("cube-note").hidden = !s.cubeFromPhoto;
   const req = BgCube.request(s.cube, s.onRoll, rolled(s));
   const roll = NAME[req.on_roll];
@@ -1349,9 +1349,6 @@ for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
     if (b) setDie(k, Number(b.dataset.n) === state.dice[k] && !cubeOffered() ? 0 : b.dataset.n);
   });
 }
-for (const v of BgCube.VALUES) $("cube-value").add(new Option(String(v), String(v)));
-$("cube-value").addEventListener("change", () => setCube({ value: Number($("cube-value").value) }));
-$("cube-offered").addEventListener("change", () => setCube({ offered: $("cube-offered").checked }));
 
 for (const v of BgCube.MATCH_LENGTHS) $("match-length").add(new Option(v ? `${v} ポイント` : "アンリミテッド", String(v)));
 $("match-length").addEventListener("change", () => setMatch({ length: Number($("match-length").value) }));
@@ -1363,7 +1360,9 @@ $("crawford").addEventListener("change", () => setMatch({ crawford: $("crawford"
 const SEGMENTS = {
   sideFrom: setSideFrom,
   onRoll: setOnRoll,
-  cubeAt: (v) => setCube({ at: v }),
+  cubeValue: (v) => setCube(BgCube.numberPatch(state.cube, v)),   // TODO-159
+  cubeHold: (v) => setCube({ at: v, offered: false }),
+  cubeDouble: (v) => setCube({ at: v, offered: true }),
   collect: (v) => { keep("collect", v); update({ collect: v }); },
   plies: (v) => { keep("plies", v); update({ plies: v }); },
 };

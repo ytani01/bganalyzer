@@ -273,6 +273,38 @@ def test_cube_script_is_served_and_cached():
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_cube_settings_buttons():
+    # TODO-159: the number row and the four choices (held / doubled, 白 / 黒) map to the cube
+    script = f"""
+    const c = require({json.dumps(str(STATIC / "cube.js"))});
+    const apply = (cube, patch) => ({{ ...cube, ...patch }});
+    const centre = {{at: "centre", value: 2, offered: true}};
+    const held = {{at: "black", value: 4, offered: false}}, doubled = {{at: "white", value: 8, offered: true}};
+    console.log(JSON.stringify([
+      c.buttons(centre), c.buttons(held), c.buttons(doubled),
+      c.numberPatch(centre, "16"), c.numberPatch(held, "32"), c.numberPatch(doubled, "centre"),
+      apply(held, c.numberPatch(held, "64")),
+    ]));
+    """
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    b_centre, b_held, b_doubled, from_centre, on_side, to_centre, renumbered = json.loads(r.stdout)
+    assert b_centre == {"number": "centre", "hold": None, "double": None}   # centre: no choice shown
+    assert b_held == {"number": "4", "hold": "black", "double": None}
+    assert b_doubled == {"number": "8", "hold": None, "double": "white"}
+    # a number from the centre: on 白, doubled to it; on a side, only the number changes (held stays held)
+    assert from_centre == {"at": "white", "value": 16, "offered": True}
+    assert on_side == {"value": 32} and renumbered == {"at": "black", "value": 64, "offered": False}
+    assert to_centre == {"at": "centre"}
+    html = (STATIC / "index.html").read_text()
+    for name in ("cubeValue", "cubeHold", "cubeDouble"):
+        assert f'data-name="{name}"' in html
+    assert 'id="cube-value"' not in html and 'id="cube-offered"' not in html
+    js = (STATIC / "app.js").read_text()
+    assert """[data-name="cubeValue"] button:not([data-value="centre"])""" in js[js.index("function choseInSheet("):]   # a number keeps the sheet open
+    assert "cubeHold: (v) => setCube({ at: v, offered: false })" in js and "cubeDouble: (v) => setCube({ at: v, offered: true })" in js
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
 def test_cube_request():
     script = f"""
     const c = require({json.dumps(str(STATIC / "cube.js"))});

@@ -77,7 +77,6 @@ SNAP = """() => {
     undo: vis('undo') ? !el('undo').disabled : null,
     cubeHelp: txt('cube-help'), rollLabel: txt('onroll-label'),
     dice: vis('die1') ? [el('die1').dataset.value, el('die2').dataset.value] : null,
-    cube: vis('cube-side') ? [el('cube-value').value, el('cube-offered').checked] : null,
     boardSvg: html('board-svg'),
     photoSvg: vis('photo-svg') ? hash(el('photo-svg').innerHTML) : null,
     twoBoards: vis('boards') ? el('boards').classList.contains('two') : null,
@@ -207,13 +206,13 @@ def flow_manual(r):
     r.choose("#die1", "3"); r.snap("one die")
     r.choose("#die2", "1"); r.snap("dice 3-1")
     r.seg("onRoll", "black"); r.snap("on roll 奥")
-    r.seg("cubeAt", "white"); r.snap("cube 手前 offered: the dice row is empty")   # TODO-086, TODO-150
-    r.click("#cube-offered"); r.snap("cube 手前 owned, with dice")
-    r.choose("#die1", ""); r.click("#cube-offered"); r.snap("no dice: the cube is offered")
-    r.choose("#cube-value", "8"); r.snap("cube 8")
-    r.click("#cube-offered"); r.snap("cube owned")
-    r.click("#cube-offered"); r.seg("onRoll", "white"); r.snap("offered, 手前 on roll: the cube moves")
-    r.seg("cubeAt", "centre"); r.snap("cube centre")
+    r.seg("cubeValue", "2"); r.snap("cube 2 on 手前, offered: the dice row is empty")   # TODO-086, TODO-150, TODO-159
+    r.seg("cubeHold", "white"); r.snap("cube 手前 owned, with dice")
+    r.choose("#die1", ""); r.seg("cubeDouble", "white"); r.snap("no dice: the cube is offered")
+    r.seg("cubeValue", "8"); r.snap("cube 8")
+    r.seg("cubeHold", "white"); r.snap("cube owned")
+    r.seg("cubeDouble", "white"); r.seg("onRoll", "white"); r.snap("offered, 手前 on roll: the cube moves")
+    r.seg("cubeValue", "centre"); r.snap("cube centre")
     r.click("#reset-start"); r.snap("reset to the start")
     r.go("#analyze", "outcome"); r.snap("analysed: cube decision")
     r.click("#speak"); r.snap("read aloud")

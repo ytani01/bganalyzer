@@ -35,6 +35,17 @@ const BgCube = (() => {
     return { at: read.at, value, offered: true };
   }
 
+  // The cube's settings (TODO-159): one row of "centre" and the numbers, and under it, once a number is chosen, where the cube
+  // lies: held by 白 or 黒 (offered false), or doubled to 白 or 黒 (offered true: that side answers take or pass).
+  // What the buttons show for this cube: the number ("centre" or the value), and the side on the "held" / "doubled" row (else null).
+  const buttons = (cube) => cube.at === "centre"
+    ? { number: "centre", hold: null, double: null }
+    : { number: String(cube.value), hold: cube.offered ? null : cube.at, double: cube.offered ? cube.at : null };
+  // The change to the cube for a press of the number row. From the centre a number puts the cube on 白, doubled to it
+  // (what the side buttons did before), so the four choices below have one shown.
+  const numberPatch = (cube, v) => v === "centre" ? { at: "centre" }
+    : cube.at === "centre" ? { at: "white", value: Number(v), offered: true } : { value: Number(v) };
+
   // The match (TODO-066): {length (0: a money game), white, black (the scores), crawford}, made whole:
   // a length the app offers, scores below it, and the Crawford game only when just one side is 1 away.
   const MATCH_LENGTHS = Array.from({ length: 26 }, (_, k) => k);
@@ -52,7 +63,7 @@ const BgCube = (() => {
     return { match_length: m.length, score_white: m.white, score_black: m.black, crawford: m.crawford };
   }
 
-  return { VALUES, request, offered, usedDice, fromRead, MATCH_LENGTHS, fixMatch, canCrawford, matchRequest };
+  return { VALUES, request, offered, usedDice, fromRead, buttons, numberPatch, MATCH_LENGTHS, fixMatch, canCrawford, matchRequest };
 })();
 
 if (typeof module !== "undefined") module.exports = BgCube;
