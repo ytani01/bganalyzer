@@ -98,7 +98,7 @@ const BgBoardView = (() => {
     drawBorneOff(svg, b, home);
     drawPips(svg, b, home, onPart);
     if (!BgCube.offered(scene.cube) && (scene.dice || onPart)) drawDice(svg, scene.dice, scene.onRoll, onPart);   // none while a double waits on take or pass (TODO-156)
-    drawCube(svg, scene.cube, home, onPart, scene.match);
+    drawCube(svg, scene.cube, home, onPart, scene.match, b);
     if (scene.move) drawMove(svg, scene.move, home);
   }
 
@@ -256,17 +256,37 @@ const BgBoardView = (() => {
     });
   }
 
+  // The centre of a cube just offered to the side `at` (TODO-156, TODO-160): in the playing field of the other side, which doubled,
+  // where it would throw its dice (as drawDice puts them). Vertically on the half of the side doubled (手前 lower, 奥 upper), as near the
+  // middle as it can with a gap of 6 to the way arrow (TODO-158). Horizontally at the middle of that field, or, if that lands on a
+  // checker, at the nearest of the points and gaps between them (24 apart) where it clears every checker (TODO-160); the middle if none does.
+  // The cube's edge (2.5 wide) and the checkers' (2.5 wide) count; the checkers on the bar lie outside the field.
+  const CUBE_SHIFTS = [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5];
+  function offeredCubeCentre(b, home, at) {
+    const reach = COL.cube / 2 + 1.25;
+    const x0 = fieldCx(at === "white" ? "black" : "white");
+    const y = MID + (at === "white" ? 1 : -1) * (WAY.r + WAY.w / 2 + 6 + reach);
+    const stacks = [];
+    for (const top of [true, false]) {
+      for (let c = 0; c < 12; c++) {
+        const n = Math.abs(b.points[BgBoard.pointAt(home, top, c)]);
+        for (let k = 0; k < Math.min(n, 5); k++) stacks.push([colX(c), stackY(top, k)]);
+      }
+    }
+    const clear = (x) => stacks.every(([sx, sy]) => Math.hypot(Math.max(Math.abs(x - sx) - reach, 0), Math.max(Math.abs(y - sy) - reach, 0)) >= B.r + 1.25);
+    const shift = CUBE_SHIFTS.find((s) => clear(x0 + s * B.pw / 2));
+    return { x: x0 + (shift || 0) * B.pw / 2, y };
+  }
+
   // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
-  // A cube just offered (TODO-156) is not owned yet: it lies in the playing field of the side that doubled, where that
-  // side would throw its dice (as drawDice puts them; no dice, not even the dashed "?", are drawn then), showing the doubled value (cube.value) (TODO-160).
-  // Vertically it sits on the half of the side doubled (cube.at; 手前 lower, 奥 upper), as near the middle as it can with a gap of 6 to the way arrow (TODO-158).
+  // A cube just offered is not owned yet: it lies in the playing field (offeredCubeCentre; no dice, not even the dashed "?", are drawn then),
+  // showing the doubled value (cube.value).
   // In the Crawford game it says "Crawford" instead of a number (TODO-152).
-  function drawCube(svg, cube, home, onPart, match) {
+  function drawCube(svg, cube, home, onPart, match, b) {
     const size = COL.cube;
-    const inField = BgCube.offered(cube);
-    const x = inField ? fieldCx(cube.at === "white" ? "black" : "white") - size / 2 : sideX(home) + (COL.w - size) / 2;
-    const off = WAY.r + WAY.w / 2 + 6 + 1.25 + size / 2;   // outside the way arrow's line, a gap of 6 (edge stroke 2.5 included)
-    const y = inField ? MID + (cube.at === "white" ? 1 : -1) * off - size / 2 : cubeY(cube.at);
+    const centre = BgCube.offered(cube) ? offeredCubeCentre(b, home, cube.at) : null;
+    const x = centre ? centre.x - size / 2 : sideX(home) + (COL.w - size) / 2;
+    const y = centre ? centre.y - size / 2 : cubeY(cube.at);
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#f6eedb", stroke: "#8b1a2b", "stroke-width": 2.5 }, g);
     const crawford = match && match.length > 0 && match.crawford;
@@ -349,5 +369,7 @@ const BgBoardView = (() => {
     return increasing(plain) ? plain : null;
   }
 
-  return { PLAY, PIPS, draw, columnAnchors };
+  return { PLAY, PIPS, draw, columnAnchors, offeredCubeCentre };
 })();
+
+if (typeof module !== "undefined") module.exports = BgBoardView;   // for the tests

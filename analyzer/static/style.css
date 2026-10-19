@@ -301,8 +301,10 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .board-wrap svg .cube-num { font-size: 20px; font-weight: bold; fill: #8b1a2b; text-anchor: middle; }
 .board-wrap svg .cube-crawford { font-size: 14px; font-weight: bold; fill: #8b1a2b; text-anchor: middle; dominant-baseline: central; }
 .result .answer { font-size: 20px; margin: 4px 0; }
-#cube-side label { display: flex; align-items: center; gap: 6px; }
-#cube-side select { font-size: 16px; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+#cube-values button { padding-inline: 2px; white-space: nowrap; }
+#cube-values [data-value="centre"] { flex: 1.8; }
+#cube-side { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+#cube-side .seg button { padding: 7px 6px; font-size: 15px; }
 
 /* A setting on one line: its name on the left, the buttons on the right. */
 .opt { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }

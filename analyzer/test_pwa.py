@@ -273,6 +273,51 @@ def test_cube_script_is_served_and_cached():
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_cube_settings_buttons():
+    # TODO-159: the number row and the four choices (held / doubled, 白 / 黒) map to the cube
+    script = f"""
+    const c = require({json.dumps(str(STATIC / "cube.js"))});
+    const apply = (cube, patch) => ({{ ...cube, ...patch }});
+    const centre = {{at: "centre", value: 2, offered: true}};
+    const held = {{at: "black", value: 4, offered: false}}, doubled = {{at: "white", value: 8, offered: true}};
+    const dice = [3, 1];
+    console.log(JSON.stringify([
+      c.buttons(centre), c.buttons(held), c.buttons(doubled),
+      c.numberPatch(centre, "16", "white", null), c.numberPatch(centre, "16", "black", null),
+      c.numberPatch(centre, "16", "white", dice), c.numberPatch(centre, "16", "black", dice),
+      c.numberPatch(held, "32", "white", null), c.numberPatch(doubled, "centre", "white", null),
+      apply(held, c.numberPatch(held, "64", "black", dice)),
+      c.request(apply(centre, c.numberPatch(centre, "16", "white", null)), "white", null),
+      c.request(apply(centre, c.numberPatch(centre, "16", "black", dice)), "black", dice),
+    ]));
+    """
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    b_centre, b_held, b_doubled, w_none, b_none, w_dice, b_dice, on_side, to_centre, renumbered, req_none, req_dice = json.loads(r.stdout)
+    # what each row shows, under the row's own name: centre has no choice shown
+    assert b_centre == {"cubeValue": "centre", "cubeHold": None, "cubeDouble": None}
+    assert b_held == {"cubeValue": "4", "cubeHold": "black", "cubeDouble": None}
+    assert b_doubled == {"cubeValue": "8", "cubeHold": None, "cubeDouble": "white"}
+    # a number from the centre: on the side opposite the one on roll; doubled to it with no dice, held by it with dice
+    assert w_none == {"at": "black", "value": 16, "offered": True} and b_none == {"at": "white", "value": 16, "offered": True}
+    assert w_dice == {"at": "black", "value": 16, "offered": False} and b_dice == {"at": "white", "value": 16, "offered": False}
+    # ... so the side on roll stays, and the dice are still used
+    assert req_none["on_roll"] == "white" and req_none["doubled"] is True
+    assert req_dice["on_roll"] == "black" and req_dice["doubled"] is False
+    # on a side, only the number changes (held stays held)
+    assert on_side == {"value": 32} and renumbered == {"at": "black", "value": 64, "offered": False}
+    assert to_centre == {"at": "centre"}
+    html = (STATIC / "index.html").read_text()
+    for name in ("cubeValue", "cubeHold", "cubeDouble"):
+        assert f'data-name="{name}"' in html
+    assert 'id="cube-value"' not in html and 'id="cube-offered"' not in html
+    js = (STATIC / "app.js").read_text()
+    assert "{ ...BgCube.buttons(s.cube), onRoll: s.onRoll," in js   # each row shows what buttons() gives under its own name
+    assert "BgCube.numberPatch(state.cube, v, state.onRoll, rolled())" in js
+    assert """[data-name="cubeValue"] button:not([data-value="centre"])""" in js[js.index("function choseInSheet("):]   # a number keeps the sheet open
+    assert "cubeHold: (v) => setCube({ at: v, offered: false })" in js and "cubeDouble: (v) => setCube({ at: v, offered: true })" in js
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
 def test_cube_request():
     script = f"""
     const c = require({json.dumps(str(STATIC / "cube.js"))});
@@ -634,3 +679,32 @@ def test_crawford_and_a_cube_on_one_side_follow_the_later_choice():
     assert no_cube["crawford"] is True and len(no_cube["alerts"]) == 1
     # the reading cut short before the board is in: the Crawford game stays
     assert cancelled["crawford"] is True and not cancelled["board"] and cancelled["kept"] == []
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_offered_cube_keeps_clear_of_checkers():
+    # TODO-160: the cube just offered lies in the field of the side that doubled, at the middle unless a checker is in the way
+    script = f"""
+    global.BgBoard = require({json.dumps(str(STATIC / "board.js"))});
+    const V = require({json.dumps(str(STATIC / "board-view.js"))});
+    const board = (set, fill) => {{
+      const points = Array(24).fill(fill || 0);
+      for (const [i, n] of Object.entries(set || {{}})) points[i] = n;
+      return {{ points, bar_white: 0, bar_black: 0 }};
+    }};
+    const at = (b, side) => V.offeredCubeCentre(b, "right", side);
+    console.log(JSON.stringify({{
+      emptyB: at(board(), "black"), emptyW: at(board(), "white"),
+      hitB: at(board({{ 20: 3 }}), "black"),        // 手前 doubled: a stack of 3 under the middle, in the upper row of the right field
+      hitW: at(board({{ 9: -3 }}), "white"),        // 奥 doubled: the same in the lower row of the left field
+      farB: at(board({{ 20: 1 }}), "black"),        // one checker, not reaching the cube: stays
+      full: at(board(null, 5), "black"),
+    }}));
+    """
+    out = json.loads(subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout)
+    assert out["emptyB"] == {"x": 492, "y": pytest.approx(220 - 75.25)}   # right field's middle, upper half (奥 was doubled)
+    assert out["emptyW"] == {"x": 164, "y": pytest.approx(220 + 75.25)}   # left field's middle, lower half
+    assert out["hitB"]["x"] == 516 and out["hitW"]["x"] == 188            # one point over (24), the nearest clear place
+    assert out["hitB"]["y"] == out["emptyB"]["y"]                          # the height does not change
+    assert out["farB"]["x"] == 492
+    assert out["full"]["x"] == 492                                         # every place is taken: the middle

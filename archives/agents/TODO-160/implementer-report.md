@@ -14,3 +14,15 @@
 ## 残る懸念
 - 画面での重なり（ダイス位置は出ないので問題ないはず、矢印・チェッカー）は未確認。
 - 並行の TODO-159（PR #473）が `TODO.md` を変えるなら、先頭の「残っている項目」の行などでぶつかるかもしれない。
+
+## 追記: 重なりを避ける横位置（main の指示 2026-10-20）
+- `analyzer/static/board-view.js`: `offeredCubeCentre(b, home, at)` を足し、`drawCube` が使う（`drawCube` に盤面 `b` を渡す）。
+  縦は今のまま。横は、ダブルした人の場の真ん中から 24 ずつ（ポイントの上・ポイントの間）、真ん中に近い順（0, -1, +1, -2, …, ±5）に、
+  キューブの四角（縁 2.5 含む）と積まれたチェッカー（最大 5 個、縁含む）の円が重ならない最初の位置を選ぶ。どこも重なるなら真ん中（今の位置）。
+  バーのチェッカーは場の外なので見ない。テストから呼べるよう `module.exports` と戻り値の `offeredCubeCentre` を足した。
+- テスト `analyzer/test_pwa.py` 末尾 `test_offered_cube_keeps_clear_of_checkers`: 空の盤で真ん中（手前・奥の 2 通り）、重なる局面で 24 ずれる（2 通り、縦は変わらない）、
+  重ならない局面（チェッカー 1 個）で真ん中、全部のポイントに 5 個で真ん中。
+- 壊すと落ちるか: 重なり判定を常に真／常に偽にすると落ちた（2 通りとも確認）。判定のすきまの閾値を `B.r - 6` に緩めても落ちない（境界の値は見ていない）。
+- 版: origin/main の 0.89.0（TODO-159）の次の 0.89.1（`analyzer/app.py`・`analyzer/static/app.js`）。main をマージして `README.md`・`app.py`・`app.js` のぶつかりを解いた
+  （README は main 側の文に TODO-160 の説明を足し直した）。`TODO.md` の先頭の行はぶつからなかった。
+- 検証: `uv run pytest analyzer/test_pwa.py analyzer/test_photo_view.py -q` → 46 passed。画面での見え方は未確認（verifier）。
