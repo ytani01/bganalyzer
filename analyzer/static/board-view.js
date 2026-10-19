@@ -231,12 +231,14 @@ const BgBoardView = (() => {
     }
   }
 
+  // The middle of the side's own right-hand field (手前: the right one in the picture, 奥: the left one).
+  const fieldCx = (side) => (side === "white" ? B.x0 + 6 * B.pw + B.bar : B.x0) + 3 * B.pw;
+
   // The dice where the side on roll throws them: in its own right-hand field (手前: the right one in
   // the picture, 奥: the left one), in its checker colour. No dice (before a roll): dashed, with "?".
   function drawDice(svg, dice, side, onPart) {
     const size = 34;
-    const field = side === "white" ? B.x0 + 6 * B.pw + B.bar : B.x0;
-    const cx = field + 3 * B.pw, cy = (B.y0 + B.y1) / 2;
+    const cx = fieldCx(side), cy = MID;
     (dice || [0, 0]).forEach((d, k) => {
       const x = cx + (k ? 6 : -size - 6), y = cy - size / 2;
       const g = tapPart(el("g", { class: "die" }, svg), "roll", onPart);
@@ -253,10 +255,14 @@ const BgBoardView = (() => {
   }
 
   // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
+  // A cube just offered (TODO-156) is not owned yet: it lies in the playing field of the side doubled, where that
+  // side throws its dice (as drawDice puts them), showing the doubled value (cube.value).
   // In the Crawford game it says "Crawford" instead of a number (TODO-152).
   function drawCube(svg, cube, home, onPart, match) {
     const size = COL.cube;
-    const x = sideX(home) + (COL.w - size) / 2, y = cubeY(cube.at);
+    const inField = BgCube.offered(cube);
+    const x = inField ? fieldCx(cube.at) - size / 2 : sideX(home) + (COL.w - size) / 2;
+    const y = inField ? MID - size / 2 : cubeY(cube.at);
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
     const crawford = match && match.length > 0 && match.crawford;
