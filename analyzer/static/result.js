@@ -128,7 +128,7 @@ const BgResult = (() => {
     const g = Math.min(e.double_take, e.double_pass) - e.no_double;
     if (!Number.isFinite(g)) return "";
     const { word } = cubeWords(c);
-    return `<p>${word}した場合のエクイティ差 ${c.mwc ? `${signed(g, 2)}%` : signed(g, 3)}（${word}とノーダブルの差。マイナスは${word}すると損）</p>`;
+    return `<p>${word}した場合の${c.mwc ? "MWC" : "エクイティ"}差 ${c.mwc ? `${signed(g, 2)}%` : signed(g, 3)}（プラスは${word}が得、マイナスは損）</p>`;
   }
 
   // A short spoken summary, not the numbers: the screen keeps the percentages and pips. Spoken, the sides
@@ -201,7 +201,7 @@ const BgResult = (() => {
         const { name, hit } = pts[i];
         s += pts[i - 1].hit ? "、" : "から";
         s += name + (hit ? (i < last ? "でヒットして" : "でヒット") : "");
-        if (i === last && pts[i - 1].hit && !hit && !m[2]) s += "へ";
+        if (i === last && pts[i - 1].hit && !hit && !m[2] && name !== "上がり") s += "へ";
       }
       return s + (m[2] ? `へ${kana(m[2])}枚` : "");
     }).join("、");

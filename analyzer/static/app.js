@@ -1045,7 +1045,7 @@ async function analyze() {
   if (state.autoSpeak) unlockSpeech();
   // The result on hand still fits the board and settings (e.g. worked out when the photo was read): just show it.
   if (state.result && !resultStale()) { go("outcome"); autoSpeak(); return; }
-  const text = state.plies === "3" ? "3-ply で解析しています（しばらくかかります）…" : "解析しています…";
+  const text = state.plies === "3" ? "gnubg 3-ply で解析しています（しばらくかかります）…" : "解析しています…";
   await withBusy(text, async () => {
     try {
       const dice = rolled();

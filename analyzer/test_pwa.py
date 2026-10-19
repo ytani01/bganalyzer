@@ -80,7 +80,7 @@ def test_result_words():
       esc: R.esc('<a href="x">&</a>'),
       move: R.moveToSpeech("bar/22* 13/8(2) 6/off"),
       kana: R.moveToSpeech("25/20 10/4 17/off"),
-      via: ["24/18*/13", "24/18*/13(2)", "24/18*/13*"].map(R.moveToSpeech),
+      via: ["24/18*/13", "24/18*/13(2)", "24/18*/13*", "6/4*/off"].map(R.moveToSpeech),
     }""")
     assert out["who"] == ["振った", "次に振る"]
     assert out["esc"] == "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;"
@@ -89,7 +89,8 @@ def test_result_words():
     # TODO-166: a hit on the way is said at the point, then the move goes on from there
     assert out["via"] == ["にじゅうよんからじゅうはちでヒットして、じゅうさんへ",
                           "にじゅうよんからじゅうはちでヒットして、じゅうさんへに枚",
-                          "にじゅうよんからじゅうはちでヒットして、じゅうさんでヒット"]
+                          "にじゅうよんからじゅうはちでヒットして、じゅうさんでヒット",
+                          "ろくからよんでヒットして、上がり"]
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
@@ -158,7 +159,7 @@ def test_result_html():
     }}""")
     # TODO-166: how far a double is from paying: the lower of double/take and double/pass, minus no double,
     # signed (cube: 0.5 / 1.2 / 1.0 -> 1.0 - 0.5; far, redouble: 0.6 / 0.5 / 1.0 -> 0.5 - 0.6); gnubg's % is no longer used
-    assert "ダブルした場合のエクイティ差 +0.500（ダブルとノーダブルの差。マイナスはダブルすると損）" in out["cube"]
+    assert "ダブルした場合のエクイティ差 +0.500（プラスはダブルが得、マイナスは損）" in out["cube"]
     assert "ダブルした場合のエクイティ差 -0.100" in out["far"][2] and "gnubg: No double, take (25.6%)" in out["far"][2]
     assert "リダブルした場合のエクイティ差 -0.100" in out["redouble"] and "ギャモン" in out["tooGood"]
     assert "ダブルした場合のエクイティ差 -0.100" in out["tooGood"]
@@ -739,7 +740,7 @@ def test_moves_as_differences_and_match_winning_chances():
     match = money | {"moves": mwc_moves, "mwc": {"white": 29.1, "black": 70.9},
                      "match": {"length": 7, "score": {"white": 3, "black": 5}, "crawford": False}}
     mcube = cube | {"mwc": {"no_double": 29.67, "double_take": 28.19, "double_pass": 40.05}}
-    out = _result_js(f"""[R.html({json.dumps(money)}, [3, 1]), R.html({json.dumps(match)}, [3, 1]),
+    out = _result_js(f"""[R.html({json.dumps(money)}, [3, 1]), R.html({json.dumps(match | {"plies": 3})}, [3, 1]),
       R.html({json.dumps(_RESULT | {"moves": None, "cube": cube})}, null),
       R.html({json.dumps(_RESULT | {"moves": None, "cube": mcube})}, null)]""")
     m, x, mc, xc = out
@@ -750,4 +751,8 @@ def test_moves_as_differences_and_match_winning_chances():
     assert "最善手と勝率はキューブなし" in m and "最善手と勝率はキューブなし" in x   # the plays are cubeless too
     assert "<td>キューブレス EMG</td><td>+0.050</td><td>-0.050</td>" in x
     assert "<th>キューブフル エクイティ</th>" in mc and "<td>+0.500</td>" in mc and "<td>-0.250</td>" in mc
+    # TODO-166: the difference in a match is the MWC's, in % with two decimals (min(28.19, 40.05) - 29.67)
+    assert "ダブルした場合のMWC差 -1.48%（プラスはダブルが得、マイナスは損）" in xc and "エクイティ差" not in xc
+    assert "ダブルした場合のエクイティ差 -0.750" in mc
+    assert "gnubg 3-ply（XG の 4-ply 相当）" in x
     assert "<th>キューブフル MWC</th>" in xc and "<td>29.67%</td>" in xc and "<td>40.05%</td>" in xc and "+0.500" not in xc
