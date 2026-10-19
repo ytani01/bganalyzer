@@ -111,6 +111,7 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
 - **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR（文書だけの PR は除く。TODO-064）と main への push で `uv run pytest analyzer` を実行する。
   `accuracy`（`.github/workflows/accuracy.yml`、TODO-035）は recognizer・samples・依存を変える PR で、認識の精度が
   `recognizer/accuracy_baseline.json` より下がっていないかを確かめる。
+  `ruff`（`.github/workflows/ruff.yml`、TODO-168）は .py・`pyproject.toml`・`uv.lock` を変える PR と main への push で `uv run ruff check` と `uv run ruff format --check` を実行する。
 
 - **ファイルの分け直し（2026-10-15、PR #174・#175・#178。動きは変えていない）:**
   analyzer は gnubg の呼び出しを `engine.py`、`POST /samples` を `samples.py`、リクエストの型を `models.py` に分けた。
