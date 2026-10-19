@@ -274,7 +274,7 @@ const BgBoardView = (() => {
   }
 
   // The way the side on roll goes, as a see-through U across the middle of the board (over the
-  // checkers, under the dice): from its farthest point along its far row, round at the end away from home, and back
+  // checkers, under the dice and the cube): from its farthest point along its far row, round at the end away from home, and back
   // along its near row to home (TODO-092). 手前's far row is the upper one, 奥's the lower one.
   function drawWay(svg, side, home) {
     const r = 42, yTop = MID - r, yBot = MID + r;
