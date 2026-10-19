@@ -449,7 +449,7 @@ def test_cube_decision_before_the_roll_with_dice():
     assert r["moves"] and c["question"] == "double" and c["rolled"] is True
     assert c["proper"] == analyze(pos, "white", plies=0)["cube"]["proper"]
     assert analyze(pos, "white", plies=0)["cube"]["rolled"] is False
-    assert summary_ja(r).endswith("振る前、白はダブルすべき、黒はパス")
+    assert summary_ja(r).endswith("ダブル／パス: 振る前、白はダブルすべき、黒はパス")   # TODO-166: the players' words first
     # ...but not when no double was due (TODO-096)
     r = analyze(Position.start(), "white", plies=0, dice=(3, 1))
     assert r["cube"] is None and r["moves"]
@@ -548,9 +548,15 @@ def test_optional_double_words():
 
     c = _cube_result({"proper": "Optional double, take", "equity": {}}, "white", 1, False)
     assert c["optional"] is True and c["double"] is False and c["take"] is True
-    assert cube_summary_ja(c) == "白はダブルしてもしなくてもよい（ダブルされたら黒はテイク）"
+    assert cube_summary_ja(c) == "オプショナルダブル／テイク: 白はダブルしてもしなくてもよい（ダブルされたら黒はテイク）"
     t = _cube_result({"proper": "Optional double, take", "equity": {}}, "white", 1, True)
-    assert cube_summary_ja(t) == "黒はテイク（白のダブルはしてもしなくてもよい）"
+    assert cube_summary_ja(t) == "オプショナルダブル／テイク: 黒はテイク（白のダブルはしてもしなくてもよい）"
+    # TODO-166: the other decisions in the players' words
+    no = _cube_result({"proper": "No double, take", "equity": {}}, "white", 1, False)
+    assert cube_summary_ja(no).startswith("ノーダブル／テイク: 白はまだダブルしない")
+    assert cube_summary_ja(_cube_result({"proper": "No redouble, take", "equity": {}}, "white", 2, False)).startswith("ノーリダブル／テイク: ")
+    assert cube_summary_ja(_cube_result({"proper": "Too good to double, pass", "equity": {}}, "white", 1, False)).startswith("トゥーグッド／パス: ")
+    assert cube_summary_ja(_cube_result({"proper": "Redouble, pass", "equity": {}}, "white", 2, False)).startswith("リダブル／パス: ")
 
 
 def test_api_match():
