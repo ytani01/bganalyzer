@@ -530,7 +530,7 @@ def test_every_screen_but_the_first_can_go_back_to_it():
     row = html[html.index('<div class="actrow">'):]
     assert row.index('id="back"') < row.index('id="to-start"') < row.index('id="recognize"')
     js = (STATIC / "app.js").read_text()
-    assert '$("to-start").hidden = s.step === "photo";' in js
+    assert '$("to-start").hidden = previousStep() === "photo";' in js   # TODO-149: not where 戻る goes there too
     assert '$("to-start").addEventListener("click", goStart);' in js
     body = js[js.index("function goStart()"):]
     body = body[:body.index("\n}\n")]
