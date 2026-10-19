@@ -257,12 +257,13 @@ const BgBoardView = (() => {
   // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
   // A cube just offered (TODO-156) is not owned yet: it lies in the playing field of the side doubled, where that
   // side throws its dice (as drawDice puts them; no dice, not even the dashed "?", are drawn then), showing the doubled value (cube.value).
+  // Vertically it sits halfway between the middle and the edge on that side's half (手前 lower, 奥 upper; TODO-158).
   // In the Crawford game it says "Crawford" instead of a number (TODO-152).
   function drawCube(svg, cube, home, onPart, match) {
     const size = COL.cube;
     const inField = BgCube.offered(cube);
     const x = inField ? fieldCx(cube.at) - size / 2 : sideX(home) + (COL.w - size) / 2;
-    const y = inField ? MID - size / 2 : cubeY(cube.at);
+    const y = inField ? MID + (cube.at === "white" ? 1 : -1) * (B.y1 - B.y0) / 4 - size / 2 : cubeY(cube.at);
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#f6eedb", stroke: "#8b1a2b", "stroke-width": 2.5 }, g);
     const crawford = match && match.length > 0 && match.crawford;
