@@ -26,3 +26,9 @@
 - 版: origin/main の 0.89.0（TODO-159）の次の 0.89.1（`analyzer/app.py`・`analyzer/static/app.js`）。main をマージして `README.md`・`app.py`・`app.js` のぶつかりを解いた
   （README は main 側の文に TODO-160 の説明を足し直した）。`TODO.md` の先頭の行はぶつからなかった。
 - 検証: `uv run pytest analyzer/test_pwa.py analyzer/test_photo_view.py -q` → 46 passed。画面での見え方は未確認（verifier）。
+
+## 追記: レビューの検討の反映
+- 候補を `[0, 1, -1, 3, -3, 5, -5]`（24 ずつ）にし、ポイントの間（偶数）を消した。同じ距離ならバー寄りを先に見る（どちらの場でも。`toBar`）。
+- テストに、21・22 の両方に 3 段ある局面（右の場、バー寄りの 420）と、その鏡（左の場、236）を足した。バー寄りの向きを固定する・±3 の順を逆にするのどちらでも落ちることを確かめた（±1 の順だけ逆にしても落ちない。柱が両方をふさぐため）。
+- README の説明を、ふだんは場の真ん中、重なるときだけポイントの上へずらす順に直した。TODO の節の見込みにレビューを入れ、決定を書き足した。
+- `uv run pytest analyzer/test_pwa.py -q` → 34 passed。

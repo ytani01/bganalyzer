@@ -695,9 +695,11 @@ def test_offered_cube_keeps_clear_of_checkers():
     const at = (b, side) => V.offeredCubeCentre(b, "right", side);
     console.log(JSON.stringify({{
       emptyB: at(board(), "black"), emptyW: at(board(), "white"),
-      hitB: at(board({{ 20: 3 }}), "black"),        // 手前 doubled: a stack of 3 under the middle, in the upper row of the right field
+      hitB: at(board({{ 20: 3 }}), "black"),        // 手前 doubled: a stack of 3 beside the middle, in the upper row of the right field
       hitW: at(board({{ 9: -3 }}), "white"),        // 奥 doubled: the same in the lower row of the left field
       farB: at(board({{ 20: 1 }}), "black"),        // one checker, not reaching the cube: stays
+      barB: at(board({{ 20: 3, 21: 3 }}), "black"),   // both ±1 taken, ±3 free: the one nearer the bar (the left one in the right field)
+      barW: at(board({{ 8: -3, 9: -3 }}), "white"),   // the same in the left field: the right one
       full: at(board(null, 5), "black"),
     }}));
     """
@@ -707,4 +709,5 @@ def test_offered_cube_keeps_clear_of_checkers():
     assert out["hitB"]["x"] == 516 and out["hitW"]["x"] == 188            # one point over (24), the nearest clear place
     assert out["hitB"]["y"] == out["emptyB"]["y"]                          # the height does not change
     assert out["farB"]["x"] == 492
+    assert out["barB"]["x"] == 492 - 72 and out["barW"]["x"] == 164 + 72    # towards the bar in both fields
     assert out["full"]["x"] == 492                                         # every place is taken: the middle

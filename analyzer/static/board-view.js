@@ -259,9 +259,9 @@ const BgBoardView = (() => {
   // The centre of a cube just offered to the side `at` (TODO-156, TODO-160): in the playing field of the other side, which doubled,
   // where it would throw its dice (as drawDice puts them). Vertically on the half of the side doubled (手前 lower, 奥 upper), as near the
   // middle as it can with a gap of 6 to the way arrow (TODO-158). Horizontally at the middle of that field, or, if that lands on a
-  // checker, at the nearest of the points and gaps between them (24 apart) where it clears every checker (TODO-160); the middle if none does.
+  // checker, over the nearest point (the one nearer the bar first, in both fields) where it clears every checker (TODO-160); the middle if none does.
   // The cube's edge (2.5 wide) and the checkers' (2.5 wide) count; the checkers on the bar lie outside the field.
-  const CUBE_SHIFTS = [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5];
+  const CUBE_SHIFTS = [0, 1, -1, 3, -3, 5, -5];   // from the middle, in 24s: the points (the even ones are gaps between points, never needed)
   function offeredCubeCentre(b, home, at) {
     const reach = COL.cube / 2 + 1.25;
     const x0 = fieldCx(at === "white" ? "black" : "white");
@@ -274,8 +274,9 @@ const BgBoardView = (() => {
       }
     }
     const clear = (x) => stacks.every(([sx, sy]) => Math.hypot(Math.max(Math.abs(x - sx) - reach, 0), Math.max(Math.abs(y - sy) - reach, 0)) >= B.r + 1.25);
-    const shift = CUBE_SHIFTS.find((s) => clear(x0 + s * B.pw / 2));
-    return { x: x0 + (shift || 0) * B.pw / 2, y };
+    const toBar = at === "white" ? 1 : -1;   // the left field's bar is on its right, the right field's on its left
+    const shift = CUBE_SHIFTS.find((s) => clear(x0 + s * toBar * B.pw / 2));
+    return { x: x0 + (shift || 0) * toBar * B.pw / 2, y };
   }
 
   // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
