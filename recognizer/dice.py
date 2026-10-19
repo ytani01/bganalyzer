@@ -36,13 +36,16 @@ def _bodies(gray, pitch):
             bw = ((gray > t) if light else (gray < t)).astype(np.uint8)
             bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, small)
             n, lab, st, _ = cv2.connectedComponentsWithStats(bw)
-            for i in range(1, n):
+            # the blobs of a die's size and area, picked out all at once (TODO-173)
+            big = np.maximum(st[:, 2], st[:, 3])
+            ok = (
+                (0.7 * smin <= big)
+                & (big <= 1.45 * smax)
+                & (st[:, 4] >= 0.4 * smin * smin)
+            )
+            ok[0] = False  # the background
+            for i in np.flatnonzero(ok):
                 x, y, w, h, a = st[i]
-                if (
-                    not (0.7 * smin <= max(w, h) <= 1.45 * smax)
-                    or a < 0.4 * smin * smin
-                ):
-                    continue
                 pts = cv2.findNonZero(
                     (lab[y : y + h, x : x + w] == i).astype(np.uint8)
                 ) + (x, y)

@@ -340,20 +340,24 @@ def fit_columns(ground_bgr, lay: Layout, m: int, reach: float = 1.2) -> Layout:
         centre = m + f0 + lay.a / 2
         by_shift = {}  # the best fit for each whole number of points the columns moved by
         best = None
-        for scale in np.linspace(1 - 0.125 * reach, 1 + 0.125 * reach, 31):
-            pw = lay.pw * scale
-            for off in np.linspace(-reach, reach, 97) * lay.pw:
-                c = centre + off + (np.arange(6) - 2.5) * pw
-                # near their tips the triangles are narrow peaks; the bar, the frame
-                # and a stack of checkers (about one pitch wide) are plateaus, so
-                # score peaks, not just colour
-                on = exact.interp(c, xs, prof)
-                side = (
-                    exact.interp(c - 0.5 * pw, xs, prof)
-                    + exact.interp(c + 0.5 * pw, xs, prof)
-                ) / 2
-                sc = (on - side).sum()
-                k = int(np.floor(off / lay.pw + 0.5))
+        # every (scale, offset) at once, element by element as one at a time (TODO-173)
+        pws = lay.pw * np.linspace(1 - 0.125 * reach, 1 + 0.125 * reach, 31)
+        offs = np.linspace(-reach, reach, 97) * lay.pw
+        pw = pws[:, None, None]
+        cs = centre + offs[None, :, None] + (np.arange(6) - 2.5) * pw
+        # near their tips the triangles are narrow peaks; the bar, the frame
+        # and a stack of checkers (about one pitch wide) are plateaus, so
+        # score peaks, not just colour
+        on = exact.interp(cs, xs, prof)
+        side = (
+            exact.interp(cs - 0.5 * pw, xs, prof)
+            + exact.interp(cs + 0.5 * pw, xs, prof)
+        ) / 2
+        scs = (on - side).sum(axis=2)
+        ks = np.floor(offs / lay.pw + 0.5)
+        for si in range(len(pws)):
+            for oi in range(len(offs)):
+                sc, c, k = scs[si, oi], cs[si, oi], int(ks[oi])
                 if k not in by_shift or sc > by_shift[k][0]:
                     by_shift[k] = (sc, c - m)
                 if best is None or sc > best[0]:
@@ -503,12 +507,11 @@ def _run_at(line, k0, max_off):
     k = idx[np.argmin(np.abs(idx - k0))]
     if abs(k - k0) > max_off:
         return 0, None
-    lo = k
-    while lo > 0 and line[lo - 1]:
-        lo -= 1
-    hi = k
-    while hi < len(line) - 1 and line[hi + 1]:
-        hi += 1
+    # the run's ends: the nearest False on each side (searched in the bytes, TODO-173)
+    b = line.tobytes()
+    lo = b.rfind(b"\x00", 0, k) + 1
+    hi = b.find(b"\x00", k + 1)
+    hi = len(b) - 1 if hi < 0 else hi - 1
     return hi - lo + 1, (lo + hi) / 2
 
 
