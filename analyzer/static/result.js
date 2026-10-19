@@ -69,12 +69,12 @@ const BgResult = (() => {
       out += `<h2>最善手（${NAME[r.on_roll]}・ダイス ${dice ? dice.join("-") : ""}）</h2>`;
       if (r.luck != null) out += `<p>Luck ${r.luck >= 0 ? "+" : ""}${r.luck.toFixed(3)}・${luckWords(r.luck)}</p>`;
       out += r.moves.length
-        ? `<ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>${moveValue(m, r.moves[0])}</span></li>`).join("")}</ol>` +
+        ? `<h3>この目で動かした後</h3><ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>${moveValue(m, r.moves[0])}</span></li>`).join("")}</ol>` +
           `<p class="note">番号は盤と同じく${NAME[r.on_roll]}の人から見たもの。行をタップで矢印を切り替え。</p>`
         : "<p>動かせる手がありません。</p>";
     }
     if (!r.game_over) {
-      out += `<table><tr><th></th><th>${NAME.white}</th><th>${NAME.black}</th></tr>` +
+      out += `<h3>ダイスを振る前</h3><table><tr><th></th><th>${NAME.white}</th><th>${NAME.black}</th></tr>` +
         `<tr><td>勝率</td><td>${p.white.win}%</td><td>${p.black.win}%</td></tr>` +
         // gnubg's gammon includes backgammons: split the win into parts that add up to it (TODO-128)
         sub(p, "シングル勝ち", (q) => q.win - q.gammon) +
