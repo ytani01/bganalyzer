@@ -39,11 +39,14 @@ def test_compare_exits_1_on_a_difference(tmp_path):
     same, other = tmp_path / "a.json", tmp_path / "b.json"
     same.write_text(json.dumps([["s", {"title": "結果"}]]))
     other.write_text(json.dumps([["s", {"title": "盤面"}]]))
-    run = lambda *f: subprocess.run(
-        [sys.executable, str(TOOLS / "ui_snapshot.py"), "compare", *map(str, f)],  # noqa: E731
-        capture_output=True,
-        text=True,
-    )
+
+    def run(*f):
+        return subprocess.run(
+            [sys.executable, str(TOOLS / "ui_snapshot.py"), "compare", *map(str, f)],
+            capture_output=True,
+            text=True,
+        )
+
     assert run(same, same).returncode == 0
     r = run(same, other)
     assert r.returncode == 1 and "[s] title" in r.stdout and "1 differences" in r.stdout

@@ -78,19 +78,19 @@ def _maps(ch, r0):
     S = R = None
     for f in RADII:
         r = f * r0
-        O = np.zeros(h * w, np.int64)
+        orient = np.zeros(h * w, np.int64)
         M = np.zeros(h * w, np.int64)
         for sgn in (1.0, -1.0):
             px = np.rint(xs + sgn * r * ux).astype(np.int64)
             py = np.rint(ys + sgn * r * uy).astype(np.int64)
             ok = (px >= 0) & (px < w) & (py >= 0) & (py < h)
             idx = py[ok] * w + px[ok]
-            O += np.bincount(idx, minlength=h * w)
+            orient += np.bincount(idx, minlength=h * w)
             M += np.bincount(idx, weights=weight[ok], minlength=h * w).astype(
                 np.int64
             )  # sums of integers: exact
-        O = np.minimum(O, ORIENT_CAP)
-        F = (O * O * M).reshape(h, w)
+        orient = np.minimum(orient, ORIENT_CAP)
+        F = (orient * orient * M).reshape(h, w)
         # a Gaussian of sigma r/4, as BOX_PASSES box filters (each adds a variance of (b^2 - 1) / 12)
         b = max(int(round((12 * (0.25 * r) ** 2 / BOX_PASSES + 1) ** 0.5)), 1) | 1
         for _ in range(BOX_PASSES):

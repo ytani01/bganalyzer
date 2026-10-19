@@ -313,10 +313,13 @@ def test_import_is_not_merged_when_gh_fails(monkeypatch):
 
     monkeypatch.setattr(import_collected.time, "sleep", lambda s: None)
     for failing in ("update-branch", "merge"):
-        gh = lambda *a: R(
-            json.dumps({"headRefOid": "a"}) if a[1] == "view" else "",
-            int(a[1] == failing),
-        )
+
+        def gh(*a):
+            return R(
+                json.dumps({"headRefOid": "a"}) if a[1] == "view" else "",
+                int(a[1] == failing),
+            )
+
         assert not import_collected.merge("u", gh, lambda m: None)
 
 

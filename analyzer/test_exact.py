@@ -14,10 +14,10 @@ import exact  # noqa: E402
 def _warp_in_numpy(img, M, size):
     """The integer bilinear warp exact.warp promises, written out in numpy."""
     w, h = size
-    (a, b, c), (d, e, f), (g, k, l) = exact.mat(exact.inv3(M))
+    (a, b, c), (d, e, f), (g, k, m33) = exact.mat(exact.inv3(M))
     u = np.arange(w, dtype=np.float64)[None, :]
     v = np.arange(h, dtype=np.float64)[:, None]
-    W = g * u + k * v + l
+    W = g * u + k * v + m33
     fx = np.floor((a * u + b * v + c) / W * 32 + 0.5).astype(np.int64)
     fy = np.floor((d * u + e * v + f) / W * 32 + 0.5).astype(np.int64)
     x0, y0, ax, ay = fx >> 5, fy >> 5, fx & 31, fy & 31

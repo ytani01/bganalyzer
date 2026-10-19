@@ -319,10 +319,10 @@ def warp(img, M, size, nearest=False):
     four neighbours with integer weights (fixed-point maps: checked to give the same pixels as doing
     it in numpy integers, with and without AVX2)."""
     w, h = size
-    (a, b, c), (d, e, f), (g, k, l) = mat(inv3(M))
+    (a, b, c), (d, e, f), (g, k, m33) = mat(inv3(M))
     u = np.arange(w, dtype=np.float64)[None, :]
     v = np.arange(h, dtype=np.float64)[:, None]
-    W = g * u + k * v + l
+    W = g * u + k * v + m33
     lim = 30000.0  # int16 maps; far outside (or behind the camera): just black
     X = np.clip(np.where(W > 0, (a * u + b * v + c) / W, -lim), -lim, lim)
     Y = np.clip(np.where(W > 0, (d * u + e * v + f) / W, -lim), -lim, lim)

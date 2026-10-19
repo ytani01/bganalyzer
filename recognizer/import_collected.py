@@ -66,12 +66,18 @@ def photo(d, name):
 def pick(d, names, samples):
     """The pairs to add, the oldest first, up to MAX: not in samples/ yet by id, no photo sent before
     under another name (same bytes as a pair already added, or as a photo in samples/), readable."""
-    sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+
+    def sha(p):
+        return hashlib.sha256(p.read_bytes()).hexdigest()
+
     have = {
         json.loads(p.read_text()).get("id")
         for p in samples.glob("collected-*.truth.json")
     }
-    added = lambda n: sample_id(n) in have
+
+    def added(n):
+        return sample_id(n) in have
+
     seen = {sha(p) for p in samples.glob("*") if p.suffix in (".jpg", ".png")}
     seen |= {
         sha(photo(d, n))
@@ -104,7 +110,10 @@ def paint(img, corners):
 
 def clean(t):
     """The fields the samples have, of the types they have (collected.valid has checked the rest)."""
-    is_int = lambda v: type(v) is int
+
+    def is_int(v):
+        return type(v) is int
+
     out = {
         k: t[k]
         for k in (
@@ -203,7 +212,9 @@ def describe(img, samples):
             ).stdout
         text = [
             r
-            for r in map(json.loads, (l for l in out.splitlines() if l.startswith("{")))
+            for r in map(
+                json.loads, (ln for ln in out.splitlines() if ln.startswith("{"))
+            )
             if r.get("type") == "result"
         ][-1]["result"]
         last = text.strip().splitlines()[-1].strip(" `*.").removeprefix("collected-")
@@ -220,7 +231,10 @@ def describe(img, samples):
 
 def free(samples, name):
     """name, or name-2, -3, ... when collected-<name> (or the first of a numbered run, -1) is taken."""
-    taken = lambda n: (samples / f"collected-{n}.truth.json").exists()
+
+    def taken(n):
+        return (samples / f"collected-{n}.truth.json").exists()
+
     if not (taken(name) or taken(name + "-1")):
         return name
     k = 2
@@ -262,24 +276,31 @@ def table_row(wt):
 def run(d, names):
     d = Path(d)
     with open(d / "import.log", "a") as f:
-        log = lambda m: print(time.strftime("%Y-%m-%d %H:%M"), m, file=f, flush=True)
+
+        def log(m):
+            return print(time.strftime("%Y-%m-%d %H:%M"), m, file=f, flush=True)
+
         try:
             _run(d, names, log)
         except BaseException as e:  # SystemExit too: the service was restarted
             err = (
                 getattr(e, "stderr", None) or ""
             ).strip()  # a CalledProcessError: why the command stopped
-            log(f"failed: {e!r}" + "".join(f"\n  {l}" for l in err.splitlines()[-20:]))
+            log(
+                f"failed: {e!r}" + "".join(f"\n  {ln}" for ln in err.splitlines()[-20:])
+            )
             raise
 
 
 def _run(d, names, log):
-    git = lambda *a, cwd=REPO: (
-        subprocess.run(
+    def git(*a, cwd=REPO):
+        return subprocess.run(
             ["git", *a], cwd=cwd, check=True, capture_output=True, text=True
         ).stdout
-    )
-    gh = lambda *a: subprocess.run(["gh", *a], cwd=REPO, capture_output=True, text=True)
+
+    def gh(*a):
+        return subprocess.run(["gh", *a], cwd=REPO, capture_output=True, text=True)
+
     prs = gh("pr", "list", "--state", "open", "--json", "headRefName,url")
     if prs.returncode:
         return log(f"could not list the PRs: {prs.stderr.strip()}")
@@ -366,9 +387,12 @@ def merge(url, gh, log):
     """Merge when the checks pass on the latest main (CLAUDE.md の「共同開発」); left open otherwise.
     Whether it was merged.
     The branch goes with the merge (the repository deletes merged branches)."""
-    head = lambda: json.loads(gh("pr", "view", url, "--json", "headRefOid").stdout)[
-        "headRefOid"
-    ]
+
+    def head():
+        return json.loads(gh("pr", "view", url, "--json", "headRefOid").stdout)[
+            "headRefOid"
+        ]
+
     while True:
         for _ in range(20):  # until the checks show up
             time.sleep(30)

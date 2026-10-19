@@ -43,9 +43,12 @@ def new_pairs(d):
 
 def valid(t):
     """Whether a truth has what evaluate.py reads, with the expected types."""
-    num = lambda v: (
-        isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
-    )
+
+    def num(v):
+        return (
+            isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+        )
+
     try:
         cube = t.get("cube")
         return (
