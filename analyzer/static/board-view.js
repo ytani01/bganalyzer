@@ -2,8 +2,8 @@
 // nothing but the scene, so the board screen, the photo beside it and the result screen are the
 // same drawing with different scenes.
 //
-// scene: {board, home, selected (point index, "bar" or null), photo (an image URL to show in the
-// playing area instead of the drawn board and checkers), dice, onRoll, cube {at, value},
+// scene: {board, home, selected (point index, "bar" or null), photo (an image URL: draws nothing but
+// the photo in the playing area, none of the rest), dice, onRoll, cube {at, value},
 // move {hops, mover} (arrows of a best move, BgMoves.hops), match {length (0: a money game), white,
 // black, crawford} (BgCube.fixMatch)}.
 // onPart (the board screen only): called with "home" (a tray), "colour" (a pip count), "match", "cube"
@@ -76,6 +76,11 @@ const BgBoardView = (() => {
   function draw(svg, scene, onSelect, onPart) {
     svg.textContent = "";
     const { board: b, home, photo } = scene;
+    if (photo) {   // the photo beside the board: nothing but the photo, cropped to the playing area (TODO-176)
+      svg.setAttribute("viewBox", `${PLAY.x} ${PLAY.y} ${PLAY.w} ${PLAY.h}`);
+      el("image", { href: photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
+      return;
+    }
     const match = scene.match && (scene.match.length || onPart) ? scene.match : null;
     const y0 = VIEW.y - (match ? MATCH_H : 0), h = VIEW.h + (match ? MATCH_H : 0);
     // Nothing around but 2 for the trays' edge (4 wide) beyond the column and the same beyond the frame (TODO-163).
@@ -87,15 +92,10 @@ const BgBoardView = (() => {
     for (const side of ["white", "black"]) {
       tapPart(el("rect", { x: sideX(home), y: trayY(side), width: COL.w, height: COL.tray, rx: 4, fill: "var(--felt)", stroke: "var(--frame)", "stroke-width": 4 }, svg), "home", onPart);
     }
-    if (photo) {
-      el("image", { href: photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
-    } else {
-      el("rect", { x: B.x0, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
-      el("rect", { x: B.x0 + 6 * B.pw + B.bar, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
-    }
+    el("rect", { x: B.x0, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
+    el("rect", { x: B.x0 + 6 * B.pw + B.bar, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
     drawPoints(svg, scene, onSelect);
     drawBar(svg, scene, onSelect);
-    if (photo) return;   // the photo shows the checkers itself
     if (scene.onRoll && !BgCube.offered(scene.cube)) drawWay(svg, scene.onRoll, home);   // no arrow while a double waits on take or pass, like the dice below (TODO-164)
     drawBorneOff(svg, b, home);
     drawPips(svg, b, home, onPart);
@@ -105,17 +105,17 @@ const BgBoardView = (() => {
   }
 
   // Triangles, point numbers, checkers, the selection and a tap area for each point.
-  function drawPoints(svg, { board: b, home, selected, photo, onRoll }, onSelect) {
+  function drawPoints(svg, { board: b, home, selected, onRoll }, onSelect) {
     const half = (B.y1 - B.y0) / 2;
     for (const top of [true, false]) {
       for (let c = 0; c < 12; c++) {
         const i = BgBoard.pointAt(home, top, c);
         const x = colX(c), h = B.pw / 2;
         const base = top ? B.y0 : B.y1, tip = top ? B.y0 + B.tri : B.y1 - B.tri;
-        if (!photo) el("polygon", { points: `${x - h},${base} ${x + h},${base} ${x},${tip}`, fill: c % 2 ? "var(--tri-b)" : "var(--tri-a)" }, svg);
+        el("polygon", { points: `${x - h},${base} ${x + h},${base} ${x},${tip}`, fill: c % 2 ? "var(--tri-b)" : "var(--tri-a)" }, svg);
         el("text", { x, y: top ? 16 : 434, class: "num" }, svg).textContent = BgBoard.number(i, onRoll);
         const n = b.points[i];
-        if (n && !photo) drawStack(svg, x, top, Math.abs(n), n > 0 ? "white" : "black");
+        if (n) drawStack(svg, x, top, Math.abs(n), n > 0 ? "white" : "black");
         if (selected === i) {
           el("rect", { x: x - h + 1, y: top ? B.y0 + 1 : B.y0 + half + 1, width: B.pw - 2, height: half - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
         }
@@ -130,9 +130,9 @@ const BgBoardView = (() => {
   }
 
   // The bar: 手前's checkers in the upper half, 奥's in the lower half (each stack from the middle).
-  function drawBar(svg, { board: b, selected, photo }, onSelect) {
-    if (b.bar_black && !photo) drawStack(svg, BAR_X, false, b.bar_black, "black", true);
-    if (b.bar_white && !photo) drawStack(svg, BAR_X, true, b.bar_white, "white", true);
+  function drawBar(svg, { board: b, selected }, onSelect) {
+    if (b.bar_black) drawStack(svg, BAR_X, false, b.bar_black, "black", true);
+    if (b.bar_white) drawStack(svg, BAR_X, true, b.bar_white, "white", true);
     if (selected === "bar") {
       el("rect", { x: BAR_X - B.bar / 2 + 1, y: B.y0 + 1, width: B.bar - 2, height: B.y1 - B.y0 - 2, fill: "none", stroke: "var(--sel)", "stroke-width": 3 }, svg);
     }
