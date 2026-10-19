@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.80.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.81.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -150,6 +150,7 @@ part((s) => s.step, (s) => {
     sp.classList.toggle("done", STEPS.indexOf(sp.dataset.step) < at);
   }
   $("back").hidden = s.step === "photo";
+  $("to-start").hidden = s.step === "photo";   // TODO-148
   $("title").textContent = STEP_TITLES[s.step];
 });
 
@@ -558,6 +559,14 @@ const previousStep = () =>
 function goBack() {
   if (previousStep() === "photo" && history.state && history.state.bg) history.back();
   else go(previousStep());
+}
+
+// Straight back to the photo screen from any screen (TODO-148). The history entry is used up as with
+// goBack; the popstate it fires finds the photo screen already shown and does nothing.
+function goStart() {
+  const inApp = history.state && history.state.bg;
+  go("photo");
+  if (inApp) history.back();
 }
 
 async function withBusy(text, work, scanning = false, cancel = null) {
@@ -1220,6 +1229,7 @@ for (const id of ["camera", "file"]) {
 }
 $("manual").addEventListener("click", setUpByHand);
 $("back").addEventListener("click", goBack);
+$("to-start").addEventListener("click", goStart);
 window.addEventListener("popstate", () => {
   if (state.busy) { history.pushState({ bg: true }, ""); return; }   // wait for the server
   if (state.step !== "photo") go(previousStep());
