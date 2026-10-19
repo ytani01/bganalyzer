@@ -260,7 +260,7 @@ const BgBoardView = (() => {
 
   // The centre of a cube just offered to the side `at` (TODO-156, TODO-160): in the playing field of the other side, which doubled,
   // where it would throw its dice (as drawDice puts them). Vertically on the half of the side doubled (手前 lower, 奥 upper), as near the
-  // middle as it can with a gap of 6 to the way arrow (TODO-158). Horizontally at the middle of that field, or, if that lands on a
+  // middle as it can with a gap of 6 to where the way arrow would run (TODO-158; the arrow is not drawn then, TODO-164). Horizontally at the middle of that field, or, if that lands on a
   // checker, over the nearest point (the one nearer the bar first, in both fields) where it clears every checker (TODO-160); the middle if none does.
   // The cube's edge (2.5 wide) and the checkers' (2.5 wide) count; the checkers on the bar lie outside the field.
   const CUBE_SHIFTS = [0, 1, -1, 3, -3, 5, -5];   // from the middle, in 24s: the points (the even ones are gaps between points, never needed)
@@ -282,7 +282,7 @@ const BgBoardView = (() => {
   }
 
   // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
-  // A cube just offered is not owned yet: it lies in the playing field (offeredCubeCentre; no dice, not even the dashed "?", are drawn then),
+  // A cube just offered is not owned yet: it lies in the playing field (offeredCubeCentre; no dice, not even the dashed "?", and no way arrow are drawn then),
   // showing the doubled value (cube.value).
   // In the Crawford game it says "Crawford" instead of a number (TODO-152).
   function drawCube(svg, cube, home, onPart, match, b) {
