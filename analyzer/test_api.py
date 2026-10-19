@@ -276,6 +276,12 @@ def test_git_commit_follows_a_worktree(tmp_path):
     assert git_commit(work / ".git") == "fedcba9"  # a loose ref in the main .git
     (wt_git / "HEAD").write_text(sha + "\n")  # detached
     assert git_commit(work / ".git") == "0123456"
+    # a relative gitdir is taken from the directory holding ".git"
+    (work / ".git").write_text("gitdir: ../main/.git/worktrees/wt\n")
+    assert git_commit(work / ".git") == "0123456"
+    (main_git / "HEAD").write_bytes(b"\xff\xfe")
+    (wt_git / "HEAD").write_bytes(b"\xff\xfe")
+    assert git_commit(work / ".git") is None  # not text: no commit id, no error
 
 
 def _corner_error(found, truth, shape):

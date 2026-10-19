@@ -160,7 +160,7 @@ def git_commit(git_dir: Path = REPO / ".git") -> str | None:
                     line.split()[0] for line in packed if line.endswith(" " + ref)
                 )
         return head[:7] if len(head) >= 7 else None
-    except (OSError, StopIteration):
+    except (OSError, StopIteration, UnicodeDecodeError):
         return None
 
 

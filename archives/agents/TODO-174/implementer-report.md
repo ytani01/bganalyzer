@@ -13,3 +13,9 @@
 ## 残る懸念
 - PR #510（未マージ）が analyzer を 0.93.0 に上げている。#510 が先にマージされたら、この PR は rebase して 0.93.1 に直す必要がある（`app.py`・`app.js` の 2 か所がぶつかる）。
 - 壊すと落ちるかは確認していない（reviewer / verifier に任せる）。
+
+## レビュー後の修正
+- `git_commit()` の except に `UnicodeDecodeError` を足した。
+- 相対 gitdir（`gitdir: ../main/.git/worktrees/wt`）と、HEAD が文字列でない場合のテストを足した。
+- 基点を `git_dir.parent` から `Path.cwd()` に壊すと `test_git_commit_follows_a_worktree` が落ちることを 1 回確かめて、戻した。
+- `analyzer/test_api.py`: 53 passed、ruff check・format 通った。
