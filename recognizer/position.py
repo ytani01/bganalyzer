@@ -6,10 +6,11 @@ Board convention (from White's point of view, White sits at the bottom of the ph
   White moves 24 -> 1 (home board = points 1..6, bottom right).
   Black's point number for index i is 24 - i.
 """
+
 from __future__ import annotations
 
 import base64
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 
 START = [0] * 24
 START[5], START[7], START[12], START[23] = 5, 3, 5, 2
@@ -43,8 +44,14 @@ class Position:
         return errs
 
     def pips(self) -> tuple[int, int]:
-        w = sum((i + 1) * n for i, n in enumerate(self.points) if n > 0) + 25 * self.bar_white
-        b = sum((24 - i) * -n for i, n in enumerate(self.points) if n < 0) + 25 * self.bar_black
+        w = (
+            sum((i + 1) * n for i, n in enumerate(self.points) if n > 0)
+            + 25 * self.bar_white
+        )
+        b = (
+            sum((24 - i) * -n for i, n in enumerate(self.points) if n < 0)
+            + 25 * self.bar_black
+        )
         return w, b
 
     # --- gnubg Position ID -------------------------------------------------
@@ -61,7 +68,10 @@ class Position:
             return None
         first, second = (white, black) if on_roll == "white" else (black, white)
         bits = []
-        for arr in (second, first):  # gnubg: opponent (anBoard[0]) first, then player on roll
+        for arr in (
+            second,
+            first,
+        ):  # gnubg: opponent (anBoard[0]) first, then player on roll
             for n in arr:
                 bits += [1] * n + [0]
         bits += [0] * (80 - len(bits))
@@ -111,12 +121,21 @@ class Position:
     def ascii(self) -> str:
         def cell(n):
             return "  ." if n == 0 else (f"{n:>2}W" if n > 0 else f"{-n:>2}B")
-        top = "".join(cell(self.points[i]) for i in range(12, 18)) + " |" + \
-              "".join(cell(self.points[i]) for i in range(18, 24))
-        bot = "".join(cell(self.points[i]) for i in range(11, 5, -1)) + " |" + \
-              "".join(cell(self.points[i]) for i in range(5, -1, -1))
+
+        top = (
+            "".join(cell(self.points[i]) for i in range(12, 18))
+            + " |"
+            + "".join(cell(self.points[i]) for i in range(18, 24))
+        )
+        bot = (
+            "".join(cell(self.points[i]) for i in range(11, 5, -1))
+            + " |"
+            + "".join(cell(self.points[i]) for i in range(5, -1, -1))
+        )
         pw, pb = self.pips()
-        return (f" 13 14 15 16 17 18   19 20 21 22 23 24\n{top}\n{bot}\n"
-                f" 12 11 10  9  8  7    6  5  4  3  2  1\n"
-                f"bar W{self.bar_white} B{self.bar_black}  off W{self.off_white} B{self.off_black}"
-                f"  pips W{pw} B{pb}")
+        return (
+            f" 13 14 15 16 17 18   19 20 21 22 23 24\n{top}\n{bot}\n"
+            f" 12 11 10  9  8  7    6  5  4  3  2  1\n"
+            f"bar W{self.bar_white} B{self.bar_black}  off W{self.off_white} B{self.off_black}"
+            f"  pips W{pw} B{pb}"
+        )

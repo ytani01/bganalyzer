@@ -15,6 +15,7 @@ goes in as a PR like any other change to the recognizer (CLAUDE.md: the accuracy
 Each try reads every sample once, so the whole run is (parameters x steps + 2) readings of all the
 samples: hours on the Raspberry Pi. Run it there when the photos have piled up (docs/raspi.md).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,10 +33,24 @@ SAMPLES = os.path.join(HERE, "..", "samples")
 
 # module.NAME: constants read when the recognizer runs (not baked into a default argument)
 PARAMS = [
-    "checkers.CIRCLE_MIN_SCORE", "checkers.LONE_MIN_SCORE", "checkers.STACK_SKEW", "checkers.GAP_MIN_SCORE",
-    "checkers.OUTLINE_SUPPORT", "checkers.PATTERN_SUPPORT", "checkers.PATTERN_DISTINCT", "checkers.BAR_COLOUR_TOL",
-    "checkers.LONE_COLOUR_TOL", "geometry.COL_MIN_SCORE", "checkers.TEX_MIN", "checkers.TEX_MIN_COVERED", "checkers.TEX_HIDDEN", "checkers.TEX_SHOWN",
-    "dice.PIP_CONTRAST", "cube.MIDDLE", "cube_value.SCORE_MIN", "cube_value.GAP_MIN",
+    "checkers.CIRCLE_MIN_SCORE",
+    "checkers.LONE_MIN_SCORE",
+    "checkers.STACK_SKEW",
+    "checkers.GAP_MIN_SCORE",
+    "checkers.OUTLINE_SUPPORT",
+    "checkers.PATTERN_SUPPORT",
+    "checkers.PATTERN_DISTINCT",
+    "checkers.BAR_COLOUR_TOL",
+    "checkers.LONE_COLOUR_TOL",
+    "geometry.COL_MIN_SCORE",
+    "checkers.TEX_MIN",
+    "checkers.TEX_MIN_COVERED",
+    "checkers.TEX_HIDDEN",
+    "checkers.TEX_SHOWN",
+    "dice.PIP_CONTRAST",
+    "cube.MIDDLE",
+    "cube_value.SCORE_MIN",
+    "cube_value.GAP_MIN",
 ]
 STEPS = (0.8, 0.9, 1.1, 1.2)
 KEYS = ("points", "bar", "home", "dice", "cube", "cube_value")
@@ -72,10 +87,20 @@ def _setup(overrides):
 
 def _measure(path):
     import check_accuracy
+
     try:
         return check_accuracy.measure(path)
-    except Exception as e:   # a setting may break a sample: count it as read wrong everywhere
-        return {"points": 0, "bar": False, "home": False, "dice": "WRONG", "cube": "WRONG", "error": str(e)[:200]}
+    except (
+        Exception
+    ) as e:  # a setting may break a sample: count it as read wrong everywhere
+        return {
+            "points": 0,
+            "bar": False,
+            "home": False,
+            "dice": "WRONG",
+            "cube": "WRONG",
+            "error": str(e)[:200],
+        }
 
 
 def read_all(files, overrides, jobs):
@@ -85,11 +110,16 @@ def read_all(files, overrides, jobs):
 
 def name_of(path):
     base = os.path.basename(path).removesuffix(".truth.json")
-    return base if os.path.dirname(os.path.abspath(path)) == os.path.abspath(SAMPLES) else "collected/" + base
+    return (
+        base
+        if os.path.dirname(os.path.abspath(path)) == os.path.abspath(SAMPLES)
+        else "collected/" + base
+    )
 
 
 def rank(key, v):
     import check_accuracy
+
     r = check_accuracy.RANK.get(key)
     return r.index(v) if r else v
 
@@ -120,9 +150,17 @@ def fmt(v):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--params", help="comma-separated module.NAME (default: PARAMS)")
-    ap.add_argument("--steps", help="comma-separated factors (default: 0.8,0.9,1.1,1.2)")
-    ap.add_argument("--collected", help="a folder of pairs kept with 「サーバーに保存する」 (user-*.truth.json)")
-    ap.add_argument("--only", help="comma-separated sample names from samples/ (default: all real ones)")
+    ap.add_argument(
+        "--steps", help="comma-separated factors (default: 0.8,0.9,1.1,1.2)"
+    )
+    ap.add_argument(
+        "--collected",
+        help="a folder of pairs kept with 「サーバーに保存する」 (user-*.truth.json)",
+    )
+    ap.add_argument(
+        "--only",
+        help="comma-separated sample names from samples/ (default: all real ones)",
+    )
     ap.add_argument("--jobs", type=int, default=None)
     ap.add_argument("--out", default=None, help="write the report here too (Markdown)")
     a = ap.parse_args(argv)
@@ -137,7 +175,7 @@ def main(argv=None):
             t = json.load(fh)
         name = os.path.basename(f).removesuffix(".truth.json")
         if t.get("synthetic") and not (a.only and name in a.only.split(",")):
-            continue   # copies of other photos with a cube pasted in: their points count twice
+            continue  # copies of other photos with a cube pasted in: their points count twice
         if a.only and name not in a.only.split(","):
             continue
         files.append(f)
@@ -151,25 +189,42 @@ def main(argv=None):
     if not files:
         sys.exit("no samples")
 
-    lines = [f"# 認識のしきい値の試し（tune.py、{time.strftime('%Y-%m-%d %H:%M')}）", "",
-             f"サンプル {len(files)} 枚。1 つずつ変えて、ポイントが増え、どのサンプルのどの項目も悪くならないものを候補にする。", ""]
+    lines = [
+        f"# 認識のしきい値の試し（tune.py、{time.strftime('%Y-%m-%d %H:%M')}）",
+        "",
+        f"サンプル {len(files)} 枚。1 つずつ変えて、ポイントが増え、どのサンプルのどの項目も悪くならないものを候補にする。",
+        "",
+    ]
     print("\n".join(lines), flush=True)
     t0 = time.time()
     base = read_all(files, {}, a.jobs)
     total = sum(r["points"] for r in base.values())
-    print(f"今の設定: {total}/{24 * len(files)} ポイント（{time.time() - t0:.0f} 秒）", flush=True)
-    lines += [f"今の設定: **{total}/{24 * len(files)}** ポイント", "",
-              "| パラメータ | 今 | 試した値 | ポイント | 良くなった | 悪くなった |", "|---|---|---|---|---|---|"]
+    print(
+        f"今の設定: {total}/{24 * len(files)} ポイント（{time.time() - t0:.0f} 秒）",
+        flush=True,
+    )
+    lines += [
+        f"今の設定: **{total}/{24 * len(files)}** ポイント",
+        "",
+        "| パラメータ | 今 | 試した値 | ポイント | 良くなった | 悪くなった |",
+        "|---|---|---|---|---|---|",
+    ]
     found = {}
     for param in params:
         module, name = param.split(".")
         if name in default_args(module):
-            lines.append(f"| {param} | {fmt(current(param))} | （関数の既定値に使われていて、この方法では変えられない） | | | |")
+            lines.append(
+                f"| {param} | {fmt(current(param))} | （関数の既定値に使われていて、この方法では変えられない） | | | |"
+            )
             continue
         now_v = current(param)
         best = None
         for f in steps:
-            v = type(now_v)(round(now_v * f)) if isinstance(now_v, int) else round(now_v * f, 6)
+            v = (
+                type(now_v)(round(now_v * f))
+                if isinstance(now_v, int)
+                else round(now_v * f, 6)
+            )
             if v == now_v:
                 continue
             res = read_all(files, {param: v}, a.jobs)
@@ -183,19 +238,28 @@ def main(argv=None):
             found[param] = best
     lines += ["", "## 候補", ""]
     if not found:
-        lines.append("ポイントが増えて、何も悪くならない設定は無かった。今の設定のままでよい。")
+        lines.append(
+            "ポイントが増えて、何も悪くならない設定は無かった。今の設定のままでよい。"
+        )
     else:
         for param, (v, gain, better) in sorted(found.items(), key=lambda kv: -kv[1][1]):
-            lines.append(f"- `{param}` を {fmt(current(param))} → **{fmt(v)}**（{gain:+d} ポイント）: " + "、".join(better[:8]))
+            lines.append(
+                f"- `{param}` を {fmt(current(param))} → **{fmt(v)}**（{gain:+d} ポイント）: "
+                + "、".join(better[:8])
+            )
         together = {p: v for p, (v, _, _) in found.items()}
         res = read_all(files, together, a.jobs)
         gain, better, worse = compare(base, res)
-        lines += ["", f"全部を一緒に変えると: {gain:+d} ポイント、良くなった {len(better)}、悪くなった {len(worse)}"
-                  + ("" if not worse else "（" + "、".join(worse[:8]) + "）"), "",
-                  "採るときは、コードの定数を変える PR を作り、`check_accuracy.py --update` を同じ PR に入れる（CLAUDE.md）。"]
+        lines += [
+            "",
+            f"全部を一緒に変えると: {gain:+d} ポイント、良くなった {len(better)}、悪くなった {len(worse)}"
+            + ("" if not worse else "（" + "、".join(worse[:8]) + "）"),
+            "",
+            "採るときは、コードの定数を変える PR を作り、`check_accuracy.py --update` を同じ PR に入れる（CLAUDE.md）。",
+        ]
     lines.append(f"\nかかった時間: {(time.time() - t0) / 60:.0f} 分")
     report = "\n".join(lines) + "\n"
-    print("\n".join(lines[lines.index("## 候補"):]))
+    print("\n".join(lines[lines.index("## 候補") :]))
     if a.out:
         with open(a.out, "w") as f:
             f.write(report)

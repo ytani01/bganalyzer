@@ -1,4 +1,5 @@
 """The photo shown next to the read board: the geometry the API returns, and photo.js (with Node when installed)."""
+
 import json
 import shutil
 import subprocess
@@ -24,64 +25,126 @@ def test_analyze_photo_returns_geometry():
     t = json.loads((SAMPLES / "screen-app-grey-shot.truth.json").read_text())
     corners = [v for xy in t["corners_TL_TR_BR_BL"] for v in xy]
     with open(SAMPLES / t["image"], "rb") as f:
-        res = client.post("/analyze-photo", files={"image": (t["image"], f)},
-                          data={"corners": ",".join(map(str, corners)), "home": t["home"],
-                                "bottom_colour": str(t["bottom_colour"]), "plies": "0"})
+        res = client.post(
+            "/analyze-photo",
+            files={"image": (t["image"], f)},
+            data={
+                "corners": ",".join(map(str, corners)),
+                "home": t["home"],
+                "bottom_colour": str(t["bottom_colour"]),
+                "plies": "0",
+            },
+        )
     assert res.status_code == 200, res.text
     g = res.json()["geometry"]
     assert len(g["corners"]) == 4
     for (x, y), (tx, ty) in zip(g["corners"], t["corners_TL_TR_BR_BL"]):
-        assert abs(x - tx) < 40 and abs(y - ty) < 40   # refined, but near the tapped corners
+        assert (
+            abs(x - tx) < 40 and abs(y - ty) < 40
+        )  # refined, but near the tapped corners
     cols = g["columns"]
     assert len(cols) == 12 and cols == sorted(cols) and 0 < cols[0] and cols[-1] < 1
     assert cols[5] < g["bar"][0] < g["bar"][1] < cols[6]
     # for the reading overlay (scan.js): triangle tips and checker circles in image pixels
-    xs, ys = [x for x, _ in t["corners_TL_TR_BR_BL"]], [y for _, y in t["corners_TL_TR_BR_BL"]]
-    assert isinstance(g["tips"], list) and all(min(xs) - 40 < x < max(xs) + 40 and min(ys) - 40 < y < max(ys) + 40 for x, y in g["tips"])
+    xs, ys = (
+        [x for x, _ in t["corners_TL_TR_BR_BL"]],
+        [y for _, y in t["corners_TL_TR_BR_BL"]],
+    )
+    assert isinstance(g["tips"], list) and all(
+        min(xs) - 40 < x < max(xs) + 40 and min(ys) - 40 < y < max(ys) + 40
+        for x, y in g["tips"]
+    )
     ck = g["checkers"]
     assert ck and all(r > 0 and side in ("white", "black") for _, _, r, side in ck)
     assert {side for *_, side in ck} == {"white", "black"}
     # the dice read (screen-app-grey-shot: 4 and 2) and the cube in the middle (found since recognizer 0.20.0) as squares in image pixels
     assert sorted(d["value"] for d in g["dice"]) == [2, 4]
     for d in g["dice"]:
-        assert len(d["quad"]) == 4 and all(min(xs) < x < max(xs) and min(ys) < y < max(ys) for x, y in d["quad"])
+        assert len(d["quad"]) == 4 and all(
+            min(xs) < x < max(xs) and min(ys) < y < max(ys) for x, y in d["quad"]
+        )
     assert g["cube"]["at"] == "centre" and len(g["cube"]["quad"]) == 4
 
 
 def test_analyze_photo_streams_the_stages():
     t = json.loads((SAMPLES / "screen-app-green-far.truth.json").read_text())
     corners = ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy)
-    data = {"corners": corners, "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0"}
+    data = {
+        "corners": corners,
+        "home": t["home"],
+        "bottom_colour": str(t["bottom_colour"]),
+        "plies": "0",
+    }
     with open(SAMPLES / t["image"], "rb") as f:
-        res = client.post("/analyze-photo", files={"image": (t["image"], f)}, data=data | {"stream": "true"})
-    assert res.status_code == 200 and res.headers["content-type"].startswith("application/x-ndjson")
+        res = client.post(
+            "/analyze-photo",
+            files={"image": (t["image"], f)},
+            data=data | {"stream": "true"},
+        )
+    assert res.status_code == 200 and res.headers["content-type"].startswith(
+        "application/x-ndjson"
+    )
     events = [json.loads(line) for line in res.text.splitlines()]
-    assert [e["stage"] for e in events] == ["fit"] * 4 + ["tips", "checkers", "counts", "dice", "cube", "done"]
+    assert [e["stage"] for e in events] == ["fit"] * 4 + [
+        "tips",
+        "checkers",
+        "counts",
+        "dice",
+        "cube",
+        "done",
+    ]
     fits = [e for e in events if e["stage"] == "fit"]
-    assert [(f["by"], f["round"]) for f in fits] == [("edges", 1), ("edges", 2), ("triangles", 1), ("triangles", 2)]
+    assert [(f["by"], f["round"]) for f in fits] == [
+        ("edges", 1),
+        ("edges", 2),
+        ("triangles", 1),
+        ("triangles", 2),
+    ]
     assert all(len(f["corners"]) == 4 and len(f["columns"]) == 12 for f in fits)
     by = {e["stage"]: e for e in events}
     assert len(by["checkers"]["columns"]) == 12
-    assert sorted(d["value"] for d in by["dice"]["dice"]) == [4, 5] and by["cube"]["cube"]["at"] == "black"
+    assert (
+        sorted(d["value"] for d in by["dice"]["dice"]) == [4, 5]
+        and by["cube"]["cube"]["at"] == "black"
+    )
     result = by["done"]["result"]
     assert result["dice_read"] == [5, 4]
     # the counts by the points add up to the board read
     counts, rec = by["counts"]["counts"], result["recognized"]
-    assert sum(c["n"] for c in counts if c["side"] == "white") == sum(n for n in rec["points"] if n > 0) + rec["bar_white"]
-    assert sum(c["n"] for c in counts if c["side"] == "black") == -sum(n for n in rec["points"] if n < 0) + rec["bar_black"]
-    assert result["geometry"]["counts"] == counts   # the same as without streaming
+    assert (
+        sum(c["n"] for c in counts if c["side"] == "white")
+        == sum(n for n in rec["points"] if n > 0) + rec["bar_white"]
+    )
+    assert (
+        sum(c["n"] for c in counts if c["side"] == "black")
+        == -sum(n for n in rec["points"] if n < 0) + rec["bar_black"]
+    )
+    assert result["geometry"]["counts"] == counts  # the same as without streaming
     with open(SAMPLES / t["image"], "rb") as f:
-        plain = client.post("/analyze-photo", files={"image": (t["image"], f)}, data=data).json()
-    assert plain["recognized"] == result["recognized"] and plain["geometry"] == result["geometry"]
-    assert fits[-1]["corners"] == result["geometry"]["corners"]   # the last round is where it ended up
+        plain = client.post(
+            "/analyze-photo", files={"image": (t["image"], f)}, data=data
+        ).json()
+    assert (
+        plain["recognized"] == result["recognized"]
+        and plain["geometry"] == result["geometry"]
+    )
+    assert (
+        fits[-1]["corners"] == result["geometry"]["corners"]
+    )  # the last round is where it ended up
 
 
 def test_analyze_photo_keeps_the_corners():
     # keep_corners (TODO-084): the board read where the corners put it, fitted once (the columns only)
     t = json.loads((SAMPLES / "screen-app-green-far.truth.json").read_text())
     corners = ",".join(str(v) for xy in t["corners_TL_TR_BR_BL"] for v in xy)
-    data = {"corners": corners, "home": t["home"], "bottom_colour": str(t["bottom_colour"]), "plies": "0",
-            "keep_corners": "true", "stream": "true"}
+    data = {
+        "corners": corners,
+        "home": t["home"],
+        "bottom_colour": str(t["bottom_colour"]),
+        "plies": "0",
+        "keep_corners": "true",
+        "stream": "true",
+    }
     with open(SAMPLES / t["image"], "rb") as f:
         res = client.post("/analyze-photo", files={"image": (t["image"], f)}, data=data)
     events = [json.loads(line) for line in res.text.splitlines()]
@@ -92,24 +155,43 @@ def test_analyze_photo_keeps_the_corners():
         assert abs(x - tx) < 0.5 and abs(y - ty) < 0.5
     assert len(g["columns"]) == 12
 
+
 def test_find_corners_streams_the_stages():
     with open(SAMPLES / "photo-green-felt-top.jpg", "rb") as f:
         body = f.read()
-    res = client.post("/find-corners", files={"image": ("photo-green-felt-top.jpg", body)}, data={"stream": "true"})
-    assert res.status_code == 200 and res.headers["content-type"].startswith("application/x-ndjson")
+    res = client.post(
+        "/find-corners",
+        files={"image": ("photo-green-felt-top.jpg", body)},
+        data={"stream": "true"},
+    )
+    assert res.status_code == 200 and res.headers["content-type"].startswith(
+        "application/x-ndjson"
+    )
     events = [json.loads(line) for line in res.text.splitlines()]
-    assert [e["stage"] for e in events] == ["edges", "uprights", "candidates", "corners", "done"]
+    assert [e["stage"] for e in events] == [
+        "edges",
+        "uprights",
+        "candidates",
+        "corners",
+        "done",
+    ]
     by = {e["stage"]: e for e in events}
     assert len(by["edges"]["lines"]) >= 2 and by["uprights"]["lines"]
-    assert all(len(line) == 2 for line in by["edges"]["lines"] + by["uprights"]["lines"])
+    assert all(
+        len(line) == 2 for line in by["edges"]["lines"] + by["uprights"]["lines"]
+    )
     quads = by["candidates"]["quads"]
     assert quads and all(len(q) == 4 for q in quads)
     result = by["done"]["result"]
     assert by["corners"]["corners"] == result["corners"]
-    plain = client.post("/find-corners", files={"image": ("photo-green-felt-top.jpg", body)}).json()
-    assert plain == result   # the same as without streaming
+    plain = client.post(
+        "/find-corners", files={"image": ("photo-green-felt-top.jpg", body)}
+    ).json()
+    assert plain == result  # the same as without streaming
     h, w = plain["height"], plain["width"]
-    assert all(-0.2 * w < x < 1.2 * w and -0.2 * h < y < 1.2 * h for q in quads for x, y in q)   # image pixels
+    assert all(
+        -0.2 * w < x < 1.2 * w and -0.2 * h < y < 1.2 * h for q in quads for x, y in q
+    )  # image pixels
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
@@ -118,44 +200,84 @@ def test_stage_times_are_in_one_table():
     const s = require({json.dumps(str(STATIC / "scan.js"))});
     console.log(JSON.stringify({{ ms: s.STAGE_MS, dflt: s.DEFAULT_STAGE_MS }}));
     """
-    out = json.loads(subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout)
-    stages = {"edges", "uprights", "candidates", "corners", "fit", "board", "tips", "checkers", "counts", "dice", "cube"}
+    out = json.loads(
+        subprocess.run(
+            ["node", "-e", script], capture_output=True, text=True, check=True
+        ).stdout
+    )
+    stages = {
+        "edges",
+        "uprights",
+        "candidates",
+        "corners",
+        "fit",
+        "board",
+        "tips",
+        "checkers",
+        "counts",
+        "dice",
+        "cube",
+    }
     assert set(out["ms"]) == stages
     corners = {"edges", "uprights", "candidates", "corners"}
-    assert {out["ms"][k] for k in corners} == {200}   # the search for the corners: 0.2 s each (TODO-124)
-    assert {out["ms"][k] for k in stages - corners} == {500} and out["dflt"] == 500   # the reading: half a second (2026-10-16)
+    assert {out["ms"][k] for k in corners} == {
+        200
+    }  # the search for the corners: 0.2 s each (TODO-124)
+    assert {out["ms"][k] for k in stages - corners} == {500} and out[
+        "dflt"
+    ] == 500  # the reading: half a second (2026-10-16)
 
 
 def test_analyze_photo_returns_cube_square():
     t = json.loads((SAMPLES / "screen-app-green-far.truth.json").read_text())
     corners = [v for xy in t["corners_TL_TR_BR_BL"] for v in xy]
     with open(SAMPLES / t["image"], "rb") as f:
-        res = client.post("/analyze-photo", files={"image": (t["image"], f)},
-                          data={"corners": ",".join(map(str, corners)), "home": t["home"],
-                                "bottom_colour": str(t["bottom_colour"]), "plies": "0"})
+        res = client.post(
+            "/analyze-photo",
+            files={"image": (t["image"], f)},
+            data={
+                "corners": ",".join(map(str, corners)),
+                "home": t["home"],
+                "bottom_colour": str(t["bottom_colour"]),
+                "plies": "0",
+            },
+        )
     assert res.status_code == 200, res.text
     cube = res.json()["geometry"]["cube"]
     assert cube["at"] == "black" and len(cube["quad"]) == 4
     (x0, y0), _, (x2, y2), _ = cube["quad"]
-    assert x2 > x0 and y2 > y0   # TL to BR, a square of some size
+    assert x2 > x0 and y2 > y0  # TL to BR, a square of some size
     # the number on it (TODO-025): 2, used by the analysis (奥 was offered the cube at 2)
     assert cube["value"] == 2 and res.json()["cube_read"] == {"at": "black", "value": 2}
 
 
 def test_analyze_photo_reads_the_cube_number():
     # a cube showing 16 pasted on 奥's side of the user's board (synth_cube.py), in a font the reader never saw
-    t = json.loads((SAMPLES / "synth-cube-photo-blue-red-top-16.truth.json").read_text())
+    t = json.loads(
+        (SAMPLES / "synth-cube-photo-blue-red-top-16.truth.json").read_text()
+    )
     corners = [v for xy in t["corners_TL_TR_BR_BL"] for v in xy]
     with open(SAMPLES / t["image"], "rb") as f:
-        res = client.post("/analyze-photo", files={"image": (t["image"], f)},
-                          data={"corners": ",".join(map(str, corners)), "home": t["home"],
-                                "bottom_colour": str(t["bottom_colour"]), "plies": "0"})
+        res = client.post(
+            "/analyze-photo",
+            files={"image": (t["image"], f)},
+            data={
+                "corners": ",".join(map(str, corners)),
+                "home": t["home"],
+                "bottom_colour": str(t["bottom_colour"]),
+                "plies": "0",
+            },
+        )
     assert res.status_code == 200, res.text
     out = res.json()
     assert out["cube_read"] == {"at": "black", "value": 16}
     a = out["analysis"]
     # no dice: 奥 has just been offered the cube at 16, so 手前 doubled and 奥 takes or passes
-    assert a["on_roll"] == "white" and a["cube"]["question"] == "take" and a["cube"]["value"] == 8   # 8 before the double
+    assert (
+        a["on_roll"] == "white"
+        and a["cube"]["question"] == "take"
+        and a["cube"]["value"] == 8
+    )  # 8 before the double
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
@@ -178,11 +300,17 @@ def test_photo_helpers():
       interp: [p.interp(a, 0), p.interp(a, 5), p.interp(a, 15), p.interp(a, 30)],
     }}));
     """
-    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    r = subprocess.run(
+        ["node", "-e", script], capture_output=True, text=True, check=True
+    )
     out = json.loads(r.stdout)
-    for (x, y), (qx, qy) in zip(out["corners"], [[10, 20], [110, 30], [120, 90], [5, 80]]):
+    for (x, y), (qx, qy) in zip(
+        out["corners"], [[10, 20], [110, 30], [120, 90], [5, 80]]
+    ):
         assert x == pytest.approx(qx) and y == pytest.approx(qy)
-    cx, cy = out["corners"][4]   # the centre lands where the diagonals cross, not at the corners' mean
+    cx, cy = out["corners"][
+        4
+    ]  # the centre lands where the diagonals cross, not at the corners' mean
     assert 10 < cx < 120 and 20 < cy < 90
     assert out["same"] == [x * 10 + y for y in range(3) for x in range(4)]
     assert out["shifted"] == [10, 20, 30]
@@ -204,23 +332,33 @@ def test_scan_lines():
     const L = s.lines([[0, 0], [216, 0], [216, 100], [0, 100]], plain);
     console.log(JSON.stringify({{ plain, fitted, quad: L.quad, mid: L.mid, bar: L.bar, tris: L.tris, sweep: L.sweep(0.5) }}));
     """
-    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    r = subprocess.run(
+        ["node", "-e", script], capture_output=True, text=True, check=True
+    )
     out = json.loads(r.stdout)
     p = out["plain"]
     assert len(p["cols"]) == 12 and p["cols"] == sorted(p["cols"])
     assert p["cols"][5] < p["bar"][0] < p["bar"][1] < p["cols"][6]
-    assert p["bar"][1] - p["bar"][0] == pytest.approx(0.16 * p["bar"][0])   # the bar is 0.16 of a field
-    assert out["fitted"]["cols"][0] == 0.04 and out["fitted"]["pw"] == pytest.approx(0.08)
+    assert p["bar"][1] - p["bar"][0] == pytest.approx(
+        0.16 * p["bar"][0]
+    )  # the bar is 0.16 of a field
+    assert out["fitted"]["cols"][0] == 0.04 and out["fitted"]["pw"] == pytest.approx(
+        0.08
+    )
     # a rectangle maps straight onto the image: 216 px wide, the board is 2 fields and a bar
     for (x, y), (qx, qy) in zip(out["quad"], [[0, 0], [216, 0], [216, 100], [0, 100]]):
         assert x == pytest.approx(qx) and y == pytest.approx(qy)
     assert [pt[1] for pt in out["mid"]] == pytest.approx([50, 50])
-    assert out["bar"][0][0][0] == pytest.approx(100) and out["bar"][1][0][0] == pytest.approx(116)
+    assert out["bar"][0][0][0] == pytest.approx(100) and out["bar"][1][0][
+        0
+    ] == pytest.approx(116)
     assert len(out["tris"]) == 24
     top, bottom = out["tris"][0], out["tris"][1]
-    assert top[0][1] == pytest.approx(0) and top[1][1] == pytest.approx(44)       # tip at 0.44 of the height
+    assert top[0][1] == pytest.approx(0) and top[1][1] == pytest.approx(
+        44
+    )  # tip at 0.44 of the height
     assert bottom[0][1] == pytest.approx(100) and bottom[1][1] == pytest.approx(56)
-    assert top[1][0] == pytest.approx(100 / 12)                                    # under the first column
+    assert top[1][0] == pytest.approx(100 / 12)  # under the first column
     assert sum(out["sweep"], []) == pytest.approx([108, 0, 108, 100])
 
 
@@ -276,12 +414,28 @@ async function go(mode, events) {
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
 def test_overlays_show_stages_in_turn_with_only_numbers():
-    r = subprocess.run(["node", "-e", _SCAN_HARNESS, str(STATIC / "scan.js")], capture_output=True, text=True, check=True)
+    r = subprocess.run(
+        ["node", "-e", _SCAN_HARNESS, str(STATIC / "scan.js")],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     out = json.loads(r.stdout)
     assert out["corners"]["seen"] == ["edges", "uprights", "candidates", "corners"]
-    assert out["corners"]["doneAt"] == pytest.approx(800, abs=4 * 20)         # 0.2 s each; each stage may end up to a frame (16 ms) late
-    assert out["reading"]["seen"] == ["fit", "tips", "checkers", "counts", "dice", "cube"]
-    assert out["reading"]["doneAt"] == pytest.approx(2 * 300 + 5 * 500, abs=7 * 20)   # fit made 0.3 s
+    assert out["corners"]["doneAt"] == pytest.approx(
+        800, abs=4 * 20
+    )  # 0.2 s each; each stage may end up to a frame (16 ms) late
+    assert out["reading"]["seen"] == [
+        "fit",
+        "tips",
+        "checkers",
+        "counts",
+        "dice",
+        "cube",
+    ]
+    assert out["reading"]["doneAt"] == pytest.approx(
+        2 * 300 + 5 * 500, abs=7 * 20
+    )  # fit made 0.3 s
     # no words on the photo: only the numbers counted and the dice read (ai1, 2026-10-15)
     assert out["texts"] and all(t.isdigit() for t in out["texts"])
     assert set(out["texts"]) == {"13", "5"}

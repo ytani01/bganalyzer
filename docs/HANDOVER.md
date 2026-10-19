@@ -29,7 +29,7 @@ Claude のプロジェクトのメモ（MEMORY）は、そのプロジェクト�
      位置ごと判定と断面の読み方をユーザーの盤の写真で測り直すことは、TODO-030 に残っている。
   4. TODO-025 のキューブの数字は、ユーザーの盤でキューブを 2・4・8・16 にした写真が届くまで待つ。
   5. TODO-027 は 2026-10-14 に決着した（recognizer 0.11.0、PI-022）。TODO-028 は 2026-10-14 にユーザーが再開を指示し、四隅の推定を作り直した（recognizer 0.10.0。3.6% 以内 7 → 14 枚）。TODO-028 も決着した。
-- **運用:** ユーザーとは日本語。自動マージ（最新 main を取り込み、GitHub Actions の test が通り（文書だけの PR では test は走らない。TODO-064）、
+- **運用:** ユーザーとは日本語。自動マージ（最新 main を取り込み、CLAUDE.md の「共同開発」のマージの条件（test・accuracy・ruff）を満たし、
   差分を見直して問題がなければ自分でマージし、一言報告）。マージ後に確かめることは同じ PR で TODO.md のその項目に `- [ ] ローカル:` の行で足し、
   ユーザーに「ローカルホストの Claude に『pull して TODO.md のローカルの確認をして』と頼んで」と伝える。版の上げ方は CLAUDE.md の「バージョン」。
 
@@ -57,7 +57,7 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
 - リポジトリ ytani01/bganalyzer は別アカウントの Claude プロジェクトと共同で開発している。
   作業する前に main を pull し、リポジトリ直下の CLAUDE.md（特に「共同開発」）と docs/HANDOVER.md に従う。
 - 自動マージ: スレッドが作った PR は、マージ直前に最新 main を取り込み、
-  GitHub Actions の test が通り（文書だけの PR では test は走らない。TODO-064）、差分を見直して問題がなければ、ユーザーの確認を待たずにそのスレッド自身が
+  CLAUDE.md の「共同開発」のマージの条件（test・accuracy・ruff）を満たし、差分を見直して問題がなければ、ユーザーの確認を待たずにそのスレッド自身が
   マージする。マージしたことは一言報告する。テスト失敗・未検証の重要事項・判断が必要な点・
   相手の変更とのぶつかりがある場合はマージせず報告する。
 - 方針や進み具合が変わったら、プロジェクトのメモだけでなく docs/HANDOVER.md か TODO.md にも書いてコミットする。
@@ -111,6 +111,7 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
 - **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR（文書だけの PR は除く。TODO-064）と main への push で `uv run pytest analyzer` を実行する。
   `accuracy`（`.github/workflows/accuracy.yml`、TODO-035）は recognizer・samples・依存を変える PR で、認識の精度が
   `recognizer/accuracy_baseline.json` より下がっていないかを確かめる。
+  `ruff`（`.github/workflows/ruff.yml`、TODO-168）は .py・`pyproject.toml`・`uv.lock` を変える PR と main への push で `uv run ruff check` と `uv run ruff format --check` を実行する。
 
 - **ファイルの分け直し（2026-10-15、PR #174・#175・#178。動きは変えていない）:**
   analyzer は gnubg の呼び出しを `engine.py`、`POST /samples` を `samples.py`、リクエストの型を `models.py` に分けた。

@@ -4,6 +4,7 @@ Run: uvicorn app:app --app-dir analyzer
 
 Do not run with --reload or several workers: the gnubg extension is not fork-safe.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -16,16 +17,30 @@ from pathlib import Path
 import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from analysis import DEFAULT_PLIES, Position, analyze, names_ja, other, parse_position, shutdown, summary_ja
-from claude_corners import claude_command, router as claude_router
+from analysis import (
+    DEFAULT_PLIES,
+    Position,
+    analyze,
+    names_ja,
+    other,
+    parse_position,
+    shutdown,
+    summary_ja,
+)
+from claude_corners import claude_command
+from claude_corners import router as claude_router
 from models import AnalyzeRequest, Board
-from samples import router as samples_router, samples_dir
+from samples import router as samples_router
+from samples import samples_dir
 from speech import router as speech_router
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
@@ -40,24 +55,39 @@ async def lifespan(_app):
     from board import __version__ as recognizer_version
 
     # journalctl then shows which code a restart brought up
-    log.info("bganalyzer analyzer %s, recognizer %s, commit %s", __version__, recognizer_version, git_commit())
+    log.info(
+        "bganalyzer analyzer %s, recognizer %s, commit %s",
+        __version__,
+        recognizer_version,
+        git_commit(),
+    )
     yield
-    shutdown()   # uvicorn re-raises SIGTERM after this, so atexit hooks never run
+    shutdown()  # uvicorn re-raises SIGTERM after this, so atexit hooks never run
 
 
 app = FastAPI(title="bganalyzer", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+)
 app.include_router(samples_router)
 app.include_router(claude_router)
 app.include_router(speech_router)
-log = logging.getLogger("uvicorn.error")   # uvicorn's access log has the status but not why
+log = logging.getLogger(
+    "uvicorn.error"
+)  # uvicorn's access log has the status but not why
 
 
 @app.exception_handler(HTTPException)
 async def log_http_error(request: Request, exc: HTTPException):
     if 400 <= exc.status_code < 500:
         # %r: a detail can quote what was sent (a position id); keep it on one line
-        log.warning("%s %s -> %d: %r", request.method, request.url.path, exc.status_code, exc.detail)
+        log.warning(
+            "%s %s -> %d: %r",
+            request.method,
+            request.url.path,
+            exc.status_code,
+            exc.detail,
+        )
     return await http_exception_handler(request, exc)
 
 
@@ -77,15 +107,25 @@ def _board_to_position(b: Board) -> Position:
     return pos
 
 
-def _run(pos: Position, on_roll: str, plies: int, dice, bottom_colour: int | None = None, **opts) -> dict:
+def _run(
+    pos: Position,
+    on_roll: str,
+    plies: int,
+    dice,
+    bottom_colour: int | None = None,
+    **opts,
+) -> dict:
     """analyze() for the API; opts: the cube and the match (analyze's keywords). bottom_colour: whose
     checkers are the lighter (1: White's, 0: Black's; None: White's), for the names in the summary."""
     try:
         r = analyze(pos, on_roll, plies=plies, dice=dice, **opts)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
-    r["board"] = {k: v for k, v in pos.to_dict().items() if k in
-                  ("points", "bar_white", "bar_black", "off_white", "off_black")}
+    r["board"] = {
+        k: v
+        for k, v in pos.to_dict().items()
+        if k in ("points", "bar_white", "bar_black", "off_white", "off_black")
+    }
     r["summary"] = summary_ja(r, names_ja(bottom_colour != 0))
     return r
 
@@ -106,7 +146,9 @@ def git_commit(git_dir: Path = REPO / ".git") -> str | None:
                 head = loose.read_text().strip()
             else:
                 packed = (git_dir / "packed-refs").read_text().splitlines()
-                head = next(line.split()[0] for line in packed if line.endswith(" " + ref))
+                head = next(
+                    line.split()[0] for line in packed if line.endswith(" " + ref)
+                )
         return head[:7] if len(head) >= 7 else None
     except (OSError, StopIteration):
         return None
@@ -118,8 +160,13 @@ def version():
 
     # samples: whether this server keeps photos sent to /samples (the app shows its switch only then);
     # claude: whether it answers /claude-corners (the app shows its button only then)
-    return {"analyzer": __version__, "recognizer": recognizer_version, "commit": git_commit(),
-            "samples": samples_dir() is not None, "claude": claude_command() is not None}
+    return {
+        "analyzer": __version__,
+        "recognizer": recognizer_version,
+        "commit": git_commit(),
+        "samples": samples_dir() is not None,
+        "claude": claude_command() is not None,
+    }
 
 
 @app.post("/analyze")
@@ -133,19 +180,40 @@ def analyze_endpoint(req: AnalyzeRequest):
             raise HTTPException(422, f"invalid position id: {req.position_id}") from e
     else:
         pos = _board_to_position(req.board)
-    return _run(pos, req.on_roll, req.plies, req.dice,
-                cube_value=req.cube_value, cube_owner=req.cube_owner, doubled=req.doubled,
-                match_length=req.match_length, score_white=req.score_white, score_black=req.score_black,
-                crawford=req.crawford, bottom_colour=req.bottom_colour)
+    return _run(
+        pos,
+        req.on_roll,
+        req.plies,
+        req.dice,
+        cube_value=req.cube_value,
+        cube_owner=req.cube_owner,
+        doubled=req.doubled,
+        match_length=req.match_length,
+        score_white=req.score_white,
+        score_black=req.score_black,
+        crawford=req.crawford,
+        bottom_colour=req.bottom_colour,
+    )
 
 
 @app.post("/find-corners")
 async def find_corners_endpoint(
     image: UploadFile = File(...),
-    stream: bool = Form(False, description="answer as NDJSON lines: each stage of the search as it is done, then the result"),
-    fixed: str | None = Form(None, description='JSON [TL, TR, BR, BL], each [x, y] the user has put in place or null: kept as they are'),
-    crop: str | None = Form(None, description="x0,y0,x1,y1: look only in this part of the photo"),
-    side: str | None = Form(None, description="right or left: taken from beside the board, from the near player's right or left (TODO-120); empty: from the near player's side"),
+    stream: bool = Form(
+        False,
+        description="answer as NDJSON lines: each stage of the search as it is done, then the result",
+    ),
+    fixed: str | None = Form(
+        None,
+        description="JSON [TL, TR, BR, BL], each [x, y] the user has put in place or null: kept as they are",
+    ),
+    crop: str | None = Form(
+        None, description="x0,y0,x1,y1: look only in this part of the photo"
+    ),
+    side: str | None = Form(
+        None,
+        description="right or left: taken from beside the board, from the near player's right or left (TODO-120); empty: from the near player's side",
+    ),
 ):
     """A guess at the playing area's corners (TL, TR, BR, BL), for the app to show before the user
     adjusts them, or again after (fixed, crop). corners is null when no board was found. Without side,
@@ -164,16 +232,22 @@ async def find_corners_endpoint(
         c = tuple(float(v) for v in crop.split(",")) if crop else None
         assert c is None or len(c) == 4
     except Exception as e:
-        raise HTTPException(422, "fixed must be 4 of [x, y] or null, crop 4 numbers") from e
+        raise HTTPException(
+            422, "fixed must be 4 of [x, y] or null, crop 4 numbers"
+        ) from e
     size = {"width": img.shape[1], "height": img.shape[0]}
 
     def find(progress=None):
         if side:
-            return {"corners": find_corners_side(img, side, progress, fixed=f, crop=c), "side": side}
+            return {
+                "corners": find_corners_side(img, side, progress, fixed=f, crop=c),
+                "side": side,
+            }
         if f is None and c is None:
             q, s = find_corners_any(img, progress)
             return {"corners": q, "side": s}
         return {"corners": find_corners(img, progress, fixed=f, crop=c), "side": None}
+
     if stream:
         return _stream(lambda progress: find(progress) | size)
     return find() | size
@@ -182,22 +256,46 @@ async def find_corners_endpoint(
 @app.post("/analyze-photo")
 async def analyze_photo(
     image: UploadFile = File(...),
-    corners: str = Form(..., description="x1,y1,...,x4,y4: TL,TR,BR,BL of the playing area"),
-    home: str = Form("right", description="left, right or auto (guessed from the checkers)"),
-    bottom_colour: int = Form(0, description="1: the lighter checkers are White's (called 白), 0: the darker (White is 黒)"),
+    corners: str = Form(
+        ..., description="x1,y1,...,x4,y4: TL,TR,BR,BL of the playing area"
+    ),
+    home: str = Form(
+        "right", description="left, right or auto (guessed from the checkers)"
+    ),
+    bottom_colour: int = Form(
+        0,
+        description="1: the lighter checkers are White's (called 白), 0: the darker (White is 黒)",
+    ),
     on_roll: str = Form("white"),
     plies: int = Form(DEFAULT_PLIES),
-    dice: str | None = Form(None, description="e.g. 3,1; without it, the dice read from the photo (if any)"),
-    cube_value: int | None = Form(None, description="without it, the cube read from the photo (if any)"),
-    cube_owner: str | None = Form(None, description="white or black; empty: in the middle"),
+    dice: str | None = Form(
+        None, description="e.g. 3,1; without it, the dice read from the photo (if any)"
+    ),
+    cube_value: int | None = Form(
+        None, description="without it, the cube read from the photo (if any)"
+    ),
+    cube_owner: str | None = Form(
+        None, description="white or black; empty: in the middle"
+    ),
     doubled: bool = Form(False),
-    match_length: int = Form(0, description="0: money game; else the match's length in points"),
+    match_length: int = Form(
+        0, description="0: money game; else the match's length in points"
+    ),
     score_white: int = Form(0),
     score_black: int = Form(0),
     crawford: bool = Form(False),
-    keep_corners: bool = Form(False, description="read with the corners as given, not fitted to the frame (TODO-084)"),
-    side: str | None = Form(None, description="right or left: taken from beside the board, from the near player's right or left (TODO-120); empty: from the near player's side"),
-    stream: bool = Form(False, description="answer as NDJSON lines: each stage of the reading as it is done, then the result"),
+    keep_corners: bool = Form(
+        False,
+        description="read with the corners as given, not fitted to the frame (TODO-084)",
+    ),
+    side: str | None = Form(
+        None,
+        description="right or left: taken from beside the board, from the near player's right or left (TODO-120); empty: from the near player's side",
+    ),
+    stream: bool = Form(
+        False,
+        description="answer as NDJSON lines: each stage of the reading as it is done, then the result",
+    ),
 ):
     from board import recognize  # recognizer (OpenCV); imported lazily
 
@@ -212,12 +310,33 @@ async def analyze_photo(
         raise HTTPException(422, "home must be left, right or auto")
     pts = list(zip(c[0::2], c[1::2]))
     side = _side(side)
+
     def work(progress=None):
-        pos, info = recognize(img, pts, home=home, bottom_colour=bottom_colour, progress=progress,
-                              keep_corners=keep_corners, side=side)
-        return _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled, bottom_colour,
-                             match_length=match_length, score_white=score_white, score_black=score_black,
-                             crawford=crawford)
+        pos, info = recognize(
+            img,
+            pts,
+            home=home,
+            bottom_colour=bottom_colour,
+            progress=progress,
+            keep_corners=keep_corners,
+            side=side,
+        )
+        return _photo_result(
+            pos,
+            info,
+            d,
+            on_roll,
+            plies,
+            cube_value,
+            cube_owner,
+            doubled,
+            bottom_colour,
+            match_length=match_length,
+            score_white=score_white,
+            score_black=score_black,
+            crawford=crawford,
+        )
+
     return _stream(work) if stream else work()
 
 
@@ -241,8 +360,11 @@ async def _decode(image: UploadFile):
 
 def _stream(work) -> StreamingResponse:
     """The answer as NDJSON lines (_stream_stages), sent as soon as each is written."""
-    return StreamingResponse(_stream_stages(work), media_type="application/x-ndjson",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    return StreamingResponse(
+        _stream_stages(work),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 async def _stream_stages(work):
@@ -267,14 +389,16 @@ async def _stream_stages(work):
             continue
         getter.cancel()
         break
-    while not queue.empty():   # stages reported just before the end (put before the job finished)
+    while (
+        not queue.empty()
+    ):  # stages reported just before the end (put before the job finished)
         yield line(queue.get_nowait())
     try:
         yield line({"stage": "done", "result": job.result()})
     except HTTPException as e:
         log.warning("analyze-photo (stream): %s", e.detail)
         yield line({"stage": "error", "detail": e.detail})
-    except Exception as e:   # noqa: BLE001 - the client must hear of it; the status is already sent
+    except Exception as e:  # noqa: BLE001 - the client must hear of it; the status is already sent
         log.exception("analyze-photo (stream) failed")
         yield line({"stage": "error", "detail": str(e) or type(e).__name__})
 
@@ -285,7 +409,18 @@ WARNINGS = {
 }
 
 
-def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled, bottom_colour, **match) -> dict:
+def _photo_result(
+    pos,
+    info,
+    d,
+    on_roll,
+    plies,
+    cube_value,
+    cube_owner,
+    doubled,
+    bottom_colour,
+    **match,
+) -> dict:
     """What /analyze-photo returns for the read board: the board, what was read and the analysis
     (match: analyze's keywords for the match)."""
     warnings = [WARNINGS[w] for w in info.get("warnings", [])]
@@ -297,14 +432,25 @@ def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled,
     # "value": 2 .. 64 or null (not read with confidence; always null in the centre, where it means 1)}, or null
     read = info["dice"]["values"]
     cube = info.get("cube")
-    cube_read = cube and {"at": cube["at"], "value": None if cube["at"] == "centre" else cube.get("value")}
+    cube_read = cube and {
+        "at": cube["at"],
+        "value": None if cube["at"] == "centre" else cube.get("value"),
+    }
     # a cube in a playing field (TODO-045): the side on roll has just doubled (to the number read, else 2),
     # and the other side takes or passes. Dice on the board (read or sent) are left out: no one rolls before the answer.
     field_double = cube_value is None and bool(cube_read) and cube_read["at"] == "field"
     if field_double:
         read, d = None, None
-    out = {"recognized": pos.to_dict(), "home": info["home"], "home_guess": info["home_guess"], "errors": errors, "warnings": warnings, "geometry": info.get("geometry"),
-           "dice_read": read, "cube_read": cube_read}
+    out = {
+        "recognized": pos.to_dict(),
+        "home": info["home"],
+        "home_guess": info["home_guess"],
+        "errors": errors,
+        "warnings": warnings,
+        "geometry": info.get("geometry"),
+        "dice_read": read,
+        "cube_read": cube_read,
+    }
     if errors:
         # Let the app show the read board for manual correction.
         return out | {"analysis": None}
@@ -316,7 +462,9 @@ def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled,
         doubled = False
     if cube_value is None:
         cube_value, cube_owner, doubled = 1, None, False
-        shown = cube_read and cube_read["value"] or 2   # the number read (TODO-025), else 2
+        shown = (
+            cube_read and cube_read["value"] or 2
+        )  # the number read (TODO-025), else 2
         if field_double:
             cube_value, cube_owner, doubled = shown, other(on_roll), True
         elif cube_read and cube_read["at"] != "centre":
@@ -325,9 +473,19 @@ def _photo_result(pos, info, d, on_roll, plies, cube_value, cube_owner, doubled,
             if doubled:
                 on_roll = other(cube_owner)
     try:
-        return out | {"analysis": _run(pos, on_roll, plies, d, bottom_colour,
-                                       cube_value=cube_value, cube_owner=cube_owner or None, doubled=doubled,
-                                       **match)}
+        return out | {
+            "analysis": _run(
+                pos,
+                on_roll,
+                plies,
+                d,
+                bottom_colour,
+                cube_value=cube_value,
+                cube_owner=cube_owner or None,
+                doubled=doubled,
+                **match,
+            )
+        }
     except HTTPException as e:
         # the board was read, but what was asked can't be analysed (e.g. a cube read on one side in the
         # Crawford game): as with a wrong board, give the board back to be fixed, without the analysis
@@ -343,7 +501,11 @@ def share_target():
 
 
 # The PWA. Mounted last so the API routes above take precedence.
-mimetypes.add_type("application/manifest+json", ".webmanifest")   # unknown before Python 3.13
+mimetypes.add_type(
+    "application/manifest+json", ".webmanifest"
+)  # unknown before Python 3.13
+
+
 class AppFiles(StaticFiles):
     """The PWA's files, which the browser must check for a newer copy each time.
 
@@ -356,4 +518,8 @@ class AppFiles(StaticFiles):
         return res
 
 
-app.mount("/", AppFiles(directory=Path(__file__).resolve().parent / "static", html=True), name="pwa")
+app.mount(
+    "/",
+    AppFiles(directory=Path(__file__).resolve().parent / "static", html=True),
+    name="pwa",
+)

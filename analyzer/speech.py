@@ -5,6 +5,7 @@ translate_tts is not an official API: it may stop or refuse at any time, and the
 browser's own voice. Only the text goes to Google (never a photo). It takes about 200 characters at a
 time, so the app sends one sentence (up to 。) per request.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,13 +23,28 @@ log = logging.getLogger("uvicorn.error")
 
 
 @router.get("/speech")
-def speech(text: str = Query(..., min_length=1, max_length=TEXT_MAX, description="one sentence of the spoken summary")):
-    url = TTS_URL + "?" + urllib.parse.urlencode({"ie": "UTF-8", "tl": "ja", "client": "tw-ob", "q": text})
+def speech(
+    text: str = Query(
+        ...,
+        min_length=1,
+        max_length=TEXT_MAX,
+        description="one sentence of the spoken summary",
+    ),
+):
+    url = (
+        TTS_URL
+        + "?"
+        + urllib.parse.urlencode(
+            {"ie": "UTF-8", "tl": "ja", "client": "tw-ob", "q": text}
+        )
+    )
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             audio = r.read()
-    except OSError as e:   # refused, changed or unreachable: the app falls back to the browser's voice
+    except OSError as e:  # refused, changed or unreachable: the app falls back to the browser's voice
         log.warning("translate_tts failed: %s", e)
         raise HTTPException(502, f"translate_tts: {e}") from e
-    return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "max-age=86400"})
+    return Response(
+        audio, media_type="audio/mpeg", headers={"Cache-Control": "max-age=86400"}
+    )

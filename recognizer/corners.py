@@ -30,6 +30,7 @@ Before all that, a small YOLO-pose model (corners_model.onnx, made by train_corn
 OpenCV's dnn) guesses roughly where the corners are: candidates far from them score less, and if
 nothing is found, the search looks again only around them (TODO-136).
 """
+
 from __future__ import annotations
 
 import os
@@ -40,52 +41,81 @@ import numpy as np
 
 import exact
 
-DEBUG = None           # a list to collect the scored candidates in (for tuning)
-WORK_SIDE = 800        # longest side the search runs at (px)
-SLOPES = np.arange(-100, 101, 2)   # line slopes tried, in 1/200: up to 0.5 (27 degrees; oblique photos: photo-black-blue-oblique 0.36, photo-orange-black-oblique 0.39), steps of 0.01
-EDGE_MIN = 60          # contrast (summed over Lab's channels) of an edge pixel
-H_LINES = 6            # far / near edge candidates
-V_LINES = 8            # left / right edge candidates for each far / near pair
-LINE_SEP = 0.015       # nearest two candidates of one kind, against the photo's side
-V_COVER = 0.45         # an upright line needs an edge pixel in this share of the rows
-MIN_HEIGHT = 0.25      # the playing area's height, at least, against the photo's
-ASPECT = (0.8, 2.2)    # its width against its height
-MIN_WIDTH = 0.3        # its width, at least, against the photo's
-TRIMMED = (0.5, 0.4)   # its width and height, at least, in a photo the user has trimmed to the board
-STEP = 4               # rows between stored running counts of the upright lines' coverage
+DEBUG = None  # a list to collect the scored candidates in (for tuning)
+WORK_SIDE = 800  # longest side the search runs at (px)
+SLOPES = np.arange(
+    -100, 101, 2
+)  # line slopes tried, in 1/200: up to 0.5 (27 degrees; oblique photos: photo-black-blue-oblique 0.36, photo-orange-black-oblique 0.39), steps of 0.01
+EDGE_MIN = 60  # contrast (summed over Lab's channels) of an edge pixel
+H_LINES = 6  # far / near edge candidates
+V_LINES = 8  # left / right edge candidates for each far / near pair
+LINE_SEP = 0.015  # nearest two candidates of one kind, against the photo's side
+V_COVER = 0.45  # an upright line needs an edge pixel in this share of the rows
+MIN_HEIGHT = 0.25  # the playing area's height, at least, against the photo's
+ASPECT = (0.8, 2.2)  # its width against its height
+MIN_WIDTH = 0.3  # its width, at least, against the photo's
+TRIMMED = (
+    0.5,
+    0.4,
+)  # its width and height, at least, in a photo the user has trimmed to the board
+STEP = 4  # rows between stored running counts of the upright lines' coverage
 # the structure score (seen from straight above, RW x RH)
 RW, RH = 208, 160
-DEPTH = 0.40           # a triangle's length against the playing area's height
-BARS = (0.0, 0.03, 0.06, 0.09, 0.12, 0.15, 0.18)   # bar widths tried, against the playing area's width
-W_PLAIN = 0.6   # weight of a plain band between the tips
-W_ALONG = 0.4   # weight of the quad's sides lying on edges (not on a line across them; TODO-105)
-ALONG = 40             # points looked at along each side
-ALONG_OFF = 2          # how far off the side (px, either way) an edge pixel still counts
-ALONG_CAP = 0.85       # past this share all the same: an outer edge nothing hides is no better than the board's, which checkers stand on
+DEPTH = 0.40  # a triangle's length against the playing area's height
+BARS = (
+    0.0,
+    0.03,
+    0.06,
+    0.09,
+    0.12,
+    0.15,
+    0.18,
+)  # bar widths tried, against the playing area's width
+W_PLAIN = 0.6  # weight of a plain band between the tips
+W_ALONG = 0.4  # weight of the quad's sides lying on edges (not on a line across them; TODO-105)
+ALONG = 40  # points looked at along each side
+ALONG_OFF = 2  # how far off the side (px, either way) an edge pixel still counts
+ALONG_CAP = 0.85  # past this share all the same: an outer edge nothing hides is no better than the board's, which checkers stand on
 # then each side swapped for another candidate line while the score goes up (TODO-105)
-SWAPS = 3              # rounds over the four sides, at most
-SWAP_GAIN = 0.01       # a swap raises the score by more than this, at least (a triangle's side by a screen's edge, TODO-140)
-SWAP_TOP = 2           # lines for a side scored again at full size, the best at half size
-INNER = (0.03, 0.06, 0.12)   # the strip just inside a side (0 to the first), and the one a bit further in, against the side across
-INNER_BLOCKS = 24      # blocks along a side the two strips are compared in
-INNER_SLACK = 0.1      # a swap may make the strips alike in this share of the blocks fewer, at most
-INNER_OUT, INNER_IN = 0.25, 0.75   # a far / near side with the strips alike in less than this share runs outside the board; with this share, inside (TODO-140)
-OUT_DROP = 0.1         # moving such a side inside may lower the score by this much, at most
-PLAIN_DE = 20          # colour difference (Lab) still plain
-MIN_SCORE = 0.15       # a board's structure score, at least
-REFINE = 12             # candidates (the best by structure) whose edges are moved in and scored again
+SWAPS = 3  # rounds over the four sides, at most
+SWAP_GAIN = 0.01  # a swap raises the score by more than this, at least (a triangle's side by a screen's edge, TODO-140)
+SWAP_TOP = 2  # lines for a side scored again at full size, the best at half size
+INNER = (
+    0.03,
+    0.06,
+    0.12,
+)  # the strip just inside a side (0 to the first), and the one a bit further in, against the side across
+INNER_BLOCKS = 24  # blocks along a side the two strips are compared in
+INNER_SLACK = (
+    0.1  # a swap may make the strips alike in this share of the blocks fewer, at most
+)
+INNER_OUT, INNER_IN = (
+    0.25,
+    0.75,
+)  # a far / near side with the strips alike in less than this share runs outside the board; with this share, inside (TODO-140)
+OUT_DROP = 0.1  # moving such a side inside may lower the score by this much, at most
+PLAIN_DE = 20  # colour difference (Lab) still plain
+MIN_SCORE = 0.15  # a board's structure score, at least
+REFINE = (
+    12  # candidates (the best by structure) whose edges are moved in and scored again
+)
 # moving each edge to the innermost strong edge nearby (seen from straight above, FW x FH)
 FW, FH, FM = 400, 320, 40
-OUT, IN = 0.06, 0.05   # how far each edge is looked for, outwards and inwards, against the side
-NEAR = 0.05            # a candidate agrees with a fixed corner this near it, against the long side looked in
-PEAK = 0.4             # an edge counts if this strong against the strongest in the range
+OUT, IN = (
+    0.06,
+    0.05,
+)  # how far each edge is looked for, outwards and inwards, against the side
+NEAR = 0.05  # a candidate agrees with a fixed corner this near it, against the long side looked in
+PEAK = 0.4  # an edge counts if this strong against the strongest in the range
 # where the board roughly is, from the YOLO-pose model (TODO-136)
 MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "corners_model.onnx")
-MODEL_SIDE = 640       # the model's input (a square)
-MODEL_CONF = 0.25      # a board's confidence, at least
-MODEL_MARGIN = 0.15    # the keypoints' bounding box is widened by this share of its sides, each way
-HINT_FREE = 0.08       # a candidate's corners this far from the model's (against the long side), free
-HINT_WEIGHT = 4.0      # past that, its score goes down by this much per long side
+MODEL_SIDE = 640  # the model's input (a square)
+MODEL_CONF = 0.25  # a board's confidence, at least
+MODEL_MARGIN = (
+    0.15  # the keypoints' bounding box is widened by this share of its sides, each way
+)
+HINT_FREE = 0.08  # a candidate's corners this far from the model's (against the long side), free
+HINT_WEIGHT = 4.0  # past that, its score goes down by this much per long side
 
 
 def shrink(img):
@@ -109,8 +139,14 @@ def shrink(img):
 def _gradients(bgr, sigma=1.0):
     """Contrast across columns (gx) and across rows (gy), summed over Lab's channels (int32)."""
     lab = cv2.GaussianBlur(cv2.cvtColor(bgr, cv2.COLOR_BGR2Lab), (0, 0), sigma)
-    gx = sum(np.abs(cv2.Sobel(lab[:, :, i], cv2.CV_16S, 1, 0).astype(np.int32)) for i in range(3))
-    gy = sum(np.abs(cv2.Sobel(lab[:, :, i], cv2.CV_16S, 0, 1).astype(np.int32)) for i in range(3))
+    gx = sum(
+        np.abs(cv2.Sobel(lab[:, :, i], cv2.CV_16S, 1, 0).astype(np.int32))
+        for i in range(3)
+    )
+    gy = sum(
+        np.abs(cv2.Sobel(lab[:, :, i], cv2.CV_16S, 0, 1).astype(np.int32))
+        for i in range(3)
+    )
     return gx, gy
 
 
@@ -120,6 +156,7 @@ def _shift(t, k):
 
 
 # ---------------------------------------------------------------- far / near edges --
+
 
 def _h_lines(gx, gy):
     """The strongest nearly horizontal lines y = c + x k / 200: [(k, c, votes)], strongest first."""
@@ -140,11 +177,12 @@ def _h_lines(gx, gy):
         if acc[i, c] <= 0:
             break
         out.append((int(SLOPES[i]), int(c) - pad, int(acc[i, c])))
-        acc[:, max(0, c - sep):c + sep + 1] = 0
+        acc[:, max(0, c - sep) : c + sep + 1] = 0
     return out
 
 
 # ---------------------------------------------------------------- left / right edges --
+
 
 class _Upright:
     """How many rows of a band have an edge pixel on each nearly upright line x = c + y k / 200
@@ -158,26 +196,32 @@ class _Upright:
         ys, xs = np.nonzero(edge)
         # ponytail: sized for slopes up to 0.3; steeper lines lose the votes past the photo's side
         # (TODO-104: sizing it to SLOPES changed nothing on the samples and takes 1.5 times the memory)
-        self.pad = pad = int(reach * h) + 2   # reach: side.py looks at steeper slopes (TODO-120)
+        self.pad = pad = (
+            int(reach * h) + 2
+        )  # reach: side.py looks at steeper slopes (TODO-120)
         nb = h // STEP + 1
         width = w + 2 * pad
         self.cum = np.zeros((len(slopes), nb + 1, width), np.int32)
         for i, k in enumerate(slopes):
-            c = xs - _shift(ys, int(k)) + pad          # the line through (x, y) with this slope
+            c = xs - _shift(ys, int(k)) + pad  # the line through (x, y) with this slope
             ok = (c >= 0) & (c < width)
-            n = np.bincount((ys[ok] // STEP) * width + c[ok], minlength=nb * width)[:nb * width]
+            n = np.bincount((ys[ok] // STEP) * width + c[ok], minlength=nb * width)[
+                : nb * width
+            ]
             self.cum[i, 1:] = np.cumsum(n.reshape(nb, width), 0)
         self.w = w
 
     def lines(self, y0, y1):
         """Upright lines covering most rows of [y0, y1): [(k, c, share)], left to right."""
-        j0, j1 = -(-y0 // STEP), y1 // STEP        # whole blocks of STEP rows within [y0, y1)
+        j0, j1 = -(-y0 // STEP), y1 // STEP  # whole blocks of STEP rows within [y0, y1)
         if j1 - j0 < 4:
             return []
         share = (self.cum[:, j1] - self.cum[:, j0]) / ((j1 - j0) * STEP)
         # where each line crosses the middle of the band: two lines near there are the same edge
         ymid = (y0 + y1) // 2
-        mid = (np.arange(share.shape[1])[None, :] - self.pad) + _shift(ymid, self.slopes[:, None])
+        mid = (np.arange(share.shape[1])[None, :] - self.pad) + _shift(
+            ymid, self.slopes[:, None]
+        )
         sep = int(LINE_SEP * self.w)
         out = []
         for _ in range(V_LINES):
@@ -199,6 +243,7 @@ def _meet(hl, vl):
 
 # ---------------------------------------------------------------- structure score --
 
+
 def _point_templates(RW, RH):
     """For each bar width: the 24 points' pixels (indices into the view's pixels, row by row) and
     their triangle template (zero mean, unit length), and which field each is in."""
@@ -217,7 +262,10 @@ def _point_templates(RW, RH):
                 for top in (True, False):
                     ys = np.arange(0, half) if top else np.arange(RH - half, RH)
                     d = (ys + 0.5) if top else (RH - ys - 0.5)
-                    m = (np.abs(xs[None, :] + 0.5 - cx) < (p / 2) * (1 - d[:, None] / (DEPTH * RH))) & (d[:, None] < DEPTH * RH)
+                    m = (
+                        np.abs(xs[None, :] + 0.5 - cx)
+                        < (p / 2) * (1 - d[:, None] / (DEPTH * RH))
+                    ) & (d[:, None] < DEPTH * RH)
                     t = m.astype(np.float64).ravel()
                     t = t - t.sum() / len(t)
                     t = t / np.sqrt((t * t).sum())
@@ -225,7 +273,12 @@ def _point_templates(RW, RH):
                     cols.append(np.tile(np.clip(xs, 0, RW - 1), half))
                     tmpl.append(t)
                     field.append(f)
-        out[bar] = (a, np.array(rows) * RW + np.array(cols), np.array(tmpl), np.array(field))
+        out[bar] = (
+            a,
+            np.array(rows) * RW + np.array(cols),
+            np.array(tmpl),
+            np.array(field),
+        )
     return out
 
 
@@ -242,16 +295,26 @@ def _structure(rect):
     for bar, (a, pixels, tmpl, field) in _TEMPLATES[(RW, RH)].items():
         plain = np.empty((2, 3), np.float64)
         for f, f0 in enumerate((0.0, a + bar * RW)):
-            mid = lab[int(0.46 * RH):int(0.54 * RH), int(f0 + 0.05 * a):int(f0 + 0.95 * a)].reshape(-1, 3)
+            mid = lab[
+                int(0.46 * RH) : int(0.54 * RH), int(f0 + 0.05 * a) : int(f0 + 0.95 * a)
+            ].reshape(-1, 3)
             plain[f] = np.median(mid, 0)
-        d = np.take(lab.reshape(-1, 3), pixels, 0) - plain[field][:, None, :]   # (24, pixels of a point, 3)
-        v = np.sqrt(np.einsum("ijk,ijk->ij", d, d))   # exact: the squares are quarters (TODO-105)
+        d = (
+            np.take(lab.reshape(-1, 3), pixels, 0) - plain[field][:, None, :]
+        )  # (24, pixels of a point, 3)
+        v = np.sqrt(
+            np.einsum("ijk,ijk->ij", d, d)
+        )  # exact: the squares are quarters (TODO-105)
         # between the rows of tips the field is plain, all the way across both fields
-        band = lab[int(0.45 * RH):int(0.55 * RH)]
+        band = lab[int(0.45 * RH) : int(0.55 * RH)]
         plain_share = 0.0
         for f, (x0, x1) in enumerate(((0, int(a)), (int(a + bar * RW + 0.5), RW))):
             e = band[:, x0:x1] - plain[f]
-            plain_share += float(((e * e).sum(2) < PLAIN_DE * PLAIN_DE).sum()) / max(1, e.shape[0] * e.shape[1]) / 2
+            plain_share += (
+                float(((e * e).sum(2) < PLAIN_DE * PLAIN_DE).sum())
+                / max(1, e.shape[0] * e.shape[1])
+                / 2
+            )
         v = v - (v.sum(1) / v.shape[1])[:, None]
         n = np.sqrt((v * v).sum(1))
         c = (v * tmpl).sum(1) / np.where(n > 0, n, 1)
@@ -265,15 +328,27 @@ def _along(gx, gy, quad):
     a frame, TODO-105)."""
     h, w = gx.shape
     a = np.float64(quad)
-    d = np.roll(a, -1, 0) - a                    # top, right, bottom, left
-    n = np.stack([-d[:, 1], d[:, 0]], 1) / np.maximum(1e-9, np.sqrt((d * d).sum(1)))[:, None]
+    d = np.roll(a, -1, 0) - a  # top, right, bottom, left
+    n = (
+        np.stack([-d[:, 1], d[:, 0]], 1)
+        / np.maximum(1e-9, np.sqrt((d * d).sum(1)))[:, None]
+    )
     t = (np.arange(ALONG) + 0.5) / ALONG
     s = np.arange(-ALONG_OFF, ALONG_OFF + 1)
-    p = a[:, None, None] + t[None, :, None, None] * d[:, None, None] + s[None, None, :, None] * n[:, None, None]
-    x, y = np.round(p[..., 0]).astype(np.int64), np.round(p[..., 1]).astype(np.int64)   # (side, point, offset)
+    p = (
+        a[:, None, None]
+        + t[None, :, None, None] * d[:, None, None]
+        + s[None, None, :, None] * n[:, None, None]
+    )
+    x, y = (
+        np.round(p[..., 0]).astype(np.int64),
+        np.round(p[..., 1]).astype(np.int64),
+    )  # (side, point, offset)
     ok = (x >= 0) & (x < w) & (y >= 0) & (y < h)
     x, y = np.clip(x, 0, w - 1), np.clip(y, 0, h - 1)
-    upright = (np.arange(4) % 2 == 1)[:, None, None]   # right and left run up and down: contrast across columns
+    upright = (np.arange(4) % 2 == 1)[
+        :, None, None
+    ]  # right and left run up and down: contrast across columns
     g = np.where(upright, gx[y, x], gy[y, x])
     o = np.where(upright, gy[y, x], gx[y, x])
     found = (ok & (g > EDGE_MIN) & (g > o)).any(2)
@@ -292,29 +367,39 @@ def _inner(view, i):
     lab = cv2.cvtColor(view, cv2.COLOR_BGR2Lab).astype(np.int32)
     a = (lab, lab.transpose(1, 0, 2)[::-1], lab[::-1], lab.transpose(1, 0, 2))[i]
     n, m = a.shape[:2]
-    edge, deep = a[:max(1, int(INNER[0] * n))], a[int(INNER[1] * n):int(INNER[2] * n)]
+    edge, deep = (
+        a[: max(1, int(INNER[0] * n))],
+        a[int(INNER[1] * n) : int(INNER[2] * n)],
+    )
     alike = 0
     for j in range(INNER_BLOCKS):
         c0, c1 = j * m // INNER_BLOCKS, (j + 1) * m // INNER_BLOCKS
-        e = np.median(edge[:, c0:c1].reshape(-1, 3), 0) - np.median(deep[:, c0:c1].reshape(-1, 3), 0)
+        e = np.median(edge[:, c0:c1].reshape(-1, 3), 0) - np.median(
+            deep[:, c0:c1].reshape(-1, 3), 0
+        )
         alike += (e * e).sum() < (1.5 * PLAIN_DE) ** 2
     return alike / INNER_BLOCKS
 
 
 def _sides(q):
     """The quad's sides as lines (k, c): top and bottom y = c + x k / 200, left and right x = c + y k / 200."""
+
     def h(a, b):
         k = 200 * (b[1] - a[1]) / (b[0] - a[0])
         return k, a[1] - a[0] * k / 200
+
     def v(a, b):
         k = 200 * (b[0] - a[0]) / (b[1] - a[1])
         return k, a[0] - a[1] * k / 200
+
     return [h(q[0], q[1]), v(q[1], q[2]), h(q[3], q[2]), v(q[0], q[3])]
 
 
 def _corners(sides):
     top, right, bottom, left = sides
-    return np.float64([_meet(top, left), _meet(top, right), _meet(bottom, right), _meet(bottom, left)])
+    return np.float64(
+        [_meet(top, left), _meet(top, right), _meet(bottom, right), _meet(bottom, left)]
+    )
 
 
 def _view(small, quad, w, h, m):
@@ -328,16 +413,27 @@ def _view(small, quad, w, h, m):
 
 # ---------------------------------------------------------------- moving the edges in --
 
+
 def _innermost(prof, edge, sign, side):
     """Inward move (pixels) to the innermost strong edge within OUT * side outwards and IN * side
     inwards of `edge` in the profile; 0 when there is none."""
     lo, hi = int(-OUT * side), int(IN * side)
-    vals = np.array([prof[edge + sign * t] if 0 <= edge + sign * t < len(prof) else 0 for t in range(lo, hi + 1)], np.int64)
+    vals = np.array(
+        [
+            prof[edge + sign * t] if 0 <= edge + sign * t < len(prof) else 0
+            for t in range(lo, hi + 1)
+        ],
+        np.int64,
+    )
     v = np.convolve(vals, np.int64([1, 2, 1]), "same")
     top = int(v.max())
     if top <= 0:
         return 0
-    peaks = [i for i in range(1, len(v) - 1) if v[i] >= v[i - 1] and v[i] >= v[i + 1] and 10 * v[i] >= 10 * PEAK * top]
+    peaks = [
+        i
+        for i in range(1, len(v) - 1)
+        if v[i] >= v[i - 1] and v[i] >= v[i + 1] and 10 * v[i] >= 10 * PEAK * top
+    ]
     return lo + max(peaks) if peaks else 0
 
 
@@ -349,17 +445,25 @@ def _move_in(small, quad):
     if view is None:
         return quad
     gx, gy = _gradients(view)
-    across_rows = gy[:, FM + FW // 20:FM + FW - FW // 20].sum(1)
-    across_cols = gx[FM + int(0.38 * FH):FM + int(0.62 * FH), :].sum(0)
+    across_rows = gy[:, FM + FW // 20 : FM + FW - FW // 20].sum(1)
+    across_cols = gx[FM + int(0.38 * FH) : FM + int(0.62 * FH), :].sum(0)
     mt = _innermost(across_rows, FM, 1, FH)
     mb = _innermost(across_rows, FM + FH, -1, FH)
     ml = _innermost(across_cols, FM, 1, FW)
     mr = _innermost(across_cols, FM + FW, -1, FW)
-    rect = np.float64([(FM + ml, FM + mt), (FM + FW - mr, FM + mt), (FM + FW - mr, FM + FH - mb), (FM + ml, FM + FH - mb)])
+    rect = np.float64(
+        [
+            (FM + ml, FM + mt),
+            (FM + FW - mr, FM + mt),
+            (FM + FW - mr, FM + FH - mb),
+            (FM + ml, FM + FH - mb),
+        ]
+    )
     return exact.apply_h(exact.inv3(H), rect)
 
 
 # ---------------------------------------------------------------- the search --
+
 
 def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT), hint=None):
     """TL, TR, BR, BL of the playing area in small's pixels (float64 4 x 2), or None.
@@ -389,15 +493,23 @@ def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT), hint=None
     def score(view, q):
         s = _score(view, gx, gy, q)
         if hints:
-            far = min(float(np.linalg.norm(q - p, axis=1).max()) for p in hints) / max(h, w)
+            far = min(float(np.linalg.norm(q - p, axis=1).max()) for p in hints) / max(
+                h, w
+            )
             s -= HINT_WEIGHT * max(0.0, far - HINT_FREE)
         return s
+
     hl = _h_lines(gx, gy)
-    emit("edges", lines=np.float64([[(0, c), (w, c + w * k / 200)] for k, c, _ in hl]).reshape(-1, 2, 2))
+    emit(
+        "edges",
+        lines=np.float64([[(0, c), (w, c + w * k / 200)] for k, c, _ in hl]).reshape(
+            -1, 2, 2
+        ),
+    )
     if len(hl) < 2:
         return None
     up = _Upright(gx, gy)
-    uprights = {}   # each upright line found, over the tallest band it was found in
+    uprights = {}  # each upright line found, over the tallest band it was found in
     raw, looked = [], set()
     for top in hl:
         for bot in hl:
@@ -407,33 +519,62 @@ def guess(small, emit=None, fixed=None, least=(MIN_WIDTH, MIN_HEIGHT), hint=None
             band = (int(yt + 0.03 * (yb - yt)), int(yb - 0.03 * (yb - yt)))
             vl = up.lines(max(0, band[0]), min(h, band[1]))
             for k, c, _ in vl:
-                if (k, c) not in uprights or band[1] - band[0] > uprights[k, c][1] - uprights[k, c][0]:
+                if (k, c) not in uprights or band[1] - band[0] > uprights[k, c][
+                    1
+                ] - uprights[k, c][0]:
                     uprights[k, c] = band
             for i in range(len(vl)):
                 for j in range(i + 1, len(vl)):
-                    q = np.float64([_meet(top, vl[i]), _meet(top, vl[j]), _meet(bot, vl[j]), _meet(bot, vl[i])])
-                    if max([exact.norm(q[i] - fixed[i]) for i in keep], default=0) > NEAR * max(h, w):
-                        continue   # its corners disagree with the ones the user put in place
+                    q = np.float64(
+                        [
+                            _meet(top, vl[i]),
+                            _meet(top, vl[j]),
+                            _meet(bot, vl[j]),
+                            _meet(bot, vl[i]),
+                        ]
+                    )
+                    if max(
+                        [exact.norm(q[i] - fixed[i]) for i in keep], default=0
+                    ) > NEAR * max(h, w):
+                        continue  # its corners disagree with the ones the user put in place
                     q = pin(q)
                     wid = (exact.norm(q[1] - q[0]) + exact.norm(q[2] - q[3])) / 2
                     hgt = (exact.norm(q[3] - q[0]) + exact.norm(q[2] - q[1])) / 2
-                    if hgt <= 0 or not ASPECT[0] < wid / hgt < ASPECT[1] or wid < least[0] * w:
+                    if (
+                        hgt <= 0
+                        or not ASPECT[0] < wid / hgt < ASPECT[1]
+                        or wid < least[0] * w
+                    ):
                         continue
-                    key = tuple(np.round(q / (0.005 * max(h, w))).astype(np.int64).ravel())
-                    if key in looked:   # the same quad with the fixed corners in place
+                    key = tuple(
+                        np.round(q / (0.005 * max(h, w))).astype(np.int64).ravel()
+                    )
+                    if key in looked:  # the same quad with the fixed corners in place
                         continue
                     looked.add(key)
-                    view, _ = _view(small, q, RW // 2, RH // 2, 0)   # a first look at half size
+                    view, _ = _view(
+                        small, q, RW // 2, RH // 2, 0
+                    )  # a first look at half size
                     if view is not None:
                         raw.append((score(view, q), q))
-    emit("uprights", lines=np.float64([[(c + y0 * k / 200, y0), (c + y1 * k / 200, y1)]
-                                       for (k, c), (y0, y1) in sorted(uprights.items())]).reshape(-1, 2, 2))
+    emit(
+        "uprights",
+        lines=np.float64(
+            [
+                [(c + y0 * k / 200, y0), (c + y1 * k / 200, y1)]
+                for (k, c), (y0, y1) in sorted(uprights.items())
+            ]
+        ).reshape(-1, 2, 2),
+    )
     # the best few, each edge moved to the innermost strong edge nearby, scored again
     raw.sort(key=lambda r: -r[0])
     emit("candidates", quads=np.float64([q for _, q in raw[:REFINE]]).reshape(-1, 4, 2))
     seen, best = set(), None
     for s0, q0 in raw[:REFINE]:
-        for q in (q0, pin(_move_in(small, q0))):      # as found, and with the edges moved in
+        for q in (
+            q0,
+            pin(_move_in(small, q0)),
+        ):  # as found, and with the edges moved in
             key = tuple(np.round(q / (0.005 * max(h, w))).astype(np.int64).ravel())
             if key in seen:
                 continue
@@ -460,21 +601,29 @@ def _swap(small, score, best, hl, vl, keep, least):
     s, q = best
     sides = _sides(q)
     view, _ = _view(small, q, RW, RH, 0)
-    moves, looked = 0, [-1] * 4   # a side's lines need no second look while the other three stay
+    moves, looked = (
+        0,
+        [-1] * 4,
+    )  # a side's lines need no second look while the other three stay
     for _ in range(SWAPS):
         for i in range(4):
             if i in keep or (i + 1) % 4 in keep or looked[i] == moves:
                 continue
             here = _inner(view, i)
-            tried = []   # (score at half size, sides, quad), as the first look in guess
-            for line in (hl if i % 2 == 0 else vl):
+            tried = []  # (score at half size, sides, quad), as the first look in guess
+            for line in hl if i % 2 == 0 else vl:
                 t = list(sides)
                 t[i] = line[:2]
                 q2 = _corners(t)
                 wid = (exact.norm(q2[1] - q2[0]) + exact.norm(q2[2] - q2[3])) / 2
                 hgt = (exact.norm(q2[3] - q2[0]) + exact.norm(q2[2] - q2[1])) / 2
                 # as guess's candidates (which take the height between the far and near lines)
-                if hgt <= 0 or not ASPECT[0] < wid / hgt < ASPECT[1] or wid < least[0] * w or hgt < least[1] * h:
+                if (
+                    hgt <= 0
+                    or not ASPECT[0] < wid / hgt < ASPECT[1]
+                    or wid < least[0] * w
+                    or hgt < least[1] * h
+                ):
                     continue
                 v2, _ = _view(small, q2, RW // 2, RH // 2, 0)
                 if v2 is not None:
@@ -490,9 +639,19 @@ def _swap(small, score, best, hl, vl, keep, least):
                 s2 = score(v2, q2)
                 inner = _inner(v2, i)
                 if out and inner >= INNER_IN and s2 > s - OUT_DROP and s2 >= MIN_SCORE:
-                    s, q, sides, view, here, moves, out = s2, q2, t, v2, inner, moves + 1, False
+                    s, q, sides, view, here, moves, out = (
+                        s2,
+                        q2,
+                        t,
+                        v2,
+                        inner,
+                        moves + 1,
+                        False,
+                    )
                     continue
-                if n >= SWAP_TOP or s2 <= s + SWAP_GAIN:   # the others only for moving inside
+                if (
+                    n >= SWAP_TOP or s2 <= s + SWAP_GAIN
+                ):  # the others only for moving inside
                     continue
                 if inner >= here - INNER_SLACK:
                     s, q, sides, view, here, moves = s2, q2, t, v2, inner, moves + 1
@@ -512,13 +671,17 @@ def locate(img):
     nw, nh = round(w * r), round(h * r)
     left, top = (MODEL_SIDE - nw) // 2, (MODEL_SIDE - nh) // 2
     box = np.full((MODEL_SIDE, MODEL_SIDE, 3), 114, np.uint8)
-    box[top:top + nh, left:left + nw] = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_LINEAR)
+    box[top : top + nh, left : left + nw] = cv2.resize(
+        img, (nw, nh), interpolation=cv2.INTER_LINEAR
+    )
     blob = cv2.dnn.blobFromImage(box, 1 / 255, swapRB=True)
     with _net_lock:
         if _net is None:
             _net = cv2.dnn.readNetFromONNX(MODEL)
         _net.setInput(blob)
-        out = _net.forward()[0]   # 17 x anchors: cx, cy, w, h, conf, then (x, y, visibility) x 4
+        out = _net.forward()[
+            0
+        ]  # 17 x anchors: cx, cy, w, h, conf, then (x, y, visibility) x 4
     best = out[:, int(out[4].argmax())]
     if best[4] < MODEL_CONF:
         return None
@@ -545,9 +708,16 @@ def find_corners(img, progress=None, fixed=None, crop=None, search=None):
     if crop is None and search is None and all(p is None for p in fixed or []):
         hint = locate(img)
     h, w = img.shape[:2]
-    x0, y0, x1, y1 = (0, 0, w, h) if crop is None else (
-        min(max(int(crop[0]), 0), w - 1), min(max(int(crop[1]), 0), h - 1),
-        min(max(int(crop[2]), 1), w), min(max(int(crop[3]), 1), h))
+    x0, y0, x1, y1 = (
+        (0, 0, w, h)
+        if crop is None
+        else (
+            min(max(int(crop[0]), 0), w - 1),
+            min(max(int(crop[1]), 0), h - 1),
+            min(max(int(crop[2]), 1), w),
+            min(max(int(crop[3]), 1), h),
+        )
+    )
     if x1 - x0 < 16 or y1 - y0 < 16:
         return None
     small, s = shrink(img[y0:y1, x0:x1])
@@ -558,17 +728,31 @@ def find_corners(img, progress=None, fixed=None, crop=None, search=None):
     else:
         emit = None
         if progress:
+
             def emit(stage, **arrays):
-                progress(stage, {k: (np.float64(v) / s + at).round(1).tolist() for k, v in arrays.items()})
+                progress(
+                    stage,
+                    {
+                        k: (np.float64(v) / s + at).round(1).tolist()
+                        for k, v in arrays.items()
+                    },
+                )
+
         least = (MIN_WIDTH, MIN_HEIGHT) if crop is None else TRIMMED
         fixed_small = [None if p is None else (np.float64(p) - at) * s for p in fixed]
-        q = guess(small, emit, fixed_small, least, hint * s) if hint is not None else (search or guess)(small, emit, fixed_small, least)
+        q = (
+            guess(small, emit, fixed_small, least, hint * s)
+            if hint is not None
+            else (search or guess)(small, emit, fixed_small, least)
+        )
         if q is None:
             if hint is None:
                 return None
             (x0, y0), (x1, y1) = hint.min(0), hint.max(0)
             mx, my = MODEL_MARGIN * (x1 - x0), MODEL_MARGIN * (y1 - y0)
-            return find_corners(img, progress, crop=(x0 - mx, y0 - my, x1 + mx, y1 + my))
+            return find_corners(
+                img, progress, crop=(x0 - mx, y0 - my, x1 + mx, y1 + my)
+            )
         q = q / s + at
     corners = exact.snap(q, 0.1).round(1).tolist()
     if progress:
@@ -578,5 +762,6 @@ def find_corners(img, progress=None, fixed=None, crop=None, search=None):
 
 if __name__ == "__main__":
     import sys
+
     for path in sys.argv[1:]:
         print(path, find_corners(cv2.imread(path)))

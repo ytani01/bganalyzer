@@ -69,17 +69,18 @@ Python のコードにリンターが入っていない（`pyproject.toml` に�
 決めたこと（2026-10-20 ユーザー）: ruff を `uv add --dev ruff` で入れ、`ruff check`（lint）と `ruff format --check`（format）を GitHub Actions で通す。今のコードは指摘を直し、`ruff format` で整形する。
 着手は TODO-167・TODO-166 のマージの後（analyzer の Python とぶつかるため）。
 
-判断が要ること（着手時に、実測してから利用者に聞く）: lint の規則。既定の E・F だけか、I（import の並び）なども足すか。既定で出る指摘の件数を測ってから選択肢を出す。
+決めたこと（2026-10-20 ユーザー、件数を測ってから）: 世の中でよく使われている設定にする。規則は `select = ["E", "F", "I"]`（pycodestyle・pyflakes・isort）、`ignore = ["E501"]`（長い行は許す）、行の長さは既定の 88、`archives/` は対象外（`extend-exclude`）。
+測った件数（`archives/` を除く 57 ファイル）: E・F・I で整形のあとに E501 を除いて 66 件（自動で直せるのは 48）、整形が要るのは 46 ファイル。ruff 0.17 の既定の規則（C408・RUF・SIM・B など）は採らない。
 
 保つもの:
 - 整形だけのコミットと、指摘の直し（挙動が変わりうる）のコミットを分ける
 - 整形でテストや accuracy の結果が変わらない（CI で見る）。recognizer の読み取りの結果を変えない
 - 版: 整形と lint の直しで挙動が変わらないなら、analyzer・recognizer の版は上げない（直しで挙動が変わる箇所があれば、そのディレクトリの z を上げる）
 
-- [ ] ruff を dev 依存に入れ、規則を決める（件数を測って利用者に聞く）
-- [ ] `ruff format` で整形する（整形だけのコミット）
-- [ ] lint の指摘を直す
-- [ ] GitHub Actions に `ruff check` と `ruff format --check` のジョブを足す
+- [x] ruff を dev 依存に入れ、規則を決める（件数を測って利用者に聞く）
+- [x] `ruff format` で整形する（整形だけのコミット）
+- [x] lint の指摘を直す
+- [x] GitHub Actions に `ruff check` と `ruff format --check` のジョブを足す（`.github/workflows/ruff.yml`）
 
 **無駄を省く工夫:** テスト全体と accuracy は CI に任せ、手元では `uv run ruff check` と `uv run ruff format --check` だけ流す。確認は、わざと違反を 1 つ入れた差分で CI のジョブが落ちることを 1 回見れば足りる。アプリの動きは変わらないので `- [ ] ローカル:` の行は要らない
 

@@ -8,6 +8,7 @@ Works on the board seen from straight above (as in board.py, at the photo's reso
 The result is only given when exactly two sure dice lie in the fields, alike in colour and size
 (one die, dice on the bar, and a second pair of dice leave it unread).
 """
+
 from __future__ import annotations
 
 import math
@@ -17,10 +18,10 @@ import numpy as np
 
 import exact
 
-SIDE_MIN, SIDE_MAX = 0.28, 1.1     # die side / checker diameter
-WORK_PITCH = 120                   # checker diameter (px) to look for dice at
-PIP_CONTRAST = 30                  # a pip against the face (grey levels)
-MIN_READINGS = 4                   # a die is seen at several brightness levels; a pattern that looks like one, rarely
+SIDE_MIN, SIDE_MAX = 0.28, 1.1  # die side / checker diameter
+WORK_PITCH = 120  # checker diameter (px) to look for dice at
+PIP_CONTRAST = 30  # a pip against the face (grey levels)
+MIN_READINGS = 4  # a die is seen at several brightness levels; a pattern that looks like one, rarely
 
 
 def _bodies(gray, pitch):
@@ -37,19 +38,29 @@ def _bodies(gray, pitch):
             n, lab, st, _ = cv2.connectedComponentsWithStats(bw)
             for i in range(1, n):
                 x, y, w, h, a = st[i]
-                if not (0.7 * smin <= max(w, h) <= 1.45 * smax) or a < 0.4 * smin * smin:
+                if (
+                    not (0.7 * smin <= max(w, h) <= 1.45 * smax)
+                    or a < 0.4 * smin * smin
+                ):
                     continue
-                pts = cv2.findNonZero((lab[y:y + h, x:x + w] == i).astype(np.uint8)) + (x, y)
+                pts = cv2.findNonZero(
+                    (lab[y : y + h, x : x + w] == i).astype(np.uint8)
+                ) + (x, y)
                 hull = cv2.convexHull(pts)
                 # (not cv2.minAreaRect: it works in floats and gives other boxes on other CPUs)
                 (cx, cy), (rw, rh), ang = exact.min_area_rect(hull)
                 side = (rw + rh) / 2
                 if not smin <= side <= smax or max(rw, rh) > 1.3 * min(rw, rh):
                     continue
-                if cv2.contourArea(hull) < 0.86 * rw * rh:   # a square fills its box; a circle 0.79
+                if (
+                    cv2.contourArea(hull) < 0.86 * rw * rh
+                ):  # a square fills its box; a circle 0.79
                     continue
                 # four corners (a checker with something next to it can fill its box too)
-                if len(cv2.approxPolyDP(hull, 0.05 * cv2.arcLength(hull, True), True)) != 4:
+                if (
+                    len(cv2.approxPolyDP(hull, 0.05 * cv2.arcLength(hull, True), True))
+                    != 4
+                ):
                     continue
                 out.append(dict(x=cx, y=cy, side=side, ang=ang, hull=hull))
     return out
@@ -59,7 +70,7 @@ def _pips_level(gray, body, dark: bool, f: float = 0.5):
     """Like _pips, but cut at one brightness level between the face and the pips."""
     s = body["side"]
     x, y, w, h = cv2.boundingRect(body["hull"])
-    roi = gray[y:y + h, x:x + w]
+    roi = gray[y : y + h, x : x + w]
     mask = np.zeros(roi.shape, np.uint8)
     cv2.drawContours(mask, [body["hull"] - (x, y)], -1, 255, -1)
     mask = cv2.erode(mask, np.ones((3, 3), np.uint8), iterations=max(1, int(s * 0.04)))
@@ -108,7 +119,7 @@ def _pips(gray, body, dark: bool, f: float = 0.5):
     x, y, w, h = cv2.boundingRect(body["hull"])
     pad = int(s * 0.2) + 2
     x0, y0 = max(x - pad, 0), max(y - pad, 0)
-    roi = gray[y0:y + h + pad, x0:x + w + pad]
+    roi = gray[y0 : y + h + pad, x0 : x + w + pad]
     mask = np.zeros(roi.shape, np.uint8)
     cv2.drawContours(mask, [body["hull"] - (x0, y0)], -1, 255, -1)
     mask = cv2.erode(mask, np.ones((3, 3), np.uint8), iterations=max(1, int(s * 0.04)))
@@ -117,7 +128,7 @@ def _pips(gray, body, dark: bool, f: float = 0.5):
     ker = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(s * 0.3) | 1,) * 2)
     hat = cv2.morphologyEx(roi, cv2.MORPH_BLACKHAT if dark else cv2.MORPH_TOPHAT, ker)
     top = np.percentile(hat[mask > 0], 99.5)
-    if top < 40:     # no contrast inside: no pips (or a plain square)
+    if top < 40:  # no contrast inside: no pips (or a plain square)
         return []
     spot = ((hat > f * top) & (mask > 0)).astype(np.uint8)
     return _spots(spot, s, x0, y0, roi, mask, dark)
@@ -152,15 +163,22 @@ def _face_value(pips, body):
     for deg in range(-15, 16, 3):
         t = math.radians(body["ang"] + deg)
         # libm's cos and sin may differ in the last bit by CPU: snapped; the product by hand (not BLAS)
-        cs, sn = exact.snap(math.cos(t), 2.0 ** -40), exact.snap(math.sin(t), 2.0 ** -40)
+        cs, sn = exact.snap(math.cos(t), 2.0**-40), exact.snap(math.sin(t), 2.0**-40)
         dx, dy = p[:, 0] - c[0], p[:, 1] - c[1]
         q = np.stack([dx * cs + dy * sn, -dx * sn + dy * cs], 1)
         # each axis scaled on its own: in small or tilted dice the pips are not quite square
         half = np.abs(q).max(0)
-        if half.max() < 0.15 * s or half.max() > 0.42 * s or half.min() < 0.55 * half.max():
+        if (
+            half.max() < 0.15 * s
+            or half.max() > 0.42 * s
+            or half.min() < 0.55 * half.max()
+        ):
             continue
         q = q / half
-        for ref in (np.float64(_LAYOUT[n]), np.float64(_LAYOUT[n])[:, ::-1] * (1, -1)):   # and turned by 90°
+        for ref in (
+            np.float64(_LAYOUT[n]),
+            np.float64(_LAYOUT[n])[:, ::-1] * (1, -1),
+        ):  # and turned by 90°
             # each pip to its nearest layout spot, one to one
             d = np.linalg.norm(q[:, None] - ref[None], axis=2)
             if len(set(d.argmin(1))) < n:
@@ -182,7 +200,14 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
     positions in canonical coordinates."""
     corners = exact.apply_h(H, lay.src_pts())
     # no finer than the photo, and no finer than needed (a checker WORK_PITCH pixels wide)
-    k = exact.snap(np.clip(math.sqrt(exact.polygon_area(corners) / (lay.w * lay.h)), 1, max(1.0, WORK_PITCH / pitch)), 2.0 ** -20)
+    k = exact.snap(
+        np.clip(
+            math.sqrt(exact.polygon_area(corners) / (lay.w * lay.h)),
+            1,
+            max(1.0, WORK_PITCH / pitch),
+        ),
+        2.0**-20,
+    )
     size = (int(lay.w * k), int(lay.h * k))
     ground = exact.warp(img, exact.mul3(np.diag([k, k, 1.0]), exact.inv3(H)), size)
     gray = cv2.cvtColor(ground, cv2.COLOR_BGR2GRAY)
@@ -192,15 +217,24 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
     for b in bodies:
         # dark pips on a light face, or light pips on a dark one; each way of finding the pips
         # is one reading (the readings of one place are counted below)
-        reads = [(v, dark) for dark in (True, False) for find in (_pips, _pips_level) for f in (0.35, 0.5, 0.65)
-                 if (v := _face_value(find(gray, b, dark, f), b))]
+        reads = [
+            (v, dark)
+            for dark in (True, False)
+            for find in (_pips, _pips_level)
+            for f in (0.35, 0.5, 0.65)
+            if (v := _face_value(find(gray, b, dark, f), b))
+        ]
         if len({dark for _, dark in reads}) != 1:
             continue
         v = max({v for v, _ in reads}, key=[v for v, _ in reads].count)
         dark = reads[0][1]
         # a checker's dimple reads as a one (with a bit of a triangle next to it making a square)
         # and a pattern on a checker (an engraved flower) can look like a small die
-        near = [c for c in circles if exact.hypot(b["x"] / k - c[0], b["y"] / k - c[1]) < 0.5 * c[2]]
+        near = [
+            c
+            for c in circles
+            if exact.hypot(b["x"] / k - c[0], b["y"] / k - c[1]) < 0.5 * c[2]
+        ]
         if any(v == 1 or b["side"] / k < 1.6 * c[2] for c in near):
             continue
         found += [b | dict(value=v, dark_pips=dark) for v, _ in reads]
@@ -208,32 +242,66 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
     # one die per place, sure when most readings there agree
     dice = []
     for b in sorted(found, key=lambda b: -b["side"]):
-        if any(exact.hypot(b["x"] - d["x"], b["y"] - d["y"]) < 0.6 * d["side"] for d in dice):
+        if any(
+            exact.hypot(b["x"] - d["x"], b["y"] - d["y"]) < 0.6 * d["side"]
+            for d in dice
+        ):
             continue
-        seen = [o["value"] for o in found if exact.hypot(b["x"] - o["x"], b["y"] - o["y"]) < 0.6 * b["side"]]
+        seen = [
+            o["value"]
+            for o in found
+            if exact.hypot(b["x"] - o["x"], b["y"] - o["y"]) < 0.6 * b["side"]
+        ]
         value = max(set(seen), key=seen.count)
         mask = np.zeros(gray.shape, np.uint8)
         cv2.drawContours(mask, [b["hull"]], -1, 255, -1)
-        dice.append(b | dict(value=value, seen=seen, sure=len(seen) >= MIN_READINGS and seen.count(value) >= 0.75 * len(seen),
-                             lab=np.median(lab[mask > 0], 0).astype(float)))
+        dice.append(
+            b
+            | dict(
+                value=value,
+                seen=seen,
+                sure=len(seen) >= MIN_READINGS
+                and seen.count(value) >= 0.75 * len(seen),
+                lab=np.median(lab[mask > 0], 0).astype(float),
+            )
+        )
     out = []
     for d in dice:
         x, y = d["x"] / k, d["y"] / k
-        out.append(dict(x=round(x, 1), y=round(y, 1), side=round(d["side"] / k, 1), value=d["value"],
-                        sure=d["sure"], on_bar=bool(lay.a - 0.1 * pitch < x < lay.a + lay.bar + 0.1 * pitch)))
+        out.append(
+            dict(
+                x=round(x, 1),
+                y=round(y, 1),
+                side=round(d["side"] / k, 1),
+                value=d["value"],
+                sure=d["sure"],
+                on_bar=bool(lay.a - 0.1 * pitch < x < lay.a + lay.bar + 0.1 * pitch),
+            )
+        )
     if debug is not None:
         g = ground.copy()
         for b in found:
             cv2.drawContours(g, [b["hull"]], -1, (0, 255, 255), 1)
         for d in dice:
-            cv2.putText(g, str(d["value"]) + ("" if d["sure"] else "?"), (int(d["x"]), int(d["y"] - d["side"] * 0.7)),
-                        0, 1.2, (0, 0, 255), 3)
+            cv2.putText(
+                g,
+                str(d["value"]) + ("" if d["sure"] else "?"),
+                (int(d["x"]), int(d["y"] - d["side"] * 0.7)),
+                0,
+                1.2,
+                (0, 0, 255),
+                3,
+            )
         cv2.imwrite(debug, g)
     values = None
     field = [(d, o) for d, o in zip(dice, out) if d["sure"] and not o["on_bar"]]
     if len(field) == 2:
         (a, _), (b, _) = field
-        if (a["dark_pips"] == b["dark_pips"] and max(a["side"], b["side"]) < 1.3 * min(a["side"], b["side"])
-                and exact.norm(a["lab"][1:] - b["lab"][1:]) < 15 and abs(a["lab"][0] - b["lab"][0]) < 60):
+        if (
+            a["dark_pips"] == b["dark_pips"]
+            and max(a["side"], b["side"]) < 1.3 * min(a["side"], b["side"])
+            and exact.norm(a["lab"][1:] - b["lab"][1:]) < 15
+            and abs(a["lab"][0] - b["lab"][0]) < 60
+        ):
             values = sorted([a["value"], b["value"]], reverse=True)
     return dict(values=values, dice=out)
