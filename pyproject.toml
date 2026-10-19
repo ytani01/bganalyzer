@@ -19,6 +19,7 @@ dev = [
     "pytest",
     "httpx",  # fastapi.testclient が使う
     "pillow>=12.3.0",
+    "ruff>=0.17.1",
 ]
 
 [tool.uv]
@@ -29,3 +30,12 @@ package = false
 # PyPI の gnubg には aarch64 の Linux の wheel が無い。aarch64（Raspberry Pi）は .github/workflows/gnubg-wheel.yml で
 # ビルドして Release に置いたものを使う（TODO-055）。他の CPU は PyPI から入れる
 gnubg = { url = "https://github.com/ytani01/bganalyzer/releases/download/gnubg-1.1.0a16/gnubg-1.1.0a16-cp312-cp312-linux_aarch64.whl", marker = "platform_machine == 'aarch64'" }
+
+[tool.ruff]
+# archives は過去の使い捨てスクリプト（TODO-168）
+extend-exclude = ["archives"]
+
+[tool.ruff.lint]
+# pycodestyle（E）・pyflakes（F）・isort（I）。行の長さ（E501）は見ない
+select = ["E", "F", "I"]
+ignore = ["E501"]
