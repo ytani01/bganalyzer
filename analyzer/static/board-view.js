@@ -82,17 +82,17 @@ const BgBoardView = (() => {
     const x0 = home === "right" ? B.x0 - 8 : sideX(home) - 2, w = RIGHT - B.x0 + 12 + COL.gap + COL.w + 4;
     svg.setAttribute("viewBox", `${x0} ${y0} ${w} ${h}`);
     el("rect", { x: x0, y: y0, width: w, height: h, fill: "var(--card)" }, svg);
+    if (photo) {   // the photo beside the board: nothing but the photo (TODO-176); the same box as the board's, so it lines up
+      el("image", { href: photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
+      return;
+    }
     if (match) drawMatch(svg, match, home, y0, onPart);
     el("rect", { x: B.x0 - 6, y: B.y0 - 6, width: RIGHT - B.x0 + 12, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
     for (const side of ["white", "black"]) {
       tapPart(el("rect", { x: sideX(home), y: trayY(side), width: COL.w, height: COL.tray, rx: 4, fill: "var(--felt)", stroke: "var(--frame)", "stroke-width": 4 }, svg), "home", onPart);
     }
-    if (photo) {
-      el("image", { href: photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
-    } else {
-      el("rect", { x: B.x0, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
-      el("rect", { x: B.x0 + 6 * B.pw + B.bar, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
-    }
+    el("rect", { x: B.x0, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
+    el("rect", { x: B.x0 + 6 * B.pw + B.bar, y: B.y0, width: 6 * B.pw, height: B.y1 - B.y0, fill: "var(--felt)" }, svg);
     drawPoints(svg, scene, onSelect);
     drawBar(svg, scene, onSelect);
     if (photo) return;   // the photo shows the checkers itself
