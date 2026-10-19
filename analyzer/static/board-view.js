@@ -62,7 +62,7 @@ const BgBoardView = (() => {
     if (onPart) {
       e.classList.add("tap");
       e.dataset.part = kind;
-      e.addEventListener("click", () => onPart(kind, e.getBoundingClientRect()));   // where it is: its settings open beside it
+      e.addEventListener("click", () => onPart(kind));
     }
     return e;
   }

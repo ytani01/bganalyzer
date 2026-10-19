@@ -78,7 +78,6 @@ const state = {
   resultFor: null,     // inputsKey() of what it was worked out for
   resultDice: null,
   sheet: null,         // the settings open beside the part tapped (TODO-113, TODO-150): "match", "cube", "roll" or null
-  sheetAt: null,       // the screen rect of that part
   reanalyzing: false,  // the board fixed on the result screen is being analysed again (TODO-138)
   moveShown: 0,        // the move in the result's list drawn as arrows
   // settings
@@ -352,7 +351,7 @@ part((s) => s.board && [s.step, s.board, s.home, s.selected, rolled(s), s.onRoll
 // ---- a tap on a part around the board picture (TODO-113): the trays flip the home's side, a pip count
 // swaps the checkers' owners (the board keeps its colours), the match, the cube and the dice open their sheet
 // (the side and the colour are what this photo is read with again, and the colour also the next photo's)
-function tapPart(kind, at) {
+function tapPart(kind) {
   if (kind === "home") {
     const home = state.home === "right" ? "left" : "right";
     setHome(home);
@@ -361,20 +360,30 @@ function tapPart(kind, at) {
     editBoard(BgBoard.swapColours);
     keep("bottomColour", state.bottomColour ? "0" : "1");
     update({ bottomColour: state.bottomColour ? 0 : 1 });
-  } else update({ sheet: kind, sheetAt: at });
+  } else update({ sheet: kind });
 }
-part((s) => [s.sheet, s.step, s.sheetAt], (s) => {
+part((s) => [s.sheet, s.step], (s) => {
   for (const k of ["match", "cube", "roll"]) $(`sheet-${k}`).hidden = !((s.step === "board" || s.step === "outcome") && s.sheet === k);
-  const box = s.sheet && $(`sheet-${s.sheet}`), r = s.sheetAt;
-  if (!box || box.hidden || !r) return;
-  // above or below the part, on the side with more room, inside the screen, the part itself left in sight (TODO-150)
-  const w = box.offsetWidth, h = box.offsetHeight, gap = 8;
-  const below = innerHeight - r.bottom > r.top;
-  const x = Math.max(8, Math.min(innerWidth - w - 8, (r.left + r.right) / 2 - w / 2));
-  const y = Math.max(8, Math.min(innerHeight - h - 8, below ? r.bottom + gap : r.top - gap - h));
-  box.style.left = `${x}px`;
-  box.style.top = `${y}px`;
+  placeSheet();
 });
+// Above or below its part, on the side with more room, above the bottom bar, the part itself left in sight (TODO-150).
+// Placed again whenever the part or the settings move or change size: a turn of the phone, a scroll, a choice that adds a row.
+function placeSheet() {
+  const box = state.sheet && $(`sheet-${state.sheet}`);
+  const part = box && !box.hidden && document.querySelector(`#board-svg [data-part="${state.sheet}"]`);
+  if (!part) return;
+  const r = part.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight, gap = 8;
+  const bottom = innerHeight - $("actbar").offsetHeight;
+  const below = bottom - r.bottom > r.top;
+  box.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, (r.left + r.right) / 2 - w / 2))}px`;
+  box.style.top = `${Math.max(8, Math.min(bottom - h - 8, below ? r.bottom + gap : r.top - gap - h))}px`;
+  // too tall for the screen (a phone on its side): it scrolls itself, else a swipe on it does nothing (TODO-144)
+  box.style.touchAction = box.scrollHeight > box.clientHeight ? "pan-y pinch-zoom" : "";
+}
+addEventListener("resize", placeSheet);
+addEventListener("scroll", placeSheet, { passive: true });
+const sheetSize = new ResizeObserver(placeSheet);
+for (const k of ["match", "cube", "roll"]) sheetSize.observe($(`sheet-${k}`));
 for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("click", () => update({ sheet: null }));
 
 // ---- what the analysis is asked
