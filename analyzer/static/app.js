@@ -399,7 +399,7 @@ for (const k of ["match", "cube", "roll"]) {
 // ---- what the analysis is asked
 part((s) => [s.dice, s.diceFromPhoto, cubeOffered(s), s.onRoll], (s) => {
   $("dice-row").dataset.side = s.onRoll;   // the faces in the colours of the dice on the board
-  // a double offered: no dice yet (TODO-086), but the row stays to choose them, which takes the double back (TODO-150)
+  // a double offered: no dice yet (TODO-086), and the board shows none, so this row cannot be opened from it (TODO-156); it stays in case it is open when the double is set
   const shown = cubeOffered(s) ? [0, 0] : s.dice;
   for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
     $(id).dataset.value = shown[k] ? String(shown[k]) : "";
@@ -642,6 +642,7 @@ function setOnRoll(side) {
 }
 
 // A die chosen while a double is offered: the double is cleared, and dice left in from before do not count (TODO-150).
+// The board shows no dice while a double is offered (TODO-156), so this is only a guard for a roll sheet that is already open.
 function setDie(k, value) {
   const offered = cubeOffered();
   const dice = offered ? [0, 0] : state.dice.slice();
