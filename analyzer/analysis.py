@@ -92,6 +92,7 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
         if crawford and sum(away1) != 1:
             raise ValueError("the Crawford game needs one side (only) 1 point from winning the match")
         if crawford and cube_value != 1:
+            # app.js looks for "Crawford" here: a reading that took the Crawford game off says nothing (TODO-153)
             raise ValueError("no doubling in the Crawford game: the cube stays at 1 in the middle")
     _check(pos)
 
