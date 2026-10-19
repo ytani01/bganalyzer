@@ -177,7 +177,8 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .canvas-wrap { background: #000; border-radius: 8px; overflow: hidden; touch-action: none; }
 #photo-canvas { display: block; width: 100%; touch-action: none; }
 
-.board-wrap { background: var(--card); border-radius: 8px; padding: 4px; }
+/* The board reaches over main's side padding to the page's edge (TODO-163); side by side, only on the outer side. */
+.board-wrap { background: var(--card); border-radius: 8px; padding: 4px 0; margin-inline: -16px; }
 .board-wrap svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
 .board-wrap svg .hit, .board-wrap svg .hit-num { cursor: pointer; }
 .board-wrap svg { -webkit-touch-callout: none; touch-action: manipulation; }
@@ -193,6 +194,14 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 @media (min-width: 1000px) {
   main:has(.boards.two:not([hidden])) { max-width: 1240px; }
   #board:not([hidden]) .boards.two { grid-template-columns: 1fr 1fr; }
+  #board:not([hidden]) .boards.two #photo-wrap { margin-right: 0; }
+  #board:not([hidden]) .boards.two .board-pin .board-wrap { margin-left: 0; }
+}
+/* Square corners on the side that reaches the page's edge: up to main's max-width (720px), or 1240px side by side. */
+@media (max-width: 720px) { .board-wrap { border-radius: 0; } }
+@media (min-width: 1000px) and (max-width: 1240px) {
+  #board:not([hidden]) .boards.two #photo-wrap { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  #board:not([hidden]) .boards.two .board-pin .board-wrap { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 }
 
 .editor { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin: 6px 0 0; }

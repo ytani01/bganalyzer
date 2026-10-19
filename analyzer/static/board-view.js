@@ -20,7 +20,8 @@ const BgBoardView = (() => {
   // The column beside the board on the home side (TODO-151, TODO-152, TODO-155), top to bottom: 奥's pip count, the cube
   // 奥 owns, 奥's tray of borne-off checkers, 奥's score, the cube in the middle, 手前's score, 手前's tray, the cube
   // 手前 owns, 手前's pip count. 3 apart. The pip counts stick out above and below the board's frame.
-  const COL = { w: 56, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 32, tray: 101, cube: 40, pip: 40, pad: 3 };
+  // COL.w: the narrowest that holds the cube (40) with its edge (2.5): a pip count of 3 digits ("888" ≈ 35 at 20px bold) is narrower (TODO-163).
+  const COL = { w: 43, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 32, tray: 101, cube: 40, pip: 40, pad: 3 };
   const VIEW = { y: COL.y0 - COL.pad - COL.pip - 4, h: (COL.y1 - COL.y0) + 2 * (COL.pad + COL.pip + 4) };
   const MATCH_H = 26;   // the line above the board (and 奥's pip count) for the match, only in a match (TODO-099)
   const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
@@ -77,7 +78,8 @@ const BgBoardView = (() => {
     const { board: b, home, photo } = scene;
     const match = scene.match && (scene.match.length || onPart) ? scene.match : null;
     const y0 = VIEW.y - (match ? MATCH_H : 0), h = VIEW.h + (match ? MATCH_H : 0);
-    const x0 = home === "right" ? 0 : -COL.w - COL.gap, w = 660 + COL.w + COL.gap;
+    // Nothing around but 2 for the trays' edge (4 wide) beyond the column and the same beyond the frame (TODO-163).
+    const x0 = home === "right" ? B.x0 - 8 : sideX(home) - 2, w = RIGHT - B.x0 + 12 + COL.gap + COL.w + 4;
     svg.setAttribute("viewBox", `${x0} ${y0} ${w} ${h}`);
     el("rect", { x: x0, y: y0, width: w, height: h, fill: "var(--card)" }, svg);
     if (match) drawMatch(svg, match, home, y0, onPart);
