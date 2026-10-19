@@ -1137,11 +1137,12 @@ def test_tapping_the_board_fixes_the_colour_sent():
       state = {{ home: "right", bottomColour: 1, colourPick: "auto" }}; tapPart("colour"); r.push(state.colourPick);
       state = {{ home: "right", bottomColour: 0, colourPick: "auto" }}; tapPart("colour"); r.push(state.colourPick);
       state = {{ home: "right", bottomColour: 0, colourPick: "auto" }}; tapPart("home"); r.push(state.colourPick);
+      state = {{ home: "right", bottomColour: 1, colourPick: "auto" }}; tapPart("home"); r.push(state.colourPick);
       console.log(JSON.stringify(r));"""
     r = subprocess.run(
         ["node", "-e", script], capture_output=True, text=True, check=True
     )
-    assert json.loads(r.stdout) == ["0", "1", "0"]
+    assert json.loads(r.stdout) == ["0", "1", "0", "1"]
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
