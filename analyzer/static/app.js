@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.82.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.83.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -95,6 +95,8 @@ const diceIn = (s = state) => (s.dice[0] && s.dice[1] ? s.dice.slice() : null);
 const cubeOffered = (s = state) => BgCube.offered(s.cube);
 // The dice the analysis uses: both dice, or null while one is not set or the cube is being offered.
 const rolled = (s = state) => BgCube.usedDice(s.cube, diceIn(s));
+// One die set, the other not: waited on (a double offered uses no dice, so none are half set then)
+const halfDie = (s = state) => !cubeOffered(s) && !s.dice[0] !== !s.dice[1];
 
 // What an analysis is worked out from (but its depth): a result fits the board while this is the same.
 // (bottomColour: the server's summary names the sides by it)
@@ -386,15 +388,27 @@ addEventListener("scroll", placeSheet, { passive: true });
 const sheetSize = new ResizeObserver(placeSheet);
 for (const k of ["match", "cube", "roll"]) sheetSize.observe($(`sheet-${k}`));
 for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("click", () => update({ sheet: null }));
+// A value chosen in a sheet is taken at once and closes it, as a count does the palette; the dice once both are set (TODO-150).
+// Listened on the sheet, so the choice's own handler has run.
+function choseInSheet(e) {
+  if (e.type === "click" && !e.target.closest("button[data-value], button[data-n]")) return;
+  if (e.currentTarget.id === "sheet-roll" && halfDie()) return;   // one die set, the other still to choose
+  update({ sheet: null });
+}
+for (const k of ["match", "cube", "roll"]) {
+  $(`sheet-${k}`).addEventListener("click", choseInSheet);
+  $(`sheet-${k}`).addEventListener("change", choseInSheet);
+}
 
 // ---- what the analysis is asked
 part((s) => [s.dice, s.diceFromPhoto, cubeOffered(s), s.onRoll], (s) => {
   $("dice-row").dataset.side = s.onRoll;   // the faces in the colours of the dice on the board
+  // a double offered: no dice yet (TODO-086), but the row stays to choose them, which takes the double back (TODO-150)
+  const shown = cubeOffered(s) ? [0, 0] : s.dice;
   for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
-    $(id).dataset.value = s.dice[k] ? String(s.dice[k]) : "";
-    for (const b of $(id).children) b.classList.toggle("on", Number(b.dataset.n) === s.dice[k]);
+    $(id).dataset.value = shown[k] ? String(shown[k]) : "";
+    for (const b of $(id).children) b.classList.toggle("on", Number(b.dataset.n) === shown[k]);
   }
-  $("dice-row").hidden = cubeOffered(s);   // a double offered: no dice yet (TODO-086)
   $("dice-note").hidden = !s.diceFromPhoto || cubeOffered(s);
   // with dice in, the side on roll has already rolled: "振った人", not "次に振る人" (TODO-042)
   $("onroll-label").textContent = `${BgResult.rollWho(rolled(s))}人`;
@@ -447,13 +461,12 @@ part((s) => [resultStale(s), s.reanalyzing], (s) => {
 });
 
 // ---- fixed on the result screen (TODO-138): analysed again by itself a moment after the last fix,
-// once nothing is half done (the palette or a sheet open, a die not set while the other is)
+// once nothing is half done (the palette open, a die not set while the other is); a sheet left open does not wait (TODO-150)
 const REANALYZE_WAIT = 800;   // ms after the last change
 let reanalyzeTimer = null;
-part((s) => [s.step, resultStale(s) && inputsKey(s), s.plies, !!s.palette, s.sheet, s.busy && 1, analyzeErrors(s).length], (s) => {
+part((s) => [s.step, resultStale(s) && inputsKey(s), s.plies, !!s.palette, s.busy && 1, analyzeErrors(s).length], (s) => {
   clearTimeout(reanalyzeTimer);
-  const halfDie = !s.dice[0] !== !s.dice[1];
-  if (s.step !== "outcome" || !resultStale(s) || s.palette || s.sheet || s.busy || analyzeErrors(s).length || halfDie) return;
+  if (s.step !== "outcome" || !resultStale(s) || s.palette || s.busy || analyzeErrors(s).length || halfDie(s)) return;
   reanalyzeTimer = setTimeout(reanalyze, REANALYZE_WAIT);
 });
 
@@ -632,10 +645,12 @@ function setOnRoll(side) {
   update({ onRoll: side, cube: offered ? { ...state.cube, at: BgBoard.other(side) } : state.cube });
 }
 
+// A die chosen while a double is offered: the double is cleared, and dice left in from before do not count (TODO-150).
 function setDie(k, value) {
-  const dice = state.dice.slice();
+  const offered = cubeOffered();
+  const dice = offered ? [0, 0] : state.dice.slice();
   dice[k] = Number(value) || 0;
-  update({ dice, diceFromPhoto: false });
+  update({ dice, diceFromPhoto: false, ...(offered && dice[k] ? { cube: { ...state.cube, offered: false }, cubeFromPhoto: false } : {}) });
 }
 
 function setCube(patch) {
@@ -1322,7 +1337,7 @@ for (const [k, id] of [[0, "die1"], [1, "die2"]]) {
   }
   $(id).addEventListener("click", (e) => {
     const b = e.target.closest("button");
-    if (b) setDie(k, Number(b.dataset.n) === state.dice[k] ? 0 : b.dataset.n);
+    if (b) setDie(k, Number(b.dataset.n) === state.dice[k] && !cubeOffered() ? 0 : b.dataset.n);
   });
 }
 for (const v of BgCube.VALUES) $("cube-value").add(new Option(String(v), String(v)));

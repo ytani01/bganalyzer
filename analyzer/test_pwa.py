@@ -323,7 +323,7 @@ def test_no_dice_while_a_double_is_offered():
     assert flags == [True, False, False]
     js = (STATIC / "app.js").read_text()
     assert "const rolled = (s = state) => BgCube.usedDice(s.cube, diceIn(s));" in js   # everything asked goes through it
-    assert '$("dice-row").hidden = cubeOffered(s);' in js
+    assert "const shown = cubeOffered(s) ? [0, 0] : s.dice;" in js   # the row shows none (TODO-150: no longer hidden)
     # dice read from the photo: the cube is owned, as the server took it
     assert "if (dice && cubeOffered({ cube })) patch.cube = { ...cube, offered: false };" in js
 
@@ -547,3 +547,21 @@ def test_the_settings_open_beside_the_part_tapped():
         assert hook in js
     css = (STATIC / "style.css").read_text()
     assert "bottom: var(--bar-h" not in css[css.index(".sheet {"):css.index(".sheet[hidden]")]
+
+
+def test_a_value_chosen_in_the_settings_is_taken_at_once():
+    # TODO-150: a choice closes the settings (the dice once both are set), and the result screen does not wait for them
+    js = (STATIC / "app.js").read_text()
+    assert 'if (e.currentTarget.id === "sheet-roll" && halfDie()) return;' in js   # only the dice wait for the other die
+    assert '$(`sheet-${k}`).addEventListener("change", choseInSheet);' in js
+    gate = js[js.index("const REANALYZE_WAIT"):js.index("reanalyzeTimer = setTimeout(reanalyze")]
+    assert "s.sheet" not in gate
+
+
+def test_a_die_chosen_takes_the_double_back():
+    # TODO-150: the dice row stays while a double is offered (empty), and a die chosen there clears "ダブルされたところ"
+    js = (STATIC / "app.js").read_text()
+    assert '$("dice-row").hidden' not in js
+    assert "const shown = cubeOffered(s) ? [0, 0] : s.dice;" in js
+    assert "const dice = offered ? [0, 0] : state.dice.slice();" in js
+    assert "cube: { ...state.cube, offered: false }" in js[js.index("function setDie("):]
