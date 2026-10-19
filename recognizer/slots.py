@@ -21,6 +21,7 @@ On the samples it reads fewer points than the circles (recognizer/README.md).
 import os
 
 import numpy as np
+
 from checkers import edge_support
 from colours import LAB_W
 from geometry import Layout

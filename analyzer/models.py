@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from analysis import DEFAULT_PLIES, MAX_PLIES
 from pydantic import BaseModel, Field
+
+from analysis import DEFAULT_PLIES, MAX_PLIES
 
 
 class Board(BaseModel):

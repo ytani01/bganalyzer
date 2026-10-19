@@ -41,6 +41,7 @@ def measure(path):
     """One sample's result, as stored in the baseline."""
     sys.path.insert(0, HERE)
     import cv2
+
     import evaluate
 
     cv2.setRNGSeed(

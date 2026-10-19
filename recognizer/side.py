@@ -22,10 +22,11 @@ camera, that is across the points (towards the far end) and hardly along them. T
 
 from __future__ import annotations
 
-import corners as C
 import cv2
-import exact
 import numpy as np
+
+import corners as C
+import exact
 from checkers import add_hidden_stacks, count_from_circles, detect_checkers
 from colours import board_colours, triangle_colour_map
 from geometry import Layout, camera_from_h, find_tips

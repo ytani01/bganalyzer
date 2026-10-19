@@ -8,8 +8,9 @@ Coordinates are canonical (geometry.py); images carry a margin of m pixels.
 from __future__ import annotations
 
 import cv2
-import exact
 import numpy as np
+
+import exact
 import radial
 from colours import LAB_W
 from geometry import TRI_DEPTH, Layout

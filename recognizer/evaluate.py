@@ -6,8 +6,9 @@ import os
 import sys
 import urllib.request
 
-import board
 import cv2
+
+import board
 import home_prior
 from position import Position
 

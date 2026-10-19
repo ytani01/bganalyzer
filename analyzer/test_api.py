@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
+
 from analysis import Position, analyze, summary_ja
 from app import app
-from fastapi.testclient import TestClient
 
 client = TestClient(app)
 START_ID = "4HPwATDgc/ABMA"
@@ -180,6 +181,7 @@ def test_steep_photo_is_flagged():
     # The top-down samples and screenshots are fine. photo1 (removed for privacy) was taken at
     # a steep angle and read badly: its tapped corners and image size are kept here.
     import cv2
+
     from board import OBLIQUE_WARN_DEG, view_tilt_deg
 
     photo1 = view_tilt_deg(
@@ -272,6 +274,7 @@ def test_corners_are_found_on_samples():
     # diagram-prime the frame with the point numbers (4.7%), travel-case a slanted side (2.0%),
     # nardy-midgame 6.0% and collected-galaxy-screen-3 9.3%.
     import cv2
+
     from corners import find_corners
 
     samples = Path(__file__).resolve().parent.parent / "samples"
@@ -301,6 +304,7 @@ def test_corners_are_found_on_samples():
 
 def test_corners_are_found_on_synthetic_boards():
     import numpy as np
+
     from corners import find_corners
     from synth import photograph, random_position, render_board
 
@@ -317,6 +321,7 @@ def test_corners_are_found_on_synthetic_boards():
 def test_corners_keep_the_fixed_ones_and_look_in_the_trimmed_part():
     # Looking again after the user has moved some corners or trimmed the photo (TODO-068).
     import cv2
+
     from corners import find_corners
 
     samples = Path(__file__).resolve().parent.parent / "samples"
@@ -513,8 +518,9 @@ def _draw_die(img, cx, cy, side, value, deg):
 
 
 def test_dice_are_read_from_a_drawn_board():
-    import dice
     import numpy as np
+
+    import dice
     from board import Layout
 
     lay = Layout(a=430, bar=70)
@@ -866,9 +872,10 @@ def test_api_match():
 
 
 def test_api_photo_match(monkeypatch):
-    import board
     import cv2
     import numpy as np
+
+    import board
 
     monkeypatch.setattr(
         board,
@@ -955,8 +962,9 @@ def _draw_cube(img, x, y, side, text):
 
 
 def test_cube_is_found_on_a_drawn_board():
-    import cube
     import numpy as np
+
+    import cube
     from board import Layout
 
     lay = Layout(a=430, bar=70)
@@ -1017,9 +1025,10 @@ def test_api_reads_the_cube_from_the_photo():
 
 def test_api_cube_read_without_dice_is_a_double(monkeypatch):
     # the cube on 手前's side and no dice: 奥 has just doubled, and 手前 takes or passes
-    import board
     import cv2
     import numpy as np
+
+    import board
 
     def fake(img, corners, **kw):
         return Position.start(), {
@@ -1077,9 +1086,10 @@ def test_api_cube_read_without_dice_is_a_double(monkeypatch):
 def test_api_cube_in_a_field_is_a_double_even_with_dice(monkeypatch):
     # TODO-045: the cube in a playing field: the side on roll (手前) has just doubled to 2, 奥 takes or
     # passes, and the dice on the board are left out
-    import board
     import cv2
     import numpy as np
+
+    import board
 
     def fake(img, corners, **kw):
         return Position.start(), {
@@ -1123,9 +1133,10 @@ def test_api_cube_in_a_field_is_a_double_even_with_dice(monkeypatch):
 def test_api_photo_dice_cancel_a_double_set_by_hand(monkeypatch):
     # TODO-033: 「ダブルされた」set by hand (doubled=true, no dice) and dice read from the photo:
     # the photo's dice win, so it is no longer take or pass but the doubler's move (was 422)
-    import board
     import cv2
     import numpy as np
+
+    import board
 
     def fake(img, corners, **kw):
         return Position.start(), {

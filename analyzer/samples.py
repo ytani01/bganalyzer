@@ -15,9 +15,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+
 import analysis  # noqa: F401  puts recognizer/ on sys.path
 import collected  # recognizer/collected.py
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from models import Board
 
 RECOGNIZER = Path(__file__).resolve().parent.parent / "recognizer"

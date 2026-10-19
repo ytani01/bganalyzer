@@ -34,6 +34,8 @@ gnubg = { url = "https://github.com/ytani01/bganalyzer/releases/download/gnubg-1
 [tool.ruff]
 # archives は過去の使い捨てスクリプト（TODO-168）
 extend-exclude = ["archives"]
+# import の並びで、自作のモジュールを third-party と分ける
+src = [".", "recognizer", "analyzer", "tools"]
 
 [tool.ruff.lint]
 # pycodestyle（E）・pyflakes（F）・isort（I）。行の長さ（E501）は見ない

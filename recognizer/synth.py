@@ -15,6 +15,7 @@ import sys
 
 import cv2
 import numpy as np
+
 from position import Position
 
 KRAFT = (150, 195, 228)

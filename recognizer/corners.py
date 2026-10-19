@@ -37,8 +37,9 @@ import os
 import threading
 
 import cv2
-import exact
 import numpy as np
+
+import exact
 
 DEBUG = None  # a list to collect the scored candidates in (for tuning)
 WORK_SIDE = 800  # longest side the search runs at (px)

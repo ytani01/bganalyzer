@@ -4,11 +4,12 @@ import shutil
 import sys
 from pathlib import Path
 
+import cv2
+import pytest
+
 import analysis  # noqa: F401  puts recognizer/ on sys.path
 import collected
-import cv2
 import import_collected
-import pytest
 
 SAMPLES = Path(__file__).resolve().parent.parent / "samples"
 

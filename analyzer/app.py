@@ -16,6 +16,16 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+
 from analysis import (
     DEFAULT_PLIES,
     Position,
@@ -28,20 +38,10 @@ from analysis import (
 )
 from claude_corners import claude_command
 from claude_corners import router as claude_router
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.exception_handlers import (
-    http_exception_handler,
-    request_validation_exception_handler,
-)
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from models import AnalyzeRequest, Board
-from speech import router as speech_router
-
 from samples import router as samples_router
 from samples import samples_dir
+from speech import router as speech_router
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
