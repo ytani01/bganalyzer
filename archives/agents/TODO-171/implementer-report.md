@@ -50,5 +50,5 @@ home を `left`/`right` で送ったとき（PWA で置き場をタップした�
 ## 判断が要る点・残る懸念
 
 - **指示の「141/141 組が一致」は home を正解にしたときの数で、home も推測すると 564 通り中 538（95%）。** 外れる 26 通りは 9 組。うち 3 組（collected-blue-felt-oblique、collected-cream-far、user-1792195518366-wcfrvo）は、色も home も逆にした読みのほうがピップ数が少なくなる。5 組は同点。1 組（user-1792248218172-kuetnz）は `home_prior` が正しい色でも外れる
-- 文書は触っていない。`recognizer/README.md:9,16`（`--bottom-colour` は 0/1 だけで「端末に覚えた色を渡す」と書いてある）と `analyzer/README.md:251,263`（`/analyze-photo` の `bottom_colour` と応答の形）が古くなる。直すかは管理者の判断
+- README は、管理者の依頼で同じ PR に足した: `recognizer/README.md`（`--bottom-colour` の `auto` と決め方）、`analyzer/README.md`（`/analyze-photo` の `bottom_colour` と、応答の `bottom_colour`・`colour_guess`）
 - 応答の `bottom_colour` は、recognize を差し替えたテストのように `info` に色が無いと、送った値（`"auto"` もありうる）をそのまま返す。本物の recognize は必ず入れる
