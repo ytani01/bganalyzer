@@ -248,7 +248,7 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 
 写真から認識（`recognizer/board.py`）して、そのまま解析します。
 フィールド: `image`、`corners`（`x1,y1,…,x4,y4`）、`home`（`left`・`right`・`auto`。既定 `right`）、
-`bottom_colour`（意味は recognizer/README.md と同じ。既定 `0`。読み取りと、`summary` の白・黒の呼び方（/analyze と同じ）の両方に使う）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）、`cube_value`・`cube_owner`・`doubled`（/analyze と同じ。ただし `dice` を省いて写真からダイスが読めたときは、`doubled` を false にしてチェッカーの手を評価する）、
+`bottom_colour`（`0`・`1`・`auto`。意味と `auto` の決め方は recognizer/README.md の `--bottom-colour` と同じ。既定 `0`。読み取りと、`summary` の白・黒の呼び方（/analyze と同じ）の両方に使う）、`on_roll`、`plies`、`dice`（例 `3,1`。省くと写真から読めたダイスを使う）、`cube_value`・`cube_owner`・`doubled`（/analyze と同じ。ただし `dice` を省いて写真からダイスが読めたときは、`doubled` を false にしてチェッカーの手を評価する）、
 `match_length`・`score_white`・`score_black`・`crawford`（/analyze と同じ）、
 `keep_corners`（`true` なら四隅を枠や三角形に合わせ直さずに読む。既定 `false`。TODO-084）、
 `side`（`right` か `left` なら盤の真横から撮った写真として読む。`corners` は /find-corners と同じ順。空か省くと今までと同じ。TODO-120。`keep_corners` は効かない）、
@@ -260,7 +260,7 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 最後に `{"stage": "done", "result": 下の応答}` が来る。途中で失敗したときは最後が `{"stage": "error", "detail": 理由}`（状態は 200 のまま）。
 認識は別のスレッドで動かすので、送り終わるのは認識と解析が終わったとき。
 
-応答は `{"recognized": 認識結果, "home": "left" か "right", "home_guess": {...} か null, "errors": [...], "warnings": [...], "geometry": {...}, "dice_read": [大, 小] か null, "cube_read": {...} か null, "analysis": 上の /analyze と同じ形}`。
+応答は `{"recognized": 認識結果, "home": "left" か "right", "home_guess": {...} か null, "bottom_colour": 0 か 1, "colour_guess": {...} か null, "errors": [...], "warnings": [...], "geometry": {...}, "dice_read": [大, 小] か null, "cube_read": {...} か null, "analysis": 上の /analyze と同じ形}`。
 盤面は読めたが解析できないとき（クロフォードなのに写真のキューブが片側にある、など）は、`analysis` を `null`、`analysis_error` を理由にして盤面を返す（状態は 200）。
 `dice_read` は写真のフィールドに 2 つのダイスがあって、目を自信を持って読めたときだけ入る（recognizer/README.md の「ダイス」）。
 `dice` を送らなかったときは、これで最善手も出す。
@@ -272,6 +272,8 @@ PWA は写真を読み込んだ直後に、`/analyze-photo` と同じ大きさ�
 ダイス（写真から読めたものも、送ったものも）を使わず、`dice_read` は `null` にする（TODO-045）。
 `home` は読み取りに使った側。`home=auto` のときは駒の並びから推測した側で、`home_guess` に
 `{"margin": 尤もらしさの差（正なら右、負なら左。絶対値が 1 未満なら決めずに右）}` が入る。
+`bottom_colour` は読み取りに使った手前の色。`bottom_colour=auto` のときはピップ数から推測した色で（home より先に決める）、`colour_guess` に
+`{"pips": [暗い方を手前にしたときのピップ数の合計, 明るい方を手前にしたとき]}` が入る（2 つが同じなら同点で、明るい方を手前にした）。
 `geometry` は認識が見つけた遊戯面の位置: `corners`（送った画像の画素で 左上・右上・右下・左下）、
 `columns`（12 列の中心、左から。遊戯面の幅に対する割合）、`bar`（バーの左右の端、同じく割合）、
 `tips`（見つけた三角形の先 `[x, y]`、画像の画素）、`checkers`（見つけた駒の円 `[x, y, 半径, "white" か "black"]`、画像の画素。

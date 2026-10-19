@@ -6,14 +6,16 @@ GNU Backgammon にそのまま渡せる **Position ID** を出します。
 ## 使い方
 
 ```
-uv run python board.py <写真> --corners x1,y1,x2,y2,x3,y3,x4,y4 --home left|right|auto [--bottom-colour 0|1] [--keep-corners] [--debug 出力先]
+uv run python board.py <写真> --corners x1,y1,x2,y2,x3,y3,x4,y4 --home left|right|auto [--bottom-colour 0|1|auto] [--keep-corners] [--debug 出力先]
 ```
 
 - `--corners`: 盤の遊戯面（左右のフィールド＋バー、枠の内側）の四隅。手前側プレイヤーから見て 左上, 右上, 右下, 左下 の順。
   ざっくりで構いません（盤の縁と三角形の先端で自動補正します。`--keep-corners` では補正しないので正確に）。アプリでは下の「四隅の推定」で初期値を置き、ユーザーがドラッグで直します。
 - `--home`: 手前プレイヤーのホームボードが左右どちらか。`auto` なら駒の並びから推測する（下の「ホームボードの推測」）。
 - `--keep-corners`: 四隅を合わせ直さずに読む（下の「四隅を固定して読む」）。
-- `--bottom-colour`: 手前プレイヤーの駒の色（0 = 暗い方、1 = 明るい方）。アプリは端末に覚えた色を渡し、違えば盤面の画面で PIP をタップして直してもらう。
+- `--bottom-colour`: 手前プレイヤーの駒の色（0 = 暗い方、1 = 明るい方）。`auto` なら、両者のピップ数の合計が少なくなる側を手前にする
+  （`--home auto` のときは、色ごとに左右の少ない方で比べる）。色を決めてから、その色で `--home auto` の home を推測する。同点なら明るい方を手前にする（TODO-171）。
+  アプリは新しい写真では `auto` を渡し、違えば盤面の画面で PIP をタップして直してもらう。
 - 出力: 盤面のアスキー表示と JSON（points, bar, off, pips, position_id_white_on_roll / black_on_roll, errors）。
   White = 手前プレイヤー。駒が15個でないときは `errors` に出るので、アプリで手修正を促せます。
 
