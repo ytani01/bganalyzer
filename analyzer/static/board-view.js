@@ -17,13 +17,12 @@ const BgBoardView = (() => {
   const PLAY = { x: B.x0, y: B.y0, w: 12 * B.pw + B.bar, h: B.y1 - B.y0 };   // the playing area
   const BAR_X = B.x0 + 6 * B.pw + B.bar / 2;                                   // the bar's middle
   const RIGHT = B.x0 + 12 * B.pw + B.bar;                                      // the playing area's right edge
-  // Rows above and below the board, each on its player's side (奥 above, 手前 below), for the pip counts.
-  const ROW = { h: 32, top: -34, bottom: 442 };
-  // The column beside the board on the home side (TODO-151, TODO-152), top to bottom: the cube 奥 owns, 奥's tray of
-  // borne-off checkers, 奥's score, the cube in the middle, 手前's score, 手前's tray, the cube 手前 owns. 3 apart.
-  const COL = { w: 56, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 32, tray: 101, cube: 40, pad: 3 };
-  const VIEW = { y: ROW.top - 4, h: ROW.bottom + ROW.h + 4 - (ROW.top - 4) };
-  const MATCH_H = 26;   // the line above 奥's row for the match, only in a match (TODO-099)
+  // The column beside the board on the home side (TODO-151, TODO-152, TODO-155), top to bottom: 奥's pip count, the cube
+  // 奥 owns, 奥's tray of borne-off checkers, 奥's score, the cube in the middle, 手前's score, 手前's tray, the cube
+  // 手前 owns, 手前's pip count. 3 apart. The pip counts stick out above and below the board's frame.
+  const COL = { w: 56, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 32, tray: 101, cube: 40, pip: 40, pad: 3 };
+  const VIEW = { y: COL.y0 - COL.pad - COL.pip - 4, h: (COL.y1 - COL.y0) + 2 * (COL.pad + COL.pip + 4) };
+  const MATCH_H = 26;   // the line above the board (and 奥's pip count) for the match, only in a match (TODO-099)
   const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
                  4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
                  6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
@@ -37,7 +36,7 @@ const BgBoardView = (() => {
   const trayY = (side) => (side === "black" ? COL.y0 + COL.cube + COL.pad : COL.y1 - COL.cube - COL.pad - COL.tray);
   const scoreY = (side) => (side === "black" ? trayY("black") + COL.tray + COL.pad : trayY("white") - COL.pad - COL.score);
   const cubeY = (at) => (at === "black" ? COL.y0 : at === "white" ? COL.y1 - COL.cube : scoreY("black") + COL.score + COL.pad);
-  const rowY = (side) => (side === "black" ? ROW.top : ROW.bottom);
+  const pipY = (side) => (side === "black" ? COL.y0 - COL.pad - COL.pip : COL.y1 + COL.pad);
 
   // Centre of the checker at level k (0 = by the board's edge) of a stack; above 5 they are not drawn.
   // On the bar the stacks start a little off its middle and go out, a little closer together.
@@ -206,29 +205,29 @@ const BgBoardView = (() => {
     }
   }
 
-  // Each side's pip count in its own row, on a plate of its checker colour over the home board (TODO-090, TODO-151).
+  // Each side's pip count at its end of the column, outside the cube, on a plate of its checker colour: "PIP" over the number (TODO-090, TODO-155).
   function drawPips(svg, b, home, onPart) {
-    const pips = BgBoard.pips(b), w = 96;
-    const x = colX(home === "right" ? 9 : 3) - B.pw / 2 - w / 2;
+    const pips = BgBoard.pips(b), x = sideX(home);
     for (const side of ["white", "black"]) {
-      const y = rowY(side);
+      const y = pipY(side);
       const g = tapPart(el("g", {}, svg), "colour", onPart);
-      el("rect", { x, y: y + 2, width: w, height: ROW.h - 4, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, g);
-      el("text", { x: x + w / 2, y: y + ROW.h / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, g).textContent = `PIP ${pips[side]}`;
+      el("rect", { x, y, width: COL.w, height: COL.pip, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, g);
+      el("text", { x: x + COL.w / 2, y: y + 12, class: "pip-l", fill: `var(--${side}-fg)`, "pointer-events": "none" }, g).textContent = "PIP";
+      el("text", { x: x + COL.w / 2, y: y + 28, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, g).textContent = String(pips[side]);
     }
   }
 
-  // The match on a line of its own above 奥's row, and each side's score as a white square with a black number in the middle of the column (TODO-099, TODO-152).
+  // The match on a line of its own above the board, and each side's score as a grey square-cornered card with a black number in the middle of the column (TODO-099, TODO-152, TODO-155).
   function drawMatch(svg, m, home, y0, onPart) {
     tapPart(el("text", { x: BAR_X, y: y0 + MATCH_H / 2 + 2, class: "match-n", "pointer-events": "none" }, svg), "match", onPart).textContent =
       (m.length ? `${m.length} ポイントマッチ` + (m.crawford ? "（クロフォード）" : "") : "アンリミテッド") + (onPart ? " ▾" : "");
     if (!m.length) return;
-    const x = sideX(home) + (COL.w - COL.score) / 2;
+    const x = sideX(home);
     for (const side of ["white", "black"]) {
       const y = scoreY(side);
       const g = tapPart(el("g", {}, svg), "match", onPart);
-      el("rect", { x, y, width: COL.score, height: COL.score, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5, "pointer-events": "none" }, g);
-      el("text", { x: x + COL.score / 2, y: y + COL.score / 2, class: "score-n", "pointer-events": "none" }, g).textContent = String(m[side]);
+      el("rect", { x, y, width: COL.w, height: COL.score, fill: "#c4c4c4", stroke: "#0008", "stroke-width": 1.5, "pointer-events": "none" }, g);
+      el("text", { x: x + COL.w / 2, y: y + COL.score / 2, class: "score-n", "pointer-events": "none" }, g).textContent = String(m[side]);
     }
   }
 

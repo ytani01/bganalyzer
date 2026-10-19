@@ -188,7 +188,8 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .board-wrap svg { -webkit-touch-callout: none; touch-action: manipulation; }
 .board-wrap svg .num { font-size: 11px; fill: var(--muted); text-anchor: middle; }
 .board-wrap svg .match-n { font-size: 17px; font-weight: bold; fill: var(--fg); text-anchor: middle; dominant-baseline: central; }
-.board-wrap svg .pip-n { font-size: 17px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+.board-wrap svg .pip-n { font-size: 20px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+.board-wrap svg .pip-l { font-size: 11px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .score-n { font-size: 20px; font-weight: bold; fill: #222; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .off-n { font-size: 15px; font-weight: bold; fill: #fff; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .stack-n { font-size: 15px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }

@@ -30,7 +30,7 @@ from speech import router as speech_router
 
 # The analyzer's version (this API, the modules beside it and the PWA in static/). Bump it when analyzer/
 # changes; the recognizer has its own in recognizer/board.py. How to bump: CLAUDE.md.
-__version__ = "0.86.0"
+__version__ = "0.87.0"
 
 REPO = Path(__file__).resolve().parent.parent
 
