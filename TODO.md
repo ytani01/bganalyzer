@@ -115,9 +115,9 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 
 直し方: `git_commit()` が `.git` のファイルの `gitdir:` をたどるようにする。ref は worktree の gitdir になければ、`commondir` の先（本体の .git）の loose ref と packed-refs から読む。git コマンドには頼らない（Pi に git が無くても動くようにしている今の方針を保つ）。
 
-- [ ] 実装する（analyzer の版を patch で上げ、`APP_VERSION`（`analyzer/static/app.js`）も揃える）
-- [ ] worktree の場合のテストを足す（一時ディレクトリに `.git` のファイルと gitdir・commondir を作る）
-- [ ] worktree の中で、そのテストと `test_version_reports_both_parts_and_commit` が通る
+- [x] 実装する（analyzer の版を patch で上げ、`APP_VERSION`（`analyzer/static/app.js`）も揃える）
+- [x] worktree の場合のテストを足す（一時ディレクトリに `.git` のファイルと gitdir・commondir を作る）
+- [x] worktree の中で、そのテストと `test_version_reports_both_parts_and_commit` が通る
 
 **無駄を省く工夫:** テストは `analyzer/test_api.py` の version まわりだけ流す（全体は CI に任せる）。ローカルの確認は要らない（トップの作業ツリーは worktree ではないため）
 
