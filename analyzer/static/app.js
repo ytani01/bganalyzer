@@ -1017,9 +1017,8 @@ async function recognize() {
       if (dice && cubeOffered({ cube })) patch.cube = { ...cube, offered: false };
       if (data.analysis) patch.onRoll = data.analysis.on_roll;
       // a cube read on one side in the Crawford game: the photo is the later choice, so the Crawford game goes off
-      // (the server did not analyse it; TODO-153)
+      // once the board is in (the server did not analyse it; TODO-153)
       const crawfordOff = !!patch.cube && patch.cube.at !== "centre" && state.match.crawford;
-      if (crawfordOff) setMatch({ crawford: false });
       const g = data.geometry;
       const geometry = g && { ...BgApi.scaleGeometry(g, scale), photo: photoId(state), from: JSON.stringify(state.corners) };
       // the stages still waiting their turn on the photo (a tap skips them). The reading is done only
@@ -1030,10 +1029,12 @@ async function recognize() {
       update({ ...patch, geometry, board, read: BgBoard.copy(board), warnings: data.warnings || [],
                home: data.home || (state.homePick === "auto" ? "right" : state.homePick),
                homeGuess: data.home_guess || null, selected: null });
+      if (crawfordOff) setMatch({ crawford: false });
       go("board");
       setResult(data.analysis, dice);
-      // the board was read but not analysed; the Crawford game taken off above goes without a word (TODO-153)
-      if (data.analysis_error && !crawfordOff) alert("解析できませんでした: " + data.analysis_error);
+      // the board was read but not analysed. Not for the Crawford game just taken off: that goes without a word (TODO-153)
+      const crawfordError = crawfordOff && /Crawford/.test(data.analysis_error || "");
+      if (data.analysis_error && !crawfordError) alert("解析できませんでした: " + data.analysis_error);
     }, !!mine);
   } catch (err) {
     alert("読み取りに失敗しました: " + err.message);
