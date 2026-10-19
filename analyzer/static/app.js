@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.81.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.82.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -77,7 +77,8 @@ const state = {
   result: null,        // what /analyze returned
   resultFor: null,     // inputsKey() of what it was worked out for
   resultDice: null,
-  sheet: null,         // the settings open from the bottom (TODO-113): "match", "cube", "roll" or null
+  sheet: null,         // the settings open beside the part tapped (TODO-113, TODO-150): "match", "cube", "roll" or null
+  sheetAt: null,       // the screen rect of that part
   reanalyzing: false,  // the board fixed on the result screen is being analysed again (TODO-138)
   moveShown: 0,        // the move in the result's list drawn as arrows
   // settings
@@ -351,7 +352,7 @@ part((s) => s.board && [s.step, s.board, s.home, s.selected, rolled(s), s.onRoll
 // ---- a tap on a part around the board picture (TODO-113): the trays flip the home's side, a pip count
 // swaps the checkers' owners (the board keeps its colours), the match, the cube and the dice open their sheet
 // (the side and the colour are what this photo is read with again, and the colour also the next photo's)
-function tapPart(kind) {
+function tapPart(kind, at) {
   if (kind === "home") {
     const home = state.home === "right" ? "left" : "right";
     setHome(home);
@@ -360,10 +361,19 @@ function tapPart(kind) {
     editBoard(BgBoard.swapColours);
     keep("bottomColour", state.bottomColour ? "0" : "1");
     update({ bottomColour: state.bottomColour ? 0 : 1 });
-  } else update({ sheet: kind });
+  } else update({ sheet: kind, sheetAt: at });
 }
-part((s) => [s.sheet, s.step], (s) => {
+part((s) => [s.sheet, s.step, s.sheetAt], (s) => {
   for (const k of ["match", "cube", "roll"]) $(`sheet-${k}`).hidden = !((s.step === "board" || s.step === "outcome") && s.sheet === k);
+  const box = s.sheet && $(`sheet-${s.sheet}`), r = s.sheetAt;
+  if (!box || box.hidden || !r) return;
+  // above or below the part, on the side with more room, inside the screen, the part itself left in sight (TODO-150)
+  const w = box.offsetWidth, h = box.offsetHeight, gap = 8;
+  const below = innerHeight - r.bottom > r.top;
+  const x = Math.max(8, Math.min(innerWidth - w - 8, (r.left + r.right) / 2 - w / 2));
+  const y = Math.max(8, Math.min(innerHeight - h - 8, below ? r.bottom + gap : r.top - gap - h));
+  box.style.left = `${x}px`;
+  box.style.top = `${y}px`;
 });
 for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("click", () => update({ sheet: null }));
 
