@@ -201,3 +201,14 @@ def test_import_removes_the_pairs_added(tmp_path):
     import_collected.remove(tmp_path, ["user-1-aaa.truth.json"])
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "user-1-aaab.jpg", "user-1-aaab.truth.json", "user-2-bbb.jpg", "user-2-bbb.truth.json"]
+
+
+def test_import_is_not_merged_when_gh_fails(monkeypatch):
+    # what leaves the pairs in collected/: the branch not going onto main, or the merge refused
+    class R:
+        def __init__(self, out="", code=0):
+            self.stdout, self.returncode, self.stderr = out, code, ""
+    monkeypatch.setattr(import_collected.time, "sleep", lambda s: None)
+    for failing in ("update-branch", "merge"):
+        gh = lambda *a: R(json.dumps({"headRefOid": "a"}) if a[1] == "view" else "", int(a[1] == failing))
+        assert not import_collected.merge("u", gh, lambda m: None)
