@@ -8,16 +8,21 @@ Run it on the local host, next to the running app (bganalyzer.service). The brow
 repository). The "collect" check saves one pair in collected/ and removes it again.
 What it cannot see stays for the phone: the voice itself, iPhone's share sheet, attaching files.
 """
+
 import json, os, re, subprocess, sys, tempfile
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
-URL = os.environ.get("BG_URL", "http://127.0.0.1:8000/")          # elsewhere: the app under test
-CHROMIUM = os.environ.get("BG_CHROMIUM", "/usr/bin/chromium")    # elsewhere: a Chromium there
+URL = os.environ.get(
+    "BG_URL", "http://127.0.0.1:8000/"
+)  # elsewhere: the app under test
+CHROMIUM = os.environ.get(
+    "BG_CHROMIUM", "/usr/bin/chromium"
+)  # elsewhere: a Chromium there
 COLLECTED = ROOT / "collected"
-SAMPLE = "screen-app-grey-shot"   # an app screenshot with dice (4-2): read the same every time
+SAMPLE = "screen-app-grey-shot"  # an app screenshot with dice (4-2): read the same every time
 
 # before the app's scripts: record what would be spoken, and no share sheet (a PC: download instead)
 INIT = """
@@ -42,13 +47,17 @@ navigator.share = () => Promise.reject(new DOMException("Permission denied", "No
 
 
 def open_app(browser, *scripts):
-    page = browser.new_page(viewport={"width": 412, "height": 915}, accept_downloads=True)
+    page = browser.new_page(
+        viewport={"width": 412, "height": 915}, accept_downloads=True
+    )
     for script in (INIT, *scripts):
         page.add_init_script(script)
     page.alerts = []
     page.on("dialog", lambda d: (page.alerts.append(d.message), d.dismiss()))
     page.goto(URL)
-    page.wait_for_function("document.querySelector('#hdr-version').textContent.trim() !== ''")
+    page.wait_for_function(
+        "document.querySelector('#hdr-version').textContent.trim() !== ''"
+    )
     return page
 
 
@@ -56,17 +65,27 @@ def read_photo(page, cube=None):
     """Load the sample, put its corners where the truth has them, and read it."""
     truth = json.loads((ROOT / f"samples/{SAMPLE}.truth.json").read_text())
     page.set_input_files("#file", str(ROOT / "samples" / truth["image"]))
-    page.wait_for_function("BgApp.state.photo && BgApp.state.cornerGuess !== 'finding'", timeout=60000)   # the photo in, then its corners
+    page.wait_for_function(
+        "BgApp.state.photo && BgApp.state.cornerGuess !== 'finding'", timeout=60000
+    )  # the photo in, then its corners
     # nothing picks these on the screen (TODO-113): read as the truth has them
-    page.evaluate("t => BgApp.update({ homePick: t.home, bottomColour: t.bottom_colour })", truth)
-    page.evaluate("c => BgApp.update({ corners: c, cornersMoved: true })", truth["corners_TL_TR_BR_BL"])
-    if cube:   # a cube set by hand before reading, as when reading again after setting it
+    page.evaluate(
+        "t => BgApp.update({ homePick: t.home, bottomColour: t.bottom_colour })", truth
+    )
+    page.evaluate(
+        "c => BgApp.update({ corners: c, cornersMoved: true })",
+        truth["corners_TL_TR_BR_BL"],
+    )
+    if (
+        cube
+    ):  # a cube set by hand before reading, as when reading again after setting it
         page.evaluate("c => BgApp.update({ cube: c })", cube)
     page.click("#recognize")
-    page.wait_for_function("!document.querySelector('#board').hidden && document.querySelector('#busy').hidden",
-                           timeout=120000)
+    page.wait_for_function(
+        "!document.querySelector('#board').hidden && document.querySelector('#busy').hidden",
+        timeout=120000,
+    )
     return truth
-
 
 
 def show_outcome(page):
@@ -79,9 +98,13 @@ def check_double(browser):
     page = open_app(browser)
     read_photo(page, {"at": "white", "value": 2, "offered": True})
     dice = page.evaluate("BgApp.rolled()")
-    best = page.evaluate("(r => r && r.moves && r.moves[0] && r.moves[0].move)(BgApp.state.result)")
+    best = page.evaluate(
+        "(r => r && r.moves && r.moves[0] && r.moves[0].move)(BgApp.state.result)"
+    )
     help_ = page.text_content("#cube-help")
-    ok = not page.alerts and dice and best and help_ == ""   # with dice, no cube help (TODO-086)
+    ok = (
+        not page.alerts and dice and best and help_ == ""
+    )  # with dice, no cube help (TODO-086)
     return ok, f"dice={dice} best={best!r} cube-help={help_!r} alerts={page.alerts}"
 
 
@@ -92,10 +115,16 @@ def check_speech(browser):
     show_outcome(page)
     page.click("#speak")
     # every sentence asked for: the button turns back when the last one has ended
-    page.wait_for_function("document.querySelector('#speak').getAttribute('aria-pressed') === 'false'")
+    page.wait_for_function(
+        "document.querySelector('#speak').getAttribute('aria-pressed') === 'false'"
+    )
     spoken = page.evaluate("window.__spoken")
-    text = "".join(spoken)   # one sentence per /speech request (TODO-111)
-    ok = len(spoken) >= 1 and "最善手" in text and not re.search(r"[%％]|勝率|\d+\s*ピップ|\d+\.\d", text)
+    text = "".join(spoken)  # one sentence per /speech request (TODO-111)
+    ok = (
+        len(spoken) >= 1
+        and "最善手" in text
+        and not re.search(r"[%％]|勝率|\d+\s*ピップ|\d+\.\d", text)
+    )
     return ok, f"spoken={spoken!r} alerts={page.alerts}"
 
 
@@ -106,7 +135,7 @@ def check_export(browser, *scripts):
     files, downloads = {}, []
     page.on("download", lambda d: downloads.append(d))
     page.click("#export-sample")
-    for _ in range(100):   # both come at once
+    for _ in range(100):  # both come at once
         if len(downloads) >= 2:
             break
         page.wait_for_timeout(100)
@@ -115,12 +144,28 @@ def check_export(browser, *scripts):
             files[dl.suggested_filename] = Path(tmp, dl.suggested_filename)
             dl.save_as(files[dl.suggested_filename])
         names = sorted(files)
-        t = next((json.loads(p.read_text()) for n, p in files.items() if n.endswith(".truth.json")), {})
+        t = next(
+            (
+                json.loads(p.read_text())
+                for n, p in files.items()
+                if n.endswith(".truth.json")
+            ),
+            {},
+        )
         image = files.get(t.get("image"))
         board = page.evaluate("BgApp.state.board.points")
-        ok = (len(files) == 2 and image and image.stat().st_size > 0 and t["points"] == board
-              and t["dice"] == page.evaluate("BgApp.rolled()") and t["home"] == truth["home"])
-    return ok, f"files={names} points_match={t.get('points') == board} dice={t.get('dice')} alerts={page.alerts}"
+        ok = (
+            len(files) == 2
+            and image
+            and image.stat().st_size > 0
+            and t["points"] == board
+            and t["dice"] == page.evaluate("BgApp.rolled()")
+            and t["home"] == truth["home"]
+        )
+    return (
+        ok,
+        f"files={names} points_match={t.get('points') == board} dice={t.get('dice')} alerts={page.alerts}",
+    )
 
 
 def collected():
@@ -128,8 +173,13 @@ def collected():
 
 
 def evaluate(path):
-    return subprocess.run([str(ROOT / ".venv/bin/python"), "recognizer/evaluate.py", str(path)], cwd=ROOT,
-                          capture_output=True, text=True, timeout=300)
+    return subprocess.run(
+        [str(ROOT / ".venv/bin/python"), "recognizer/evaluate.py", str(path)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
 
 
 def check_collect(browser):
@@ -139,40 +189,56 @@ def check_collect(browser):
         before = collected()
         page = open_app(browser)
         read_photo(page)
-        seg = f'.seg[data-name="collect"] [data-value="{mode}"]'   # in 「読み取りの改善」: shown only when the server keeps samples
+        seg = f'.seg[data-name="collect"] [data-value="{mode}"]'  # in 「読み取りの改善」: shown only when the server keeps samples
         page.click(seg)
         show_outcome(page)
-        page.wait_for_timeout(2000)   # sendSample does not hold up the result
+        page.wait_for_timeout(2000)  # sendSample does not hold up the result
         new = sorted(collected() - before)
         out.append((mode, new, page.alerts))
     (_, off_new, _), (_, on_new, alerts) = out
-    ok = not off_new and len(on_new) == 2 and any(n.endswith(".truth.json") for n in on_new) and not alerts
+    ok = (
+        not off_new
+        and len(on_new) == 2
+        and any(n.endswith(".truth.json") for n in on_new)
+        and not alerts
+    )
     measured = ""
     if ok:
         t = next(n for n in on_new if n.endswith(".truth.json"))
         r = evaluate(COLLECTED / t)
         measured = (r.stdout or r.stderr).strip().splitlines()[-1:]
         ok = r.returncode == 0
-    if on_new:   # this pair is a test, not a photo to learn from
+    if on_new:  # this pair is a test, not a photo to learn from
         for n in on_new:
             (COLLECTED / n).unlink(missing_ok=True)
-    return ok, f"off={off_new} on={on_new} evaluate={measured} left={sorted(collected() & set(on_new))}"
+    return (
+        ok,
+        f"off={off_new} on={on_new} evaluate={measured} left={sorted(collected() & set(on_new))}",
+    )
 
 
-CHECKS = {"double": check_double, "speech": check_speech, "export": check_export,
-          "export-denied": lambda browser: check_export(browser, SHARE_DENIED), "collect": check_collect}
+CHECKS = {
+    "double": check_double,
+    "speech": check_speech,
+    "export": check_export,
+    "export-denied": lambda browser: check_export(browser, SHARE_DENIED),
+    "collect": check_collect,
+}
 
 
 def main(names):
     failed = 0
     with sync_playwright() as p:
-        browser = (p.chromium.connect_over_cdp(os.environ["BG_CDP"]) if os.environ.get("BG_CDP")   # tools/live_view.py's, to watch
-                   else p.chromium.launch(executable_path=CHROMIUM))
+        browser = (
+            p.chromium.connect_over_cdp(os.environ["BG_CDP"])
+            if os.environ.get("BG_CDP")  # tools/live_view.py's, to watch
+            else p.chromium.launch(executable_path=CHROMIUM)
+        )
         print("version:", json.loads(browser.new_page().goto(URL + "version").text()))
         for name in names or CHECKS:
             try:
                 ok, detail = CHECKS[name](browser)
-            except Exception as e:   # one check failing should not hide the others
+            except Exception as e:  # one check failing should not hide the others
                 ok, detail = False, f"{type(e).__name__}: {e}".splitlines()[0]
             failed += not ok
             print(f"{'OK  ' if ok else 'FAIL'} {name}: {detail}")

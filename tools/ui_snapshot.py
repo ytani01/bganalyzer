@@ -23,14 +23,15 @@ compare prints each difference and exits 1 if there is any. Two versions side by
 
 The recording is the same from run to run (checked by recording twice), so any difference is the app's.
 """
+
 import json, os, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 URL = os.environ.get("BG_URL", "http://127.0.0.1:8000/")
 CHROMIUM = os.environ.get("BG_CHROMIUM", "/usr/bin/chromium")
-SAMPLE = "screen-app-grey-shot"   # an app screenshot with dice (4-2): read the same every time
-WAIT = 180000        # ms: a reading or an analysis on the Pi
+SAMPLE = "screen-app-grey-shot"  # an app screenshot with dice (4-2): read the same every time
+WAIT = 180000  # ms: a reading or an analysis on the Pi
 
 # before the app's scripts: record what would be spoken, and no share sheet
 INIT = """
@@ -97,178 +98,299 @@ class Run:
     def open(self):
         page = self.ctx.new_page()
         page.alerts = []
-        page.on("dialog", lambda d: (page.alerts.append(d.message), d.accept() if d.type == "confirm" else d.dismiss()))
+        page.on(
+            "dialog",
+            lambda d: (
+                page.alerts.append(d.message),
+                d.accept() if d.type == "confirm" else d.dismiss(),
+            ),
+        )
         page.goto(URL)
-        page.wait_for_function("document.querySelector('#hdr-version').textContent.trim() !== ''")
+        page.wait_for_function(
+            "document.querySelector('#hdr-version').textContent.trim() !== ''"
+        )
         self.page = page
 
     def snap(self, name):
-        self.page.wait_for_function("document.getElementById('busy').hidden", timeout=WAIT)
+        self.page.wait_for_function(
+            "document.getElementById('busy').hidden", timeout=WAIT
+        )
         s = self.page.evaluate(SNAP)
         s["alerts"] = list(self.page.alerts)
         self.page.alerts.clear()
         self.snaps.append([name, s])
 
-    def sheet_for(self, selector=None):     # open the sheet the selector is in (TODO-113), or close the one open, by taps
-        want, shown = self.page.evaluate("""(q) => {
+    def sheet_for(
+        self, selector=None
+    ):  # open the sheet the selector is in (TODO-113), or close the one open, by taps
+        want, shown = self.page.evaluate(
+            """(q) => {
           const sh = q && document.querySelector(q)?.closest('.sheet');
           return [sh ? sh.id : null, [...document.querySelectorAll('.sheet')].find((e) => !e.hidden)?.id || null];
-        }""", selector)
+        }""",
+            selector,
+        )
         if shown and shown != want:
             self.page.click(f"#{shown} .sheet-close")
         if want and shown != want:
-            self.page.locator(f'#board-svg [data-part="{want[len("sheet-"):]}"]').first.click()
+            self.page.locator(
+                f'#board-svg [data-part="{want[len("sheet-") :]}"]'
+            ).first.click()
 
     def click(self, selector):
         self.sheet_for(selector)
         self.page.click(selector)
 
-    def part(self, kind):                   # a tap on a part around the board picture: home, colour, match, cube, roll
+    def part(
+        self, kind
+    ):  # a tap on a part around the board picture: home, colour, match, cube, roll
         self.sheet_for()
         self.page.locator(f'#board-svg [data-part="{kind}"]').first.click()
 
     def seg(self, name, value):
         self.click(f'.seg[data-name="{name}"] [data-value="{value}"]')
 
-    def point(self, k, svg="#board-svg"):   # the middle of the k-th tap area of a board picture (24, 25: the bar)
+    def point(
+        self, k, svg="#board-svg"
+    ):  # the middle of the k-th tap area of a board picture (24, 25: the bar)
         self.sheet_for()
         self.page.locator(f"{svg} .hit").nth(k).click()
 
-    def tap(self, k, level, svg="#board-svg"):   # level 1..5 from the board's edge (the bar's middle) of the k-th tap area
+    def tap(
+        self, k, level, svg="#board-svg"
+    ):  # level 1..5 from the board's edge (the bar's middle) of the k-th tap area
         self.sheet_for()
         hit = self.page.locator(f"{svg} .hit").nth(k)
-        top = k < 12 or k == 24                  # 0..11 the upper row, 12..23 the lower, 24/25 the bar's halves
-        f = (level - 0.5) * 38 / 196             # the level's middle, as a fraction of the half
-        if k >= 24:                              # the bar's stacks start by its middle (board-view.js BAR_GAP, BAR_STEP)
+        top = (
+            k < 12 or k == 24
+        )  # 0..11 the upper row, 12..23 the lower, 24/25 the bar's halves
+        f = (level - 0.5) * 38 / 196  # the level's middle, as a fraction of the half
+        if (
+            k >= 24
+        ):  # the bar's stacks start by its middle (board-view.js BAR_GAP, BAR_STEP)
             f, top = (9 + (level - 0.5) * 36) / 196, not top
         box = hit.bounding_box()
-        hit.click(position={"x": box["width"] / 2, "y": box["height"] * (f if top else 1 - f)})
+        hit.click(
+            position={"x": box["width"] / 2, "y": box["height"] * (f if top else 1 - f)}
+        )
 
-    def number(self, k):                    # the number of the k-th point: empties it
+    def number(self, k):  # the number of the k-th point: empties it
         self.sheet_for()
         self.page.locator("#board-svg .hit-num").nth(k).click()
 
-    def hold(self, k):                      # the palette of the k-th tap area (a right click, as a long press)
+    def hold(
+        self, k
+    ):  # the palette of the k-th tap area (a right click, as a long press)
         self.sheet_for()
         self.page.locator("#board-svg .hit").nth(k).click(button="right")
 
-    def pick(self, n, side=None):           # in the palette: the colour, then the count
+    def pick(self, n, side=None):  # in the palette: the colour, then the count
         if side:
             self.page.click(f'#palette-side [data-value="{side}"]')
         self.page.click(f'#palette-counts [data-n="{n}"]')
 
     def choose(self, selector, value):
         self.sheet_for(selector)
-        if self.page.evaluate("(q) => document.querySelector(q).classList.contains('die-pick')", selector):
+        if self.page.evaluate(
+            "(q) => document.querySelector(q).classList.contains('die-pick')", selector
+        ):
             # the dice are buttons (TODO-141): press the value, or the pressed one again to clear it
-            now = self.page.evaluate("(q) => document.querySelector(q).dataset.value", selector)
+            now = self.page.evaluate(
+                "(q) => document.querySelector(q).dataset.value", selector
+            )
             if value or now:
                 self.page.click(f'{selector} button[data-n="{value or now}"]')
             return
         self.page.select_option(selector, value)
 
     def wait_step(self, step):
-        self.page.wait_for_function(f"!document.getElementById('{step}').hidden && document.getElementById('busy').hidden",
-                                    timeout=WAIT)
+        self.page.wait_for_function(
+            f"!document.getElementById('{step}').hidden && document.getElementById('busy').hidden",
+            timeout=WAIT,
+        )
 
-    def go(self, selector, step):           # a button that leads to another screen
+    def go(self, selector, step):  # a button that leads to another screen
         self.click(selector)
         self.wait_step(step)
 
-    def wait_corners(self):                 # the corners screen, once the search for the corners is over
+    def wait_corners(
+        self,
+    ):  # the corners screen, once the search for the corners is over
         self.wait_step("corners")
-        self.page.wait_for_function("!/探しています/.test(document.getElementById('corner-help').textContent)", timeout=WAIT)
+        self.page.wait_for_function(
+            "!/探しています/.test(document.getElementById('corner-help').textContent)",
+            timeout=WAIT,
+        )
 
 
 def flow_manual(r):
     r.open()
     r.snap("start")
-    r.click("#manual"); r.snap("manual")
-    r.tap(0, 2); r.snap("tap level 2 of 13")
-    r.tap(0, 2); r.snap("tap the top checker")
-    r.tap(1, 3); r.snap("tap an empty point")
-    r.hold(2); r.pick(0, "black"); r.tap(2, 2); r.snap("奥's colour on an empty point")   # the colour last put (TODO-145)
-    r.tap(18, 5); r.tap(18, 5); r.snap("5th level of 5: two more")
-    r.number(5); r.snap("number: emptied")
-    r.hold(17); r.snap("palette")
-    r.pick(4, "white"); r.snap("palette: 手前 4")
-    r.hold(17); r.click("#palette-close"); r.snap("palette closed")
-    r.hold(17); r.click("#editor-title"); r.snap("palette closed by a tap outside")
-    r.tap(25, 1); r.tap(24, 2); r.snap("bar")
-    r.hold(24); r.pick(0); r.snap("bar: 奥 0 from the palette")
-    r.click("#undo"); r.click("#undo"); r.snap("undo twice")
-    r.part("colour"); r.snap("swap colours")   # 手前 dark (TODO-113)
-    r.part("home"); r.snap("home left")        # mirrored
-    r.part("roll"); r.snap("dice sheet")
-    r.part("cube"); r.snap("cube sheet")
-    r.part("match"); r.snap("match sheet")
-    r.click("#sheet-match .sheet-close"); r.snap("sheet closed")
-    r.choose("#die1", "3"); r.snap("one die")
-    r.choose("#die2", "1"); r.snap("dice 3-1")
-    r.seg("onRoll", "black"); r.snap("on roll 奥")
-    r.seg("cubeValue", "2"); r.snap("cube 2 on 手前, offered: the dice row is empty")   # TODO-086, TODO-150, TODO-159
-    r.seg("cubeHold", "white"); r.snap("cube 手前 owned, with dice")
-    r.choose("#die1", ""); r.seg("cubeDouble", "white"); r.snap("no dice: the cube is offered")
-    r.seg("cubeValue", "8"); r.snap("cube 8")
-    r.seg("cubeHold", "white"); r.snap("cube owned")
-    r.seg("cubeDouble", "white"); r.seg("onRoll", "white"); r.snap("offered, 手前 on roll: the cube moves")
-    r.seg("cubeValue", "centre"); r.snap("cube centre")
-    r.click("#reset-start"); r.snap("reset to the start")
-    r.go("#analyze", "outcome"); r.snap("analysed: cube decision")
-    r.click("#speak"); r.snap("read aloud")
+    r.click("#manual")
+    r.snap("manual")
+    r.tap(0, 2)
+    r.snap("tap level 2 of 13")
+    r.tap(0, 2)
+    r.snap("tap the top checker")
+    r.tap(1, 3)
+    r.snap("tap an empty point")
+    r.hold(2)
+    r.pick(0, "black")
+    r.tap(2, 2)
+    r.snap("奥's colour on an empty point")  # the colour last put (TODO-145)
+    r.tap(18, 5)
+    r.tap(18, 5)
+    r.snap("5th level of 5: two more")
+    r.number(5)
+    r.snap("number: emptied")
+    r.hold(17)
+    r.snap("palette")
+    r.pick(4, "white")
+    r.snap("palette: 手前 4")
+    r.hold(17)
+    r.click("#palette-close")
+    r.snap("palette closed")
+    r.hold(17)
+    r.click("#editor-title")
+    r.snap("palette closed by a tap outside")
+    r.tap(25, 1)
+    r.tap(24, 2)
+    r.snap("bar")
+    r.hold(24)
+    r.pick(0)
+    r.snap("bar: 奥 0 from the palette")
+    r.click("#undo")
+    r.click("#undo")
+    r.snap("undo twice")
+    r.part("colour")
+    r.snap("swap colours")  # 手前 dark (TODO-113)
+    r.part("home")
+    r.snap("home left")  # mirrored
+    r.part("roll")
+    r.snap("dice sheet")
+    r.part("cube")
+    r.snap("cube sheet")
+    r.part("match")
+    r.snap("match sheet")
+    r.click("#sheet-match .sheet-close")
+    r.snap("sheet closed")
+    r.choose("#die1", "3")
+    r.snap("one die")
+    r.choose("#die2", "1")
+    r.snap("dice 3-1")
+    r.seg("onRoll", "black")
+    r.snap("on roll 奥")
+    r.seg("cubeValue", "2")
+    r.snap(
+        "cube 2 on 手前, offered: the dice row is empty"
+    )  # TODO-086, TODO-150, TODO-159
+    r.seg("cubeHold", "white")
+    r.snap("cube 手前 owned, with dice")
+    r.choose("#die1", "")
+    r.seg("cubeDouble", "white")
+    r.snap("no dice: the cube is offered")
+    r.seg("cubeValue", "8")
+    r.snap("cube 8")
+    r.seg("cubeHold", "white")
+    r.snap("cube owned")
+    r.seg("cubeDouble", "white")
+    r.seg("onRoll", "white")
+    r.snap("offered, 手前 on roll: the cube moves")
+    r.seg("cubeValue", "centre")
+    r.snap("cube centre")
+    r.click("#reset-start")
+    r.snap("reset to the start")
+    r.go("#analyze", "outcome")
+    r.snap("analysed: cube decision")
+    r.click("#speak")
+    r.snap("read aloud")
     r.go("#back", "board")
-    r.tap(0, 1); r.snap("one of 手前's checkers borne off: 手前 leads the race")
-    r.choose("#die1", "6"); r.choose("#die2", "5"); r.snap("dice 6-5: result stale")
-    r.go("#analyze", "outcome"); r.snap("analysed: best moves")
+    r.tap(0, 1)
+    r.snap("one of 手前's checkers borne off: 手前 leads the race")
+    r.choose("#die1", "6")
+    r.choose("#die2", "5")
+    r.snap("dice 6-5: result stale")
+    r.go("#analyze", "outcome")
+    r.snap("analysed: best moves")
     if r.page.locator("#result .moves li").count() > 1:
-        r.page.locator("#result .moves li").nth(1).click(); r.snap("second move")
+        r.page.locator("#result .moves li").nth(1).click()
+        r.snap("second move")
     r.go("#back", "board")
-    r.go("#analyze", "outcome"); r.snap("same board: result shown again")
+    r.go("#analyze", "outcome")
+    r.snap("same board: result shown again")
     r.go("#back", "board")
-    r.seg("plies", "3"); r.snap("3-ply: result stale")
+    r.seg("plies", "3")
+    r.snap("3-ply: result stale")
     r.seg("plies", "2")
-    r.seg("onRoll", "black"); r.go("#analyze", "outcome"); r.snap("turn flipped: analysed again")
-    r.go("#back", "board"); r.go("#back", "photo"); r.snap("back to the start")
+    r.seg("onRoll", "black")
+    r.go("#analyze", "outcome")
+    r.snap("turn flipped: analysed again")
+    r.go("#back", "board")
+    r.go("#back", "photo")
+    r.snap("back to the start")
 
 
 def flow_photo(r):
     r.open()
     truth = json.loads((ROOT / f"samples/{SAMPLE}.truth.json").read_text())
     r.page.set_input_files("#file", str(ROOT / "samples" / truth["image"]))
-    r.wait_corners(); r.snap("corners found")
-    r.go("#recognize", "board"); r.snap("photo read")
-    r.click("#photo-side"); r.snap("photo hidden")
-    r.click("#photo-side"); r.snap("photo beside")
-    r.page.locator("#photo-svg").click(); r.snap("tap on the photo: the board stays")   # for looking only (TODO-088)
-    r.go("#analyze", "outcome"); r.snap("analysed")
-    r.go("#back", "board"); r.go("#back", "corners"); r.snap("back to the corners")
-    r.go("#hdr-reuse", "board"); r.snap("board again (header)")
+    r.wait_corners()
+    r.snap("corners found")
+    r.go("#recognize", "board")
+    r.snap("photo read")
+    r.click("#photo-side")
+    r.snap("photo hidden")
+    r.click("#photo-side")
+    r.snap("photo beside")
+    r.page.locator("#photo-svg").click()
+    r.snap("tap on the photo: the board stays")  # for looking only (TODO-088)
+    r.go("#analyze", "outcome")
+    r.snap("analysed")
+    r.go("#back", "board")
     r.go("#back", "corners")
-    r.go("#to-board", "board"); r.snap("board again (button)")
+    r.snap("back to the corners")
+    r.go("#hdr-reuse", "board")
+    r.snap("board again (header)")
     r.go("#back", "corners")
-    r.click("#corner-reset"); r.snap("corners cleared")
+    r.go("#to-board", "board")
+    r.snap("board again (button)")
+    r.go("#back", "corners")
+    r.click("#corner-reset")
+    r.snap("corners cleared")
     box = r.page.locator("#photo-canvas").bounding_box()
-    at = lambda fx, fy: (box["x"] + fx * box["width"], box["y"] + fy * box["height"])   # noqa: E731
+    at = lambda fx, fy: (box["x"] + fx * box["width"], box["y"] + fy * box["height"])  # noqa: E731
     for k, (fx, fy) in enumerate([(0.2, 0.2), (0.8, 0.2), (0.8, 0.8), (0.2, 0.8)]):
-        r.page.mouse.click(*at(fx, fy)); r.snap(f"corner {k + 1} tapped")
+        r.page.mouse.click(*at(fx, fy))
+        r.snap(f"corner {k + 1} tapped")
     x, y = at(0.8, 0.8)
-    r.page.mouse.move(x, y); r.page.mouse.down(); r.page.mouse.move(x + 15, y + 10, steps=3)
+    r.page.mouse.move(x, y)
+    r.page.mouse.down()
+    r.page.mouse.move(x + 15, y + 10, steps=3)
     r.snap("dragging corner 3 (loupe)")
-    r.page.mouse.up(); r.snap("corner 3 dropped")
-    r.go("#back", "photo"); r.snap("recent photos")
+    r.page.mouse.up()
+    r.snap("corner 3 dropped")
+    r.go("#back", "photo")
+    r.snap("recent photos")
 
 
 def flow_history(r):
     """Needs a photo kept by flow_photo in the same browser."""
-    r.open()   # a new page: as after closing the app
+    r.open()  # a new page: as after closing the app
     r.page.wait_for_function("document.querySelectorAll('#history-list li').length > 0")
     r.snap("reopened app")
-    r.page.locator("#history-list .open").first.click(); r.wait_corners(); r.snap("photo reopened")
-    r.go("#to-board", "board"); r.snap("its board")
+    r.page.locator("#history-list .open").first.click()
+    r.wait_corners()
+    r.snap("photo reopened")
+    r.go("#to-board", "board")
+    r.snap("its board")
     r.go("#back", "corners")
-    r.click("#corner-reset"); r.go("#to-board", "board"); r.snap("its board without corners")
-    r.go("#back", "corners"); r.go("#back", "photo")
-    r.page.locator("#history-list .del").first.click(); r.snap("photo deleted")
+    r.click("#corner-reset")
+    r.go("#to-board", "board")
+    r.snap("its board without corners")
+    r.go("#back", "corners")
+    r.go("#back", "photo")
+    r.page.locator("#history-list .del").first.click()
+    r.snap("photo deleted")
 
 
 FLOWS = {"manual": flow_manual, "photo": flow_photo, "history": flow_history}
@@ -276,14 +398,24 @@ FLOWS = {"manual": flow_manual, "photo": flow_photo, "history": flow_history}
 
 def record(out, names):
     from playwright.sync_api import sync_playwright
+
     names = names or list(FLOWS)
     if "history" in names and "photo" not in names:
         names = [n for n in FLOWS if n in names or n == "photo"]
     with sync_playwright() as p:
-        browser = (p.chromium.connect_over_cdp(os.environ["BG_CDP"]) if os.environ.get("BG_CDP")   # tools/live_view.py's, to watch
-                   else p.chromium.launch(executable_path=CHROMIUM if Path(CHROMIUM).exists() else None))
-        ctx = browser.new_context(viewport={"width": 412, "height": 915}, reduced_motion="reduce",
-                                  service_workers="block", accept_downloads=True)
+        browser = (
+            p.chromium.connect_over_cdp(os.environ["BG_CDP"])
+            if os.environ.get("BG_CDP")  # tools/live_view.py's, to watch
+            else p.chromium.launch(
+                executable_path=CHROMIUM if Path(CHROMIUM).exists() else None
+            )
+        )
+        ctx = browser.new_context(
+            viewport={"width": 412, "height": 915},
+            reduced_motion="reduce",
+            service_workers="block",
+            accept_downloads=True,
+        )
         ctx.add_init_script(INIT)
         r = Run(ctx)
         for name in names:
@@ -314,13 +446,17 @@ def differences(a, b):
 def excerpt(va, vb, width=100):
     """Where two values first differ, with a little around it."""
     sa, sb = str(va), str(vb)
-    i = next((i for i, (x, y) in enumerate(zip(sa, sb)) if x != y), min(len(sa), len(sb)))
+    i = next(
+        (i for i, (x, y) in enumerate(zip(sa, sb)) if x != y), min(len(sa), len(sb))
+    )
     lo = max(0, i - width // 2)
-    return sa[lo:lo + width], sb[lo:lo + width]
+    return sa[lo : lo + width], sb[lo : lo + width]
 
 
 def compare(path_a, path_b):
-    diffs = differences(json.loads(Path(path_a).read_text()), json.loads(Path(path_b).read_text()))
+    diffs = differences(
+        json.loads(Path(path_a).read_text()), json.loads(Path(path_b).read_text())
+    )
     for step, what, va, vb in diffs:
         xa, xb = excerpt(va, vb)
         print(f"[{step}] {what}\n  A: {xa!r}\n  B: {xb!r}")

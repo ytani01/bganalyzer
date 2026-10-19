@@ -8,11 +8,12 @@ likely of the two tells the side.
 Run this once to make home_prior.json from gnubg self-play (gnubg is in the dev environment):
     uv run python recognizer/home_prior.py
 """
+
 import json
 import random
 from pathlib import Path
 
-CLIP = 5   # counts above this are lumped together
+CLIP = 5  # counts above this are lumped together
 OUT = Path(__file__).resolve().parent / "home_prior.json"
 # How much likelier (log) the chosen side must be. Below this the guess is a coin toss: keep the default.
 # On gnubg self-play, a margin of 1 or more covers 99% of positions and is right 99% of the time
@@ -46,14 +47,16 @@ def guess(points, default="right"):
 def _apply(board, move):
     """board = (opponent, player) 25-arrays (index 24 = bar), move = gnubg move tuple."""
     opp, me = list(board[0]), list(board[1])
-    move = tuple(move) + (0,) * (len(move) % 2)   # gnubg leaves out a trailing 0 (= borne off)
+    move = tuple(move) + (0,) * (
+        len(move) % 2
+    )  # gnubg leaves out a trailing 0 (= borne off)
     for f, t in zip(move[0::2], move[1::2]):
         if f < 0:
             break
         me[f - 1] -= 1
         if t > 0:
             me[t - 1] += 1
-            if opp[24 - t] == 1:   # hit: the blot goes to the bar
+            if opp[24 - t] == 1:  # hit: the blot goes to the bar
                 opp[24 - t] = 0
                 opp[24] += 1
     return opp, me
@@ -67,6 +70,7 @@ def _points(board):
 
 def selfplay(games, seed=0):
     import gnubg
+
     rnd = random.Random(seed)
     ctx = gnubg.eval_context(0, 0)
     start = gnubg.position_from_id("4HPwATDgc/ABMA")
@@ -80,7 +84,7 @@ def selfplay(games, seed=0):
                 # people don't always play the best move: sometimes take one of the next few
                 k = 0 if rnd.random() < 0.7 else rnd.randrange(min(4, len(moves)))
                 board = _apply(board, moves[k]["move"])
-                out.append(_points(board))   # the player who just moved, as White
+                out.append(_points(board))  # the player who just moved, as White
             board = board[::-1]
             if sum(board[0][:25]) == 0 or sum(board[1][:25]) == 0:
                 break
@@ -92,15 +96,18 @@ def state(n):
 
 
 def learn(positions):
-    counts = [[1.0] * (2 * CLIP + 1) for _ in range(24)]   # add-one smoothing
+    counts = [[1.0] * (2 * CLIP + 1) for _ in range(24)]  # add-one smoothing
     for pts in positions:
         for i, n in enumerate(pts):
             counts[i][state(n)] += 1
     import math
+
     return [[round(math.log(c / sum(row)), 3) for c in row] for row in counts]
 
 
 if __name__ == "__main__":
     pos = selfplay(4000)
-    OUT.write_text(json.dumps({"clip": CLIP, "positions": len(pos), "logp": learn(pos)}) + "\n")
+    OUT.write_text(
+        json.dumps({"clip": CLIP, "positions": len(pos), "logp": learn(pos)}) + "\n"
+    )
     print(f"{len(pos)} positions -> {OUT.name}")

@@ -16,6 +16,7 @@ So: images stay 8-bit or integer, geometry is worked out with the functions belo
 handed from one step to the next are snapped to a grid (snap), so a last-bit difference that
 slipped in cannot reach the next step.
 """
+
 from __future__ import annotations
 
 import math
@@ -33,6 +34,7 @@ def snap(v, q):
 
 # ---------------------------------------------------------------- 3x3 matrices, in Python floats --
 
+
 def mat(M):
     return [[float(x) for x in row] for row in np.asarray(M, np.float64)]
 
@@ -40,8 +42,16 @@ def mat(M):
 def mul3(A, B):
     """A @ B for 3x3 matrices (lists or arrays), as a float64 array."""
     A, B = mat(A), mat(B)
-    return np.array([[A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j] for j in range(3)]
-                     for i in range(3)], np.float64)
+    return np.array(
+        [
+            [
+                A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j]
+                for j in range(3)
+            ]
+            for i in range(3)
+        ],
+        np.float64,
+    )
 
 
 def inv3(M):
@@ -49,9 +59,11 @@ def inv3(M):
     (a, b, c), (d, e, f), (g, h, i) = mat(M)
     A, B, C = e * i - f * h, -(d * i - f * g), d * h - e * g
     det = a * A + b * B + c * C
-    inv = [[A, -(b * i - c * h), b * f - c * e],
-           [B, a * i - c * g, -(a * f - c * d)],
-           [C, -(a * h - b * g), a * e - b * d]]
+    inv = [
+        [A, -(b * i - c * h), b * f - c * e],
+        [B, a * i - c * g, -(a * f - c * d)],
+        [C, -(a * h - b * g), a * e - b * d],
+    ]
     return np.array([[x / det for x in row] for row in inv], np.float64)
 
 
@@ -61,14 +73,22 @@ def apply_h(H, pts):
     p = np.asarray(pts, np.float64).reshape(-1, 2)
     x, y = p[:, 0], p[:, 1]
     w = H[2][0] * x + H[2][1] * y + H[2][2]
-    return np.stack([(H[0][0] * x + H[0][1] * y + H[0][2]) / w,
-                     (H[1][0] * x + H[1][1] * y + H[1][2]) / w], 1)
+    return np.stack(
+        [
+            (H[0][0] * x + H[0][1] * y + H[0][2]) / w,
+            (H[1][0] * x + H[1][1] * y + H[1][2]) / w,
+        ],
+        1,
+    )
 
 
 def solve(A, b):
     """x with A x = b (small, square), by Gaussian elimination with partial pivoting in Python floats."""
     n = len(b)
-    M = [[float(v) for v in row] + [float(bv)] for row, bv in zip(np.asarray(A, np.float64), np.asarray(b, np.float64))]
+    M = [
+        [float(v) for v in row] + [float(bv)]
+        for row, bv in zip(np.asarray(A, np.float64), np.asarray(b, np.float64))
+    ]
     for k in range(n):
         p = max(range(k, n), key=lambda r: abs(M[r][k]))
         M[k], M[p] = M[p], M[k]
@@ -89,7 +109,9 @@ def _normaliser(p):
     c = p.sum(0) / len(p)
     d = np.sqrt(((p - c) ** 2).sum(1)).sum() / len(p)
     s = math.sqrt(2.0) / float(d) if d > 0 else 1.0
-    return np.array([[s, 0, -s * float(c[0])], [0, s, -s * float(c[1])], [0, 0, 1]], np.float64)
+    return np.array(
+        [[s, 0, -s * float(c[0])], [0, s, -s * float(c[1])], [0, 0, 1]], np.float64
+    )
 
 
 def homography(src, dst, weights=None):
@@ -97,24 +119,39 @@ def homography(src, dst, weights=None):
 
     Like cv2.getPerspectiveTransform / cv2.findHomography(method 0) but the same on every CPU:
     normalised DLT with h22 = 1, the normal equations added up with numpy sums and solved in Python."""
-    src, dst = np.asarray(src, np.float64).reshape(-1, 2), np.asarray(dst, np.float64).reshape(-1, 2)
+    src, dst = (
+        np.asarray(src, np.float64).reshape(-1, 2),
+        np.asarray(dst, np.float64).reshape(-1, 2),
+    )
     if len(src) < 4:
         return None
     Ts, Td = _normaliser(src), _normaliser(dst)
     s, d = apply_h(Ts, src), apply_h(Td, dst)
     x, y, u, v = s[:, 0], s[:, 1], d[:, 0], d[:, 1]
     one, zero = np.ones_like(x), np.zeros_like(x)
-    rows = np.concatenate([np.stack([x, y, one, zero, zero, zero, -u * x, -u * y], 1),
-                           np.stack([zero, zero, zero, x, y, one, -v * x, -v * y], 1)])
+    rows = np.concatenate(
+        [
+            np.stack([x, y, one, zero, zero, zero, -u * x, -u * y], 1),
+            np.stack([zero, zero, zero, x, y, one, -v * x, -v * y], 1),
+        ]
+    )
     rhs = np.concatenate([u, v])
-    w = np.ones(len(rows)) if weights is None else np.concatenate([weights, weights]).astype(np.float64)
-    AtA = np.array([[(rows[:, i] * rows[:, j] * w).sum() for j in range(8)] for i in range(8)])
+    w = (
+        np.ones(len(rows))
+        if weights is None
+        else np.concatenate([weights, weights]).astype(np.float64)
+    )
+    AtA = np.array(
+        [[(rows[:, i] * rows[:, j] * w).sum() for j in range(8)] for i in range(8)]
+    )
     Atb = np.array([(rows[:, i] * rhs * w).sum() for i in range(8)])
     try:
         h = solve(AtA, Atb)
     except np.linalg.LinAlgError:
         return None
-    Hn = np.array([[h[0], h[1], h[2]], [h[3], h[4], h[5]], [h[6], h[7], 1.0]], np.float64)
+    Hn = np.array(
+        [[h[0], h[1], h[2]], [h[3], h[4], h[5]], [h[6], h[7], 1.0]], np.float64
+    )
     H = mul3(inv3(Td), mul3(Hn, Ts))
     if H[2, 2] == 0:
         return None
@@ -123,7 +160,10 @@ def homography(src, dst, weights=None):
 
 def homography_robust(src, dst, tol, rounds=8):
     """homography() refitted without the points farther than tol from it (instead of RANSAC)."""
-    src, dst = np.asarray(src, np.float64).reshape(-1, 2), np.asarray(dst, np.float64).reshape(-1, 2)
+    src, dst = (
+        np.asarray(src, np.float64).reshape(-1, 2),
+        np.asarray(dst, np.float64).reshape(-1, 2),
+    )
     keep = np.ones(len(src), bool)
     H = None
     for k in range(rounds):
@@ -134,7 +174,11 @@ def homography_robust(src, dst, tol, rounds=8):
             return None
         err = np.sqrt(((apply_h(H, src) - dst) ** 2).sum(1))
         # the first rounds also drop the worst 30%: a far outlier pulls every point off by more than tol
-        thr = max(tol, float(np.sort(err)[int(0.7 * (len(err) - 1))])) if k < rounds // 2 else tol
+        thr = (
+            max(tol, float(np.sort(err)[int(0.7 * (len(err) - 1))]))
+            if k < rounds // 2
+            else tol
+        )
         new = err <= thr
         if (new == keep).all() or new.sum() < 4:
             if k >= rounds // 2:
@@ -154,6 +198,7 @@ def snap_h(H, w, h, q=1 / 64):
 
 
 # ---------------------------------------------------------------- fitting --
+
 
 def polyfit1(x, y):
     """(slope, intercept) of the least-squares line y = p x + q (np.polyfit(x, y, 1) without LAPACK)."""
@@ -227,8 +272,14 @@ def kmeans(x, k, attempts=3, iters=30, cnt=None):
         for _ in range(iters):
             lbl = dists(c).argmin(1)
             n = np.array([cnt[lbl == j].sum() for j in range(k)], np.int64)
-            sums = np.array([(x[lbl == j] * cnt[lbl == j, None]).sum(0) for j in range(k)], np.int64)
-            new = np.where(n[:, None] > 0, (2 * sums + n[:, None]) // (2 * np.maximum(n, 1)[:, None]), c)
+            sums = np.array(
+                [(x[lbl == j] * cnt[lbl == j, None]).sum(0) for j in range(k)], np.int64
+            )
+            new = np.where(
+                n[:, None] > 0,
+                (2 * sums + n[:, None]) // (2 * np.maximum(n, 1)[:, None]),
+                c,
+            )
             if (new == c).all():
                 break
             c = new
@@ -240,6 +291,7 @@ def kmeans(x, k, attempts=3, iters=30, cnt=None):
 
 
 # ---------------------------------------------------------------- images --
+
 
 def box_sum(a, kx, ky):
     """Sum over a kx x ky box centred on each pixel (border: reflect, like cv2.blur), in int64."""
@@ -271,16 +323,28 @@ def warp(img, M, size, nearest=False):
     u = np.arange(w, dtype=np.float64)[None, :]
     v = np.arange(h, dtype=np.float64)[:, None]
     W = g * u + k * v + l
-    lim = 30000.0   # int16 maps; far outside (or behind the camera): just black
+    lim = 30000.0  # int16 maps; far outside (or behind the camera): just black
     X = np.clip(np.where(W > 0, (a * u + b * v + c) / W, -lim), -lim, lim)
     Y = np.clip(np.where(W > 0, (d * u + e * v + f) / W, -lim), -lim, lim)
     if nearest:
         xy = np.stack([np.floor(X + 0.5), np.floor(Y + 0.5)], 2).astype(np.int16)
-        return cv2.remap(img, xy, None, cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-    fx, fy = np.floor(X * 32 + 0.5).astype(np.int32), np.floor(Y * 32 + 0.5).astype(np.int32)   # nearest 1/32, as OpenCV rounds
+        return cv2.remap(
+            img,
+            xy,
+            None,
+            cv2.INTER_NEAREST,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=0,
+        )
+    fx, fy = (
+        np.floor(X * 32 + 0.5).astype(np.int32),
+        np.floor(Y * 32 + 0.5).astype(np.int32),
+    )  # nearest 1/32, as OpenCV rounds
     xy = np.stack([fx >> 5, fy >> 5], 2).astype(np.int16)
     frac = ((fy & 31) * 32 + (fx & 31)).astype(np.uint16)
-    return cv2.remap(img, xy, frac, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    return cv2.remap(
+        img, xy, frac, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0
+    )
 
 
 def min_area_rect(hull):
@@ -293,13 +357,16 @@ def min_area_rect(hull):
     x, y = p[:, 0], p[:, 1]
     best = None
     for i in range(len(p)):
-        dx, dy = float(p[(i + 1) % len(p), 0] - p[i, 0]), float(p[(i + 1) % len(p), 1] - p[i, 1])
+        dx, dy = (
+            float(p[(i + 1) % len(p), 0] - p[i, 0]),
+            float(p[(i + 1) % len(p), 1] - p[i, 1]),
+        )
         n = math.sqrt(dx * dx + dy * dy)
         if n == 0:
             continue
         ux, uy = dx / n, dy / n
-        a = x * ux + y * uy            # along the edge
-        b = y * ux - x * uy            # across it
+        a = x * ux + y * uy  # along the edge
+        b = y * ux - x * uy  # across it
         a0, a1, b0, b1 = float(a.min()), float(a.max()), float(b.min()), float(b.max())
         area = (a1 - a0) * (b1 - b0)
         if best is None or area < best[0]:

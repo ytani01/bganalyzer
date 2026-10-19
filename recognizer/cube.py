@@ -6,6 +6,7 @@ Says where the cube lies: in the middle (no one owns it), on 手前's (white) or
 or in a playing field ("field": just doubled; the side doubled is the one not on roll, which the
 photo cannot tell, so the analyzer decides it from on_roll), and the number on it (cube_value.py).
 """
+
 from __future__ import annotations
 
 import math
@@ -17,18 +18,22 @@ import cube_value
 import dice as dice_reader
 import exact
 
-SIDE_MIN, SIDE_MAX = 0.45, 1.15    # cube side / checker diameter
-MARGIN = 2.2                       # how far (checker diameters) to look beyond the playing area, left and right
-MAX_MARKS = 8                      # marks on the face: photo-green-felt-top's "64" breaks into 5 to 7 on the Raspberry Pi
-MIN_READINGS = 4                   # brightness levels at which the block is found (the samples' other squares: 3 at most)
-MIDDLE = 0.18                      # within this share of the board's height from the middle line: in the middle
+SIDE_MIN, SIDE_MAX = 0.45, 1.15  # cube side / checker diameter
+MARGIN = (
+    2.2  # how far (checker diameters) to look beyond the playing area, left and right
+)
+MAX_MARKS = 8  # marks on the face: photo-green-felt-top's "64" breaks into 5 to 7 on the Raspberry Pi
+MIN_READINGS = 4  # brightness levels at which the block is found (the samples' other squares: 3 at most)
+MIDDLE = (
+    0.18  # within this share of the board's height from the middle line: in the middle
+)
 
 
 def _ink(gray, body):
     """Share of the face covered by marks clearly darker or lighter than it, and how many marks."""
     s = body["side"]
     x, y, w, h = cv2.boundingRect(body["hull"])
-    roi = gray[y:y + h, x:x + w]
+    roi = gray[y : y + h, x : x + w]
     mask = np.zeros(roi.shape, np.uint8)
     cv2.drawContours(mask, [body["hull"] - (x, y)], -1, 255, -1)
     mask = cv2.erode(mask, np.ones((3, 3), np.uint8), iterations=max(1, int(s * 0.08)))
@@ -37,10 +42,14 @@ def _ink(gray, body):
     best = (0.0, 0)
     for dark in (True, False):
         ker = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(s * 0.35) | 1,) * 2)
-        hat = cv2.morphologyEx(roi, cv2.MORPH_BLACKHAT if dark else cv2.MORPH_TOPHAT, ker)
+        hat = cv2.morphologyEx(
+            roi, cv2.MORPH_BLACKHAT if dark else cv2.MORPH_TOPHAT, ker
+        )
         if np.percentile(hat[mask > 0], 99) < 50:
             continue
-        spot = ((hat > 0.5 * np.percentile(hat[mask > 0], 99)) & (mask > 0)).astype(np.uint8)
+        spot = ((hat > 0.5 * np.percentile(hat[mask > 0], 99)) & (mask > 0)).astype(
+            np.uint8
+        )
         n, _, st, _ = cv2.connectedComponentsWithStats(spot)
         marks = [a for a in st[1:, cv2.CC_STAT_AREA] if a >= 0.003 * s * s]
         share = sum(marks) / cv2.countNonZero(mask)
@@ -53,8 +62,9 @@ def in_field(lay, c) -> bool:
     """Whether the whole cube c (canonical x, y, side) lies in one of the two playing fields."""
     half = c["side"] / 2
     fields = ((0, lay.a), (lay.a + lay.bar, lay.w))
-    return (half <= c["y"] <= lay.h - half
-            and any(lo + half <= c["x"] <= hi - half for lo, hi in fields))
+    return half <= c["y"] <= lay.h - half and any(
+        lo + half <= c["x"] <= hi - half for lo, hi in fields
+    )
 
 
 def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
@@ -64,11 +74,19 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
     "field": the whole cube lies in a playing field (not on the bar, not beyond the board), where a
     player puts it when doubling (TODO-045)."""
     corners = exact.apply_h(H, lay.src_pts())
-    k = exact.snap(np.clip(math.sqrt(exact.polygon_area(corners) / (lay.w * lay.h)), 1,
-                           max(1.0, dice_reader.WORK_PITCH / pitch)), 2.0 ** -20)
+    k = exact.snap(
+        np.clip(
+            math.sqrt(exact.polygon_area(corners) / (lay.w * lay.h)),
+            1,
+            max(1.0, dice_reader.WORK_PITCH / pitch),
+        ),
+        2.0**-20,
+    )
     mx = MARGIN * pitch
     size = (int((lay.w + 2 * mx) * k), int(lay.h * k))
-    M = exact.mul3([[k, 0, k * mx], [0, k, 0], [0, 0, 1]], exact.inv3(H))   # in Python floats (TODO-046)
+    M = exact.mul3(
+        [[k, 0, k * mx], [0, k, 0], [0, 0, 1]], exact.inv3(H)
+    )  # in Python floats (TODO-046)
     ground = exact.warp(img, M, size)
     gray = cv2.cvtColor(ground, cv2.COLOR_BGR2GRAY)
     # the part of the view that is in the photo (outside it the warp is black, and its edge a "square")
@@ -78,25 +96,41 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
 
     def in_view(b):
         x, y, w, h = cv2.boundingRect(b["hull"])
-        return bool(inside[y:y + h, x:x + w].all())
+        return bool(inside[y : y + h, x : x + w].all())
 
-    bodies = [b for b in dice_reader._bodies(gray, pitch * k)
-              if SIDE_MIN * pitch * k <= b["side"] <= SIDE_MAX * pitch * k and in_view(b)]
+    bodies = [
+        b
+        for b in dice_reader._bodies(gray, pitch * k)
+        if SIDE_MIN * pitch * k <= b["side"] <= SIDE_MAX * pitch * k and in_view(b)
+    ]
     found = []
     for b in bodies:
         x, y = b["x"] / k - mx, b["y"] / k
         # not a checker (a stack's checkers can make a square), not a die read by dice.py.
         # (A cube can be taken for a checker too: then the circle is a little smaller than the square.)
-        if any(exact.hypot(x - c[0], y - c[1]) < c[2] and c[2] > 0.47 * b["side"] / k for c in circles):
+        if any(
+            exact.hypot(x - c[0], y - c[1]) < c[2] and c[2] > 0.47 * b["side"] / k
+            for c in circles
+        ):
             continue
         # a square in line between two checkers of a stack is a checker whose circle was missed
-        line = [c[1] for c in circles if abs(c[0] - x) < 0.3 * pitch and abs(c[1] - y) < 1.5 * pitch]
+        line = [
+            c[1]
+            for c in circles
+            if abs(c[0] - x) < 0.3 * pitch and abs(c[1] - y) < 1.5 * pitch
+        ]
         if any(v < y for v in line) and any(v > y for v in line):
             continue
-        if any(d["sure"] and exact.hypot(x - d["x"], y - d["y"]) < 0.6 * d["side"] for d in dice):
+        if any(
+            d["sure"] and exact.hypot(x - d["x"], y - d["y"]) < 0.6 * d["side"]
+            for d in dice
+        ):
             continue
         # a die: its pips sit like a face
-        if any(dice_reader._face_value(dice_reader._pips(gray, b, dark, 0.5), b) for dark in (True, False)):
+        if any(
+            dice_reader._face_value(dice_reader._pips(gray, b, dark, 0.5), b)
+            for dark in (True, False)
+        ):
             continue
         share, marks = _ink(gray, b)
         if not (0.04 <= share <= 0.4 and 1 <= marks <= MAX_MARKS):
@@ -104,11 +138,25 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
         found.append(b | dict(cx=x, cy=y))
     cubes = []
     for b in sorted(found, key=lambda b: -b["side"]):
-        if any(exact.hypot(b["cx"] - c["x"], b["cy"] - c["y"]) < 0.6 * c["side"] for c in cubes):
+        if any(
+            exact.hypot(b["cx"] - c["x"], b["cy"] - c["y"]) < 0.6 * c["side"]
+            for c in cubes
+        ):
             continue
-        seen = [o for o in found if exact.hypot(b["cx"] - o["cx"], b["cy"] - o["cy"]) < 0.5 * b["side"] / k]
-        cubes.append(dict(x=round(float(b["cx"]), 1), y=round(float(b["cy"]), 1),
-                          side=round(float(b["side"] / k), 1), seen=len(seen), bodies=seen))
+        seen = [
+            o
+            for o in found
+            if exact.hypot(b["cx"] - o["cx"], b["cy"] - o["cy"]) < 0.5 * b["side"] / k
+        ]
+        cubes.append(
+            dict(
+                x=round(float(b["cx"]), 1),
+                y=round(float(b["cy"]), 1),
+                side=round(float(b["side"] / k), 1),
+                seen=len(seen),
+                bodies=seen,
+            )
+        )
     if debug is not None:
         g = ground.copy()
         for b in found:
@@ -117,7 +165,11 @@ def read_cube(img, H, lay, pitch: float, circles=(), dice=(), debug=None):
     # the cube: the one place found at enough levels, and far more often than any other square
     # (photo-green-felt-top's cube is found 6 or 7 times on x86_64, 5 on the Raspberry Pi; other squares 3 at most)
     cubes.sort(key=lambda c: -c["seen"])
-    if not cubes or cubes[0]["seen"] < MIN_READINGS or (len(cubes) > 1 and cubes[1]["seen"] * 2 > cubes[0]["seen"]):
+    if (
+        not cubes
+        or cubes[0]["seen"] < MIN_READINGS
+        or (len(cubes) > 1 and cubes[1]["seen"] * 2 > cubes[0]["seen"])
+    ):
         return None
     c = cubes[0]
     off = c["y"] / lay.h - 0.5

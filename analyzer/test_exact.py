@@ -1,4 +1,5 @@
 """recognizer/exact.py: arithmetic that comes out the same on every CPU (TODO-046)."""
+
 import sys
 from pathlib import Path
 
@@ -45,16 +46,27 @@ def test_homography_and_fits():
     assert np.abs(exact.homography(src, dst) - H).max() < 1e-9
     # one far outlier is dropped
     bad = np.vstack([dst, [[900, 900]]])
-    assert np.abs(exact.homography_robust(np.vstack([src, [[5, 5]]]), bad, 2.0) - H).max() < 1e-6
+    assert (
+        np.abs(exact.homography_robust(np.vstack([src, [[5, 5]]]), bad, 2.0) - H).max()
+        < 1e-6
+    )
     assert np.abs(exact.mul3(H, exact.inv3(H)) - np.eye(3)).max() < 1e-12
-    assert np.allclose(exact.polyfit1([1, 2, 3, 5], [2, 4, 7, 9]), np.polyfit([1, 2, 3, 5], [2, 4, 7, 9], 1))
+    assert np.allclose(
+        exact.polyfit1([1, 2, 3, 5], [2, 4, 7, 9]),
+        np.polyfit([1, 2, 3, 5], [2, 4, 7, 9], 1),
+    )
     x = np.array([0.5, 2.25, 7.0])
-    assert np.allclose(exact.interp(x, np.arange(5), [0, 1, 4, 9, 16]), np.interp(x, np.arange(5), [0, 1, 4, 9, 16]))
+    assert np.allclose(
+        exact.interp(x, np.arange(5), [0, 1, 4, 9, 16]),
+        np.interp(x, np.arange(5), [0, 1, 4, 9, 16]),
+    )
 
 
 def test_kmeans_in_integers():
     rng = np.random.default_rng(2)
-    pts = np.vstack([rng.integers(0, 20, (50, 3)), rng.integers(100, 120, (50, 3))]).astype(np.int32)
+    pts = np.vstack(
+        [rng.integers(0, 20, (50, 3)), rng.integers(100, 120, (50, 3))]
+    ).astype(np.int32)
     lbl, centres = exact.kmeans(pts, 2)
     assert len(set(lbl[:50])) == 1 and len(set(lbl[50:])) == 1 and lbl[0] != lbl[50]
     assert centres.dtype.kind == "i"

@@ -4,6 +4,7 @@ count on each point and on the bar, with the two checker colours split by 2-mean
 
 Coordinates are canonical (geometry.py); images carry a margin of m pixels.
 """
+
 from __future__ import annotations
 
 import cv2
@@ -16,21 +17,25 @@ from geometry import TRI_DEPTH, Layout
 
 HOUGH_VOTES = 18
 CIRCLE_MIN_SCORE = 0.85  # circle score for a checker on its own
-LONE_MIN_SCORE = 1.0     # ... and for a single checker with no stack to back it
-STACK_SKEW = 0.25        # max sideways step between neighbouring checkers of a stack / pitch
-GAP_MIN_SCORE = 0.6      # enough for a circle in line between two checkers of a stack
-OUTLINE_SUPPORT = 0.8    # edge support of a checker that has the colour of the spot under it
-PATTERN_SUPPORT = 0.68   # edge support of a checker whose face does not match its rim ...
-PATTERN_DISTINCT = 30    # ... and its colour distance from every empty spot
-COS_35 = 0.8191520442889918   # cos(35 degrees)
-NEAR_COLOUR = 12         # colour distance (weighted Lab) of a circle measured in, or found only in, a checker colour's image (TODO-143)
-BAR_COLOUR_TOL = 0.25    # a checker on the bar: colour distance to its cluster / distance between the clusters
-LONE_COLOUR_TOL = 0.3     # ... and for a single checker on a point (a triangle's base can look like one, TODO-048)
+LONE_MIN_SCORE = 1.0  # ... and for a single checker with no stack to back it
+STACK_SKEW = 0.25  # max sideways step between neighbouring checkers of a stack / pitch
+GAP_MIN_SCORE = 0.6  # enough for a circle in line between two checkers of a stack
+OUTLINE_SUPPORT = (
+    0.8  # edge support of a checker that has the colour of the spot under it
+)
+PATTERN_SUPPORT = (
+    0.68  # edge support of a checker whose face does not match its rim ...
+)
+PATTERN_DISTINCT = 30  # ... and its colour distance from every empty spot
+COS_35 = 0.8191520442889918  # cos(35 degrees)
+NEAR_COLOUR = 12  # colour distance (weighted Lab) of a circle measured in, or found only in, a checker colour's image (TODO-143)
+BAR_COLOUR_TOL = 0.25  # a checker on the bar: colour distance to its cluster / distance between the clusters
+LONE_COLOUR_TOL = 0.3  # ... and for a single checker on a point (a triangle's base can look like one, TODO-048)
 
 
 # cos and sin of 64 directions round a circle, snapped (libm's last bit differs by CPU)
-_COS64 = exact.snap(np.cos(np.linspace(0, 2 * np.pi, 64, endpoint=False)), 2.0 ** -40)
-_SIN64 = exact.snap(np.sin(np.linspace(0, 2 * np.pi, 64, endpoint=False)), 2.0 ** -40)
+_COS64 = exact.snap(np.cos(np.linspace(0, 2 * np.pi, 64, endpoint=False)), 2.0**-40)
+_SIN64 = exact.snap(np.sin(np.linspace(0, 2 * np.pi, 64, endpoint=False)), 2.0**-40)
 
 
 def edge_support(gx, gy, x, y, r):
@@ -50,11 +55,11 @@ def edge_support(gx, gy, x, y, r):
     return best
 
 
-TEX_MIN = 3.0       # median sideways / up-down edge ratio of a row at which the triangles' sides stand out
-TEX_MIN_COVERED = 4.0   # ... upper quartile, when most of the row is covered (leather-cups' cups: 3.2, photo-black-blue-oblique: 4.7)
-TEX_HIDDEN = 0.35   # a spot below this share of the median (or quartile) is covered
-TEX_SHOWN = 0.84    # ... above this share, the sides show through it
-TEX_DEPTHS = 5      # depths (in checkers from the frame) to look at
+TEX_MIN = 3.0  # median sideways / up-down edge ratio of a row at which the triangles' sides stand out
+TEX_MIN_COVERED = 4.0  # ... upper quartile, when most of the row is covered (leather-cups' cups: 3.2, photo-black-blue-oblique: 4.7)
+TEX_HIDDEN = 0.35  # a spot below this share of the median (or quartile) is covered
+TEX_SHOWN = 0.84  # ... above this share, the sides show through it
+TEX_DEPTHS = 5  # depths (in checkers from the frame) to look at
 
 
 def column_texture(gx, gy, lay: Layout, m: int, pitch: float):
@@ -67,29 +72,35 @@ def column_texture(gx, gy, lay: Layout, m: int, pitch: float):
     the median is low because most spots are covered, with its upper quartile.
     Returns {(c, row, k): 'shown' | 'hidden'}."""
     r = int(pitch * 0.45)
-    yy, xx = np.mgrid[-r:r + 1, -r:r + 1]
-    disc = xx ** 2 + yy ** 2 <= r * r
+    yy, xx = np.mgrid[-r : r + 1, -r : r + 1]
+    disc = xx**2 + yy**2 <= r * r
     ax, ay = np.abs(gx), np.abs(gy)
     out = {}
     for row in ("top", "bottom"):
         for k in range(TEX_DEPTHS):
             dep = pitch * (k + 0.5)
-            if dep > lay.h / 2 - pitch / 2:   # big checkers: this depth is on the other row
+            if (
+                dep > lay.h / 2 - pitch / 2
+            ):  # big checkers: this depth is on the other row
                 break
             y = int(m + (dep if row == "top" else lay.h - dep))
             ratio = []
             for c in range(12):
                 x = int(m + lay.col_x(c))
-                sl = np.s_[y - r:y + r + 1, x - r:x + r + 1]
+                sl = np.s_[y - r : y + r + 1, x - r : x + r + 1]
                 if ax[sl].shape != disc.shape:
                     ratio.append(np.nan)
                     continue
                 ratio.append(ax[sl][disc].sum() / (ay[sl][disc].sum() + 1))
             ratio = np.float32(ratio)
             med = float(np.nanmedian(ratio))
-            if not med >= TEX_MIN:   # most spots may be covered: the upper quarter, if clear (photo-black-blue-oblique's bottom row, TODO-077)
+            if (
+                not med >= TEX_MIN
+            ):  # most spots may be covered: the upper quarter, if clear (photo-black-blue-oblique's bottom row, TODO-077)
                 med = float(np.nanpercentile(ratio, 75))
-                if not med >= TEX_MIN_COVERED:   # the triangles' sides do not stand out here
+                if (
+                    not med >= TEX_MIN_COVERED
+                ):  # the triangles' sides do not stand out here
                     continue
             for c in range(12):
                 if ratio[c] < TEX_HIDDEN * med:
@@ -115,15 +126,21 @@ def _stretch(ch):
     lo, hi = int(ch.min()), int(ch.max())
     if hi == lo:
         return np.zeros_like(ch)
-    return (((ch.astype(np.int32) - lo) * 510 + (hi - lo)) // (2 * (hi - lo))).astype(np.uint8)
+    return (((ch.astype(np.int32) - lo) * 510 + (hi - lo)) // (2 * (hi - lo))).astype(
+        np.uint8
+    )
 
 
 def lab_gradients(bgr):
     """Lab blurred in 8 bits (as float32) and its Sobel gradients summed over the channels (int32).
     Before TODO-046 the blur and the gradients were in floats, which round differently by CPU."""
     lab = cv2.GaussianBlur(cv2.cvtColor(bgr, cv2.COLOR_BGR2Lab), (0, 0), 1.5)
-    gx = sum(cv2.Sobel(lab[:, :, i], cv2.CV_16S, 1, 0).astype(np.int32) for i in range(3))
-    gy = sum(cv2.Sobel(lab[:, :, i], cv2.CV_16S, 0, 1).astype(np.int32) for i in range(3))
+    gx = sum(
+        cv2.Sobel(lab[:, :, i], cv2.CV_16S, 1, 0).astype(np.int32) for i in range(3)
+    )
+    gy = sum(
+        cv2.Sobel(lab[:, :, i], cv2.CV_16S, 0, 1).astype(np.int32) for i in range(3)
+    )
     return lab.astype(np.float32), gx, gy
 
 
@@ -135,10 +152,18 @@ def _top_colour(inner):
     return np.float32([np.median(inner[:, 0]), *np.median(sat[:, 1:], 0)])
 
 
-
-
-def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=None, tri_len=None, drop_shown=True,
-                    finder="radial", checker_lab=None):
+def detect_checkers(
+    img_bgr,
+    board,
+    lay: Layout,
+    m: int,
+    pitch: float,
+    tri_map=None,
+    tri_len=None,
+    drop_shown=True,
+    finder="radial",
+    checker_lab=None,
+):
     """Checker tops as circles, scored by edge support and colour.
 
     finder: how candidates are found: "radial" (radial.py, TODO-051), or for comparison "hough" or "both".
@@ -152,31 +177,53 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     # for circles in the colour channels
     lab8 = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2Lab)
     found = []
-    chans = [cv2.GaussianBlur(_stretch(ch), (0, 0), 2) for ch in (gray, lab8[:, :, 1], lab8[:, :, 2])]
+    chans = [
+        cv2.GaussianBlur(_stretch(ch), (0, 0), 2)
+        for ch in (gray, lab8[:, :, 1], lab8[:, :, 2])
+    ]
     if finder != "radial":
         for ch in chans:
-            c = cv2.HoughCircles(ch, cv2.HOUGH_GRADIENT, dp=1.5, minDist=r0 * 1.3, param1=70, param2=HOUGH_VOTES,
-                                 minRadius=int(r0 * 0.78), maxRadius=int(r0 * 1.2))
+            c = cv2.HoughCircles(
+                ch,
+                cv2.HOUGH_GRADIENT,
+                dp=1.5,
+                minDist=r0 * 1.3,
+                param1=70,
+                param2=HOUGH_VOTES,
+                minRadius=int(r0 * 0.78),
+                maxRadius=int(r0 * 1.2),
+            )
             if c is not None:
                 found.append(c[0])
-    if finder != "hough":   # radial symmetry with the known radius (TODO-032 idea 5, TODO-051)
+    if (
+        finder != "hough"
+    ):  # radial symmetry with the known radius (TODO-032 idea 5, TODO-051)
         c = radial.find(chans, r0)
         if c is not None:
             found.append(c)
-    near = []   # (colour, gx, gy) of each checker colour's closeness image (TODO-143)
-    near_only = {}   # (x, y, r) -> indices of the colour images it was found in
+    near = []  # (colour, gx, gy) of each checker colour's closeness image (TODO-143)
+    near_only = {}  # (x, y, r) -> indices of the colour images it was found in
     n_plain = len(found)
     if checker_lab is not None and finder != "hough":
         for c in checker_lab:
-            dist = np.linalg.norm((lab8.astype(np.float32) - np.float32(c)) * LAB_W, axis=2)
-            ch = cv2.GaussianBlur(_stretch(np.uint8(255 - np.minimum(dist, 255))), (0, 0), 2)
+            dist = np.linalg.norm(
+                (lab8.astype(np.float32) - np.float32(c)) * LAB_W, axis=2
+            )
+            ch = cv2.GaussianBlur(
+                _stretch(np.uint8(255 - np.minimum(dist, 255))), (0, 0), 2
+            )
             f = radial.find([ch], r0)
             if f is not None:
                 found.append(f)
                 for p in f.tolist():
                     near_only.setdefault(tuple(p), []).append(len(near))
-            near.append((np.float32(c) * LAB_W, cv2.Sobel(ch, cv2.CV_16S, 1, 0).astype(np.int32),
-                         cv2.Sobel(ch, cv2.CV_16S, 0, 1).astype(np.int32)))
+            near.append(
+                (
+                    np.float32(c) * LAB_W,
+                    cv2.Sobel(ch, cv2.CV_16S, 1, 0).astype(np.int32),
+                    cv2.Sobel(ch, cv2.CV_16S, 0, 1).astype(np.int32),
+                )
+            )
     if not found:
         return []
     cs = [np.vstack(found)]
@@ -193,10 +240,18 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         """(cx, cy, colour, ring_same, distinct, support, shown) of a circle, None off the field."""
         cx, cy = x - m, y - m
         # a checker's centre lies inside the field (labels and scores on the frame do not)
-        if not (-0.3 * pitch < cx < lay.w + 0.3 * pitch and -0.1 * pitch < cy < lay.h + 0.1 * pitch):
+        if not (
+            -0.3 * pitch < cx < lay.w + 0.3 * pitch
+            and -0.1 * pitch < cy < lay.h + 0.1 * pitch
+        ):
             return None
         shown = tex.get(_slot_of(cx, cy, lay, pitch)) == "shown"
-        x0, x1, y0, y1 = int(max(x - r, 0)), int(min(x + r + 1, ww)), int(max(y - r, 0)), int(min(y + r + 1, hh))
+        x0, x1, y0, y1 = (
+            int(max(x - r, 0)),
+            int(min(x + r + 1, ww)),
+            int(max(y - r, 0)),
+            int(min(y + r + 1, hh)),
+        )
         d2 = (xx[y0:y1, x0:x1] - x) ** 2 + (yy[y0:y1, x0:x1] - y) ** 2
         patch = lab[y0:y1, x0:x1]
         inner = patch[d2 < (0.55 * r) ** 2]
@@ -209,8 +264,10 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         # The frame only matters where a circle could sit on it: a checker in
         # the field may well be the frame's colour (black on black leather)
         bar0, bar1 = lay.a, lay.a + lay.bar
-        on_frame = (min(cx, lay.w - cx, cy, lay.h - cy) < 0.3 * pitch or
-                    bar0 - 0.3 * pitch < cx < bar1 + 0.3 * pitch)
+        on_frame = (
+            min(cx, lay.w - cx, cy, lay.h - cy) < 0.3 * pitch
+            or bar0 - 0.3 * pitch < cx < bar1 + 0.3 * pitch
+        )
         expected = [Wb[0]] + (list(Wb[3:]) if on_frame else [])
         if tri_map is not None:
             c = int(np.argmin([abs(cx - lay.col_x(i)) for i in range(12)]))
@@ -222,7 +279,7 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
             expected += [Wb[1], Wb[2]]
         distinct = float(np.min(np.linalg.norm(np.float32(expected) - med, axis=1)))
         support = edge_support(gx, gy, x, y, r)
-        for c, ngx, ngy in near:   # in a checker's colour: its rim against what is not
+        for c, ngx, ngy in near:  # in a checker's colour: its rim against what is not
             if np.linalg.norm(med - c) < NEAR_COLOUR:
                 support = max(support, edge_support(ngx, ngy, x, y, r))
         return cx, cy, med, ring_same, distinct, support, shown
@@ -234,8 +291,11 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
             continue
         cx, cy, med, ring_same, distinct, support, shown = mm
         ks = near_only.get((float(x), float(y), float(r)))
-        if ks is not None and min(np.linalg.norm(med - near[k][0]) for k in ks) >= NEAR_COLOUR:
-            continue   # found in checker colours' images only: it must have one of those colours
+        if (
+            ks is not None
+            and min(np.linalg.norm(med - near[k][0]) for k in ks) >= NEAR_COLOUR
+        ):
+            continue  # found in checker colours' images only: it must have one of those colours
         score = support + 0.012 * min(distinct, 30) + 0.3 * ring_same
         # the colour of an empty spot is fine with a clear outline all round
         # (a white checker on a white triangle in a diagram)
@@ -243,7 +303,11 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
         # is not the centre's colour: a clear outline all round in a colour no empty spot has is
         # a checker too (tv-vegas-open, TODO-044)
         patterned = support >= PATTERN_SUPPORT and distinct >= PATTERN_DISTINCT
-        if support < 0.2 or (ring_same < 0.35 and not patterned) or (distinct < 8 and (support < OUTLINE_SUPPORT or ring_same < 0.6)):
+        if (
+            support < 0.2
+            or (ring_same < 0.35 and not patterned)
+            or (distinct < 8 and (support < OUTLINE_SUPPORT or ring_same < 0.6))
+        ):
             continue
         if score < GAP_MIN_SCORE:
             continue
@@ -254,10 +318,23 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     # a stack: at least two such circles in the column)
     keep = {i for i, s in enumerate(scored) if not s[5] or not drop_shown}
     while True:
-        more = {i for i, s in enumerate(scored) if i not in keep
-                and any(abs(s[1] - scored[k][1]) < 0.25 * pitch and abs(s[2] - scored[k][2]) < 1.3 * pitch for k in keep)
-                and sum(abs(s[1] - k[1]) < 0.25 * pitch and (s[2] < lay.h / 2) == (k[2] < lay.h / 2)
-                        for k in scored if not k[5]) >= 2}
+        more = {
+            i
+            for i, s in enumerate(scored)
+            if i not in keep
+            and any(
+                abs(s[1] - scored[k][1]) < 0.25 * pitch
+                and abs(s[2] - scored[k][2]) < 1.3 * pitch
+                for k in keep
+            )
+            and sum(
+                abs(s[1] - k[1]) < 0.25 * pitch
+                and (s[2] < lay.h / 2) == (k[2] < lay.h / 2)
+                for k in scored
+                if not k[5]
+            )
+            >= 2
+        }
         if not more:
             break
         keep |= more
@@ -265,8 +342,11 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
 
     def clear(cx, cy, out):
         # overlapping checkers of one stack are allowed closer, straight in line
-        return not any((cx - o[0]) ** 2 + (cy - o[1]) ** 2 < (0.8 * pitch) ** 2 and
-                       not (abs(cx - o[0]) < 0.12 * pitch and abs(cy - o[1]) > 0.6 * pitch) for o in out)
+        return not any(
+            (cx - o[0]) ** 2 + (cy - o[1]) ** 2 < (0.8 * pitch) ** 2
+            and not (abs(cx - o[0]) < 0.12 * pitch and abs(cy - o[1]) > 0.6 * pitch)
+            for o in out
+        )
 
     ranked = sorted(scored, key=lambda t: -t[0])
     out = []
@@ -279,12 +359,22 @@ def detect_checkers(img_bgr, board, lay: Layout, m: int, pitch: float, tri_map=N
     for score, cx, cy, r, med in ranked:
         if score >= CIRCLE_MIN_SCORE or not clear(cx, cy, out):
             continue
-        line = [o[1] for o in out if abs(o[0] - cx) < 0.15 * pitch and abs(o[1] - cy) < 2.3 * pitch]
+        line = [
+            o[1]
+            for o in out
+            if abs(o[0] - cx) < 0.15 * pitch and abs(o[1] - cy) < 2.3 * pitch
+        ]
         top = cy < lay.h / 2
-        inner = [y for y in line if (y > cy) == top]   # towards mid-board
+        inner = [y for y in line if (y > cy) == top]  # towards mid-board
         outer = [y for y in line if (y > cy) != top]
-        stack = [o for o in out if abs(o[0] - cx) < 0.15 * pitch and (o[1] < lay.h / 2) == top]
-        depth = cy if top else lay.h - cy   # a checker's centre is half a pitch in from the frame
+        stack = [
+            o
+            for o in out
+            if abs(o[0] - cx) < 0.15 * pitch and (o[1] < lay.h / 2) == top
+        ]
+        depth = (
+            cy if top else lay.h - cy
+        )  # a checker's centre is half a pitch in from the frame
         # between two checkers, or between a stack of at least two and the frame
         if inner and (outer or (len(stack) >= 2 and depth > 0.3 * pitch)):
             out.append((cx, cy, r, med, score))
@@ -301,25 +391,36 @@ def add_hidden_stacks(ground_bgr, lay: Layout, m: int, pitch: float, circles):
     lab = labf * LAB_W
     out = list(circles)
     r = pitch / 2
-    yy, xx = np.mgrid[-int(r):int(r) + 1, -int(r):int(r) + 1]
-    inner = xx ** 2 + yy ** 2 < (0.55 * r) ** 2
+    yy, xx = np.mgrid[-int(r) : int(r) + 1, -int(r) : int(r) + 1]
+    inner = xx**2 + yy**2 < (0.55 * r) ** 2
     for c in range(12):
         for row in ("top", "bottom"):
-            n = 0   # covered at depths 1..n (at the frame the triangle's sides are hard to see)
+            n = 0  # covered at depths 1..n (at the frame the triangle's sides are hard to see)
             while tex.get((c, row, n + 1)) == "hidden":
                 n += 1
             if n < 1 or tex.get((c, row, 0)) == "shown":
                 continue
             x = lay.col_x(c)
-            stack = [o for o in circles if abs(o[0] - x) < 0.5 * lay.pw and (o[1] < lay.h / 2) == (row == "top")]
+            stack = [
+                o
+                for o in circles
+                if abs(o[0] - x) < 0.5 * lay.pw and (o[1] < lay.h / 2) == (row == "top")
+            ]
             if len(stack) < 2:
                 for k in range(n + 1):
                     dep = pitch * (k + 0.5)
                     y = dep if row == "top" else lay.h - dep
-                    if any((o[0] - x) ** 2 + (o[1] - y) ** 2 < (0.6 * pitch) ** 2 for o in out):
+                    if any(
+                        (o[0] - x) ** 2 + (o[1] - y) ** 2 < (0.6 * pitch) ** 2
+                        for o in out
+                    ):
                         continue
                     X, Y = int(x + m), int(y + m)
-                    med = _top_colour(lab[Y - int(r):Y + int(r) + 1, X - int(r):X + int(r) + 1][inner])
+                    med = _top_colour(
+                        lab[Y - int(r) : Y + int(r) + 1, X - int(r) : X + int(r) + 1][
+                            inner
+                        ]
+                    )
                     out.append((x, y, r, med / LAB_W, CIRCLE_MIN_SCORE))
                 continue
             # a stack has no holes, so where two circles of it are farther apart than one checker,
@@ -336,7 +437,11 @@ def add_hidden_stacks(ground_bgr, lay: Layout, m: int, pitch: float, circles):
                     d, x = d0 + (d1 - d0) * j / gaps, x0 + (x1 - x0) * j / gaps
                     y = d if row == "top" else lay.h - d
                     X, Y = int(x + m), int(y + m)
-                    med = _top_colour(lab[Y - int(r):Y + int(r) + 1, X - int(r):X + int(r) + 1][inner])
+                    med = _top_colour(
+                        lab[Y - int(r) : Y + int(r) + 1, X - int(r) : X + int(r) + 1][
+                            inner
+                        ]
+                    )
                     out.append((x, y, r, med / LAB_W, CIRCLE_MIN_SCORE))
     return out
 
@@ -350,22 +455,32 @@ def count_from_circles(circles, lay: Layout, pitch: float):
     on_bar = []
     bar_x0, bar_x1 = lay.col_x(5) + lay.pw / 2, lay.col_x(6) - lay.pw / 2
     for i, (x, y, r, _, sc) in enumerate(circles):
-        if bar_x0 - 0.15 * lay.pw < x < bar_x1 + 0.15 * lay.pw and \
-                min(abs(x - lay.col_x(5)), abs(x - lay.col_x(6))) > 0.45 * lay.pw:
+        if (
+            bar_x0 - 0.15 * lay.pw < x < bar_x1 + 0.15 * lay.pw
+            and min(abs(x - lay.col_x(5)), abs(x - lay.col_x(6))) > 0.45 * lay.pw
+        ):
             on_bar.append(i)
             continue
         c = int(np.argmin([abs(x - lay.col_x(i)) for i in range(12)]))
         if abs(x - lay.col_x(c)) > 0.5 * lay.pw:
             continue
         row = "top" if y < lay.h / 2 else "bottom"
-        counts[(c, row)].append((y if row == "top" else lay.h - y, x, sc, i))   # depth from the edge
+        counts[(c, row)].append(
+            (y if row == "top" else lay.h - y, x, sc, i)
+        )  # depth from the edge
     # the first checker sits a little in from the canonical edge (frame lip,
     # rough corners): measure that per row from the stacks themselves
     lip = {}
     for row in ("top", "bottom"):
-        firsts = [min(d for d, *_ in v) for (c, r), v in counts.items() if r == row and v]
+        firsts = [
+            min(d for d, *_ in v) for (c, r), v in counts.items() if r == row and v
+        ]
         firsts = [f for f in firsts if f < 1.6 * pitch]
-        lip[row] = float(np.clip(np.median(firsts) - pitch / 2, -0.3 * pitch, 0.8 * pitch)) if firsts else 0.0
+        lip[row] = (
+            float(np.clip(np.median(firsts) - pitch / 2, -0.3 * pitch, 0.8 * pitch))
+            if firsts
+            else 0.0
+        )
     # 2. count each stack
     stacks = {}
     for (c, row), v in counts.items():
@@ -376,7 +491,9 @@ def count_from_circles(circles, lay: Layout, pitch: float):
         for depth, x, sc, i in sorted((d - lip[row], x, sc, i) for d, x, sc, i in v):
             limit = 2.3 * pitch if last is None else last + 2.3 * pitch
             # a stack is straight; round things piled askew (a dice cup) are not
-            if depth > limit or (last_x is not None and abs(x - last_x) > STACK_SKEW * pitch):
+            if depth > limit or (
+                last_x is not None and abs(x - last_x) > STACK_SKEW * pitch
+            ):
                 break
             last, last_x = depth, x
             chain.append(depth)
@@ -384,7 +501,7 @@ def count_from_circles(circles, lay: Layout, pitch: float):
         used = len(chain)
         n = 0 if last is None else max(used, int(round(last / pitch + 0.5)))
         if n == 1 and circles[members[0]][4] < LONE_MIN_SCORE:
-            n = 0   # a lone checker needs a clearer circle than one in a stack
+            n = 0  # a lone checker needs a clearer circle than one in a stack
         gaps = np.diff(chain)
         if len(gaps) >= 2 and np.median(gaps) < 0.85 * pitch:
             # apps and full points overlap the checkers: count in steps of the overlap
@@ -404,7 +521,7 @@ def count_from_circles(circles, lay: Layout, pitch: float):
     # in integers (quarter units: the colours are medians of whole numbers, L halved): cv2.kmeans differs by CPU
     _, cc = exact.kmeans(np.round(cols[keep] * 4).astype(np.int32), 2, attempts=5)
     cc = (cc / 4).astype(np.float32)
-    cc = cc[np.argsort(cc[:, 0], kind="stable")]          # colour 0 = darker
+    cc = cc[np.argsort(cc[:, 0], kind="stable")]  # colour 0 = darker
     dd = np.linalg.norm(cols[:, None, :] - cc[None, :, :], axis=2)
     lbl = list(np.argmin(dd, 1))
     # glare washes a coloured checker towards white (red looks pink). When one
@@ -413,12 +530,17 @@ def count_from_circles(circles, lay: Layout, pitch: float):
     ca, cb = raw[:, 1].astype(np.float64) - 128, raw[:, 2].astype(np.float64) - 128
     chroma = np.sqrt(ca * ca + cb * cb)
     cent = cc / LAB_W
-    cchroma = np.sqrt((cent[:, 1].astype(np.float64) - 128) ** 2 + (cent[:, 2].astype(np.float64) - 128) ** 2)
+    cchroma = np.sqrt(
+        (cent[:, 1].astype(np.float64) - 128) ** 2
+        + (cent[:, 2].astype(np.float64) - 128) ** 2
+    )
     neutral = int(np.argmin(cchroma))
     if cchroma[neutral] < 15 and cchroma[1 - neutral] > 35:
         # the hue within 35 degrees of the coloured one's (by the cosine: no libm's arctan, TODO-046)
         ka, kb = float(cent[1 - neutral, 1]) - 128, float(cent[1 - neutral, 2]) - 128
-        cos_dh = (ca * ka + cb * kb) / (np.maximum(chroma, 1e-9) * float(cchroma[1 - neutral]))
+        cos_dh = (ca * ka + cb * kb) / (
+            np.maximum(chroma, 1e-9) * float(cchroma[1 - neutral])
+        )
         for i in range(len(lbl)):
             if lbl[i] == neutral and chroma[i] > 20 and cos_dh[i] > COS_35:
                 lbl[i] = 1 - neutral
@@ -428,7 +550,9 @@ def count_from_circles(circles, lay: Layout, pitch: float):
     for i in on_bar:
         # hinges, clasps and straps on the bar make circles too: a checker there
         # needs a clear circle and one of the checker colours
-        if circles[i][4] < LONE_MIN_SCORE or dd[i].min() > BAR_COLOUR_TOL * exact.norm(cc[0] - cc[1]):
+        if circles[i][4] < LONE_MIN_SCORE or dd[i].min() > BAR_COLOUR_TOL * exact.norm(
+            cc[0] - cc[1]
+        ):
             continue
         bar[lbl[i]] += 1
     sep = exact.norm(cc[0] - cc[1])
@@ -442,6 +566,11 @@ def count_from_circles(circles, lay: Layout, pitch: float):
             runs[key] = (None, 0)
             continue
         # a point holds one colour: vote
-        k = 0 if sum(conf[i] for i in members if lbl[i] == 0) >= sum(conf[i] for i in members if lbl[i] == 1) else 1
+        k = (
+            0
+            if sum(conf[i] for i in members if lbl[i] == 0)
+            >= sum(conf[i] for i in members if lbl[i] == 1)
+            else 1
+        )
         runs[key] = (k, n)
     return runs, bar, cent

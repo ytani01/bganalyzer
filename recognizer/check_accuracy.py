@@ -19,6 +19,7 @@ machine tried (x86_64, arm64, the Raspberry Pi), so the baseline may be updated 
 That is no longer checked (TODO-074): if code that rounds differently by CPU makes the Pi and GitHub
 Actions part, update the baseline on GitHub's machine.
 """
+
 import glob, json, os, sys
 from concurrent.futures import ProcessPoolExecutor
 
@@ -26,8 +27,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BASELINE = os.path.join(HERE, "accuracy_baseline.json")
 SAMPLES = os.path.join(HERE, "..", "samples")
 SLACK = 0  # points a sample may lose against its baseline (was 1 while CPUs read differently)
-RANK = {"dice": ["WRONG", "not read", "ok"], "cube": ["WRONG", "not found", "ok"],
-        "cube_value": ["WRONG", "not read", "ok"]}
+RANK = {
+    "dice": ["WRONG", "not read", "ok"],
+    "cube": ["WRONG", "not found", "ok"],
+    "cube_value": ["WRONG", "not read", "ok"],
+}
 
 
 def measure(path):
@@ -35,20 +39,33 @@ def measure(path):
     sys.path.insert(0, HERE)
     import cv2
     import evaluate
-    cv2.setRNGSeed(0)  # cv2.kmeans seeds from OpenCV's RNG; make each sample independent of the order
-    pos, truth, wrong, bar_ok, (home_ok, _), (dice, want), (cube, cube_want) = evaluate.run(path)
+
+    cv2.setRNGSeed(
+        0
+    )  # cv2.kmeans seeds from OpenCV's RNG; make each sample independent of the order
+    pos, truth, wrong, bar_ok, (home_ok, _), (dice, want), (cube, cube_want) = (
+        evaluate.run(path)
+    )
     out = {
         "points": 24 - len(wrong),
         "bar": bar_ok,
         "home": home_ok,
         "dice": "ok" if dice == want else "not read" if dice is None else "WRONG",
-        "cube": "ok" if evaluate.same_cube(cube, cube_want) else "not found" if cube is None else "WRONG",
+        "cube": "ok"
+        if evaluate.same_cube(cube, cube_want)
+        else "not found"
+        if cube is None
+        else "WRONG",
     }
-    value = evaluate.same_value(cube, cube_want)   # only where the truth has the cube's number (TODO-025)
+    value = evaluate.same_value(
+        cube, cube_want
+    )  # only where the truth has the cube's number (TODO-025)
     if value:
         out["cube_value"] = value
     with open(path) as f:
-        if json.load(f).get("synthetic"):   # a cube pasted into one of the other photos: not in the total
+        if json.load(f).get(
+            "synthetic"
+        ):  # a cube pasted into one of the other photos: not in the total
             out["synthetic"] = True
     return out
 
@@ -57,7 +74,10 @@ def measure_all(jobs=None):
     files = sorted(glob.glob(os.path.join(SAMPLES, "*.truth.json")))
     with ProcessPoolExecutor(jobs) as ex:
         results = ex.map(measure, files)
-    return {os.path.basename(f).removesuffix(".truth.json"): r for f, r in zip(files, results)}
+    return {
+        os.path.basename(f).removesuffix(".truth.json"): r
+        for f, r in zip(files, results)
+    }
 
 
 def compare(base, now):
@@ -65,22 +85,30 @@ def compare(base, now):
     worse, better, slack = [], [], []
     for name in sorted(set(base) | set(now)):
         if name not in now:
-            worse.append(f"{name}: in the baseline but not in samples/ (run --update if it was removed on purpose)")
+            worse.append(
+                f"{name}: in the baseline but not in samples/ (run --update if it was removed on purpose)"
+            )
             continue
         if name not in base:
             # with this run's result, so a sample added on a Pi can be added from the CI's x86_64 run
-            worse.append(f"{name}: not in the baseline (run --update to add it): {json.dumps(now[name])}")
+            worse.append(
+                f"{name}: not in the baseline (run --update to add it): {json.dumps(now[name])}"
+            )
             continue
         b, n = base[name], now[name]
         for key in ("points", "bar", "home", "dice", "cube", "cube_value"):
-            if key not in b or key not in n:   # the cube's number counts only where the truth has it
+            if (
+                key not in b or key not in n
+            ):  # the cube's number counts only where the truth has it
                 if key in b:
                     worse.append(f"{name}: {key} {b[key]} -> (not counted)")
                 elif key in n:
                     better.append(f"{name}: {key} (not counted) -> {n[key]}")
                 continue
             rank = RANK.get(key)
-            bv, nv = (rank.index(b[key]), rank.index(n[key])) if rank else (b[key], n[key])
+            bv, nv = (
+                (rank.index(b[key]), rank.index(n[key])) if rank else (b[key], n[key])
+            )
             msg = f"{name}: {key} {b[key]} -> {n[key]}"
             if key == "points" and 0 < bv - nv <= SLACK:
                 slack.append(msg)
@@ -101,12 +129,20 @@ def total(results):
 
 
 def main():
-    now = measure_all(next((int(a[7:]) for a in sys.argv if a.startswith("--jobs=")), None))
+    now = measure_all(
+        next((int(a[7:]) for a in sys.argv if a.startswith("--jobs=")), None)
+    )
     got, of = total(now)
     if "--update" in sys.argv:
         with open(BASELINE, "w") as f:
             # one line per sample, so a diff shows which sample changed
-            f.write("{\n" + ",\n".join(f" {json.dumps(k)}: {json.dumps(v)}" for k, v in sorted(now.items())) + "\n}\n")
+            f.write(
+                "{\n"
+                + ",\n".join(
+                    f" {json.dumps(k)}: {json.dumps(v)}" for k, v in sorted(now.items())
+                )
+                + "\n}\n"
+            )
         print(f"wrote {os.path.relpath(BASELINE)}: {got}/{of} points")
         return 0
     with open(BASELINE) as f:
@@ -124,8 +160,10 @@ def main():
         print("Recognition got worse than recognizer/accuracy_baseline.json.")
         return 1
     if better:
-        print("Better than the baseline: run with --update and commit accuracy_baseline.json"
-              " (and update the table in recognizer/README.md).")
+        print(
+            "Better than the baseline: run with --update and commit accuracy_baseline.json"
+            " (and update the table in recognizer/README.md)."
+        )
     return 0
 
 

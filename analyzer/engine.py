@@ -7,6 +7,7 @@ answer.
 
 Positions are gnubg position ids, seen from the player on roll. A board is (opponent, player).
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -51,16 +52,19 @@ def _call(fn, *args):
     global _pool
     for attempt in range(2):
         if _pool is None:
-            _pool = ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn"))
+            _pool = ProcessPoolExecutor(
+                1, mp_context=multiprocessing.get_context("spawn")
+            )
         try:
             return _pool.submit(fn, *args).result(timeout=60)
         except BrokenProcessPool:
-            _pool = None   # helper died: start a fresh one and retry once
+            _pool = None  # helper died: start a fresh one and retry once
             if attempt:
                 raise
 
 
 # ---------------------------------------------------------------- in the helper process
+
 
 def _cube_infos(gnubg, match):
     """gnubg's cube info for the player on roll, and for the opponent (who is on roll after a play)."""
@@ -69,15 +73,20 @@ def _cube_infos(gnubg, match):
         # may have left in a match
         money = gnubg.cube_info(1, -1, 0, 0, (0, 0), 0, 0)
         return money, money
-    length, (me, opp), crawford, value = match   # the owner does not change a cubeless evaluation
-    return (gnubg.cube_info(value, -1, 0, length, (me, opp), int(crawford), 0),
-            gnubg.cube_info(value, -1, 0, length, (opp, me), int(crawford), 0))
+    length, (me, opp), crawford, value = (
+        match  # the owner does not change a cubeless evaluation
+    )
+    return (
+        gnubg.cube_info(value, -1, 0, length, (me, opp), int(crawford), 0),
+        gnubg.cube_info(value, -1, 0, length, (opp, me), int(crawford), 0),
+    )
 
 
 def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
     import gnubg
-    board = gnubg.position_from_id(pid)   # (opponent, player on roll)
-    ctx = gnubg.eval_context(0, plies)    # cubeless
+
+    board = gnubg.position_from_id(pid)  # (opponent, player on roll)
+    ctx = gnubg.eval_context(0, plies)  # cubeless
     ci, ci_opp = _cube_infos(gnubg, match)
     probs = gnubg.evaluate(board, ci, ctx)
     hint = None if cube is None else _cube_hint(gnubg, pid, plies, *cube, match=match)
@@ -86,20 +95,38 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
         # the cube as it is (match[3]) when the player on roll has just doubled
         length, score, crawford = match[:3]
         ci_hint = gnubg.cube_info(cube[0], -1, 0, length, score, int(crawford), 0)
-        hint["mwc"] = {k: gnubg.eq_to_mwc(v, ci_hint) for k, v in hint["equity"].items()}
+        hint["mwc"] = {
+            k: gnubg.eq_to_mwc(v, ci_hint) for k, v in hint["equity"].items()
+        }
     moves = None
     if dice is not None:
         found = gnubg.find_best_moves(board, ci, ctx, tuple(dice))
-        tuples = _complete_moves(gnubg, board, ctx, tuple(dice), found, max_moves, ci_opp)
+        tuples = _complete_moves(
+            gnubg, board, ctx, tuple(dice), found, max_moves, ci_opp
+        )
         # steps: one [from, to] per die, as gnubg plays them (points by the side on roll,
         # 25 = bar, 0 = off), so "22/15" can be drawn through the point it passes
-        moves = [{"move": gnubg.move_tuple_to_string(t, board),
-                  "steps": [[t[k], t[k + 1]] for k in range(0, len(t), 2)],
-                  "equity": round(m["score"], 3)}
-                 | ({} if match is None else {"mwc": gnubg.eq_to_mwc(m["score"], ci)})
-                 for t, m in zip(tuples, found)]
-    luck = None if dice is None else _luck(gnubg, board, min(plies, 1), ci, ci_opp, tuple(dice))
-    return probs, hint, moves, luck, None if match is None else gnubg.eq_to_mwc(probs[5], ci)
+        moves = [
+            {
+                "move": gnubg.move_tuple_to_string(t, board),
+                "steps": [[t[k], t[k + 1]] for k in range(0, len(t), 2)],
+                "equity": round(m["score"], 3),
+            }
+            | ({} if match is None else {"mwc": gnubg.eq_to_mwc(m["score"], ci)})
+            for t, m in zip(tuples, found)
+        ]
+    luck = (
+        None
+        if dice is None
+        else _luck(gnubg, board, min(plies, 1), ci, ci_opp, tuple(dice))
+    )
+    return (
+        probs,
+        hint,
+        moves,
+        luck,
+        None if match is None else gnubg.eq_to_mwc(probs[5], ci),
+    )
 
 
 START_ID = "4HPwATDgc/ABMA"
@@ -114,17 +141,24 @@ def _luck(gnubg, board, plies, ci, ci_opp, dice) -> float:
     def best(b, c, c_opp, d):
         found = gnubg.find_best_moves(b, c, ctx, d)
         # no legal play: the board stays and the other side rolls
-        return found[0]["score"] if found else -gnubg.evaluate((b[1], b[0]), c_opp, ctx)[5]
+        return (
+            found[0]["score"] if found else -gnubg.evaluate((b[1], b[0]), c_opp, ctx)[5]
+        )
 
     dice = tuple(sorted(dice))
     rolls = [(a, b) for a in range(1, 7) for b in range(a, 7)]
     if board == gnubg.position_from_id(START_ID) and dice[0] != dice[1]:
         # the opening roll: never doubles, and it could as well have gone to the other side
         other = [(a, b) for a, b in rolls if a != b]
-        mean = (sum(best(board, ci, ci_opp, r) for r in other)
-                - sum(best((board[1], board[0]), ci_opp, ci, r) for r in other)) / 30
+        mean = (
+            sum(best(board, ci, ci_opp, r) for r in other)
+            - sum(best((board[1], board[0]), ci_opp, ci, r) for r in other)
+        ) / 30
     else:
-        mean = sum(best(board, ci, ci_opp, r) * (1 if r[0] == r[1] else 2) for r in rolls) / 36
+        mean = (
+            sum(best(board, ci, ci_opp, r) * (1 if r[0] == r[1] else 2) for r in rolls)
+            / 36
+        )
     return best(board, ci, ci_opp, dice) - mean
 
 
@@ -132,7 +166,9 @@ def _luck(gnubg, board, plies, ci, ci_opp, dice) -> float:
 # evaluate() gives only the cubeless equity), so it is asked as gnubg's own "hint" command
 # about a game set up in the helper, and the printed answer is read.
 _session_ready = False
-_in_match = False   # the helper's gnubg session is a match (set up by the last call), not money
+_in_match = (
+    False  # the helper's gnubg session is a match (set up by the last call), not money
+)
 
 
 def _gnubg_output(gnubg, command: str) -> str:
@@ -161,39 +197,60 @@ def _cube_hint(gnubg, pid: str, plies: int, value: int, owner: int, match=None):
     when the player on roll cannot double (also in the Crawford game)."""
     global _session_ready, _in_match
     if not _session_ready:
-        for c in ("set threads 1", "set sound enable off", "set display off", "set confirm new off",
-                  "set player 0 human", "set player 1 human", "set beavers 0", "new game"):
+        for c in (
+            "set threads 1",
+            "set sound enable off",
+            "set display off",
+            "set confirm new off",
+            "set player 0 human",
+            "set player 1 human",
+            "set beavers 0",
+            "new game",
+        ):
             _gnubg_output(gnubg, c)
         _session_ready = True
     if match is not None:
         # set up afresh each time. A score 1 away is taken by gnubg as post-Crawford unless told
         # otherwise; "set crawford" is refused (harmlessly) when no one is 1 away.
         length, (me, opp), crawford = match[:3]
-        for c in (f"new match {length}", f"set score {me} {opp}", f"set crawford {'on' if crawford else 'off'}"):
+        for c in (
+            f"new match {length}",
+            f"set score {me} {opp}",
+            f"set crawford {'on' if crawford else 'off'}",
+        ):
             _gnubg_output(gnubg, c)
         _in_match = True
     elif _in_match:
-        _gnubg_output(gnubg, "new session")   # back to money ("new game" would go on with the match)
+        _gnubg_output(
+            gnubg, "new session"
+        )  # back to money ("new game" would go on with the match)
         _in_match = False
-    for c in ("set turn 0", f"set board {pid}", f"set cube value {value}",
-              "set cube centre" if owner < 0 else f"set cube owner {owner}",
-              f"set evaluation cubedecision evaluation plies {plies}"):
+    for c in (
+        "set turn 0",
+        f"set board {pid}",
+        f"set cube value {value}",
+        "set cube centre" if owner < 0 else f"set cube owner {owner}",
+        f"set evaluation cubedecision evaluation plies {plies}",
+    ):
         _gnubg_output(gnubg, c)
     return _parse_cube_hint(_gnubg_output(gnubg, "hint"))
 
 
-_CUBE_LINES = (("no (?:re)?double", "no_double"), ("(?:re)?double, pass", "double_pass"),
-               ("(?:re)?double, take", "double_take"))
+_CUBE_LINES = (
+    ("no (?:re)?double", "no_double"),
+    ("(?:re)?double, pass", "double_pass"),
+    ("(?:re)?double, take", "double_take"),
+)
 
 
 def _parse_cube_hint(text: str):
     """Read gnubg's printed cube analysis:
 
-        Cubeful equities:
-        1. No double           +0.098
-        2. Double, pass        +1.000  (+0.902)
-        3. Double, take        -0.171  (-0.269)
-        Proper cube action: No double, take (23.0%)
+    Cubeful equities:
+    1. No double           +0.098
+    2. Double, pass        +1.000  (+0.902)
+    3. Double, take        -0.171  (-0.269)
+    Proper cube action: No double, take (23.0%)
     """
     eq = {}
     for name, key in _CUBE_LINES:
@@ -209,12 +266,13 @@ def _parse_cube_hint(text: str):
 # A play is a list of (from, to) steps, numbered as gnubg does from the side of the
 # player on roll: 1-24 the points, 25 the bar, 0 off. A board is (opponent, player).
 
+
 def _step(board, src, dst):
     opp, me = list(board[0]), list(board[1])
     me[src - 1] -= 1
     if dst:
         me[dst - 1] += 1
-        if opp[24 - dst] == 1:            # a blot: hit it onto the bar
+        if opp[24 - dst] == 1:  # a blot: hit it onto the bar
             opp[24 - dst] = 0
             opp[24] += 1
     return tuple(opp), tuple(me)
@@ -232,7 +290,7 @@ def _legal_plays(board, dice) -> dict:
     """Every legal play for the roll, one per resulting board: {board: steps}."""
     d1, d2 = dice
     orders = [(d1,) * 4] if d1 == d2 else [(d1, d2), (d2, d1)]
-    found: dict = {}   # resulting board -> (steps, dice used)
+    found: dict = {}  # resulting board -> (steps, dice used)
 
     def sources(me, d):
         if me[24]:
@@ -243,7 +301,7 @@ def _legal_plays(board, dice) -> dict:
             if me[i]:
                 if i - d >= 0:
                     out.append((i + 1, i + 1 - d))
-                elif home and (i - d == -1 or not any(me[i + 1:6])):
+                elif home and (i - d == -1 or not any(me[i + 1 : 6])):
                     out.append((i + 1, 0))
         return out
 
@@ -252,9 +310,11 @@ def _legal_plays(board, dice) -> dict:
         if rest:
             for src, dst in sources(b[1], rest[0]):
                 if dst and b[0][24 - dst] >= 2:
-                    continue              # the point is made
+                    continue  # the point is made
                 moved = True
-                walk(_step(b, src, dst), rest[1:], steps + [(src, dst)], used + [rest[0]])
+                walk(
+                    _step(b, src, dst), rest[1:], steps + [(src, dst)], used + [rest[0]]
+                )
         if not moved:
             found.setdefault(b, (steps, used))
 
@@ -263,7 +323,9 @@ def _legal_plays(board, dice) -> dict:
     most = max(len(s) for s, _ in found.values())
     plays = {b: (s, u) for b, (s, u) in found.items() if len(s) == most}
     if most == 1 and d1 != d2 and any(u == [max(dice)] for _, u in plays.values()):
-        plays = {b: v for b, v in plays.items() if v[1] == [max(dice)]}   # must use the larger die
+        plays = {
+            b: v for b, v in plays.items() if v[1] == [max(dice)]
+        }  # must use the larger die
     return {b: s for b, (s, _) in plays.items()}
 
 
@@ -289,14 +351,20 @@ def _complete_moves(gnubg, board, ctx, dice, found, count, ci_opp) -> list[tuple
     if all(len(t) % 2 == 0 for t in tuples[:count]):
         return tuples[:count]
     plays = _legal_plays(board, dice)
-    taken = {_play(board, t) for t in tuples if len(t) % 2 == 0}   # the plays whose tuples are whole
+    taken = {
+        _play(board, t) for t in tuples if len(t) % 2 == 0
+    }  # the plays whose tuples are whole
     tuples = tuples[:count]
     # index -> the board after the steps we have, and the step that was cut: a checker borne off
-    open_ = {n: _step(_play(board, t[:-1]), t[-1], 0) for n, t in enumerate(tuples) if len(t) % 2}
+    open_ = {
+        n: _step(_play(board, t[:-1]), t[-1], 0)
+        for n, t in enumerate(tuples)
+        if len(t) % 2
+    }
     out = list(tuples)
     scores: dict = {}
 
-    def gap(n, a):                        # how far the play leading to a is from gnubg's score
+    def gap(n, a):  # how far the play leading to a is from gnubg's score
         if a not in scores:
             scores[a] = -gnubg.evaluate((a[1], a[0]), ci_opp, ctx)[5]
         return round(abs(found[n]["score"] - scores[a]), 6)
@@ -304,12 +372,18 @@ def _complete_moves(gnubg, board, ctx, dice, found, count, ci_opp) -> list[tuple
     # The steps we have can lead to several plays, and the board after them can even be
     # another play's end ("5/off 1/off" cut to "5/off" = "5/4 4/off"), so go by the score:
     # match each cut move to a play gnubg scored the same, then to any play that fits.
-    cands = {n: [a for a in plays if a not in taken and _below(b, a)] for n, b in open_.items()}
+    cands = {
+        n: [a for a in plays if a not in taken and _below(b, a)]
+        for n, b in open_.items()
+    }
     if any(len(c) > 1 for c in cands.values()):
-        cands = {n: sorted(c, key=lambda a: (gap(n, a), a != open_[n])) for n, c in cands.items()}
-    owner: dict = {}                      # play -> the cut move it is given to
+        cands = {
+            n: sorted(c, key=lambda a: (gap(n, a), a != open_[n]))
+            for n, c in cands.items()
+        }
+    owner: dict = {}  # play -> the cut move it is given to
 
-    def give(n, edges, seen):             # Kuhn's augmenting path
+    def give(n, edges, seen):  # Kuhn's augmenting path
         for a in edges(n):
             if a not in seen:
                 seen.add(a)
@@ -318,7 +392,10 @@ def _complete_moves(gnubg, board, ctx, dice, found, count, ci_opp) -> list[tuple
                     return True
         return False
 
-    for edges in (lambda n: [a for a in cands[n] if gap(n, a) <= 1e-5], lambda n: cands[n]):
+    for edges in (
+        lambda n: [a for a in cands[n] if gap(n, a) <= 1e-5],
+        lambda n: cands[n],
+    ):
         for n in cands:
             if n not in owner.values():
                 give(n, edges, set())

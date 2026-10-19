@@ -7,6 +7,7 @@ usage: uv run -q --no-project --with playwright python tools/live_view.py [URL] 
 With it open, tools/pi_ui_check.py and tools/ui_snapshot.py run with BG_CDP=http://127.0.0.1:9222 drive this
 browser (in a window of their own) instead of a hidden one, so what they do can be watched.
 """
+
 import json
 import os
 import sys
@@ -15,13 +16,17 @@ from pathlib import Path
 
 from playwright.sync_api import Error, sync_playwright
 
-URL = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BG_URL", "http://127.0.0.1:8000/")
+URL = (
+    sys.argv[1]
+    if len(sys.argv) > 1
+    else os.environ.get("BG_URL", "http://127.0.0.1:8000/")
+)
 CHROMIUM = os.environ.get("BG_CHROMIUM", "/usr/bin/chromium")
 # a Pixel 9a (1080 x 2424 at 2.625: 412 x 923 CSS px) less Chrome's bars, in the proportion of Playwright's
 # Pixel 8a (412 x 839 of 914). 412 x 915 with the window's frame did not fit a 1080-high screen (TODO-110)
 PHONE = {"width": 412, "height": 848}
 DENSITY = 2.625
-CDP_PORT = 9222   # other tools drive this browser with BG_CDP=http://127.0.0.1:9222, to be watched here
+CDP_PORT = 9222  # other tools drive this browser with BG_CDP=http://127.0.0.1:9222, to be watched here
 EVERY_MS = 2000
 DOWNLOADS = Path.home() / "Downloads"
 
@@ -45,7 +50,9 @@ def save(download):
         path = DOWNLOADS / f"{name.stem} ({n}){name.suffix}"
     try:
         download.save_as(path)
-    except Error as e:   # raised again in the main loop, it would read as the window closed
+    except (
+        Error
+    ) as e:  # raised again in the main loop, it would read as the window closed
         print(f"not saved: {path}: {e}", flush=True)
         return
     print(f"saved: {path}", flush=True)
@@ -53,10 +60,19 @@ def save(download):
 
 def main():
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROMIUM, headless=False, args=[f"--remote-debugging-port={CDP_PORT}"])
+        browser = p.chromium.launch(
+            executable_path=CHROMIUM,
+            headless=False,
+            args=[f"--remote-debugging-port={CDP_PORT}"],
+        )
         # no service worker: it would keep serving the old app.js after an update
-        context = browser.new_context(viewport=PHONE, is_mobile=True, has_touch=True, device_scale_factor=DENSITY,
-                                      service_workers="block")
+        context = browser.new_context(
+            viewport=PHONE,
+            is_mobile=True,
+            has_touch=True,
+            device_scale_factor=DENSITY,
+            service_workers="block",
+        )
         context.on("page", lambda pg: pg.on("download", save))
         page = context.new_page()
         seen = commit()
@@ -70,7 +86,7 @@ def main():
                     seen = now
                     page.reload()
                     print(f"reloaded: {now}", flush=True)
-        except Error:   # the window was closed
+        except Error:  # the window was closed
             pass
 
 
