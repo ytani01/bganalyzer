@@ -25,6 +25,20 @@ const BgResult = (() => {
     return { word: c.value > 1 ? "リダブル" : "ダブル", take: c.take ? "テイク" : "パス" };
   }
 
+  // v to d decimals, always signed as gnubg and XG print equities and differences (TODO-167). Rounded first,
+  // so a tiny negative shows as +0.000, not -0.000
+  function signed(v, d) {
+    const x = Math.round(v * 10 ** d) / 10 ** d;
+    return (x >= 0 ? "+" : "-") + Math.abs(x).toFixed(d);
+  }
+
+  // A play's number (TODO-167): the best play's own, the others' as the difference from it. In a match
+  // (the plays carry mwc), the match winning chance in %; in a money game, the cubeless equity.
+  function moveValue(m, best) {
+    if (m.mwc != null) return m === best ? `MWC ${m.mwc.toFixed(2)}%` : `${signed(m.mwc - best.mwc, 2)}%`;
+    return m === best ? `エクイティ ${signed(m.equity, 3)}` : signed(m.equity - best.equity, 3);
+  }
+
   // an indented row of the win table: f(one side's probabilities), to one decimal like the server's.
   // The server rounds each number on its own, so a difference can come out a little below 0.
   const sub = (p, label, f) => `<tr><td class="sub">${label}</td>` +
@@ -47,7 +61,7 @@ const BgResult = (() => {
       out += `<h2>最善手（${NAME[r.on_roll]}・ダイス ${dice ? dice.join("-") : ""}）</h2>`;
       if (r.luck != null) out += `<p>Luck ${r.luck >= 0 ? "+" : ""}${r.luck.toFixed(3)}・${luckWords(r.luck)}</p>`;
       out += r.moves.length
-        ? `<ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>エクイティ ${m.equity.toFixed(3)}</span></li>`).join("")}</ol>` +
+        ? `<ol class="moves">${r.moves.map((m, k) => `<li data-k="${k}"${k ? "" : ' class="on"'}>${esc(m.move)}<span>${moveValue(m, r.moves[0])}</span></li>`).join("")}</ol>` +
           `<p class="note">番号は盤と同じく${NAME[r.on_roll]}の人から見たもの。行をタップで矢印を切り替え。</p>`
         : "<p>動かせる手がありません。</p>";
     }
@@ -58,10 +72,12 @@ const BgResult = (() => {
         sub(p, "シングル勝ち", (q) => q.win - q.gammon) +
         sub(p, "ギャモン勝ち", (q) => q.gammon - q.backgammon) +
         sub(p, "バックギャモン勝ち", (q) => q.backgammon) +
-        `<tr><td>エクイティ</td><td>${r.equity.white.toFixed(3)}</td><td>${r.equity.black.toFixed(3)}</td></tr>` +
+        // a match: the match winning chance, and the equity by its name there, EMG (TODO-167)
+        (r.mwc ? `<tr><td>キューブレス MWC</td><td>${r.mwc.white.toFixed(2)}%</td><td>${r.mwc.black.toFixed(2)}%</td></tr>` : "") +
+        `<tr><td>キューブレス ${r.mwc ? "EMG" : "エクイティ"}</td><td>${signed(r.equity.white, 3)}</td><td>${signed(r.equity.black, 3)}</td></tr>` +
         `<tr><td>ピップ数</td><td>${pips.white}</td><td>${pips.black}</td></tr></table>`;
     }
-    out += `<p class="note">gnubg ${r.plies}手読み・勝率とエクイティはキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はアンリミテッド（ジャコビー・ルールあり）") : ""}。` +
+    out += `<p class="note">gnubg ${r.plies}手読み・最善手と勝率はキューブなし${r.cube ? (r.match ? "・キューブの判断はマッチのスコアで" : "・キューブの判断はアンリミテッド（ジャコビー・ルールあり）") : ""}。` +
       `Position ID: <code>${esc(r.position_id)}</code></p>`;
     return out;
   }
@@ -86,9 +102,10 @@ const BgResult = (() => {
       out += `<p class="answer">${d}の人は <b>${c.double ? `${word}する` : c.optional ? `${word}してもしなくてもよい` : c.too_good ? `${word}しない（ギャモン狙い）` : `${word}しない`}</b></p>`;
       out += `<p>${word}されたら、${t}の人は${take}。</p>`;
     }
-    const e = c.equity;
-    const row = (name, v) => `<tr><td>${name}</td><td>${v >= 0 ? "+" : ""}${v.toFixed(3)}</td></tr>`;
-    out += `<table><tr><th>${d}の人から見て</th><th>エクイティ</th></tr>` +
+    // a match: the match winning chances in % (TODO-167); money: the equities
+    const e = c.mwc || c.equity;
+    const row = (name, v) => `<tr><td>${name}</td><td>${c.mwc ? `${v.toFixed(2)}%` : signed(v, 3)}</td></tr>`;
+    out += `<table><tr><th>${d}の人から見て</th><th>キューブフル ${c.mwc ? "MWC" : "エクイティ"}</th></tr>` +
       row(`${word}しない`, e.no_double) + row(`${word}・テイク`, e.double_take) + row(`${word}・パス`, e.double_pass) +
       `</table>${distanceHtml(c)}<p class="note">gnubg: ${esc(c.proper)}</p>`;
     return out;
