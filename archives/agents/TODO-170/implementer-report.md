@@ -10,7 +10,7 @@
 - `archives/agents/TODO-170/check_pips.py` を足した（向きとピップ数の合計の一致を数える）。
 - recognizer のコードは変えていない。版は上げていない。
 
-## 一致件数（samples 95 組 + collected 46 組 = 141 組。TODO.md の「140 組」と 1 組ずれる。collected 側の数え方の違いだと思う）
+## 一致件数（samples 87 組 + collected 54 組 = 141 組。TODO.md の「140 組」と 1 組ずれる）
 `uv run python archives/agents/TODO-170/check_pips.py samples/*.truth.json ~/work/bganalyzer/collected/*.truth.json`
 - **色だけ 2 通り**（手前の色の推測。直す前に 131/140 だった方）: **141 / 141**（直す前は 132 / 141 で、不一致は直した 9 組）
 - **色 × home の 4 通り**で、合計が最小の向きが正解と一致: **126 / 141**（直す前は 117）。9 組は解消。残り 15 組は今回の範囲外
