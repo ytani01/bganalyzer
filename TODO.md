@@ -73,7 +73,7 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 - 変えるもの: CLAUDE.md の「共同開発」の、main が担当に worktree（`isolation: "worktree"`）でさせる決まりと、トップの作業ツリーを main のままにする決まりとの関係
 - 調べてから決めること: teammate がトップの作業ツリーで作業すると、ブランチの切り替えがローカルの `bganalyzer.service` とぶつかる。teammate 自身が `git worktree add` で作業ツリーを作るか、トップで作業するかなど。担当が調べて案を出し、main がユーザーに聞く
 
-- [ ] CLAUDE.md の「共同開発」を teammate に合わせて書き換える
+- [x] CLAUDE.md の「共同開発」を teammate に合わせて書き換える
 
 **無駄を省く工夫:** 調べるのは teammate の作業ツリーの扱いだけ。書き換えるのは「共同開発」の該当の決まりだけ
 
