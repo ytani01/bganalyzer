@@ -524,13 +524,13 @@ def test_board_can_be_fixed_on_the_result_screen():
     assert "if (abort.signal.aborted || inputsKey() !== key" in js
 
 
-def test_every_screen_but_the_first_can_go_back_to_it():
-    # TODO-148: 「最初へ」 next to 戻る, on every screen but the photo screen, straight back to it
+def test_screens_beyond_the_next_can_go_back_to_the_first():
+    # TODO-148, TODO-149: 「最初へ」 next to 戻る, where 戻る does not already lead to the photo screen, straight back to it
     html = client.get("/").text
     row = html[html.index('<div class="actrow">'):]
     assert row.index('id="back"') < row.index('id="to-start"') < row.index('id="recognize"')
     js = (STATIC / "app.js").read_text()
-    assert '$("to-start").hidden = previousStep() === "photo";' in js   # TODO-149: not where 戻る goes there too
+    assert 'part((s) => [s.step, s.fromPhoto], () => { $("to-start").hidden = previousStep() === "photo"; });' in js
     assert '$("to-start").addEventListener("click", goStart);' in js
     body = js[js.index("function goStart()"):]
     body = body[:body.index("\n}\n")]
