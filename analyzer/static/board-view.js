@@ -41,6 +41,8 @@ const BgBoardView = (() => {
   // Centre of the checker at level k (0 = by the board's edge) of a stack; above 5 they are not drawn.
   // On the bar the stacks start a little off its middle and go out, a little closer together.
   const MID = (B.y0 + B.y1) / 2, BAR_GAP = 9, BAR_STEP = 36;
+  // The way arrow (drawWay): its lines run at MID ± WAY.r, WAY.w wide (the rim stroke).
+  const WAY = { r: 42, w: 12 };
   function stackY(top, k, bar) {
     k = Math.min(k, 4);
     if (bar) return top ? MID - BAR_GAP - B.r - k * BAR_STEP : MID + BAR_GAP + B.r + k * BAR_STEP;
@@ -257,12 +259,14 @@ const BgBoardView = (() => {
   // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
   // A cube just offered (TODO-156) is not owned yet: it lies in the playing field of the side doubled, where that
   // side throws its dice (as drawDice puts them; no dice, not even the dashed "?", are drawn then), showing the doubled value (cube.value).
+  // Vertically it sits on that side's half (手前 lower, 奥 upper), as near the middle as it can with a gap of 6 to the way arrow (TODO-158).
   // In the Crawford game it says "Crawford" instead of a number (TODO-152).
   function drawCube(svg, cube, home, onPart, match) {
     const size = COL.cube;
     const inField = BgCube.offered(cube);
     const x = inField ? fieldCx(cube.at) - size / 2 : sideX(home) + (COL.w - size) / 2;
-    const y = inField ? MID - size / 2 : cubeY(cube.at);
+    const off = WAY.r + WAY.w / 2 + 6 + 1.25 + size / 2;   // outside the way arrow's line, a gap of 6 (edge stroke 2.5 included)
+    const y = inField ? MID + (cube.at === "white" ? 1 : -1) * off - size / 2 : cubeY(cube.at);
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#f6eedb", stroke: "#8b1a2b", "stroke-width": 2.5 }, g);
     const crawford = match && match.length > 0 && match.crawford;
@@ -277,7 +281,7 @@ const BgBoardView = (() => {
   // checkers, under the dice and the cube): from its farthest point along its far row, round at the end away from home, and back
   // along its near row to home (TODO-092). 手前's far row is the upper one, 奥's the lower one.
   function drawWay(svg, side, home) {
-    const r = 42, yTop = MID - r, yBot = MID + r;
+    const r = WAY.r, yTop = MID - r, yBot = MID + r;
     const right = home === "right";
     const inset = 82, xHome = right ? RIGHT - inset : B.x0 + inset, xTurn = right ? B.x0 + inset + r : RIGHT - inset - r;
     const [y0, y1] = side === "white" ? [yTop, yBot] : [yBot, yTop];
@@ -286,7 +290,7 @@ const BgBoardView = (() => {
     const d = `M${xHome},${y0} H${xTurn} A${r},${r} 0 0 ${sweep} ${xTurn},${y1} H${xHome - dir * head}`;
     const tip = `${xHome},${y1} ${xHome - dir * head},${y1 - 13} ${xHome - dir * head},${y1 + 13}`;
     const g = el("g", { class: "way", opacity: 0.6 }, svg);
-    el("path", { d, fill: "none", stroke: `var(--${side}-rim)`, "stroke-width": 12, "stroke-linecap": "round" }, g);
+    el("path", { d, fill: "none", stroke: `var(--${side}-rim)`, "stroke-width": WAY.w, "stroke-linecap": "round" }, g);
     el("polygon", { points: tip, fill: `var(--${side}-rim)`, stroke: `var(--${side}-rim)`, "stroke-width": 4, "stroke-linejoin": "round" }, g);
     el("path", { d, fill: "none", stroke: checkerFill(side), "stroke-width": 8, "stroke-linecap": "round" }, g);
     el("polygon", { points: tip, fill: checkerFill(side) }, g);
