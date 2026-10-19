@@ -212,3 +212,16 @@ def test_import_is_not_merged_when_gh_fails(monkeypatch):
     for failing in ("update-branch", "merge"):
         gh = lambda *a: R(json.dumps({"headRefOid": "a"}) if a[1] == "view" else "", int(a[1] == failing))
         assert not import_collected.merge("u", gh, lambda m: None)
+
+
+def test_import_logs_the_end_of_stderr(tmp_path, monkeypatch):
+    """Why a command stopped goes to import.log, not only CalledProcessError (TODO-147)."""
+    import subprocess
+
+    def fail(*_):
+        raise subprocess.CalledProcessError(1, ["check_accuracy.py"], stderr="".join(f"line {i}\n" for i in range(30)))
+    monkeypatch.setattr(import_collected, "_run", fail)
+    with pytest.raises(subprocess.CalledProcessError):
+        import_collected.run(tmp_path, [])
+    log = (tmp_path / "import.log").read_text()
+    assert "line 29" in log and "line 10" in log and "line 9\n" not in log

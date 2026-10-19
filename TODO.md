@@ -108,8 +108,8 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 `recognizer/import_collected.py` が worktree で流す `check_accuracy.py --update` が、全サンプルを CPU の数（16）だけ並行して読み、1 つ 300〜400 MiB 使う。開発機はメモリ 15 GB で、ほかに 12 GB ほど使っていた。
 親が止められると、測定の子プロセスが残ってメモリを使い続けた（手で止めた）。`import.log` には `CalledProcessError` としか出ず、stderr は捨てている。
 
-- [ ] 取り込みのときだけ `check_accuracy.py` の並行数を絞る（CI と手で流すときは今のまま）
-- [ ] 落ちたときに、stderr の末尾を `import.log` に残す
+- [x] 取り込みのときだけ `check_accuracy.py` の並行数を絞る（CI と手で流すときは今のまま）
+- [x] 落ちたときに、stderr の末尾を `import.log` に残す
 - [ ] ローカル: `--force` で取り込みが PR のマージまで進む（TODO-142・TODO-146 の `ローカル:` の行も一緒に確かめる）
 
 **無駄を省く工夫:** 読みは変わらないので精度は測らない。確かめるのは `analyzer/test_collected.py` と、ローカルの `--force` 1 回だけ

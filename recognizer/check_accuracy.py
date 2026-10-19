@@ -12,6 +12,7 @@ network) and compares each sample with accuracy_baseline.json:
 
   uv run python recognizer/check_accuracy.py            # check (exit 1 on a regression)
   uv run python recognizer/check_accuracy.py --update   # rewrite the baseline with this run
+  --jobs=N   measure N samples at a time (default: one per CPU; each takes 300-400 MiB. TODO-147)
 
 Since recognizer 0.14.0 (TODO-046) the reading is in integers and gave the same results on every
 machine tried (x86_64, arm64, the Raspberry Pi), so the baseline may be updated on any of them.
@@ -100,7 +101,7 @@ def total(results):
 
 
 def main():
-    now = measure_all()
+    now = measure_all(next((int(a[7:]) for a in sys.argv if a.startswith("--jobs=")), None))
     got, of = total(now)
     if "--update" in sys.argv:
         with open(BASELINE, "w") as f:
