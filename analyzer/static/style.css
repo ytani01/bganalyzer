@@ -194,7 +194,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 @media (min-width: 1000px) {
   main:has(.boards.two:not([hidden])) { max-width: 1240px; }
   #board:not([hidden]) .boards.two { grid-template-columns: 1fr 1fr; }
-  #board:not([hidden]) .boards.two #photo-wrap { margin-right: 0; }
+  #board:not([hidden]) .boards.two #photo-wrap { margin-right: 0; align-self: start; }
   #board:not([hidden]) .boards.two .board-pin .board-wrap { margin-left: 0; }
 }
 /* Square corners on the side that reaches the page's edge: up to main's max-width (720px), or 1240px side by side. */

@@ -76,16 +76,17 @@ const BgBoardView = (() => {
   function draw(svg, scene, onSelect, onPart) {
     svg.textContent = "";
     const { board: b, home, photo } = scene;
+    if (photo) {   // the photo beside the board: nothing but the photo, cropped to the playing area (TODO-176)
+      svg.setAttribute("viewBox", `${PLAY.x} ${PLAY.y} ${PLAY.w} ${PLAY.h}`);
+      el("image", { href: photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
+      return;
+    }
     const match = scene.match && (scene.match.length || onPart) ? scene.match : null;
     const y0 = VIEW.y - (match ? MATCH_H : 0), h = VIEW.h + (match ? MATCH_H : 0);
     // Nothing around but 2 for the trays' edge (4 wide) beyond the column and the same beyond the frame (TODO-163).
     const x0 = home === "right" ? B.x0 - 8 : sideX(home) - 2, w = RIGHT - B.x0 + 12 + COL.gap + COL.w + 4;
     svg.setAttribute("viewBox", `${x0} ${y0} ${w} ${h}`);
     el("rect", { x: x0, y: y0, width: w, height: h, fill: "var(--card)" }, svg);
-    if (photo) {   // the photo beside the board: nothing but the photo (TODO-176); the same box as the board's, so it lines up
-      el("image", { href: photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
-      return;
-    }
     if (match) drawMatch(svg, match, home, y0, onPart);
     el("rect", { x: B.x0 - 6, y: B.y0 - 6, width: RIGHT - B.x0 + 12, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
     for (const side of ["white", "black"]) {
