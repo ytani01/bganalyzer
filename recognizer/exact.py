@@ -355,25 +355,18 @@ def min_area_rect(hull):
     if len(p) == 1:
         return (float(p[0, 0]), float(p[0, 1])), (0.0, 0.0), 0.0
     x, y = p[:, 0], p[:, 1]
-    best = None
-    for i in range(len(p)):
-        dx, dy = (
-            float(p[(i + 1) % len(p), 0] - p[i, 0]),
-            float(p[(i + 1) % len(p), 1] - p[i, 1]),
-        )
-        n = math.sqrt(dx * dx + dy * dy)
-        if n == 0:
-            continue
-        ux, uy = dx / n, dy / n
-        a = x * ux + y * uy  # along the edge
-        b = y * ux - x * uy  # across it
-        a0, a1, b0, b1 = float(a.min()), float(a.max()), float(b.min()), float(b.max())
-        area = (a1 - a0) * (b1 - b0)
-        if best is None or area < best[0]:
-            best = (area, ux, uy, a0, a1, b0, b1)
-    if best is None:
+    # every hull edge at once, with the same operations as one at a time (TODO-173)
+    d = np.roll(p, -1, axis=0) - p
+    n = np.sqrt(d[:, 0] * d[:, 0] + d[:, 1] * d[:, 1])
+    if not n.any():
         return (float(x[0]), float(y[0])), (0.0, 0.0), 0.0
-    _, ux, uy, a0, a1, b0, b1 = best
+    d, n = d[n != 0], n[n != 0]
+    ux, uy = (d[:, 0] / n)[:, None], (d[:, 1] / n)[:, None]
+    a = x * ux + y * uy  # along each edge
+    b = y * ux - x * uy  # across it
+    a0, a1, b0, b1 = a.min(1), a.max(1), b.min(1), b.max(1)
+    i = int(np.argmin((a1 - a0) * (b1 - b0)))  # the first of the smallest
+    ux, uy, a0, a1, b0, b1 = (float(v[i]) for v in (ux[:, 0], uy[:, 0], a0, a1, b0, b1))
     am, bm = (a0 + a1) / 2, (b0 + b1) / 2
     cx, cy = am * ux - bm * uy, am * uy + bm * ux
     w, h = a1 - a0, b1 - b0

@@ -42,17 +42,19 @@ _cache = {}
 
 
 def _box(a, w):
-    """Sum over a w x w window centred on each pixel (int64, zero outside), exactly."""
-    h = w // 2
-    rows, cols = a.shape
-    c = np.zeros((rows + w, cols), np.int64)
-    np.cumsum(a, axis=0, out=c[h + 1 : h + 1 + rows])
-    c[h + 1 + rows :] = c[h + rows]
-    a = c[w:] - c[:rows]
-    c = np.zeros((rows, cols + w), np.int64)
-    np.cumsum(a, axis=1, out=c[:, h + 1 : h + 1 + cols])
-    c[:, h + 1 + cols :] = c[:, h + cols : h + cols + 1]
-    return c[:, w:] - c[:, :cols]
+    """Sum over a w x w window centred on each pixel (int64, zero outside), exactly.
+
+    cv2.boxFilter in float64: the sums are of integers far below 2^53 (at most the whole map's sum,
+    which the gradients' votes keep below about 1e13), so each partial sum is exact and the order
+    OpenCV adds them in does not matter (TODO-173)."""
+    s = cv2.boxFilter(
+        a.astype(np.float64),
+        -1,
+        (w, w),
+        normalize=False,
+        borderType=cv2.BORDER_CONSTANT,
+    )
+    return s.astype(np.int64)
 
 
 def _maps(ch, r0):
@@ -68,7 +70,8 @@ def _maps(ch, r0):
     mag2 = gx * gx + gy * gy
     flat = mag2.ravel()
     k = int(len(flat) * (1 - GRAD_KEEP))
-    thr = max(int(np.partition(flat, k)[k]), 1)
+    # the k-th smallest value, counted (np.partition's answer, faster on these small integers)
+    thr = max(int(np.searchsorted(np.cumsum(np.bincount(flat)), k, side="right")), 1)
     ys, xs = np.nonzero(mag2 >= thr)
     m = np.sqrt(
         mag2[ys, xs].astype(np.float64)
@@ -78,17 +81,19 @@ def _maps(ch, r0):
     S = R = None
     for f in RADII:
         r = f * r0
-        orient = np.zeros(h * w, np.int64)
-        M = np.zeros(h * w, np.int64)
+        idx, wts = [], []
         for sgn in (1.0, -1.0):
             px = np.rint(xs + sgn * r * ux).astype(np.int64)
             py = np.rint(ys + sgn * r * uy).astype(np.int64)
             ok = (px >= 0) & (px < w) & (py >= 0) & (py < h)
-            idx = py[ok] * w + px[ok]
-            orient += np.bincount(idx, minlength=h * w)
-            M += np.bincount(idx, weights=weight[ok], minlength=h * w).astype(
-                np.int64
-            )  # sums of integers: exact
+            idx.append(py[ok] * w + px[ok])
+            wts.append(weight[ok])
+        # both sides' votes counted at once
+        idx = np.concatenate(idx)
+        orient = np.bincount(idx, minlength=h * w)
+        M = np.bincount(idx, weights=np.concatenate(wts), minlength=h * w).astype(
+            np.int64
+        )  # sums of integers: exact
         orient = np.minimum(orient, ORIENT_CAP)
         F = (orient * orient * M).reshape(h, w)
         # a Gaussian of sigma r/4, as BOX_PASSES box filters (each adds a variance of (b^2 - 1) / 12)
