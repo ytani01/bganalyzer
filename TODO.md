@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-165、TODO-166、TODO-167。** これまでに 160 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-168`。**
+**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-165、TODO-166、TODO-167、TODO-168。** これまでに 160 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-169`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
 ---
@@ -128,6 +128,31 @@ TODO-166 と同じ点検から。方針（2026-10-20 ユーザーが決めた）
 - [ ] ローカル: ローカルホストで、マネーとマッチの局面で差・符号・MWC が出る
 
 **無駄を省く工夫:** MWC の実測は `analyze()` を数回だけ（7 ポイントマッチ 1 局面で足りる）。確認は Playwright（`BG_CDP` を付ける）でマネーとマッチを 1 局面ずつ、数字と符号はまとめて読み出す。精度（認識）は変わらないので全サンプルは流さない
+
+## TODO-168. ruff で lint と format を通す
+
+| | main | 担当 |
+|---|---|---|
+| 見込み | Sonnet 5.5 / effort medium | implementer（Sonnet 5.5）+ verifier（Sonnet 5.5 / medium）。lint の指摘の直しで分岐や条件が変わる箇所があれば reviewer（Opus 5.5 / high）を足す |
+
+Python のコードにリンターが入っていない（`pyproject.toml` にも GitHub Actions にも設定が無い）。
+
+決めたこと（2026-10-20 ユーザー）: ruff を `uv add --dev ruff` で入れ、`ruff check`（lint）と `ruff format --check`（format）を GitHub Actions で通す。今のコードは指摘を直し、`ruff format` で整形する。
+着手は TODO-167・TODO-166 のマージの後（analyzer の Python とぶつかるため）。
+
+判断が要ること（着手時に、実測してから利用者に聞く）: lint の規則。既定の E・F だけか、I（import の並び）なども足すか。既定で出る指摘の件数を測ってから選択肢を出す。
+
+保つもの:
+- 整形だけのコミットと、指摘の直し（挙動が変わりうる）のコミットを分ける
+- 整形でテストや accuracy の結果が変わらない（CI で見る）。recognizer の読み取りの結果を変えない
+- 版: 整形と lint の直しで挙動が変わらないなら、analyzer・recognizer の版は上げない（直しで挙動が変わる箇所があれば、そのディレクトリの z を上げる）
+
+- [ ] ruff を dev 依存に入れ、規則を決める（件数を測って利用者に聞く）
+- [ ] `ruff format` で整形する（整形だけのコミット）
+- [ ] lint の指摘を直す
+- [ ] GitHub Actions に `ruff check` と `ruff format --check` のジョブを足す
+
+**無駄を省く工夫:** テスト全体と accuracy は CI に任せ、手元では `uv run ruff check` と `uv run ruff format --check` だけ流す。確認は、わざと違反を 1 つ入れた差分で CI のジョブが落ちることを 1 回見れば足りる。アプリの動きは変わらないので `- [ ] ローカル:` の行は要らない
 
 ---
 
