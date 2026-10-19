@@ -323,7 +323,7 @@ def test_no_dice_while_a_double_is_offered():
     assert flags == [True, False, False]
     js = (STATIC / "app.js").read_text()
     assert "const rolled = (s = state) => BgCube.usedDice(s.cube, diceIn(s));" in js   # everything asked goes through it
-    assert '$("dice-row").hidden = cubeOffered(s);' in js
+    assert "const shown = cubeOffered(s) ? [0, 0] : s.dice;" in js   # the row shows none (TODO-150: no longer hidden)
     # dice read from the photo: the cube is owned, as the server took it
     assert "if (dice && cubeOffered({ cube })) patch.cube = { ...cube, offered: false };" in js
 
