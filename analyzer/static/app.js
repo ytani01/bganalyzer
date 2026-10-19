@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.90.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.90.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -1421,6 +1421,8 @@ BgApi.version().then((v) => {
   $("hdr-version").textContent = `a${APP_VERSION} · r${v.recognizer}` + note + (v.commit ? ` · ${v.commit}` : "");
   $("hdr-version").classList.toggle("old", cmp !== 0);
   serverKeepsSamples = !!v.samples;
+  $("photo-note").hidden = serverKeepsSamples;   // the first screen must not say "not saved" when it is (TODO-165)
+  $("photo-note-keep").hidden = !serverKeepsSamples;
   redraw(drawImprove);
   $("claude-corners").hidden = $("claude-note").hidden = !v.claude;
 }).catch(() => {});
