@@ -28,7 +28,11 @@ def evaluate(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
     - with cube = (value, owner): gnubg's cube decision before the roll (_cube_hint), or None when
       there is none; else None,
     - with dice: the best max_moves plays [{"move", "steps", "equity"}, ...]; else None,
-    - with dice: the roll's luck (_luck); else None.
+    - with dice: the roll's luck (_luck); else None,
+    - in a match: the cubeless match winning chance (0..1) of the player on roll; else None.
+
+    In a match, each play and the cube decision also carry "mwc": the match winning chances
+    (0..1) for their equities (gnubg's eq_to_mwc; TODO-167).
 
     match: None for a money game, else (length, (score of the player on roll, the opponent's),
     crawford, the cube's number)."""
@@ -77,6 +81,9 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
     ci, ci_opp = _cube_infos(gnubg, match)
     probs = gnubg.evaluate(board, ci, ctx)
     hint = None if cube is None else _cube_hint(gnubg, pid, plies, *cube, match=match)
+    if hint and match is not None:
+        # the cubeful equities are in units of the cube before the double: as ci, whose value is that cube
+        hint["mwc"] = {k: gnubg.eq_to_mwc(v, ci) for k, v in hint["equity"].items()}
     moves = None
     if dice is not None:
         found = gnubg.find_best_moves(board, ci, ctx, tuple(dice))
@@ -85,8 +92,11 @@ def _engine(pid: str, plies: int, dice, max_moves: int, cube=None, match=None):
         # 25 = bar, 0 = off), so "22/15" can be drawn through the point it passes
         moves = [{"move": gnubg.move_tuple_to_string(t, board),
                   "steps": [[t[k], t[k + 1]] for k in range(0, len(t), 2)],
-                  "equity": round(m["score"], 3)} for t, m in zip(tuples, found)]
-    return probs, hint, moves, None if dice is None else _luck(gnubg, board, min(plies, 1), ci, ci_opp, tuple(dice))
+                  "equity": round(m["score"], 3)}
+                 | ({} if match is None else {"mwc": gnubg.eq_to_mwc(m["score"], ci)})
+                 for t, m in zip(tuples, found)]
+    luck = None if dice is None else _luck(gnubg, board, min(plies, 1), ci, ci_opp, tuple(dice))
+    return probs, hint, moves, luck, None if match is None else gnubg.eq_to_mwc(probs[5], ci)
 
 
 START_ID = "4HPwATDgc/ABMA"

@@ -711,3 +711,29 @@ def test_offered_cube_keeps_clear_of_checkers():
     assert out["farB"]["x"] == 492
     assert out["barB"]["x"] == 492 - 72 and out["barW"]["x"] == 164 + 72    # towards the bar in both fields
     assert out["full"]["x"] == 492                                         # every place is taken: the middle
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_moves_as_differences_and_match_winning_chances():
+    # TODO-167: the best play's own number, the others' as the difference, always signed; in a match, MWC
+    moves = [{"move": "8/5 6/5", "equity": -0.1234}, {"move": "24/21 6/5", "equity": -0.3264},
+             {"move": "13/10 6/5", "equity": -0.1234}]
+    cube = {"question": "double", "doubler": "white", "taker": "black", "value": 1, "take": True, "double": False,
+            "too_good": False, "proper": "No double, take",
+            "equity": {"no_double": 0.5, "double_take": -0.25, "double_pass": 1.0}}
+    money = _RESULT | {"moves": moves, "equity": {"white": 0.05, "black": -0.05}}
+    mwc_moves = [m | {"mwc": v} for m, v in zip(moves, (30.12, 28.7, 30.12))]
+    match = money | {"moves": mwc_moves, "mwc": {"white": 29.1, "black": 70.9},
+                     "match": {"length": 7, "score": {"white": 3, "black": 5}, "crawford": False}}
+    mcube = cube | {"mwc": {"no_double": 29.67, "double_take": 28.19, "double_pass": 40.05}}
+    out = _result_js(f"""[R.html({json.dumps(money)}, [3, 1]), R.html({json.dumps(match)}, [3, 1]),
+      R.html({json.dumps(_RESULT | {"moves": None, "cube": cube})}, null),
+      R.html({json.dumps(_RESULT | {"moves": None, "cube": mcube})}, null)]""")
+    m, x, mc, xc = out
+    assert "<span>エクイティ -0.123</span>" in m and "<span>-0.203</span>" in m and "<span>+0.000</span>" in m
+    assert "<td>キューブレス エクイティ</td><td>+0.050</td><td>-0.050</td>" in m and "MWC" not in m
+    assert "<span>MWC 30.12%</span>" in x and "<span>-1.42%</span>" in x and "<span>+0.00%</span>" in x
+    assert "<td>キューブレス MWC</td><td>29.10%</td><td>70.90%</td>" in x
+    assert "<td>キューブレス EMG</td><td>+0.050</td><td>-0.050</td>" in x
+    assert "<th>キューブフル エクイティ</th>" in mc and "<td>+0.500</td>" in mc and "<td>-0.250</td>" in mc
+    assert "<th>キューブフル MWC</th>" in xc and "<td>29.67%</td>" in xc and "<td>40.05%</td>" in xc and "+0.500" not in xc

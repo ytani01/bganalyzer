@@ -895,3 +895,25 @@ def test_speech_is_google_translate_voice(monkeypatch):
     assert client.get("/speech", params={"text": "refuse"}).status_code == 502
     assert client.get("/speech", params={"text": "あ" * (speech.TEXT_MAX + 1)}).status_code == 422
     assert len(asked) == 2
+
+
+def test_match_winning_chances():
+    # TODO-167: in a match, the match winning chances (%) beside the equities; none in a money game
+    money = analyze(Position.start(), "white", plies=0, dice=(3, 1))
+    assert money["mwc"] is None and all("mwc" not in m for m in money["moves"])
+    assert analyze(Position.start(), "white", plies=0)["cube"]["mwc"] is None
+    kw = {"match_length": 7, "score_white": 3, "score_black": 5}
+    r = analyze(Position.start(), "white", plies=0, **kw)
+    # 手前 4 away against 2 away: behind in the match, though this game is even
+    assert r["mwc"]["white"] + r["mwc"]["black"] == pytest.approx(100) and 25 < r["mwc"]["white"] < 35
+    # a pass gives 手前 the point: 3 away against 2 away, gnubg's table says 40.05% (its own hint, "set output mwc on")
+    c = r["cube"]["mwc"]
+    assert c["double_pass"] == pytest.approx(40.05, abs=0.02) and c["no_double"] < c["double_take"] < c["double_pass"]   # a double, take
+    # 奥 on roll at the same score from its side: the same numbers
+    b = analyze(Position.start(), "black", plies=0, match_length=7, score_white=5, score_black=3)
+    assert b["mwc"]["black"] == r["mwc"]["white"] and b["cube"]["mwc"] == c
+    # the plays: for the side on roll (behind, so below 50), in the order of their equities
+    moves = analyze(Position.start(), "white", plies=0, dice=(3, 1), **kw)["moves"]
+    assert len(moves) > 2 and all(m["mwc"] < 50 for m in moves)
+    assert [m["mwc"] for m in moves] == sorted((m["mwc"] for m in moves), reverse=True)
+    assert moves[0]["mwc"] > moves[-1]["mwc"]

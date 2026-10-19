@@ -111,7 +111,7 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     winner = "white" if pos.off_white == 15 else "black" if pos.off_black == 15 else None
     if winner:
         result.update(game_over=True, favourite=winner,
-                      probabilities=None, equity=None, moves=None, cube=None, luck=None)
+                      probabilities=None, equity=None, mwc=None, moves=None, cube=None, luck=None)
         return result
 
     # The cube question: the cube as it was before on_roll's (possible) double.
@@ -125,8 +125,11 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     match = None
     if match_length:
         match = (match_length, (score[on_roll], score[other(on_roll)]), crawford, ask[0] if ask else cube_value)
-    (win, wg, wbg, lg, lbg, equity), hint, moves, luck = evaluate(
+    (win, wg, wbg, lg, lbg, equity), hint, moves, luck, mwc = evaluate(
         pid, plies, None if dice is None else tuple(dice), max_moves, ask, match)
+    for m in moves or ():
+        if "mwc" in m:
+            m["mwc"] = mwc_pct(m["mwc"])
     cube = _cube_result(hint, on_roll, ask[0], doubled, dice is not None) if hint else None
     if cube and dice is not None and not cube["double"]:
         cube = None   # with dice, only when on_roll should have doubled before rolling (TODO-096)
@@ -139,9 +142,11 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
     result.update(
         game_over=False,
         probabilities={on_roll: mover, other(on_roll): opponent},
-        # Cubeless equity for the side on roll (+1 = sure single win; in a match, gnubg's money-like
+        # Cubeless equity for the side on roll (+1 = sure single win; in a match, EMG: gnubg's money-like
         # equity from the match winning chances).
         equity={on_roll: round(equity, 3), other(on_roll): round(-equity, 3)},
+        # a match: the cubeless match winning chances in %, from the same evaluation (TODO-167)
+        mwc=None if mwc is None else {on_roll: mwc_pct(mwc), other(on_roll): mwc_pct(1 - mwc)},
         # money: by the equity, as before; a match: by the chance to win this game (the match equity
         # can favour the side less likely to win it)
         favourite=on_roll if (win > 0.5 if match_length else equity > 0) else other(on_roll),
@@ -150,6 +155,11 @@ def analyze(pos: Position, on_roll: str = "white", *, plies: int = DEFAULT_PLIES
         luck=None if luck is None else round(luck, 3),   # the roll's luck for on_roll (TODO-098)
     )
     return result
+
+
+def mwc_pct(x: float) -> float:
+    """A match winning chance (0..1) in %, to two decimals as gnubg prints it."""
+    return round(100 * x, 2)
 
 
 def _cube_result(hint: dict, doubler: str, value: int, doubled: bool, rolled: bool = False) -> dict:
@@ -164,6 +174,8 @@ def _cube_result(hint: dict, doubler: str, value: int, doubled: bool, rolled: bo
         "taker": other(doubler),
         "value": value,                  # the cube before the double
         "equity": hint["equity"],
+        # a match: the same as match winning chances in % (TODO-167); money: None
+        "mwc": {k: mwc_pct(v) for k, v in hint["mwc"].items()} if "mwc" in hint else None,
         "double": proper.startswith(("double", "redouble")),
         "too_good": too_good,            # better to play on for a gammon than to cash
         "optional": optional,            # double or not, either is right (seen in matches)
