@@ -68,8 +68,8 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 
 盤の画像のキューブ（`analyzer/static/board-view.js` の `drawCube`、`analyzer/static/style.css` の `.cube-num`・`.cube-crawford`）は、白地に黒い数字で単純に見える（2026-10-19 ユーザーが決めた）。形は平らなまま、アイボリー地にえんじの数字にする。列のキューブも、ダブルされたところのキューブも同じにする。
 
-- [ ] キューブの地をアイボリー、数字（と「Crawford」の文字）をえんじにする。地の色と文字の色は `drawCube` と `style.css` で決まる
-- [ ] analyzer の版を上げる（直し扱いで 0.x.y の y。`analyzer/static/app.js` の `APP_VERSION` も揃える）
+- [x] キューブの地をアイボリー、数字（と「Crawford」の文字）をえんじにする。地の色と文字の色は `drawCube` と `style.css` で決まる
+- [x] analyzer の版を上げる（直し扱いで 0.x.y の y。`analyzer/static/app.js` の `APP_VERSION` も揃える）
 - [ ] ローカル: マージ後にローカルホストで、キューブがアイボリー地にえんじの数字で出ること
 
 **保つもの:** キューブの大きさ・位置・タップ・クロフォードの表示。

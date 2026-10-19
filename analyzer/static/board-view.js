@@ -264,7 +264,7 @@ const BgBoardView = (() => {
     const x = inField ? fieldCx(cube.at) - size / 2 : sideX(home) + (COL.w - size) / 2;
     const y = inField ? MID - size / 2 : cubeY(cube.at);
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
-    el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
+    el("rect", { x, y, width: size, height: size, rx: 5, fill: "#f6ecd9", stroke: "#8a1c2b", "stroke-width": 2.5 }, g);
     const crawford = match && match.length > 0 && match.crawford;
     if (crawford) {   // two lines, "Craw" over "ford", to fit the cube
       ["Craw", "ford"].forEach((t, k) => el("text", { x: x + size / 2, y: y + size / 2 + (k ? 8 : -8), class: "cube-crawford" }, g).textContent = t);
