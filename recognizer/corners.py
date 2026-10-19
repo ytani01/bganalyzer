@@ -202,13 +202,16 @@ class _Upright:
         nb = h // STEP + 1
         width = w + 2 * pad
         self.cum = np.zeros((len(slopes), nb + 1, width), np.int32)
+        rows = np.arange(h)
+        # (block, line) of the upright line through (x, y), and of the slanted one: less the shift
+        at = (ys // STEP) * width + xs + pad
         for i, k in enumerate(slopes):
-            c = xs - _shift(ys, int(k)) + pad  # the line through (x, y) with this slope
-            ok = (c >= 0) & (c < width)
-            n = np.bincount((ys[ok] // STEP) * width + c[ok], minlength=nb * width)[
-                : nb * width
-            ]
-            self.cum[i, 1:] = np.cumsum(n.reshape(nb, width), 0)
+            sh = _shift(rows, int(k))[ys]
+            c = xs - sh
+            ok = (c >= -pad) & (c < width - pad)
+            n = np.bincount((at - sh)[ok], minlength=nb * width)[: nb * width]
+            self.cum[i, 1:] = n.reshape(nb, width)
+        np.cumsum(self.cum, 1, out=self.cum)
         self.w = w
 
     def lines(self, y0, y1):
@@ -286,33 +289,46 @@ _TEMPLATES = {size: _point_templates(*size) for size in ((RW, RH), (RW // 2, RH 
 
 
 def _structure(rect):
-    RH, RW = rect.shape[:2]
     """How much the view from straight above (RW x RH) shows two rows of twelve triangles:
     the mean correlation of each point's patch (distance from the field's plain colour) with
-    a triangle's shape, for the best bar width (-1..1)."""
+    a triangle's shape, for the best bar width (-1..1).
+
+    Worked out in integers on twice the Lab values, one channel at a time (the plain colour, a
+    median, is a whole or a half): the same values as with np.median and floats, only faster (TODO-172)."""
+    RH, RW = rect.shape[:2]
     lab = cv2.cvtColor(rect, cv2.COLOR_BGR2Lab).astype(np.int32)
+    planes = (2 * lab).transpose(2, 0, 1).reshape(3, -1)  # one channel per row
+    image = planes.reshape(3, RH, RW)
+    # between the rows of tips the field is plain, all the way across both fields
+    band = image[:, int(0.45 * RH) : int(0.55 * RH)]
     best = -1.0
     for bar, (a, pixels, tmpl, field) in _TEMPLATES[(RW, RH)].items():
-        plain = np.empty((2, 3), np.float64)
+        plain2 = np.empty((2, 3), np.int32)  # twice the plain colour of each field
         for f, f0 in enumerate((0.0, a + bar * RW)):
-            mid = lab[
-                int(0.46 * RH) : int(0.54 * RH), int(f0 + 0.05 * a) : int(f0 + 0.95 * a)
-            ].reshape(-1, 3)
-            plain[f] = np.median(mid, 0)
-        d = (
-            np.take(lab.reshape(-1, 3), pixels, 0) - plain[field][:, None, :]
-        )  # (24, pixels of a point, 3)
-        v = np.sqrt(
-            np.einsum("ijk,ijk->ij", d, d)
-        )  # exact: the squares are quarters (TODO-105)
-        # between the rows of tips the field is plain, all the way across both fields
-        band = lab[int(0.45 * RH) : int(0.55 * RH)]
+            mid = image[
+                :,
+                int(0.46 * RH) : int(0.54 * RH),
+                int(f0 + 0.05 * a) : int(f0 + 0.95 * a),
+            ].reshape(3, -1)
+            lo, hi = (mid.shape[1] - 1) // 2, mid.shape[1] // 2
+            mid = np.partition(mid, (lo, hi), 1)
+            # the median of the Lab values, twice (np.median: the mean of the middle two)
+            plain2[f] = (mid[:, lo] + mid[:, hi]) // 2
+        p = plain2[field][:, None]  # (24, 1, 3)
+        d4 = sum((planes[c].take(pixels) - p[..., c]) ** 2 for c in range(3))
+        # (24, pixels of a point); exact: the squares are quarters (TODO-105)
+        v = np.sqrt(d4 * 0.25)
         plain_share = 0.0
         for f, (x0, x1) in enumerate(((0, int(a)), (int(a + bar * RW + 0.5), RW))):
-            e = band[:, x0:x1] - plain[f]
+            e = band[:, :, x0:x1] - plain2[f][:, None, None]
             plain_share += (
-                float(((e * e).sum(2) < PLAIN_DE * PLAIN_DE).sum())
-                / max(1, e.shape[0] * e.shape[1])
+                float(
+                    (
+                        e[0] * e[0] + e[1] * e[1] + e[2] * e[2]
+                        < 4 * PLAIN_DE * PLAIN_DE
+                    ).sum()
+                )
+                / max(1, e.shape[1] * e.shape[2])
                 / 2
             )
         v = v - (v.sum(1) / v.shape[1])[:, None]
