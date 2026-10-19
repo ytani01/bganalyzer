@@ -652,6 +652,12 @@ def _swap(small, score, best, hl, vl, keep, least):
                 # (the other swaps then look at the nearest two, not the best-scoring two: after the move inside they
                 # would take the farther, higher-scoring line, the checkers' tops, over it)
                 mid = sides[i][1] + _shift(w // 2, int(sides[i][0]))
+                # which way is inside: towards the side across (a line further out is not "inside it")
+                inward = np.sign(
+                    sides[(i + 2) % 4][1]
+                    + _shift(w // 2, int(sides[(i + 2) % 4][0]))
+                    - mid
+                )
                 tried.sort(
                     key=lambda r: abs(
                         r[1][i][1] + _shift(w // 2, int(r[1][i][0])) - mid
@@ -667,7 +673,13 @@ def _swap(small, score, best, hl, vl, keep, least):
                     continue
                 s2 = score(v2, q2)
                 inner = _inner(v2, i)
-                if out and inner >= INNER_IN and s2 > s - OUT_DROP and s2 >= MIN_SCORE:
+                if (
+                    out
+                    and (t[i][1] + _shift(w // 2, int(t[i][0])) - mid) * inward > 0
+                    and inner >= INNER_IN
+                    and s2 > s - OUT_DROP
+                    and s2 >= MIN_SCORE
+                ):
                     s, q, sides, view, here, moves, out = (
                         s2,
                         q2,

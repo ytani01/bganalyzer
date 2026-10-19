@@ -2,6 +2,7 @@
 使い方: uv run python archives/agents/TODO-175/measure.py [名前]   （worktree の top で）
 corners.py をその時点の内容で使う。案の切り替えは corners.py を直接直して流す。"""
 import json
+import os
 import sys
 
 import cv2
@@ -18,7 +19,11 @@ PHOTOS = {
     "galaxy-1": "samples/collected-galaxy-screen-1",
     "green-far": "samples/screen-app-green-far",
     "champions": "samples/collected-champions-screen",
+    "screen-9": "samples/collected-galaxy-screen-9",
+    "red-brown": "samples/commons-tavli-red-brown",
 }
+if "IN" in os.environ:  # 試すときだけ INNER_IN を上書きする
+    C.INNER_IN = float(os.environ["IN"])
 
 
 def area(q):
