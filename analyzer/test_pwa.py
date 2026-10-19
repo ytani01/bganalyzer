@@ -543,7 +543,7 @@ def test_the_settings_open_beside_the_part_tapped():
     assert "below ? r.bottom + gap : r.top - gap - h" in js
     # placed again when the phone turns, the page scrolls or the settings change size
     for hook in ['addEventListener("resize", placeSheet);', 'addEventListener("scroll", placeSheet, { passive: true });',
-                 "new ResizeObserver(placeSheet);"]:
+                 "new ResizeObserver(placeSheet);", "select, tapPart);\n  placeSheet();"]:
         assert hook in js
     css = (STATIC / "style.css").read_text()
     assert "bottom: var(--bar-h" not in css[css.index(".sheet {"):css.index(".sheet[hidden]")]

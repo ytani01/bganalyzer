@@ -346,6 +346,7 @@ part((s) => s.board && [s.step, s.board, s.home, s.selected, rolled(s), s.onRoll
   if (side) BgBoardView.draw($("photo-svg"), { ...scene, photo });   // for looking: taps do nothing (TODO-088)
   // the best move only on the result screen (TODO-092), where the same board is moved to (TODO-138)
   BgBoardView.draw($("board-svg"), { ...scene, move: s.step === "outcome" ? scene.move : null }, select, tapPart);
+  placeSheet();   // the part its settings are open for may have moved (the cube to the other side)
 });
 
 // ---- a tap on a part around the board picture (TODO-113): the trays flip the home's side, a pip count
