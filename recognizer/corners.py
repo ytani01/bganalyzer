@@ -649,6 +649,8 @@ def _swap(small, score, best, hl, vl, keep, least):
             if out:
                 # the nearest line first, not the best-scoring one: the frame of a screen's rows of
                 # numbers has the board's edge just inside it, and a farther line may be the checkers' tops (TODO-175)
+                # (the other swaps then look at the nearest two, not the best-scoring two: after the move inside they
+                # would take the farther, higher-scoring line, the checkers' tops, over it)
                 mid = sides[i][1] + _shift(w // 2, int(sides[i][0]))
                 tried.sort(
                     key=lambda r: abs(
