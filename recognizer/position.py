@@ -10,7 +10,7 @@ Board convention (from White's point of view, White sits at the bottom of the ph
 from __future__ import annotations
 
 import base64
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 
 START = [0] * 24
 START[5], START[7], START[12], START[23] = 5, 3, 5, 2

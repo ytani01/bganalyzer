@@ -17,9 +17,8 @@ import math
 import os
 
 import cv2
-import numpy as np
-
 import exact
+import numpy as np
 
 VALUES = (2, 4, 8, 16, 32, 64)
 FACE = 80  # the face is cut out at this many pixels a side

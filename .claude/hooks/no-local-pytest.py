@@ -4,7 +4,9 @@
 テストのファイル（test_*.py）を指定した実行だけ通す。
 """
 
-import json, re, sys
+import json
+import re
+import sys
 
 cmd = (json.load(sys.stdin).get("tool_input") or {}).get("command") or ""
 # pytest を起動するところだけ（行頭か ; & | ( の後の pytest / uv run pytest / python -m pytest）。

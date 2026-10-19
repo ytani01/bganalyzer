@@ -14,9 +14,8 @@ from __future__ import annotations
 import math
 
 import cv2
-import numpy as np
-
 import exact
+import numpy as np
 
 SIDE_MIN, SIDE_MAX = 0.28, 1.1  # die side / checker diameter
 WORK_PITCH = 120  # checker diameter (px) to look for dice at

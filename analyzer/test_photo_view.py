@@ -6,9 +6,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 STATIC = Path(__file__).parent / "static"

@@ -16,10 +16,9 @@ import os
 import sys
 import time
 
+import corners
 import cv2
 import numpy as np
-
-import corners
 from evaluate import shrink_like_app
 
 GOOD = 0.036  # within this, the reading from the guessed corners is usually as good as from the eye's

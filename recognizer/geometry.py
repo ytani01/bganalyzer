@@ -16,9 +16,8 @@ import sys
 from dataclasses import dataclass
 
 import cv2
-import numpy as np
-
 import exact
+import numpy as np
 
 H_CAN = 1000  # canonical field height (px)
 TRI_DEPTH = 0.44  # triangle length / field height

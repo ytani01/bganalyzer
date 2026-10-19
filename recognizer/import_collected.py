@@ -18,7 +18,16 @@ Once merged, the pairs added go from collected/ (TODO-146): left there while the
 What it did goes to import.log next to the pairs.
 """
 
-import base64, hashlib, json, os, re, signal, subprocess, sys, tempfile, time
+import base64
+import hashlib
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import tempfile
+import time
 from pathlib import Path
 
 import cv2

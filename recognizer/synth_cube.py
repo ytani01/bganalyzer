@@ -16,9 +16,8 @@ import math
 import os
 
 import cv2
-import numpy as np
-
 import make_cube_glyphs
+import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_SIDE = 2048  # the photos are shrunk to the app's upload size

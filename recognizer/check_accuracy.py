@@ -20,7 +20,10 @@ That is no longer checked (TODO-074): if code that rounds differently by CPU mak
 Actions part, update the baseline on GitHub's machine.
 """
 
-import glob, json, os, sys
+import glob
+import json
+import os
+import sys
 from concurrent.futures import ProcessPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))

@@ -1,8 +1,13 @@
 """Compare recognition against *.truth.json samples."""
 
-import glob, json, os, sys, urllib.request
-import cv2
+import glob
+import json
+import os
+import sys
+import urllib.request
+
 import board
+import cv2
 import home_prior
 from position import Position
 

@@ -9,7 +9,11 @@ photos in samples/, which are public in this repository, and analyzes at 0-ply t
 Pi's load small.
 """
 
-import json, os, subprocess, sys, urllib.request, uuid
+import json
+import subprocess
+import sys
+import urllib.request
+import uuid
 from pathlib import Path
 
 import cv2

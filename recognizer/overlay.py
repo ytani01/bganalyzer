@@ -4,9 +4,8 @@ the stages recognize reports as it goes); and debug images of the canonical boar
 from __future__ import annotations
 
 import cv2
-import numpy as np
-
 import exact
+import numpy as np
 from colours import LAB_W
 
 

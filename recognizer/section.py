@@ -26,7 +26,6 @@ Not used by the app: `evaluate.py --section` compares it with the circles.
 import os
 
 import numpy as np
-
 from colours import LAB_W
 from geometry import Layout
 

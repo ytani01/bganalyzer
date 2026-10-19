@@ -4,9 +4,8 @@ frame, sampled in the canonical image; and which triangle colour each point has.
 from __future__ import annotations
 
 import cv2
-import numpy as np
-
 import exact
+import numpy as np
 from geometry import TRI_DEPTH, Layout, plain_colour
 
 LAB_W = np.float32([0.5, 1.0, 1.0])  # lighting mostly changes L

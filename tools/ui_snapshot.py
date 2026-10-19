@@ -24,7 +24,9 @@ compare prints each difference and exits 1 if there is any. Two versions side by
 The recording is the same from run to run (checked by recording twice), so any difference is the app's.
 """
 
-import json, os, sys
+import json
+import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent

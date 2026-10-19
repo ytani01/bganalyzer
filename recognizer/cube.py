@@ -11,12 +11,11 @@ from __future__ import annotations
 
 import math
 
-import cv2
-import numpy as np
-
 import cube_value
+import cv2
 import dice as dice_reader
 import exact
+import numpy as np
 
 SIDE_MIN, SIDE_MAX = 0.45, 1.15  # cube side / checker diameter
 MARGIN = (

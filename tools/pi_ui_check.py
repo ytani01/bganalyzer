@@ -9,7 +9,12 @@ repository). The "collect" check saves one pair in collected/ and removes it aga
 What it cannot see stays for the phone: the voice itself, iPhone's share sheet, attaching files.
 """
 
-import json, os, re, subprocess, sys, tempfile
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright

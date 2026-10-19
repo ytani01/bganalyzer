@@ -34,13 +34,12 @@ from __future__ import annotations
 
 import json
 
-import cv2
-import numpy as np
-
 import cube as cube_reader
+import cv2
 import dice as dice_reader
 import exact
 import home_prior
+import numpy as np
 from checkers import (
     add_hidden_stacks,
     count_from_circles,

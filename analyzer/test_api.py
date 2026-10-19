@@ -4,10 +4,9 @@ import json
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
 from analysis import Position, analyze, summary_ja
 from app import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 START_ID = "4HPwATDgc/ABMA"
@@ -215,8 +214,8 @@ def test_version_reports_both_parts_and_commit():
     import shutil
     import subprocess
 
-    import board
     import app as app_module
+    import board
 
     v = client.get("/version").json()
     assert v["analyzer"] == app_module.__version__
@@ -514,9 +513,8 @@ def _draw_die(img, cx, cy, side, value, deg):
 
 
 def test_dice_are_read_from_a_drawn_board():
-    import cv2
-    import numpy as np
     import dice
+    import numpy as np
     from board import Layout
 
     lay = Layout(a=430, bar=70)
@@ -957,8 +955,8 @@ def _draw_cube(img, x, y, side, text):
 
 
 def test_cube_is_found_on_a_drawn_board():
-    import numpy as np
     import cube
+    import numpy as np
     from board import Layout
 
     lay = Layout(a=430, bar=70)
@@ -1019,9 +1017,9 @@ def test_api_reads_the_cube_from_the_photo():
 
 def test_api_cube_read_without_dice_is_a_double(monkeypatch):
     # the cube on 手前's side and no dice: 奥 has just doubled, and 手前 takes or passes
+    import board
     import cv2
     import numpy as np
-    import board
 
     def fake(img, corners, **kw):
         return Position.start(), {
@@ -1079,9 +1077,9 @@ def test_api_cube_read_without_dice_is_a_double(monkeypatch):
 def test_api_cube_in_a_field_is_a_double_even_with_dice(monkeypatch):
     # TODO-045: the cube in a playing field: the side on roll (手前) has just doubled to 2, 奥 takes or
     # passes, and the dice on the board are left out
+    import board
     import cv2
     import numpy as np
-    import board
 
     def fake(img, corners, **kw):
         return Position.start(), {
@@ -1125,9 +1123,9 @@ def test_api_cube_in_a_field_is_a_double_even_with_dice(monkeypatch):
 def test_api_photo_dice_cancel_a_double_set_by_hand(monkeypatch):
     # TODO-033: 「ダブルされた」set by hand (doubled=true, no dice) and dice read from the photo:
     # the photo's dice win, so it is no longer take or pass but the doubler's move (was 422)
+    import board
     import cv2
     import numpy as np
-    import board
 
     def fake(img, corners, **kw):
         return Position.start(), {
@@ -1421,6 +1419,7 @@ def test_speech_is_google_translate_voice(monkeypatch):
     # reads with the browser's voice); more than one piece's worth of text is refused here
     import io
     import urllib.request
+
     import speech
 
     asked = []
