@@ -177,7 +177,7 @@ def _run(d, names, log):
             # this venv with the worktree's code (a venv of its own would mean installing everything again);
             # 2 at a time, for the development machine's memory (TODO-147)
             subprocess.run([sys.executable, "recognizer/check_accuracy.py", "--update", "--jobs=2"],
-                           cwd=wt, check=True, capture_output=True, text=True)
+                           cwd=wt, check=True, capture_output=True, text=True, errors="replace")
             readme = wt / "recognizer/README.md"
             text, n = ROW.subn(lambda _: table_row(wt), readme.read_text(), count=1)
             if not n:
