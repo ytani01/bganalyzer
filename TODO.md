@@ -101,8 +101,8 @@ TODO-156・TODO-158 で、ダブルされたところのキューブを、ダブ
 | 手前（white） | 右側の場 | 奥寄り |
 | 奥（black） | 左側の場 | 手前寄り |
 
-- [ ] キューブの横の位置を、ダブルした人のダイスの位置にする（`analyzer/static/board-view.js`。古くなる `analyzer/README.md` の説明とコメントも直す）
-- [ ] analyzer の版を上げる（直しなので 0.x.y の y。`analyzer/static/app.js` の `APP_VERSION` も揃える）
+- [x] キューブの横の位置を、ダブルした人のダイスの位置にする（`analyzer/static/board-view.js`。古くなる `analyzer/README.md` の説明とコメントも直す）
+- [x] analyzer の版を上げる（直しなので 0.x.y の y。`analyzer/static/app.js` の `APP_VERSION` も揃える）
 - [ ] ローカル: マージ後にローカルホストで、手前がダブルすると右の場の奥寄り、奥がダブルすると左の場の手前寄りにキューブが出ること
 
 **保つもの:** キューブのタップ、盤面の画面と結果の画面で同じに出ること、ダブルしていないときの描き方、TODO-157 の配色、ダブル中はダイスを出さないこと、矢印・チェッカーと重ならないこと。

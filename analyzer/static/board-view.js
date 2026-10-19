@@ -257,14 +257,14 @@ const BgBoardView = (() => {
   }
 
   // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
-  // A cube just offered (TODO-156) is not owned yet: it lies in the playing field of the side doubled, where that
-  // side throws its dice (as drawDice puts them; no dice, not even the dashed "?", are drawn then), showing the doubled value (cube.value).
-  // Vertically it sits on that side's half (手前 lower, 奥 upper), as near the middle as it can with a gap of 6 to the way arrow (TODO-158).
+  // A cube just offered (TODO-156) is not owned yet: it lies in the playing field of the side that doubled, where that
+  // side would throw its dice (as drawDice puts them; no dice, not even the dashed "?", are drawn then), showing the doubled value (cube.value) (TODO-160).
+  // Vertically it sits on the half of the side doubled (cube.at; 手前 lower, 奥 upper), as near the middle as it can with a gap of 6 to the way arrow (TODO-158).
   // In the Crawford game it says "Crawford" instead of a number (TODO-152).
   function drawCube(svg, cube, home, onPart, match) {
     const size = COL.cube;
     const inField = BgCube.offered(cube);
-    const x = inField ? fieldCx(cube.at) - size / 2 : sideX(home) + (COL.w - size) / 2;
+    const x = inField ? fieldCx(cube.at === "white" ? "black" : "white") - size / 2 : sideX(home) + (COL.w - size) / 2;
     const off = WAY.r + WAY.w / 2 + 6 + 1.25 + size / 2;   // outside the way arrow's line, a gap of 6 (edge stroke 2.5 included)
     const y = inField ? MID + (cube.at === "white" ? 1 : -1) * off - size / 2 : cubeY(cube.at);
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
