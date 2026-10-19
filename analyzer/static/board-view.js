@@ -290,7 +290,8 @@ const BgBoardView = (() => {
     const g = el("g", { class: "arrows" }, svg);
     for (const h of hops) {
       const [x0, y0] = at(h.from, h.fromLevel);
-      const [x1, y1] = h.to === "off" ? [sideX(home) + COL.w / 2, trayY(mover) + COL.tray / 2] : at(h.to, h.toLevel);
+      // off: to the tray's edge facing the board, clear of the count in its middle
+      const [x1, y1] = h.to === "off" ? [sideX(home) + (home === "right" ? 0 : COL.w), trayY(mover) + COL.tray / 2] : at(h.to, h.toLevel);
       drawArrow(g, x0, y0, x1, y1);
       if (h.hit) el("circle", { cx: x1, cy: y1, r: B.r, fill: "none", stroke: "#e53935", "stroke-width": 3 }, g);
     }
