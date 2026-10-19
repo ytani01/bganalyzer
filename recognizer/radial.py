@@ -96,9 +96,9 @@ def _maps(ch, r0):
     return S, R
 
 
-def _peaks(ch, r0, rel=PEAK_REL):
+def _peaks(ch, r0):
     """[(x, y, r)] of a channel's symmetry peaks, strongest first."""
-    key = ("peaks", hashlib.sha1(ch.tobytes()).hexdigest(), ch.shape, r0, rel)
+    key = ("peaks", hashlib.sha1(ch.tobytes()).hexdigest(), ch.shape, r0)
     if key not in _cache:
         S, R = _maps(ch, r0)
         top = int(S.max())
@@ -107,14 +107,14 @@ def _peaks(ch, r0, rel=PEAK_REL):
             # local maxima of a (1.3 r)-wide window; float64 holds these integers exactly
             size = int(1.3 * r0) | 1
             dil = cv2.dilate(S.astype(np.float64), np.ones((size, size), np.uint8))
-            ys, xs = np.nonzero((S >= dil) & (S * 100 > int(rel * 100) * top))
+            ys, xs = np.nonzero((S >= dil) & (S * 100 > int(PEAK_REL * 100) * top))
             order = np.lexsort((xs, ys, -S[ys, xs]))   # strongest first, ties by position
             out = [(float(xs[i]), float(ys[i]), float(R[ys[i], xs[i]])) for i in order[:120]]
         _cache[key] = out
     return _cache[key]
 
 
-def find(channels, r0, rel=PEAK_REL):
+def find(channels, r0):
     """Candidates [(x, y, r)] like cv2.HoughCircles' (for each channel image, 8 bits)."""
-    out = [c for ch in channels for c in _peaks(ch, r0, rel)]
+    out = [c for ch in channels for c in _peaks(ch, r0)]
     return np.float32(out) if out else None
