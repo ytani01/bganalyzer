@@ -95,7 +95,7 @@ const BgBoardView = (() => {
     if (scene.onRoll) drawWay(svg, scene.onRoll, home);
     drawBorneOff(svg, b, home);
     drawPips(svg, b, home, onPart);
-    if (scene.dice || onPart) drawDice(svg, scene.dice, scene.onRoll, onPart);
+    if (!BgCube.offered(scene.cube) && (scene.dice || onPart)) drawDice(svg, scene.dice, scene.onRoll, onPart);   // none while a double waits on take or pass (TODO-156)
     drawCube(svg, scene.cube, home, onPart, scene.match);
     if (scene.move) drawMove(svg, scene.move, home);
   }
@@ -256,7 +256,7 @@ const BgBoardView = (() => {
 
   // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
   // A cube just offered (TODO-156) is not owned yet: it lies in the playing field of the side doubled, where that
-  // side throws its dice (as drawDice puts them), showing the doubled value (cube.value).
+  // side throws its dice (as drawDice puts them; no dice, not even the dashed "?", are drawn then), showing the doubled value (cube.value).
   // In the Crawford game it says "Crawford" instead of a number (TODO-152).
   function drawCube(svg, cube, home, onPart, match) {
     const size = COL.cube;
