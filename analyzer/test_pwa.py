@@ -142,6 +142,23 @@ def test_win_table_splits_gammons():
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_result_headings_say_when_the_numbers_are_for():
+    # TODO-169: the win table is before the roll, the candidate moves are after moving by this roll
+    out = _result_js(f"""{{
+      rolled: R.html({json.dumps(_RESULT)}, [3, 1]),
+      plain: R.html({{...{json.dumps(_RESULT)}, moves: null}}, null),
+    }}""")
+    rolled, plain = out["rolled"], out["plain"]
+    assert (
+        rolled.index("<h3>この目で動かした後</h3>")
+        < rolled.index('<ol class="moves">')
+        < rolled.index("<h3>ダイスを振る前</h3><table>")
+    )
+    assert "この目で動かした後" not in plain  # no dice: no candidate moves
+    assert "<h3>ダイスを振る前</h3><table>" in plain
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
 def test_speech_reads_who_rolls_next_first():
     # TODO-052: without a best move, who rolls next ("次は…の番です") is the first thing read aloud
     r = json.dumps(_RESULT)
