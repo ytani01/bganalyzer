@@ -285,10 +285,11 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .arrows, .way { pointer-events: none; }   /* taps go to the point under the arrows */
 .board-wrap svg .tap, .board-wrap svg .tap * { pointer-events: auto; cursor: pointer; }   /* the parts that open their settings on the board screen (TODO-113) */
 .board-wrap svg .die-q { font-size: 20px; font-weight: bold; fill: var(--muted); text-anchor: middle; }
-/* The settings that a tap on the board picture opens, from the bottom of the screen (TODO-113) */
+/* The settings that a tap on the board picture opens, beside the part tapped like the palette (TODO-113, TODO-150) */
 .sheet {
-  position: fixed; z-index: 20; left: 0; right: 0; bottom: var(--bar-h, 0px); max-width: 720px; margin: 0 auto; padding: 8px 16px 16px;
-  background: var(--card); color: var(--fg); border-radius: 12px 12px 0 0; box-shadow: 0 -4px 16px #0005;
+  position: fixed; z-index: 20; width: min(420px, calc(100vw - 16px)); box-sizing: border-box; padding: 4px 12px 12px;
+  max-height: calc(100dvh - var(--bar-h, 0px) - 16px); overflow-y: auto; overscroll-behavior: contain;
+  background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 20px #0004;
   touch-action: pinch-zoom;   /* nothing in it scrolls: a swipe on it must not scroll the page below, a pinch still zooms (TODO-144) */
 }
 .sheet[hidden] { display: none; }

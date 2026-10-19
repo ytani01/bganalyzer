@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.81.1";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.82.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -77,7 +77,7 @@ const state = {
   result: null,        // what /analyze returned
   resultFor: null,     // inputsKey() of what it was worked out for
   resultDice: null,
-  sheet: null,         // the settings open from the bottom (TODO-113): "match", "cube", "roll" or null
+  sheet: null,         // the settings open beside the part tapped (TODO-113, TODO-150): "match", "cube", "roll" or null
   reanalyzing: false,  // the board fixed on the result screen is being analysed again (TODO-138)
   moveShown: 0,        // the move in the result's list drawn as arrows
   // settings
@@ -346,6 +346,7 @@ part((s) => s.board && [s.step, s.board, s.home, s.selected, rolled(s), s.onRoll
   if (side) BgBoardView.draw($("photo-svg"), { ...scene, photo });   // for looking: taps do nothing (TODO-088)
   // the best move only on the result screen (TODO-092), where the same board is moved to (TODO-138)
   BgBoardView.draw($("board-svg"), { ...scene, move: s.step === "outcome" ? scene.move : null }, select, tapPart);
+  placeSheet();   // the part its settings are open for may have moved (the cube to the other side)
 });
 
 // ---- a tap on a part around the board picture (TODO-113): the trays flip the home's side, a pip count
@@ -364,7 +365,26 @@ function tapPart(kind) {
 }
 part((s) => [s.sheet, s.step], (s) => {
   for (const k of ["match", "cube", "roll"]) $(`sheet-${k}`).hidden = !((s.step === "board" || s.step === "outcome") && s.sheet === k);
+  placeSheet();
 });
+// Above or below its part, on the side with more room, above the bottom bar, the part itself left in sight (TODO-150).
+// Placed again whenever the part or the settings move or change size: a turn of the phone, a scroll, a choice that adds a row.
+function placeSheet() {
+  const box = state.sheet && $(`sheet-${state.sheet}`);
+  const part = box && !box.hidden && document.querySelector(`#board-svg [data-part="${state.sheet}"]`);
+  if (!part) return;
+  const r = part.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight, gap = 8;
+  const bottom = innerHeight - $("actbar").offsetHeight;
+  const below = bottom - r.bottom > r.top;
+  box.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, (r.left + r.right) / 2 - w / 2))}px`;
+  box.style.top = `${Math.max(8, Math.min(bottom - h - 8, below ? r.bottom + gap : r.top - gap - h))}px`;
+  // too tall for the screen (a phone on its side): it scrolls itself, else a swipe on it does nothing (TODO-144)
+  box.style.touchAction = box.scrollHeight > box.clientHeight ? "pan-y pinch-zoom" : "";
+}
+addEventListener("resize", placeSheet);
+addEventListener("scroll", placeSheet, { passive: true });
+const sheetSize = new ResizeObserver(placeSheet);
+for (const k of ["match", "cube", "roll"]) sheetSize.observe($(`sheet-${k}`));
 for (const b of document.querySelectorAll(".sheet-close")) b.addEventListener("click", () => update({ sheet: null }));
 
 // ---- what the analysis is asked

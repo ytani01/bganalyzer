@@ -535,3 +535,15 @@ def test_screens_beyond_the_next_can_go_back_to_the_first():
     body = js[js.index("function goStart()"):]
     body = body[:body.index("\n}\n")]
     assert 'go("photo");' in body and "history.back();" in body   # the history entry is used up too
+
+
+def test_the_settings_open_beside_the_part_tapped():
+    # TODO-150: a tap on the match, the cube or the dice opens its settings above or below that part, not from the bottom
+    js = (STATIC / "app.js").read_text()
+    assert "below ? r.bottom + gap : r.top - gap - h" in js
+    # placed again when the phone turns, the page scrolls or the settings change size
+    for hook in ['addEventListener("resize", placeSheet);', 'addEventListener("scroll", placeSheet, { passive: true });',
+                 "new ResizeObserver(placeSheet);", "select, tapPart);\n  placeSheet();"]:
+        assert hook in js
+    css = (STATIC / "style.css").read_text()
+    assert "bottom: var(--bar-h" not in css[css.index(".sheet {"):css.index(".sheet[hidden]")]
