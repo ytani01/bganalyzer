@@ -532,3 +532,6 @@ def test_every_screen_but_the_first_can_go_back_to_it():
     js = (STATIC / "app.js").read_text()
     assert '$("to-start").hidden = s.step === "photo";' in js
     assert '$("to-start").addEventListener("click", goStart);' in js
+    body = js[js.index("function goStart()"):]
+    body = body[:body.index("\n}\n")]
+    assert 'go("photo");' in body and "history.back();" in body   # the history entry is used up too
