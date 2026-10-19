@@ -101,6 +101,10 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 - **方針・進み具合・決まったことはリポジトリに書く。** Claude のプロジェクトのメモは相手から見えない。
   ルールはこの CLAUDE.md、作業は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
 - **作業の前に main を pull する。**
+- **同じマシンで並べて作業するときは、セッションごとに worktree を分ける**（2026-10-19 ユーザーが決めた）。
+  `claude -w <名前>` で起動し（`.claude/worktrees/<名前>/` に別のブランチの作業ツリーができる）、`claude agents` で見渡す。
+  トップの作業ツリー（`~/work/bganalyzer`）は main のままにしておく。ローカルホストの `bganalyzer.service` と post-merge の再起動はここを見ているので、
+  マージ後の更新と `- [ ] ローカル:` の確認は、ここで `git pull` してから行う
 - **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
 - **マージ後に確かめる必要がある変更は、その PR の中で TODO.md のその項目に `- [ ] ローカル:` の行を足す**
   arm64（Pi）で `uv sync --frozen` が通るかは確かめない（2026-10-17 ユーザーが決めた。GitHub Actions も arm64 では流さない）
