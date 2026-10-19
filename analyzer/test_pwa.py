@@ -1007,7 +1007,8 @@ def _crawford_js(cases: str):
       const startOverlay = () => failReveal ? {{ scan: {{ reveal: async () => {{ throw new Error("cancelled"); }} }} }} : null;
       const withBusy = (t, f) => f(), uploadImage = async () => ({{ blob: null, scale: 1 }}), rolled = () => null;
       const cubeOffered = (s) => BgCube.offered(s.cube), sideSent = () => "", photoId = () => "p";
-      class FormData {{ append() {{}} }}
+      let sent = {{}};
+      class FormData {{ append(k, v) {{ sent[k] = v; }} }}
       let reply;
       const BgApi = {{ postStages: async () => reply, scaleGeometry: (g) => g }};
       {funcs}
@@ -1101,6 +1102,47 @@ def test_crawford_and_a_cube_on_one_side_follow_the_later_choice():
         and not cancelled["board"]
         and cancelled["kept"] == []
     )
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_photo_colour_is_guessed_unless_picked():
+    # TODO-171: a new photo asks the server to guess 手前's colour and takes the guess; a kept one sends its own
+    out = _crawford_js("""const r = [];
+      const board = { points: Array(24).fill(0), bar_white: 0, bar_black: 0 };
+      fresh(m(false), centre); startPhoto(null, null, null); const pick = state.colourPick;
+      reply = { recognized: board, bottom_colour: 0, analysis: null }; await recognize();
+      r.push({ pick, sent: sent.bottom_colour, colour: state.bottomColour });
+      fresh(m(false), centre); startPhoto(null, null, { bottomColour: 0 }); r.push({ pick: state.colourPick });
+      fresh(m(false), centre); startPhoto(null, null, { colourPick: "auto", bottomColour: 0 }); r.push({ pick: state.colourPick });
+      console.log(JSON.stringify(r));""")
+    assert out == [
+        {"pick": "auto", "sent": "auto", "colour": 0},
+        {"pick": "0"},  # kept before 0.93.0: the colour it was read with
+        {"pick": "auto"},
+    ]
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")
+def test_tapping_the_board_fixes_the_colour_sent():
+    # TODO-171: a pip count swaps the colour and a tray the side; either way the photo is read again with
+    # the colour on screen, not guessed again
+    js = (STATIC / "app.js").read_text()
+    func = js[js.index("function tapPart(") : js.index("part((s) => [s.sheet, s.step]")]
+    script = f"""
+      let state;
+      const update = (p) => {{ state = {{ ...state, ...p }}; }};
+      const keep = () => {{}}, editBoard = () => {{}}, setHome = (home) => update({{ home }}), BgBoard = {{}};
+      {func}
+      const r = [];
+      state = {{ home: "right", bottomColour: 1, colourPick: "auto" }}; tapPart("colour"); r.push(state.colourPick);
+      state = {{ home: "right", bottomColour: 0, colourPick: "auto" }}; tapPart("colour"); r.push(state.colourPick);
+      state = {{ home: "right", bottomColour: 0, colourPick: "auto" }}; tapPart("home"); r.push(state.colourPick);
+      state = {{ home: "right", bottomColour: 1, colourPick: "auto" }}; tapPart("home"); r.push(state.colourPick);
+      console.log(JSON.stringify(r));"""
+    r = subprocess.run(
+        ["node", "-e", script], capture_output=True, text=True, check=True
+    )
+    assert json.loads(r.stdout) == ["0", "1", "0", "1"]
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node.js is not installed")

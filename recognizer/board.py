@@ -75,7 +75,7 @@ from position import Position
 
 # The recognizer's version (the reading code in recognizer/: board.py and the modules it uses, corners.py). Bump it when recognizer/ changes;
 # the analyzer has its own in analyzer/app.py. How to bump: CLAUDE.md.
-__version__ = "0.28.0"
+__version__ = "0.29.0"
 
 
 def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
@@ -100,6 +100,20 @@ def to_position(runs, bar, bottom_colour: int, home: str) -> Position:
     return p
 
 
+def guess_bottom(runs, bar, home: str, default=1):
+    """Whose checkers are the bottom player's (colour index), and the fewest pips (both sides' added
+    up) each colour index as the bottom player's gives: the side with fewer pips. Checkers stand
+    nearer their own home board, so the wrong colour reads as more pips (TODO-171). home: 'left',
+    'right', or 'auto' to take the fewer of the two sides; `default` on a tie."""
+    sides = ("right", "left") if home == "auto" else (home,)
+    both = [
+        min(sum(to_position(runs, bar, c, h).pips()) for h in sides) for c in (0, 1)
+    ]
+    if both[0] == both[1]:
+        return default, both
+    return (0 if both[0] < both[1] else 1), both
+
+
 def recognize(
     img,
     corners,
@@ -118,6 +132,8 @@ def recognize(
     keep_corners: read the board as the corners give it, without fitting them to the frame's edges
     and the triangles (TODO-084); only the columns are fitted ("fit" once, by "corners").
     home: 'left', 'right' or 'auto' (guessed from the checkers; info['home'] says which).
+    bottom_colour: 0 (the darker checkers), 1 (the lighter) or 'auto' (guess_bottom, before the home;
+    info['bottom_colour'] says which).
     progress: called as progress(stage, data) when each stage is done ("fit" four times: the frame
     fitted to the frame's edges twice, then to the triangles twice; then "tips", "checkers", "counts",
     "dice", "cube"), with the parts of info["geometry"] it found (image pixels), for showing the
@@ -327,6 +343,10 @@ def _finish(
 ):
     """The position from the counts, and the dice and the cube read (recognize's last steps, for both
     its pipeline and side.py's). H: canonical (lay, no margin) -> photo."""
+    colour_guess = None
+    if bottom_colour == "auto":  # whose checkers: first, as the home's guess needs them
+        bottom_colour, both = guess_bottom(runs, bar, home)
+        colour_guess = dict(pips=both)
     guessed = None
     if home == "auto":  # which way the checkers move: guess from where they stand
         home, margin = home_prior.guess(
@@ -341,6 +361,8 @@ def _finish(
     info = dict(
         home=home,
         home_guess=guessed,
+        bottom_colour=bottom_colour,
+        colour_guess=colour_guess,
         edge_quality=float(quality),
         tips=len(tips),
         circles=len(circles),
@@ -398,7 +420,7 @@ if __name__ == "__main__":
         "--corners", required=True, help="x1,y1,x2,y2,x3,y3,x4,y4 (TL,TR,BR,BL)"
     )
     ap.add_argument("--home", default="right", choices=["left", "right", "auto"])
-    ap.add_argument("--bottom-colour", type=int, default=0)
+    ap.add_argument("--bottom-colour", default="0", choices=["0", "1", "auto"])
     ap.add_argument(
         "--keep-corners",
         action="store_true",
@@ -412,7 +434,9 @@ if __name__ == "__main__":
         img,
         list(zip(c[0::2], c[1::2])),
         home=args.home,
-        bottom_colour=args.bottom_colour,
+        bottom_colour=args.bottom_colour
+        if args.bottom_colour == "auto"
+        else int(args.bottom_colour),
         debug_prefix=args.debug,
         keep_corners=args.keep_corners,
     )

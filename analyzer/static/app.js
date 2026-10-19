@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.92.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.93.0";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -52,7 +52,8 @@ const state = {
   edit: null,          // while the photo is being edited (TODO-070): {turn (quarter turns clockwise), angle (degrees, -45..45), rect ([x0, y0, x1, y1] as fractions of the turned photo) or null}
   dragging: false,     // a finger is on the corners
   homePick: "auto",    // the home sent with the photo: "auto" (guess from the checkers) for a new one; "left"/"right" once a tray is tapped (TODO-113), or as kept with a photo picked before
-  bottomColour: Number(stored("bottomColour", ["0", "1"], "1")),   // 0 = the darker checkers are 手前's, 1 = the lighter ones (kept on this phone, TODO-113)
+  colourPick: "auto",  // the colour sent with the photo: "auto" (the server guesses it from the pips, TODO-171) for a new one; "0"/"1" once a pip count is tapped, or as kept with a photo
+  bottomColour: Number(stored("bottomColour", ["0", "1"], "1")),   // 0 = the darker checkers are 手前's, 1 = the lighter ones (as read from the photo; else kept on this phone, TODO-113)
   geometry: null,      // where the recognizer found the board: {corners (image px), columns, bar (fractions), photo, from}
   // the board
   board: null,         // {points[24], bar_white, bar_black} (board.js)
@@ -343,16 +344,17 @@ part((s) => s.board && [s.step, s.board, s.home, s.selected, rolled(s), s.onRoll
 
 // ---- a tap on a part around the board picture (TODO-113): the trays flip the home's side, a pip count
 // swaps the checkers' owners (the board keeps its colours), the match, the cube and the dice open their sheet
-// (the side and the colour are what this photo is read with again, and the colour also the next photo's)
+// (the side and the colour are what this photo is read with again; flipping the side also fixes the colour
+// shown, so reading it again does not guess another, TODO-171. A new photo's colour is guessed)
 function tapPart(kind) {
   if (kind === "home") {
     const home = state.home === "right" ? "left" : "right";
     setHome(home);
-    update({ homePick: home });
+    update({ homePick: home, colourPick: String(state.bottomColour) });
   } else if (kind === "colour") {
     editBoard(BgBoard.swapColours);
     keep("bottomColour", state.bottomColour ? "0" : "1");
-    update({ bottomColour: state.bottomColour ? 0 : 1 });
+    update({ bottomColour: state.bottomColour ? 0 : 1, colourPick: state.bottomColour ? "0" : "1" });
   } else update({ sheet: kind });
 }
 part((s) => [s.sheet, s.step], (s) => {
@@ -507,7 +509,7 @@ const historyRecord = (s) => {
   const k = s.historyScale;
   return { corners: s.corners.map(([x, y]) => [x * k, y * k]), cornerGuess: s.cornerGuess, cornersMoved: s.cornersMoved,
            keepCorners: s.keepCorners, trimmed: s.photo.trimmed, sideMode: s.sideMode, sideFrom: s.sideFrom,
-           homePick: s.homePick, home: s.home, homeGuess: s.homeGuess, bottomColour: s.bottomColour,
+           homePick: s.homePick, home: s.home, homeGuess: s.homeGuess, colourPick: s.colourPick, bottomColour: s.bottomColour,
            onRoll: s.onRoll, dice: diceIn(s), cube: s.cube, board: s.board, read: s.read, warnings: s.warnings };
 };
 
@@ -680,7 +682,9 @@ function startPhoto(file, bitmap, kept, historyId, historyScale) {
     homePick: (kept && (kept.homePick || kept.home)) || "auto",
     home: kept ? kept.home || "right" : state.home,
     homeGuess: kept ? kept.homeGuess || null : state.homeGuess,
-    bottomColour: kept ? kept.bottomColour ?? 1 : Number(stored("bottomColour", ["0", "1"], "1")),   // a new photo: the colour kept on this phone
+    // a new photo: guessed by the server; entries from before 0.93.0 kept only the colour (as picked)
+    colourPick: kept ? kept.colourPick || String(kept.bottomColour ?? 1) : "auto",
+    bottomColour: kept ? kept.bottomColour ?? 1 : Number(stored("bottomColour", ["0", "1"], "1")),   // till the photo is read
     onRoll: kept ? kept.onRoll || "white" : state.onRoll,
     warnings: (kept && kept.warnings) || [],
     board: (kept && kept.board) || null,
@@ -984,7 +988,7 @@ async function recognize() {
       fd.append("home", state.homePick);
       if (state.keepCorners) fd.append("keep_corners", "true");
       if (sideSent()) fd.append("side", sideSent());
-      fd.append("bottom_colour", String(state.bottomColour));
+      fd.append("bottom_colour", state.colourPick);
       fd.append("on_roll", req.on_roll);
       if (dice) fd.append("dice", dice.join(","));
       if (cubeByHand) {
@@ -1022,7 +1026,7 @@ async function recognize() {
       const board = { points: rec.points, bar_white: rec.bar_white, bar_black: rec.bar_black };
       update({ ...patch, geometry, board, read: BgBoard.copy(board), warnings: data.warnings || [],
                home: data.home || (state.homePick === "auto" ? "right" : state.homePick),
-               homeGuess: data.home_guess || null, selected: null });
+               homeGuess: data.home_guess || null, bottomColour: data.bottom_colour ?? state.bottomColour, selected: null });
       if (crawfordOff) setMatch({ crawford: false });
       go("board");
       setResult(data.analysis, dice);
