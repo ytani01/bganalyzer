@@ -189,6 +189,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .board-wrap svg .num { font-size: 11px; fill: var(--muted); text-anchor: middle; }
 .board-wrap svg .match-n { font-size: 17px; font-weight: bold; fill: var(--fg); text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .pip-n { font-size: 17px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+.board-wrap svg .score-n { font-size: 20px; font-weight: bold; fill: #222; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .off-n { font-size: 15px; font-weight: bold; fill: #fff; text-anchor: middle; dominant-baseline: central; }
 .board-wrap svg .stack-n { font-size: 15px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
 .boards { display: grid; gap: 8px; }
@@ -296,7 +297,8 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .sheet fieldset { border: none; margin: 0; padding: 0; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: bold; }
 .sheet-head button { appearance: none; border: none; background: none; color: var(--fg); font-size: 18px; min-width: 44px; height: 44px; padding: 0; cursor: pointer; }
-.board-wrap svg .cube-num { font-size: 15px; font-weight: bold; fill: #222; text-anchor: middle; }
+.board-wrap svg .cube-num { font-size: 20px; font-weight: bold; fill: #222; text-anchor: middle; }
+.board-wrap svg .cube-crawford { font-size: 14px; font-weight: bold; fill: #222; text-anchor: middle; dominant-baseline: central; }
 .result .answer { font-size: 20px; margin: 4px 0; }
 #cube-side label { display: flex; align-items: center; gap: 6px; }
 #cube-side select { font-size: 16px; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }

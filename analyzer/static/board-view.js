@@ -19,9 +19,9 @@ const BgBoardView = (() => {
   const RIGHT = B.x0 + 12 * B.pw + B.bar;                                      // the playing area's right edge
   // Rows above and below the board, each on its player's side (奥 above, 手前 below), for the pip counts.
   const ROW = { h: 32, top: -34, bottom: 442 };
-  // The column beside the board on the home side (TODO-151), top to bottom: 奥's score, 奥's tray of
-  // borne-off checkers, the cube 奥 owns, the cube in the middle, the cube 手前 owns, 手前's tray, 手前's score.
-  const COL = { w: 56, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 26, tray: 119, cube: 30 };
+  // The column beside the board on the home side (TODO-151, TODO-152), top to bottom: the cube 奥 owns, 奥's tray of
+  // borne-off checkers, 奥's score, the cube in the middle, 手前's score, 手前's tray, the cube 手前 owns. 3 apart.
+  const COL = { w: 56, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 32, tray: 101, cube: 40, pad: 3 };
   const VIEW = { y: ROW.top - 4, h: ROW.bottom + ROW.h + 4 - (ROW.top - 4) };
   const MATCH_H = 26;   // the line above 奥's row for the match, only in a match (TODO-099)
   const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
@@ -34,8 +34,9 @@ const BgBoardView = (() => {
   }
 
   const sideX = (home) => (home === "right" ? RIGHT + 6 + COL.gap : B.x0 - 6 - COL.gap - COL.w);
-  const trayY = (side) => (side === "black" ? COL.y0 + COL.score + 4 : COL.y1 - COL.score - 4 - COL.tray);
-  const cubeY = (at) => MID - COL.cube / 2 + (at === "black" ? -COL.cube - 4 : at === "white" ? COL.cube + 4 : 0);
+  const trayY = (side) => (side === "black" ? COL.y0 + COL.cube + COL.pad : COL.y1 - COL.cube - COL.pad - COL.tray);
+  const scoreY = (side) => (side === "black" ? trayY("black") + COL.tray + COL.pad : trayY("white") - COL.pad - COL.score);
+  const cubeY = (at) => (at === "black" ? COL.y0 : at === "white" ? COL.y1 - COL.cube : scoreY("black") + COL.score + COL.pad);
   const rowY = (side) => (side === "black" ? ROW.top : ROW.bottom);
 
   // Centre of the checker at level k (0 = by the board's edge) of a stack; above 5 they are not drawn.
@@ -96,7 +97,7 @@ const BgBoardView = (() => {
     drawBorneOff(svg, b, home);
     drawPips(svg, b, home, onPart);
     if (scene.dice || onPart) drawDice(svg, scene.dice, scene.onRoll, onPart);
-    drawCube(svg, scene.cube, home, onPart);
+    drawCube(svg, scene.cube, home, onPart, scene.match);
     if (scene.move) drawMove(svg, scene.move, home);
   }
 
@@ -191,7 +192,7 @@ const BgBoardView = (() => {
   // 手前: the bottom) toward the middle, with the count.
   function drawBorneOff(svg, b, home) {
     const { offW, offB } = BgBoard.counts(b);
-    const hgt = 5, step = 6, x = sideX(home) + 6;
+    const hgt = 4, step = 5, x = sideX(home) + 6;
     for (let [side, n] of [["white", offW], ["black", offB]]) {
       if (n <= 0) continue;
       n = Math.min(n, 15);
@@ -217,17 +218,17 @@ const BgBoardView = (() => {
     }
   }
 
-  // The match on a line of its own above 奥's row, and each side's score at its end of the column (TODO-099, TODO-151).
+  // The match on a line of its own above 奥's row, and each side's score as a white square with a black number in the middle of the column (TODO-099, TODO-152).
   function drawMatch(svg, m, home, y0, onPart) {
     tapPart(el("text", { x: BAR_X, y: y0 + MATCH_H / 2 + 2, class: "match-n", "pointer-events": "none" }, svg), "match", onPart).textContent =
       (m.length ? `${m.length} ポイントマッチ` + (m.crawford ? "（クロフォード）" : "") : "アンリミテッド") + (onPart ? " ▾" : "");
     if (!m.length) return;
-    const x = sideX(home), w = COL.w;
+    const x = sideX(home) + (COL.w - COL.score) / 2;
     for (const side of ["white", "black"]) {
-      const y = side === "black" ? COL.y0 : COL.y1 - COL.score;
+      const y = scoreY(side);
       const g = tapPart(el("g", {}, svg), "match", onPart);
-      el("rect", { x, y, width: w, height: COL.score, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, g);
-      el("text", { x: x + w / 2, y: y + COL.score / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, g).textContent = `${m[side]} 点`;
+      el("rect", { x, y, width: COL.score, height: COL.score, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5, "pointer-events": "none" }, g);
+      el("text", { x: x + COL.score / 2, y: y + COL.score / 2, class: "score-n", "pointer-events": "none" }, g).textContent = String(m[side]);
     }
   }
 
@@ -252,13 +253,19 @@ const BgBoardView = (() => {
     });
   }
 
-  // The doubling cube in the column, beside its owner's tray; while nobody owns it, in the middle, showing 64.
-  function drawCube(svg, cube, home, onPart) {
+  // The doubling cube in the column, at its owner's end; while nobody owns it, in the middle, showing 64.
+  // In the Crawford game it says "Crawford" instead of a number (TODO-152).
+  function drawCube(svg, cube, home, onPart, match) {
     const size = COL.cube;
     const x = sideX(home) + (COL.w - size) / 2, y = cubeY(cube.at);
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
-    el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g).textContent = cube.at === "centre" ? "64" : String(cube.value);
+    const crawford = match && match.length > 0 && match.crawford;
+    if (crawford) {   // two lines, "Craw" over "ford", to fit the cube
+      ["Craw", "ford"].forEach((t, k) => el("text", { x: x + size / 2, y: y + size / 2 + (k ? 8 : -8), class: "cube-crawford" }, g).textContent = t);
+      return;
+    }
+    el("text", { x: x + size / 2, y: y + size / 2 + 7.5, class: "cube-num" }, g).textContent = cube.at === "centre" ? "64" : String(cube.value);
   }
 
   // The way the side on roll goes, as a see-through U across the middle of the board (over the
