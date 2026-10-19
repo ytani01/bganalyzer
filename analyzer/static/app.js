@@ -166,13 +166,9 @@ part((s) => [s.step, s.fromPhoto && !!s.board, !!s.result, s.autoSpeak], (s) => 
   $("speak").hidden = !(s.step === "outcome" && s.result);
 });
 
-// No doubling in the Crawford game: the server refuses a cube on one side then (TODO-066).
-const crawfordCube = (s = state) => s.match.crawford && s.cube.at !== "centre";
-const CRAWFORD_CUBE = "クロフォードのゲームではダブルできません。キューブを「中央」にするか、「ゲーム」のクロフォードを外してください。";
-
 // What stops the board from being analysed: 「解析する」 is greyed out, with the reasons above it (TODO-116).
 const analyzeErrors = (s = state) =>
-  s.board ? [...BgBoard.errors(s.board, NAME), ...(crawfordCube(s) ? [CRAWFORD_CUBE] : [])] : [];
+  s.board ? BgBoard.errors(s.board, NAME) : [];
 
 // scanning: the reading overlay is drawn on the photo, so the screen is not darkened and the text sits low
 part((s) => s.busy, (s) => {
@@ -295,7 +291,7 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColo
 });
 
 // after the part above: it sets NAME from 手前's colour
-part((s) => [s.step, s.board, s.match.crawford, s.cube.at, s.bottomColour], (s) => {
+part((s) => [s.step, s.board, s.bottomColour], (s) => {
   const errs = s.step === "board" || s.step === "outcome" ? analyzeErrors(s) : [];
   $("analyze").disabled = !!errs.length;
   $("analyze-why").hidden = !errs.length;
@@ -698,6 +694,8 @@ function startPhoto(file, bitmap, kept, historyId, historyScale) {
     dice: (kept && kept.dice) || [0, 0], diceFromPhoto: false,   // the dice of the last position are not this photo's
     cube: (kept && kept.cube) || BgCube.fromRead(null), cubeFromPhoto: false,
   });
+  // a photo kept with its cube on one side: the photo is the later choice, so the Crawford game goes off (TODO-153)
+  if (state.cube.at !== "centre" && state.match.crawford) setMatch({ crawford: false });
   setResult(null);
   persist(true);   // now the most recent
   go("corners");
@@ -1018,6 +1016,10 @@ async function recognize() {
       const cube = patch.cube || state.cube;
       if (dice && cubeOffered({ cube })) patch.cube = { ...cube, offered: false };
       if (data.analysis) patch.onRoll = data.analysis.on_roll;
+      // a cube read on one side in the Crawford game: the photo is the later choice, so the Crawford game goes off
+      // (the server did not analyse it; TODO-153)
+      const crawfordOff = !!patch.cube && patch.cube.at !== "centre" && state.match.crawford;
+      if (crawfordOff) setMatch({ crawford: false });
       const g = data.geometry;
       const geometry = g && { ...BgApi.scaleGeometry(g, scale), photo: photoId(state), from: JSON.stringify(state.corners) };
       // the stages still waiting their turn on the photo (a tap skips them). The reading is done only
@@ -1030,8 +1032,11 @@ async function recognize() {
                homeGuess: data.home_guess || null, selected: null });
       go("board");
       setResult(data.analysis, dice);
-      // the board was read but not analysed (e.g. a cube read on one side in the Crawford game)
-      if (data.analysis_error) alert(crawfordCube() ? CRAWFORD_CUBE : "解析できませんでした: " + data.analysis_error);
+      // the board was read but not analysed
+      if (data.analysis_error) {
+        alert(crawfordOff ? "キューブが片側に読めたので、クロフォードを外しました。「解析する」を押すと解析します。"
+                          : "解析できませんでした: " + data.analysis_error);
+      }
     }, !!mine);
   } catch (err) {
     alert("読み取りに失敗しました: " + err.message);

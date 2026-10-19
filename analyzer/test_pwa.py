@@ -365,7 +365,10 @@ def test_match_is_in_the_board_settings_and_sent():
     js = (STATIC / "app.js").read_text()
     assert js.count("BgCube.matchRequest(state.match)") == 2   # /analyze and /analyze-photo
     # Japanese before the server's 422: 「解析する」 greyed out with the reason (TODO-116)
-    assert "...(crawfordCube(s) ? [CRAWFORD_CUBE] : [])" in js
+    # TODO-153: no Crawford game with a cube on one side to warn of; a photo or a reading with the cube on one side takes it off
+    assert "CRAWFORD_CUBE" not in js
+    assert js.count('state.match.crawford) setMatch({ crawford: false });') == 2   # setCube, startPhoto
+    assert "if (crawfordOff) setMatch({ crawford: false });" in js
     assert '$("analyze").disabled = !!errs.length;' in js and 'id="analyze-why"' in html
     # TODO-093: the corners screen shows the same inputs, moved there while it is open
     corners = html[html.index('<section id="corners"'):html.index('<section id="board"')]
