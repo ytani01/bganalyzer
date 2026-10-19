@@ -13,3 +13,6 @@ samples/external/*
 
 # screenshots left at the repo root while checking the PWA
 /*.png
+
+# worktrees of the sessions run side by side (claude -w; CLAUDE.md の「共同開発」)
+/.claude/worktrees/
