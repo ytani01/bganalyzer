@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-171、TODO-172、TODO-173。** これまでに 166 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-174`。**
+**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-171、TODO-172、TODO-173、TODO-174。** これまでに 166 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-175`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
 ---
@@ -103,6 +103,23 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 - [ ] 速くなったかは開発機だけで測る（Pi では測らない）
 
 **無駄を省く工夫:** 精度は CI の accuracy に任せる。Pi では測らない。ローカルの確認は要らない（アプリの見た目も結果も変わらないため）
+
+
+## TODO-174. worktree の中ではコミット ID が読めず、バージョンのテストが落ちる
+
+| | main | 担当 |
+|---|---|---|
+| 見込み | Sonnet 5.5 / effort medium | implementer（Sonnet 5.5）+ reviewer（Opus 5.5 / medium）+ verifier（Sonnet 5.5）。分岐が変わるので reviewer を入れ、先に回す |
+
+`analyzer/app.py` の `git_commit()` は `.git` をディレクトリとして読む。worktree では `.git` が `gitdir: …` と書いたファイルなので None を返し、`analyzer/test_api.py` の `test_version_reports_both_parts_and_commit` が落ちる（TODO-171 の実装中に見つかった）。アプリの `/version` も worktree で起動するとコミット ID が出ない。
+
+直し方: `git_commit()` が `.git` のファイルの `gitdir:` をたどるようにする。ref は worktree の gitdir になければ、`commondir` の先（本体の .git）の loose ref と packed-refs から読む。git コマンドには頼らない（Pi に git が無くても動くようにしている今の方針を保つ）。
+
+- [ ] 実装する（analyzer の版を patch で上げ、`APP_VERSION`（`analyzer/static/app.js`）も揃える）
+- [ ] worktree の場合のテストを足す（一時ディレクトリに `.git` のファイルと gitdir・commondir を作る）
+- [ ] worktree の中で、そのテストと `test_version_reports_both_parts_and_commit` が通る
+
+**無駄を省く工夫:** テストは `analyzer/test_api.py` の version まわりだけ流す（全体は CI に任せる）。ローカルの確認は要らない（トップの作業ツリーは worktree ではないため）
 
 
 ## 完了済み
