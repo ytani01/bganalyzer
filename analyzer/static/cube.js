@@ -37,14 +37,16 @@ const BgCube = (() => {
 
   // The cube's settings (TODO-159): one row of "centre" and the numbers, and under it, once a number is chosen, where the cube
   // lies: held by 白 or 黒 (offered false), or doubled to 白 or 黒 (offered true: that side answers take or pass).
-  // What the buttons show for this cube: the number ("centre" or the value), and the side on the "held" / "doubled" row (else null).
+  // What the buttons show for this cube, by the name of each row (data-name in index.html): the number ("centre" or the
+  // value), and the side on the "held" and the "doubled" row (else null).
   const buttons = (cube) => cube.at === "centre"
-    ? { number: "centre", hold: null, double: null }
-    : { number: String(cube.value), hold: cube.offered ? null : cube.at, double: cube.offered ? cube.at : null };
-  // The change to the cube for a press of the number row. From the centre a number puts the cube on 白, doubled to it
-  // (what the side buttons did before), so the four choices below have one shown.
-  const numberPatch = (cube, v) => v === "centre" ? { at: "centre" }
-    : cube.at === "centre" ? { at: "white", value: Number(v), offered: true } : { value: Number(v) };
+    ? { cubeValue: "centre", cubeHold: null, cubeDouble: null }
+    : { cubeValue: String(cube.value), cubeHold: cube.offered ? null : cube.at, cubeDouble: cube.offered ? cube.at : null };
+  // The change to the cube for a press of the number row. From the centre a number puts the cube on the side opposite the
+  // one on roll, as when it is read from a photo (fromRead): with no dice in, doubled to that side (it answers take or pass);
+  // with both dice in, held by it. So the side on roll and the dice stay as they are. On a side already, only the number changes.
+  const numberPatch = (cube, v, onRoll, dice) => v === "centre" ? { at: "centre" }
+    : cube.at === "centre" ? { at: other(onRoll), value: Number(v), offered: !dice } : { value: Number(v) };
 
   // The match (TODO-066): {length (0: a money game), white, black (the scores), crawford}, made whole:
   // a length the app offers, scores below it, and the Crawford game only when just one side is 1 away.

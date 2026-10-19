@@ -180,8 +180,7 @@ part((s) => s.busy, (s) => {
 
 // ---- segmented buttons: each shows the state of its name
 part((s) => [s.onRoll, s.cube, s.collect, s.plies, s.sideFrom], (s) => {
-  const cube = BgCube.buttons(s.cube);
-  const value = { onRoll: s.onRoll, cubeValue: cube.number, cubeHold: cube.hold, cubeDouble: cube.double,
+  const value = { ...BgCube.buttons(s.cube), onRoll: s.onRoll,
                   collect: s.collect, plies: s.plies, sideFrom: s.sideFrom };
   for (const seg of document.querySelectorAll(".seg")) {
     for (const b of seg.children) b.classList.toggle("on", b.dataset.value === String(value[seg.dataset.name]));
@@ -1360,7 +1359,7 @@ $("crawford").addEventListener("change", () => setMatch({ crawford: $("crawford"
 const SEGMENTS = {
   sideFrom: setSideFrom,
   onRoll: setOnRoll,
-  cubeValue: (v) => setCube(BgCube.numberPatch(state.cube, v)),   // TODO-159
+  cubeValue: (v) => setCube(BgCube.numberPatch(state.cube, v, state.onRoll, rolled())),   // TODO-159
   cubeHold: (v) => setCube({ at: v, offered: false }),
   cubeDouble: (v) => setCube({ at: v, offered: true }),
   collect: (v) => { keep("collect", v); update({ collect: v }); },

@@ -34,3 +34,10 @@
 - 結果の画面（`step === "outcome"`）の設定シートは見ていない（同じ HTML と `choseInSheet` を通る）
 - worktree では `analyzer/test_api.py::test_version_reports_both_parts_and_commit` が `.git` がファイルのため落ちる（TODO-157・158 と同じ。範囲外）
 - `docs/raspi.md:129` の「ダブルされたところ」という言い方は、Pi の確認の説明なので直していない
+
+## 追記: レビューの指摘を直した
+1. 中央から数を押したときの既定（`analyzer/static/cube.js` `numberPatch(cube, v, onRoll, dice)`）: 置く側を `other(onRoll)`（次に振る人の相手側。`fromRead` と同じ）にし、`offered` は「ダイスが無ければ true（…に対してダブル）、あれば false（…側に置く）」にした。`app.js` は `BgCube.numberPatch(state.cube, v, state.onRoll, rolled())` で呼ぶ。`request` に通すと `on_roll` は元の次に振る人のまま、ダイスありなら解析に使われる（テストで確かめた）。上の「判断が要る点」の既定の件はこれで置き換わる。`TODO.md` の TODO-159 の節にこの決定を書き足した
+2. テスト: `buttons()` が返すキーを行の名前（`cubeValue`・`cubeHold`・`cubeDouble`）にし、`app.js` の seg の表示は `{ ...BgCube.buttons(s.cube), onRoll: ... }` で受ける形にした（入れ替える余地が無く、その形の文字列と `buttons()` の値をテストで見る）。`test_cube_settings_buttons` に、既定（onRoll が白・黒 × ダイスあり・なし）と、`request` を通したあとの次に振る人・`doubled` を足した
+   - 壊すと落ちるか（`test_cube_settings_buttons`）: ① `buttons` の Hold と Double を入れ替える ② `offered: !dice` を `!!dice` にする ③ `other(onRoll)` を `onRoll` にする ④ `app.js` の `...BgCube.buttons(s.cube)` を外す。4 つとも落ち、戻すと通った
+3. `analyzer/README.md`（ダイスの設定の説明、キューブの既定の説明）と `docs/raspi.md:129` を、「…側に置く」「…に対してダブル」の言い方に直した
+- 確認: `uv run pytest analyzer/test_pwa.py`: 33 passed、`node` で `app.js`・`cube.js` の構文を読み込み通った。画面は見ていない（verifier の担当）
