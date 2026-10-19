@@ -298,8 +298,8 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .sheet fieldset { border: none; margin: 0; padding: 0; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: bold; }
 .sheet-head button { appearance: none; border: none; background: none; color: var(--fg); font-size: 18px; min-width: 44px; height: 44px; padding: 0; cursor: pointer; }
-.board-wrap svg .cube-num { font-size: 20px; font-weight: bold; fill: #8a1c2b; text-anchor: middle; }
-.board-wrap svg .cube-crawford { font-size: 14px; font-weight: bold; fill: #8a1c2b; text-anchor: middle; dominant-baseline: central; }
+.board-wrap svg .cube-num { font-size: 20px; font-weight: bold; fill: #8b1a2b; text-anchor: middle; }
+.board-wrap svg .cube-crawford { font-size: 14px; font-weight: bold; fill: #8b1a2b; text-anchor: middle; dominant-baseline: central; }
 .result .answer { font-size: 20px; margin: 4px 0; }
 #cube-side label { display: flex; align-items: center; gap: 6px; }
 #cube-side select { font-size: 16px; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
