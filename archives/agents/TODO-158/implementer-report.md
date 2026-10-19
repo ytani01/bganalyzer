@@ -28,3 +28,8 @@
 - `analyzer/README.md:81` の言い方と `TODO.md` の TODO-158 の節（見出し・決めたこと・チェックの行）を直した
 - テスト: `uv run pytest analyzer/test_pwa.py` 32 passed、`node` で構文を読み込み通った
 - 画面は見ていない。チェッカーへの食い込みが無くなったかは、また verifier の確認が要る
+
+## 追記 2: 矢印とのすきま 6 を足した（verifier の確認で、縁が矢印の線に接して見えたため）
+- 新しい値: 真ん中から **±75.25**（`off = WAY.r + WAY.w / 2 + 6 + 1.25 + size / 2` = 42 + 6 + 6 + 1.25 + 20）。チェッカーとはまだ 19 ほど空く（管理者の見立て。画面は見ていない）
+- すきまの 6 は `board-view.js` の `drawCube` の式の中の定数。`analyzer/README.md:81`・`TODO.md` の TODO-158 の節も合わせた
+- テスト: `uv run pytest analyzer/test_pwa.py`、`node` で構文の読み込み: 32 passed、構文の読み込みも通った
