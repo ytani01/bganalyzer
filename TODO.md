@@ -99,9 +99,9 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 - 余白は、ページの左右（`main` の padding 16px）と `.board-wrap` の padding 4px を盤面の所だけ詰め、盤面図（SVG）の viewBox の周りの空きも詰める
 - ゴール領域（`analyzer/static/board-view.js` の `COL.w` = 56 の列。トレイ・点数・キューブ・ピップ数が並ぶ）は、キューブとピップ数の大きさを変えず、それが収まる幅（44 前後）まで細くする
 
-- [ ] 盤面の所だけ、ページの左右の余白と `.board-wrap` の padding を詰める。SVG の viewBox の周りの空きも詰める
-- [ ] `COL.w` を細くする（44 前後）。`COL.w` や余白に依存する座標（トレイ・点数・キューブ・ピップ数・取ったチェッカー・矢印の `off` の終点）を、`rg -n "COL\." analyzer/static/board-view.js` で全部見て合わせる
-- [ ] analyzer のバージョンを上げる（`analyzer/app.py` の `__version__` と `app.js` の `APP_VERSION`。見た目の変更なので 0.x.0 を上げる）
+- [x] 盤面の所だけ、ページの左右の余白と `.board-wrap` の padding を詰める。SVG の viewBox の周りの空きも詰める
+- [x] `COL.w` を細くする（44 前後）。`COL.w` や余白に依存する座標（トレイ・点数・キューブ・ピップ数・取ったチェッカー・矢印の `off` の終点）を、`rg -n "COL\." analyzer/static/board-view.js` で全部見て合わせる
+- [x] analyzer のバージョンを上げる（`analyzer/app.py` の `__version__` と `app.js` の `APP_VERSION`。見た目の変更なので 0.x.0 を上げる）
 - [ ] スマホ: マージ後、スマホで盤面が端まで広がり、トレイの数字が欠けていないこと
 
 **無駄を省く工夫:** 確認は幅 390px と 1280px の 2 通りだけ。盤面図の横幅と画面の幅の差を測り、トレイの中のピップ数・キューブ・点数・取ったチェッカーが欠けたり重なったりしていないかをスクリーンショットで見る。テスト全体は CI に任せる
