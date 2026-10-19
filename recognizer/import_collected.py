@@ -150,7 +150,8 @@ def run(d, names):
         try:
             _run(d, names, log)
         except BaseException as e:   # SystemExit too: the service was restarted
-            log(f"failed: {e!r}")
+            err = (getattr(e, "stderr", None) or "").strip()   # a CalledProcessError: why the command stopped
+            log(f"failed: {e!r}" + "".join(f"\n  {l}" for l in err.splitlines()[-20:]))
             raise
 
 
@@ -173,8 +174,10 @@ def _run(d, names, log):
             if not todo:
                 return log("nothing to add")
             added = [add(d, n, wt / "samples") for n in todo]
-            # this venv with the worktree's code (a venv of its own would mean installing everything again)
-            subprocess.run([sys.executable, "recognizer/check_accuracy.py", "--update"], cwd=wt, check=True, capture_output=True)
+            # this venv with the worktree's code (a venv of its own would mean installing everything again);
+            # 2 at a time, for the development machine's memory (TODO-147)
+            subprocess.run([sys.executable, "recognizer/check_accuracy.py", "--update", "--jobs=2"],
+                           cwd=wt, check=True, capture_output=True, text=True, errors="replace")
             readme = wt / "recognizer/README.md"
             text, n = ROW.subn(lambda _: table_row(wt), readme.read_text(), count=1)
             if not n:
