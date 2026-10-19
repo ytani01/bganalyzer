@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-154。** これまでに 149 件を決着させた。
+**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121。** これまでに 150 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-155`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
@@ -57,25 +57,6 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 **何を決めるか:** 四隅の点数の付け方と駒の数え方。**選択肢:** 写真がたまってから試して出す。**いつ聞くか:** 試したあと。
 
 **無駄を省く工夫:** 測るのは横からのサンプルだけ（`evaluate.py`・`check_corners.py` は正解の `side` を見る）。TODO-120 の試しの道具（`archives/agents/TODO-120/measure_side.py`）を使い回す
-
----
-
-## TODO-154. 担当をサブエージェントから teammate（agent teams）に切り替え、CLAUDE.md を合わせる
-
-|      | main | 担当 |
-|------|------|------|
-| 見込み | Opus 5.5 / effort 記載なし | main（判断）+ implementer（Sonnet 5.5 / medium、文書の書き換え）。文書だけの項目なので確認は main |
-
-2026-10-19 ユーザーが決めた。担当をすべて teammate にする。bganalyzer だけで有効にし、`.claude/settings.local.json` に `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` と `teammateMode: "tmux"` を入れた（済み。ファイルはリポジトリに入らない）。
-公式ドキュメント（https://code.claude.com/docs/en/agent-teams.md）では、Agent ツールに isolation を付けると teammate にならない。だから worktree で分ける決まりはやめ、衝突は同じファイルを複数の担当に編集させないことで避ける。
-実験的な機能で、トークンは多くなる（ドキュメントでは約 7 倍の例）。共同開発の相手（別アカウント）の設定には影響しない（設定ファイルがリポジトリに入らないため）。
-
-- 変えるもの: CLAUDE.md の「共同開発」の、main が担当に worktree（`isolation: "worktree"`）でさせる決まりと、トップの作業ツリーを main のままにする決まりとの関係
-- 調べてから決めること: teammate がトップの作業ツリーで作業すると、ブランチの切り替えがローカルの `bganalyzer.service` とぶつかる。teammate 自身が `git worktree add` で作業ツリーを作るか、トップで作業するかなど。担当が調べて案を出し、main がユーザーに聞く
-
-- [x] CLAUDE.md の「共同開発」を teammate に合わせて書き換える
-
-**無駄を省く工夫:** 調べるのは teammate の作業ツリーの扱いだけ。書き換えるのは「共同開発」の該当の決まりだけ
 
 ---
 
