@@ -17,10 +17,11 @@ const BgBoardView = (() => {
   const PLAY = { x: B.x0, y: B.y0, w: 12 * B.pw + B.bar, h: B.y1 - B.y0 };   // the playing area
   const BAR_X = B.x0 + 6 * B.pw + B.bar / 2;                                   // the bar's middle
   const RIGHT = B.x0 + 12 * B.pw + B.bar;                                      // the playing area's right edge
-  // Rows above and below the board, each on its player's side (奥 above, 手前 below): the tray of
-  // borne-off checkers by the home boards, the doubling cube at the other end.
+  // Rows above and below the board, each on its player's side (奥 above, 手前 below), for the pip counts.
   const ROW = { h: 32, top: -34, bottom: 442 };
-  const TRAY = { w: 186 };
+  // The column beside the board on the home side (TODO-151), top to bottom: 奥's score, 奥's tray of
+  // borne-off checkers, the cube 奥 owns, the cube in the middle, the cube 手前 owns, 手前's tray, 手前's score.
+  const COL = { w: 56, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 26, tray: 119, cube: 30 };
   const VIEW = { y: ROW.top - 4, h: ROW.bottom + ROW.h + 4 - (ROW.top - 4) };
   const MATCH_H = 26;   // the line above 奥's row for the match, only in a match (TODO-099)
   const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
@@ -32,7 +33,9 @@ const BgBoardView = (() => {
     return half + (c % 6) * B.pw + B.pw / 2;
   }
 
-  const trayX = (home) => (home === "right" ? RIGHT - TRAY.w : B.x0);
+  const sideX = (home) => (home === "right" ? RIGHT + 6 + COL.gap : B.x0 - 6 - COL.gap - COL.w);
+  const trayY = (side) => (side === "black" ? COL.y0 + COL.score + 4 : COL.y1 - COL.score - 4 - COL.tray);
+  const cubeY = (at) => MID - COL.cube / 2 + (at === "black" ? -COL.cube - 4 : at === "white" ? COL.cube + 4 : 0);
   const rowY = (side) => (side === "black" ? ROW.top : ROW.bottom);
 
   // Centre of the checker at level k (0 = by the board's edge) of a stack; above 5 they are not drawn.
@@ -72,12 +75,13 @@ const BgBoardView = (() => {
     const { board: b, home, photo } = scene;
     const match = scene.match && (scene.match.length || onPart) ? scene.match : null;
     const y0 = VIEW.y - (match ? MATCH_H : 0), h = VIEW.h + (match ? MATCH_H : 0);
-    svg.setAttribute("viewBox", `0 ${y0} 660 ${h}`);
-    el("rect", { x: 0, y: y0, width: 660, height: h, fill: "var(--card)" }, svg);
+    const x0 = home === "right" ? 0 : -COL.w - COL.gap, w = 660 + COL.w + COL.gap;
+    svg.setAttribute("viewBox", `${x0} ${y0} ${w} ${h}`);
+    el("rect", { x: x0, y: y0, width: w, height: h, fill: "var(--card)" }, svg);
     if (match) drawMatch(svg, match, home, y0, onPart);
     el("rect", { x: B.x0 - 6, y: B.y0 - 6, width: RIGHT - B.x0 + 12, height: B.y1 - B.y0 + 12, rx: 6, fill: "var(--frame)" }, svg);
     for (const side of ["white", "black"]) {
-      tapPart(el("rect", { x: trayX(home), y: rowY(side), width: TRAY.w, height: ROW.h, rx: 4, fill: "var(--felt)", stroke: "var(--frame)", "stroke-width": 4 }, svg), "home", onPart);
+      tapPart(el("rect", { x: sideX(home), y: trayY(side), width: COL.w, height: COL.tray, rx: 4, fill: "var(--felt)", stroke: "var(--frame)", "stroke-width": 4 }, svg), "home", onPart);
     }
     if (photo) {
       el("image", { href: photo, x: PLAY.x, y: PLAY.y, width: PLAY.w, height: PLAY.h, preserveAspectRatio: "none" }, svg);
@@ -183,29 +187,28 @@ const BgBoardView = (() => {
     }
   }
 
-  // Borne-off checkers as thin slabs on their side in their player's tray, from the board's outer
-  // edge inward, with the count.
+  // Borne-off checkers as thin slabs in their player's tray, from the board's outer edge (奥: the top,
+  // 手前: the bottom) toward the middle, with the count.
   function drawBorneOff(svg, b, home) {
     const { offW, offB } = BgBoard.counts(b);
-    const wid = 9, step = 10, right = home === "right";
+    const hgt = 5, step = 6, x = sideX(home) + 6;
     for (let [side, n] of [["white", offW], ["black", offB]]) {
       if (n <= 0) continue;
       n = Math.min(n, 15);
-      const y = rowY(side) + 3;
+      const top = side === "black", edge = top ? trayY(side) + 4 : trayY(side) + COL.tray - 4;
       for (let k = 0; k < n; k++) {
-        const x = right ? RIGHT - 3 - wid - k * step : B.x0 + 3 + k * step;
-        el("rect", { x, y, width: wid, height: ROW.h - 6, rx: 2, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 1.5, "pointer-events": "none" }, svg);
+        const y = top ? edge + k * step : edge - hgt - k * step;
+        el("rect", { x, y, width: COL.w - 12, height: hgt, rx: 1.5, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 1, "pointer-events": "none" }, svg);
       }
-      el("text", { x: right ? RIGHT - n * step - 16 : B.x0 + n * step + 16, y: rowY(side) + ROW.h / 2, class: "off-n", "pointer-events": "none" }, svg)
+      el("text", { x: x + (COL.w - 12) / 2, y: top ? edge + n * step + 10 : edge - n * step - 10, class: "off-n", "pointer-events": "none" }, svg)
         .textContent = n;
     }
   }
 
-  // Each side's pip count in its own row, on a plate of its checker colour beside the tray it bears
-  // off to, clear of the cubes (TODO-090).
+  // Each side's pip count in its own row, on a plate of its checker colour over the home board (TODO-090, TODO-151).
   function drawPips(svg, b, home, onPart) {
-    const pips = BgBoard.pips(b), w = 96, gap = 4;
-    const x = home === "right" ? trayX(home) - gap - w : trayX(home) + TRAY.w + gap;
+    const pips = BgBoard.pips(b), w = 96;
+    const x = colX(home === "right" ? 9 : 3) - B.pw / 2 - w / 2;
     for (const side of ["white", "black"]) {
       const y = rowY(side);
       const g = tapPart(el("g", {}, svg), "colour", onPart);
@@ -214,19 +217,17 @@ const BgBoardView = (() => {
     }
   }
 
-  // The match on a line of its own above 奥's row, and each side's score in its own row at the end
-  // away from home, inside the cube (TODO-099).
+  // The match on a line of its own above 奥's row, and each side's score at its end of the column (TODO-099, TODO-151).
   function drawMatch(svg, m, home, y0, onPart) {
     tapPart(el("text", { x: BAR_X, y: y0 + MATCH_H / 2 + 2, class: "match-n", "pointer-events": "none" }, svg), "match", onPart).textContent =
       (m.length ? `${m.length} ポイントマッチ` + (m.crawford ? "（クロフォード）" : "") : "アンリミテッド") + (onPart ? " ▾" : "");
     if (!m.length) return;
-    const w = 56, gap = 4, cube = 30;
-    const x = home === "right" ? B.x0 + cube + gap : RIGHT - cube - gap - w;
+    const x = sideX(home), w = COL.w;
     for (const side of ["white", "black"]) {
-      const y = rowY(side);
+      const y = side === "black" ? COL.y0 : COL.y1 - COL.score;
       const g = tapPart(el("g", {}, svg), "match", onPart);
-      el("rect", { x, y: y + 2, width: w, height: ROW.h - 4, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, g);
-      el("text", { x: x + w / 2, y: y + ROW.h / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, g).textContent = `${m[side]} 点`;
+      el("rect", { x, y, width: w, height: COL.score, rx: 6, fill: checkerFill(side), stroke: `var(--${side}-rim)`, "stroke-width": 2, "pointer-events": "none" }, g);
+      el("text", { x: x + w / 2, y: y + COL.score / 2, class: "pip-n", fill: `var(--${side}-fg)`, "pointer-events": "none" }, g).textContent = `${m[side]} 点`;
     }
   }
 
@@ -251,12 +252,10 @@ const BgBoardView = (() => {
     });
   }
 
-  // The doubling cube in its owner's row at the end away from the tray; while nobody owns it, in
-  // 手前's row under the bar, showing 64.
+  // The doubling cube in the column, beside its owner's tray; while nobody owns it, in the middle, showing 64.
   function drawCube(svg, cube, home, onPart) {
-    const size = 30;
-    const x = cube.at === "centre" ? BAR_X - size / 2 : home === "right" ? B.x0 : RIGHT - size;
-    const y = rowY(cube.at === "black" ? "black" : "white") + (ROW.h - size) / 2;
+    const size = COL.cube;
+    const x = sideX(home) + (COL.w - size) / 2, y = cubeY(cube.at);
     const g = tapPart(el("g", { class: "die" }, svg), "cube", onPart);
     el("rect", { x, y, width: size, height: size, rx: 5, fill: "#fafafa", stroke: "#0008", "stroke-width": 1.5 }, g);
     el("text", { x: x + size / 2, y: y + size / 2 + 6, class: "cube-num" }, g).textContent = cube.at === "centre" ? "64" : String(cube.value);
@@ -291,7 +290,8 @@ const BgBoardView = (() => {
     const g = el("g", { class: "arrows" }, svg);
     for (const h of hops) {
       const [x0, y0] = at(h.from, h.fromLevel);
-      const [x1, y1] = h.to === "off" ? [Math.min(Math.max(x0, trayX(home) + B.r), trayX(home) + TRAY.w - B.r), rowY(mover) + ROW.h / 2] : at(h.to, h.toLevel);
+      // off: to the tray's edge facing the board, clear of the count in its middle
+      const [x1, y1] = h.to === "off" ? [sideX(home) + (home === "right" ? 0 : COL.w), trayY(mover) + COL.tray / 2] : at(h.to, h.toLevel);
       drawArrow(g, x0, y0, x1, y1);
       if (h.hit) el("circle", { cx: x1, cy: y1, r: B.r, fill: "none", stroke: "#e53935", "stroke-width": 3 }, g);
     }
