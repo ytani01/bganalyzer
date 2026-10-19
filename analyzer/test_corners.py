@@ -6,7 +6,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "recognizer"))
@@ -23,13 +22,12 @@ def _sample(photo_id):
     return None, None
 
 
-def test_top_side_stays_near_the_boards_edge_not_the_checkers_tops():
-    """Backgammon Galaxy's screen (id hedmzy): the frame of the rows of numbers has the board's edge just
-    inside it; the top left corner was 51 px (of 2048) off, on the line along the top checkers
-    (after TODO-175: 19 px).
-    Skipped until recognizer/import_collected.py has put the photo in samples/ (now only in the Pi's collected/)."""
+def test_top_side_of_a_screen_photo_stays_near_the_boards_edge():
+    """Backgammon Galaxy's screen (samples id hedmzy, collected-galaxy-screen-9).
+    Not a test of the TODO-175 fix: the samples/ photo is painted black outside the board, and on it main
+    (recognizer 0.29.2) and 0.30.0 find the same corners (top left 42 px off, of 2048); on the photo as taken
+    the fix moved that from 51 to 19 px. It only keeps the corners from going far off the board's edge."""
     img, truth = _sample("hedmzy")
-    if img is None:
-        pytest.skip("samples/ has no photo with id hedmzy yet")
+    assert img is not None
     found = np.float64(corners.find_corners(img))
-    assert np.linalg.norm(found[0] - truth[0]) < 35
+    assert np.linalg.norm(found[0] - truth[0]) < 55
