@@ -1421,6 +1421,8 @@ BgApi.version().then((v) => {
   $("hdr-version").textContent = `a${APP_VERSION} · r${v.recognizer}` + note + (v.commit ? ` · ${v.commit}` : "");
   $("hdr-version").classList.toggle("old", cmp !== 0);
   serverKeepsSamples = !!v.samples;
+  $("photo-note").hidden = serverKeepsSamples;   // the first screen must not say "not saved" when it is (TODO-165)
+  $("photo-note-keep").hidden = !serverKeepsSamples;
   redraw(drawImprove);
   $("claude-corners").hidden = $("claude-note").hidden = !v.claude;
 }).catch(() => {});

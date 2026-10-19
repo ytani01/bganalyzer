@@ -59,7 +59,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <ul id="history-list" class="history-list"></ul>
       <p class="note">最近の 100 枚を、この端末の中だけに残します。</p>
     </div>
-    <p class="note">写真はサーバーで読み取るだけで、保存しません。</p>
+    <p class="note" id="photo-note">写真はサーバーで読み取るだけで、保存しません。</p>
+    <p class="note" id="photo-note-keep" hidden>解析すると写真と盤面をサーバーに保存し、読み違えた写真は盤の外を黒く塗って公開のサンプルに入れることがあります。盤面の画面で「保存しない」にもできます。</p>
   </section>
 
   <!-- 2. 四隅と設定 -->
