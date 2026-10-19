@@ -522,3 +522,13 @@ def test_board_can_be_fixed_on_the_result_screen():
     assert '$(out ? "outcome-board" : "boards").appendChild($("board-pin"));' in js
     assert "reanalyzeTimer = setTimeout(reanalyze, REANALYZE_WAIT);" in js
     assert "if (abort.signal.aborted || inputsKey() !== key" in js
+
+
+def test_every_screen_but_the_first_can_go_back_to_it():
+    # TODO-148: 「最初へ」 next to 戻る, on every screen but the photo screen, straight back to it
+    html = client.get("/").text
+    row = html[html.index('<div class="actrow">'):]
+    assert row.index('id="back"') < row.index('id="to-start"') < row.index('id="recognize"')
+    js = (STATIC / "app.js").read_text()
+    assert '$("to-start").hidden = s.step === "photo";' in js
+    assert '$("to-start").addEventListener("click", goStart);' in js

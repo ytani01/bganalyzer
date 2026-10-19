@@ -257,6 +257,8 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <!-- 戻るは、その画面のボタンの左に今までと同じ大きさで（TODO-107。前はヘッダーにあった） -->
   <div class="actrow">
     <button id="back" class="back" type="button" aria-label="前の画面に戻る" hidden>‹ 戻る</button>
+    <!-- 最初の画面（写真の選択）へ一度で戻る。写真の選択の画面のほかはどの画面にも出す（TODO-148） -->
+    <button id="to-start" class="back" type="button" aria-label="最初の画面（写真の選択）に戻る" hidden>« 最初へ</button>
     <button id="recognize" class="act" type="button" hidden disabled>盤面を読み取る</button>
     <button id="analyze" class="act" type="button" hidden>解析する</button>
     <!-- 絵文字の 🔊 は端末によって絵が違い、何のボタンか分かりにくかったので、スピーカーの絵と文字で示す（中身は app.js の speakLabel） -->
