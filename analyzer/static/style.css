@@ -195,6 +195,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
   main:has(.boards.two:not([hidden])) { max-width: 1240px; }
   #board:not([hidden]) .boards.two { grid-template-columns: 1fr 1fr; }
   #board:not([hidden]) .boards.two #photo-wrap { margin-right: 0; align-self: start; }
+  #board:not([hidden]) .boards.two #photo-svg { width: 95%; margin-inline: auto; }   /* 95% of the size it was (TODO-177) */
   #board:not([hidden]) .boards.two .board-pin .board-wrap { margin-left: 0; }
 }
 /* Square corners on the side that reaches the page's edge: up to main's max-width (720px), or 1240px side by side. */
@@ -234,7 +235,19 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .chip.black { background: var(--black-chk); }
 
 /* The checkers that do not add up, under the board (TODO-088). */
-.count-mark { font-weight: bold; font-size: 14px; margin: 0 0 4px; }
+/* On the board picture's match line (TODO-177): the count at the left, 初期配置 at the right, the match's text between (drawn in the svg).
+   Sized by the picture's width (the svg's viewBox is 683 wide, its match line 34 high), so they stay clear of the text on a phone. */
+.board-wrap:has(.match-row) { position: relative; container-type: inline-size; }
+.match-row {
+  position: absolute; top: 4px; left: 0; right: 0; height: 4.98cqw; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; gap: 1cqw; padding-inline: 1.5cqw; pointer-events: none;
+}
+.reset-start {
+  pointer-events: auto; appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 6px;
+  font: inherit; font-size: max(10px, 2.1cqw); padding: 0 1.2cqw; height: 100%; white-space: nowrap; cursor: pointer;
+}
+.reset-start[hidden] { display: none; }
+.count-mark { font-weight: bold; font-size: max(9px, 2.2cqw); white-space: nowrap; }
 .count-mark .many { color: #c62828; }
 .count-mark .few { color: #c99a00; }
 /* 写真: the value beside it is still the one read from the photo (TODO-088). */
@@ -296,7 +309,7 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .sheet {
   position: fixed; z-index: 20; width: min(420px, calc(100vw - 16px)); box-sizing: border-box; padding: 4px 12px 12px;
   max-height: calc(100dvh - var(--bar-h, 0px) - 16px); overflow-y: auto; overscroll-behavior: contain;
-  background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 20px #0004;
+  background: var(--card); color: var(--fg); border: 4px solid var(--accent); border-radius: 12px; box-shadow: 0 8px 28px #000b;
   touch-action: pinch-zoom;   /* nothing in it scrolls: a swipe on it must not scroll the page below, a pinch still zooms (TODO-144) */
 }
 .sheet[hidden] { display: none; }
@@ -317,6 +330,8 @@ legend { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
 .opt-label small { display: block; font-size: 11px; }
 .opt .seg { flex: 1; min-width: 0; }
 .opt .seg button { padding: 7px 6px; font-size: 15px; }
+.opt .seg[data-name="plies"] { flex: none; }
+.opt .seg[data-name="plies"] button { padding: 2px 8px; font-size: 12px; min-height: 28px; }   /* smaller than the rest (TODO-177) */
 .opt .note { flex-basis: 100%; margin: 0; }
 .opt .angle { flex: 1; min-width: 0; }
 .panel .note { margin: 4px 0 8px; }

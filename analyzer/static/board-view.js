@@ -21,9 +21,9 @@ const BgBoardView = (() => {
   // 奥 owns, 奥's tray of borne-off checkers, 奥's score, the cube in the middle, 手前's score, 手前's tray, the cube
   // 手前 owns, 手前's pip count. 3 apart. The pip counts stick out above and below the board's frame.
   // COL.w: the narrowest that holds the cube (40) with its edge (2.5): a pip count of 3 digits ("888" ≈ 35 at 20px bold) is narrower (TODO-163).
-  const COL = { w: 43, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 32, tray: 101, cube: 40, pip: 40, pad: 3 };
+  const COL = { w: 43, gap: 8, y0: B.y0 - 6, y1: B.y1 + 6, score: 43, tray: 90, cube: 40, pip: 40, pad: 3 };
   const VIEW = { y: COL.y0 - COL.pad - COL.pip - 4, h: (COL.y1 - COL.y0) + 2 * (COL.pad + COL.pip + 4) };
-  const MATCH_H = 26;   // the line above the board (and 奥's pip count) for the match, only in a match (TODO-099)
+  const MATCH_H = 34;   // the line above the board (and 奥's pip count) for the match, only in a match (TODO-099)
   const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]],
                  4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
                  6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
@@ -195,7 +195,7 @@ const BgBoardView = (() => {
   // 手前: the bottom) toward the middle, with the count.
   function drawBorneOff(svg, b, home) {
     const { offW, offB } = BgBoard.counts(b);
-    const hgt = 4, step = 5, x = sideX(home) + 6;
+    const hgt = 3.5, step = 4.4, x = sideX(home) + 6;
     for (let [side, n] of [["white", offW], ["black", offB]]) {
       if (n <= 0) continue;
       n = Math.min(n, 15);
