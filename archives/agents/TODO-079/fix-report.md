@@ -23,7 +23,8 @@
 
 ## CI
 
-（下に追記）
+3bcba0d に対して、test 39387162560・accuracy 39387162586・ruff 39387163933。test と accuracy は `gh run watch --exit-status` で終了コード 0、ruff は success（3 つとも success）。
+CI の結果を足したこのコミットは文書だけなので、run は作られない。
 
 ## 残る懸念（直していない。管理者の指示どおり）
 
