@@ -11,7 +11,7 @@
 // result in words), cube.js, moves.js, photo.js, scan.js, history.js, sample.js, api.js.
 "use strict";
 
-const APP_VERSION = "0.94.2";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
+const APP_VERSION = "0.94.3";   // = __version__ in analyzer/app.py; tells an old cached app.js apart
 const UPLOAD_MAX = 2048;      // longest side sent to the server (recognition was checked at this size)
 const SEND_AS_IS_MAX = 2560;  // smaller images (screenshots) are sent untouched
 const NAME = BgResult.NAME;
@@ -251,7 +251,7 @@ part((s) => [s.sideMode, s.sideFrom], (s) => {
 part((s) => s.edit && s.edit.angle, (s) => {
   $("edit-tools").hidden = !s.edit;
   $("turn-tools").hidden = !!s.edit;
-  $("corner-tools").hidden = !!s.edit;
+  $("corner-tools").hidden = $("corner-opts").hidden = !!s.edit;
   if (!s.edit) return;
   $("edit-angle").value = String(s.edit.angle);
   $("edit-angle-text").textContent = `${s.edit.angle}°`;
@@ -1429,7 +1429,7 @@ BgApi.version().then((v) => {
   $("photo-note").hidden = serverKeepsSamples;   // the first screen must not say "not saved" when it is (TODO-165)
   $("photo-note-keep").hidden = !serverKeepsSamples;
   redraw(drawImprove);
-  $("claude-corners").hidden = $("claude-note").hidden = !v.claude;
+  $("claude-corners").hidden = !v.claude;
 }).catch(() => {});
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
