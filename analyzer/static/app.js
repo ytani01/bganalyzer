@@ -268,7 +268,7 @@ part((s) => [s.board, s.fromPhoto, s.warnings, s.home, s.homeGuess, s.bottomColo
   // (borne off, or missed) in yellow, with a ⚠ only then; no checkers at all counts as fewer.
   const { onW, onB } = BgBoard.counts(s.board);
   const cls = (on) => (on > 15 ? "many" : s.fromPhoto && on < 15 ? "few" : "");
-  const mark = !onW && !onB ? [["盤に駒がありません", "few"]]
+  const mark = !onW && !onB ? [["駒がありません", "few"]]
     : [["white", onW], ["black", onB]].map(([side, on]) => [`${NAME[side]} ${on}/15`, cls(on)]);
   const warn = mark.some(([, c]) => c) ? "⚠ " : "";
   $("count-mark").hidden = false;
