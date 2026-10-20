@@ -203,9 +203,10 @@ def test_import_paints_outside_the_board_and_keeps_only_the_fields_of_samples(
         and t["id"] == "aaa"
         and img.shape == orig.shape
     )
-    (x0, y0), (x2, y2) = t["corners_TL_TR_BR_BL"][0], t["corners_TL_TR_BR_BL"][2]
-    cy, cx = int((y0 + y2) / 2), int((x0 + x2) / 2)
-    assert (img[cy, cx] == orig[cy, cx]).all()  # inside, as it was
+    painted = import_collected.paint(orig, t["corners_TL_TR_BR_BL"])
+    assert (painted != orig).any() and (
+        img == painted
+    ).all()  # painted outside the widened board (a png: as it is)
 
 
 def test_paint_leaves_10_percent_around_the_board_and_stops_at_the_edges():

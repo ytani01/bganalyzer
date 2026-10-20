@@ -212,7 +212,7 @@ flowchart TD
 - 認識を直すのは、Pi の Claude Code に「collected の report を見て直して」と頼んだときです（自動ではしません）。
 - 読み違いのある組は、`BG_IMPORT` を設定したサーバー（開発機だけ。誰でも送れる Pi では設定しない）で `recognizer/import_collected.py` が `samples/collected-*` に入れます（TODO-114）。名前は、`BG_CLAUDE` があれば盤の外を塗った写真を `claude -p` に見せて、盤の見た目と撮り方から付けます（例: `collected-blue-felt-oblique`。重なれば `-2`…）。無いときや失敗したときは `collected-<id>`（TODO-142）。
   設定は `systemctl --user edit bganalyzer` で `Environment=BG_IMPORT=1` を足します（下の「Claude に選ばせる」と同じやり方）。古い組から 1 回に 10 組まで、
-  `samples/` に同じ名前か同じ写真があるもの、画像として読めないものは除きます。前の取り込みの PR が開いたままなら何もしません（チェックが落ちたとき、main とぶつかったとき、チェックを待つ間にサービスを再起動したとき。開発機は main を pull するたびに再起動するので、残った PR は見てマージするか閉じてください）。背景の塗りつぶし処理で盤の外（正解の四隅の外）を黒くし、EXIF は入れません。
+  `samples/` に同じ名前か同じ写真があるもの、画像として読めないものは除きます。前の取り込みの PR が開いたままなら何もしません（チェックが落ちたとき、main とぶつかったとき、チェックを待つ間にサービスを再起動したとき。開発機は main を pull するたびに再起動するので、残った PR は見てマージするか閉じてください）。背景の塗りつぶし処理で、正解の四隅を盤の中心から各隅までの距離で 1.1 倍に広げた四角（各辺の外に約 5%）の外を黒くし（写真の外は写真の端まで。TODO-179）、EXIF は入れません。
   `origin/main` の別の worktree で `accuracy_baseline.json` と `recognizer/README.md` の「精度」の表を書き直し、PR を作って、
   `test`・`accuracy` が通り、最新の main を取り込んでも通ればマージします（落ちたとき・main とぶつかったときは PR を開いたまま残す）。この機械の `gh` のログインで push します。
   マージされたら、取り込んだ組の写真と正解を `collected/` から消します（PR が開いたままなら残す。TODO-146）。

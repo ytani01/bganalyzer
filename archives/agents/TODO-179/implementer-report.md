@@ -61,3 +61,9 @@ galaxy-screen-7 24→14（home が外れる）、green-felt-side-hand 16→12、
 
 - black-red-oblique の上の縁に、指のようなものが小さく写っているかもしれない（一覧の縮小画像で見た限り。実害は未確認）
 - 精度の合計が 15 ポイント下がる。CI の `accuracy` は書き直した基準と比べるので落ちない見込み
+
+## レビューの指摘への対応
+
+- `docs/raspi.md:215` 塗る範囲を「盤の中心から各隅までの距離で 1.1 倍に広げた四角（各辺の外に約 5%）の外」に直した
+- `analyzer/test_collected.py` の取り込みのテストに、書き出した写真が `paint(元の写真, 四隅)` と画素まで同じで、元の写真とは違うことの assert を戻した。`add()` から `paint` を外すと落ちる（1 failed）ことを確かめた。`pytest -q analyzer/test_collected.py` は 13 passed、ruff は通る
+- CLAUDE.md と TODO.md の「10% 広げた」を「盤の中心から各隅までの距離を 1.1 倍にした四角（各辺の外に約 5%）」に直した
