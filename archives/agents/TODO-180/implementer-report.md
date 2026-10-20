@@ -38,3 +38,8 @@
 - 検討 5: `CLAUDE.md` の手順 4 に、push が拒否されたらトップを `git fetch` のあと `git reset --hard origin/main` で戻して手順 3 に戻る、と書いた。
 - 検討 6: `TODO.md` の「決まったこと」に、paths の絞り込みの意味・`claude/collected-import-*` の除外・CI の待ち方を足し、決着済みの「何を決めるか」の段落を消した。
 - 検討 4（force push のあと paths の絞り込みで CI が走らないことがあるか）は未確認のまま。文書はまだ触っていない（verifier が測る）。
+
+## 追記 3（再レビューの反映）
+
+- 指摘 7: `CLAUDE.md` の手順 2 に、push の直後は run がまだ無いことがあり、文書だけでない変更で空なら数秒待って引き直す、空のまま取り込まないと書いた。
+- 指摘 8: 手順 4 に、`git reset --hard origin/main` で戻したあと `systemctl --user restart bganalyzer` でローカルホストのサービスも戻すと書いた。

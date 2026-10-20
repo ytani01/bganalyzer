@@ -125,12 +125,14 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 - **変更は PR なしで main に取り込む**（2026-10-20 ユーザーが決めた。TODO-180）。変更は小さく、ブランチ名に作業内容を入れる（例: `claude/recognizer-oblique`）。担当は次の順で進める。
   1. ブランチ `claude/<作業内容>` を origin に push する。push で GitHub Actions が走る
   2. 結果を待つ。まず `gh run list --branch claude/<作業内容> --commit $(git rev-parse HEAD) --json databaseId,workflowName` で run の ID を調べ
-     （run は `test`・`ruff`・`accuracy` ごとに別。走らないものもある）、run ごとに `gh run watch <ID> --exit-status` で待つ。
+     （run は `test`・`ruff`・`accuracy` ごとに別。走らないものもある。push の直後は run がまだ無いことがあるので、
+     文書だけでない変更で空なら、数秒待って引き直す。空のまま取り込まない）、run ごとに `gh run watch <ID> --exit-status` で待つ。
      引数なしの `gh run watch` は端末でないと待たず、`--exit-status` が無いと落ちても終了コード 0 になる。短い間隔で状態を叩き続けない。
      落ちたら直して push し直す。落ちたものは main に入れない
   3. 通ったら `git fetch` のあと、main が進んでいれば `git rebase origin/main` して `git push --force-with-lease` で push し直し、CI をやり直す
   4. トップの作業ツリーで `git merge --ff-only claude/<作業内容>` して `git push origin main` する。ff-only にならなければ 3. に戻る。
-     push が拒否されたとき（直前に別の担当が main を push した）は、トップを `git fetch` のあと `git reset --hard origin/main` で戻して 3. に戻る
+     push が拒否されたとき（直前に別の担当が main を push した）は、トップを `git fetch` のあと `git reset --hard origin/main` で戻し、`systemctl --user restart bganalyzer` でローカルホストのサービスも戻して
+     （reset では post-merge が走らず、取り込まれていないコードで動き続ける）3. に戻る
      （トップは取り込む前から main と同じで、手元の変更は無いはず）
   5. worktree・ローカルのブランチ・origin のブランチを消す（上の「main に取り込んだら」）
 
