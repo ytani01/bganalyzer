@@ -1,0 +1,42 @@
+{
+ "390-photo-whiteoff15": {
+  "count": "⚠ 白 1/15・黒 4/15",
+  "countFS": "12px",
+  "countR": 109.3,
+  "countY": [
+   425.7,
+   443.7
+  ],
+  "matchL": 133.8,
+  "matchR": 228,
+  "matchY": [
+   428.8,
+   442.8
+  ],
+  "resetL": 324.8,
+  "resetFS": "12px",
+  "scrollW": 390,
+  "vw": 390
+ },
+ "390-photo-whiteoff15_squares": [],
+ "390-photo-whiteoff15_errors": [],
+ "390-photo-whiteoff15_keys": [
+  "EXC Expecting value: line 1 column 1 (char 0)"
+ ],
+ "1200-photo-side": {
+  "svgW": 566.2,
+  "wrapW": 596,
+  "ratio": 0.95,
+  "cssWidth": "566.188px",
+  "cssRule": "95%",
+  "scrollW": 1200,
+  "vw": 1200,
+  "photoWrapHidden": false,
+  "bodyBg": "rgb(244, 241, 234)"
+ },
+ "1200-photo-side_squares": [],
+ "1200-photo-side_errors": [],
+ "1200-photo-side_keys": [
+  "EXC Expecting value: line 1 column 1 (char 0)"
+ ]
+}
