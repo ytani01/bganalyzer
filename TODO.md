@@ -128,8 +128,8 @@ worktree で編集したあと main に取り込むたびに PR を作るのを�
 
 長押ししたポイント・バーの色と駒の数を選ぶ吹き出し（`analyzer/static/index.html` の `#palette`）に、TODO-177 で `.sheet` に付けた太い枠・色・濃い影を同じように付ける（2026-10-20 ユーザーの依頼）。
 
-- [ ] `analyzer/static/style.css` の `.sheet` の枠（4px の `var(--accent)`）・影（`0 8px 28px #000b`）・角丸・背景を、`.palette` と共通の規則にする（値を 2 か所に書かない）。吹き出しの位置・動き・中身（幅 232px・余白・ボタン）は保つ
-- [ ] analyzer の版を直しとして上げる（0.94.1 → 0.94.2。`analyzer/app.py` と `analyzer/static/app.js` の `APP_VERSION` を揃える）
+- [x] `analyzer/static/style.css` の `.sheet` の枠（4px の `var(--accent)`）・影（`0 8px 28px #000b`）・角丸・背景を、`.palette` と共通の規則にする（値を 2 か所に書かない）。吹き出しの位置・動き・中身（幅 232px・余白・ボタン）は保つ
+- [x] analyzer の版を直しとして上げる（0.94.1 → 0.94.2。`analyzer/app.py` と `analyzer/static/app.js` の `APP_VERSION` を揃える）
 - [ ] ローカル: マージ後にローカルホストで更新し、長押しした吹き出しの枠が 4px の `--accent` で影が濃く、位置と中身が変わっていないことを確かめる
 
 **無駄を省く工夫:** TODO-177 と同じ。確認は live_view（`BG_CDP=http://127.0.0.1:9222`）で吹き出しを 1 回開いて、枠・影・位置を読み出すだけにし、テスト全体は CI に任せる
