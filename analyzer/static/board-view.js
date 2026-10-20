@@ -224,7 +224,7 @@ const BgBoardView = (() => {
   // The match on a line of its own above the board, and each side's score as a grey square-cornered card with a black number in the middle of the column (TODO-099, TODO-152, TODO-155).
   function drawMatch(svg, m, home, y0, onPart) {
     tapPart(el("text", { x: BAR_X, y: y0 + MATCH_H / 2 + 2, class: "match-n", "pointer-events": "none" }, svg), "match", onPart).textContent =
-      (m.length ? `${m.length} ポイントマッチ` + (m.crawford ? "（クロフォード）" : "") : "アンリミテッド") + (onPart ? " ▾" : "");
+      (m.length ? `${m.length}pt` + (m.crawford ? " クロフォード" : "") : "アンリミテッド") + (onPart ? " ▾" : "");
     if (!m.length) return;
     const x = sideX(home);
     for (const side of ["white", "black"]) {
