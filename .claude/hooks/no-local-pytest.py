@@ -23,7 +23,7 @@ if run and not re.search(r"test_\w+\.py", run.group()):
                     "hookEventName": "PreToolUse",
                     "permissionDecision": "deny",
                     "permissionDecisionReason": "テスト全体の pytest は手元で流さない。GitHub Actions の test の結果を見る"
-                    "（gh pr checks）。1 ファイルだけなら analyzer/test_*.py を指定する（CLAUDE.md の「共同開発」）",
+                    "（push したあと gh run watch）。1 ファイルだけなら analyzer/test_*.py を指定する（CLAUDE.md の「共同開発」）",
                 }
             },
             ensure_ascii=False,

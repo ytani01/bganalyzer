@@ -28,3 +28,4 @@
 - 3 本とも push の branches に `'!claude/collected-import-**'` を足した（ブランチ名は `recognizer/import_collected.py:39` の `BRANCH = "claude/collected-import-"` に日時が続く形）。自動の取り込みは PR の側だけで走る。`yaml.safe_load` で読めることを確認（実際に除かれるかは verifier が確かめる）。
 - `CLAUDE.md` の「取り込む前に」と `docs/HANDOVER.md` の CI の説明を、新しい絞り込みに合わせた（文書だけの変更では何も走らないので、そのまま取り込んでよいと書いた）。
 - 上の「判断が要る点」のうち、paths の絞り込みと二重実行の 2 つは解消した。`.claude/hooks/no-local-pytest.py` は触らず、利用者の確認待ち。
+- `.claude/hooks/no-local-pytest.py:26` の文言を「（push したあと gh run watch）」に直した（利用者の許可あり）。構文は `ast.parse` で確認。
