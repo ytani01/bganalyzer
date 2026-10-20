@@ -29,3 +29,12 @@
 - `CLAUDE.md` の「取り込む前に」と `docs/HANDOVER.md` の CI の説明を、新しい絞り込みに合わせた（文書だけの変更では何も走らないので、そのまま取り込んでよいと書いた）。
 - 上の「判断が要る点」のうち、paths の絞り込みと二重実行の 2 つは解消した。`.claude/hooks/no-local-pytest.py` は触らず、利用者の確認待ち。
 - `.claude/hooks/no-local-pytest.py:26` の文言を「（push したあと gh run watch）」に直した（利用者の許可あり）。構文は `ast.parse` で確認。
+
+## 追記 2（reviewer の指摘の反映）
+
+- 要修正 1: `CLAUDE.md` の手順 2 に、`gh run list --branch … --commit … --json databaseId,workflowName` で run の ID を調べ、run ごとに `gh run watch <ID> --exit-status` で待つと書いた。フック（`.claude/hooks/no-local-pytest.py:26`）の文言も合わせた（ruff check・format --check は通った）。
+- 要修正 2: rebase のあとの push は `--force-with-lease`（`CLAUDE.md` の手順 3、`docs/HANDOVER.md` の運用の行とプロジェクト指示）。
+- 要修正 3: `docs/HANDOVER.md` の担当による取り込みを「PR なしの取り込み」に改め、「自動の取り込み」は `import_collected.py` だけを指すようにした。
+- 検討 5: `CLAUDE.md` の手順 4 に、push が拒否されたらトップを `git fetch` のあと `git reset --hard origin/main` で戻して手順 3 に戻る、と書いた。
+- 検討 6: `TODO.md` の「決まったこと」に、paths の絞り込みの意味・`claude/collected-import-*` の除外・CI の待ち方を足し、決着済みの「何を決めるか」の段落を消した。
+- 検討 4（force push のあと paths の絞り込みで CI が走らないことがあるか）は未確認のまま。文書はまだ触っていない（verifier が測る）。

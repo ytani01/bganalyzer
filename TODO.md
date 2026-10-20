@@ -73,13 +73,14 @@ worktree で編集したあと main に取り込むたびに PR を作るのを�
 - main への push は担当が行う（bganalyzer では push・マージは許可済み）
 - `recognizer/import_collected.py` が読み違いの組を `samples/` に入れる自動の PR は今のまま
 - 仕掛かりの TODO-177（PR #525）は PR のまま終える
+- 「今の paths の絞り込みは保つ」は、文書だけの変更で `test`・`ruff` を走らせない意味（追加で決まったこと、2026-10-20 ユーザー）。push にも pull_request と同じ paths を付ける（main への push も同じ絞り込みになる）
+- `import_collected.py` のブランチ（`claude/collected-import-*`）は PR で走るので、push の側では除く
+- CI の待ち方を CLAUDE.md に書く。run ID は `gh run list` で調べ、`gh run watch <ID> --exit-status` で待つ。rebase のあとの push は `--force-with-lease`。push が拒否されたらトップを `origin/main` に戻す
 
 - [x] `.github/workflows/test.yml`・`ruff.yml`・`accuracy.yml` を `claude/**` への push でも走るようにする（今の paths の絞り込みは保つ）
 - [x] CLAUDE.md の「共同開発」（PR・マージ・`gh pr merge --delete-branch`・マージ前の CI の記述）、docs/HANDOVER.md、そのほか PR を前提にした記述（`rg -n -e 'PR' -e 'gh pr' -e 'マージ' CLAUDE.md docs/ .claude/ README.md` で洗い出す。`archives/` は直さない）を新しいやり方に直す。取り込んだあとの origin の `claude/*` ブランチも消す
 - [x] 共同開発の相手（別アカウントの Claude）にも同じやり方になることを docs/HANDOVER.md に書く
 - [ ] ローカル: 取り込み後に、トップの作業ツリーで `git pull` して main が最新になることを確かめる
-
-**何を決めるか:** CI の待ち方（`gh run watch` など）を CLAUDE.md に書くか。**選択肢:** 書く／書かない。**いつ聞くか:** 実装の中で出たとき。
 
 **無駄を省く工夫:** 文書と CI の条件だけの変更なので、確かめるのはこの項目自身の取り込み（push で CI が走る・ff-only で入る）の 1 回だけ。テスト全体は CI に任せる
 
