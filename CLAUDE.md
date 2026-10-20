@@ -126,7 +126,9 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
   1. ブランチ `claude/<作業内容>` を origin に push する。push で GitHub Actions が走る
   2. 結果を待つ。まず `gh run list --branch claude/<作業内容> --commit $(git rev-parse HEAD) --json databaseId,workflowName` で run の ID を調べ
      （run は `test`・`ruff`・`accuracy` ごとに別。走らないものもある。push の直後は run がまだ無いことがあるので、
-     文書だけでない変更で空なら、数秒待って引き直す。空のまま取り込まない）、run ごとに `gh run watch <ID> --exit-status` で待つ。
+     文書だけでない変更で空なら、数秒待って引き直す。空のまま取り込まない。
+     ただし、rebase や amend で、直前に通った run の push との差が paths の外（文書だけ）か 0 件のときは、force push しても run は作られない。
+     そのときは、直前に通った run の結果でよい。確かめたコードと同じなので）、run ごとに `gh run watch <ID> --exit-status` で待つ。
      引数なしの `gh run watch` は端末でないと待たず、`--exit-status` が無いと落ちても終了コード 0 になる。短い間隔で状態を叩き続けない。
      落ちたら直して push し直す。落ちたものは main に入れない
   3. 通ったら `git fetch` のあと、main が進んでいれば `git rebase origin/main` して `git push --force-with-lease` で push し直し、CI をやり直す
