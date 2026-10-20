@@ -48,3 +48,15 @@ docstring の「widened by 10% from the board's centre」も同じ。
 ## 範囲
 
 指示に無い変更は無い。版を上げないこと、galaxy-screen-9・tan-black-side-1 を塗り直さないことは、ユーザーが決めたことなので指摘しない。
+
+## 見直し（9a67f4e）
+
+指摘 1〜3 は直っている。要修正: なし。
+
+- 1（`docs/raspi.md:215`）: 「1.1 倍に広げた四角（各辺の外に約 5%）の外」と、写真の端で止まることを書いた。実装と合っている
+- 2（取り込みのテスト）: `img == paint(orig, 四隅)` と `paint(orig, ...) != orig` を確かめる形にした。png なので画素がそのまま一致する。
+  実測: `add()` の `paint(...)` を外すと `-k paints` が **1 failed**。元に戻したあと `analyzer/test_collected.py` は 13 passed、`git status` は空。
+  幅が正しいかは `paint` の単体のテストが見るので、役割の分け方としてもよい
+- 3（CLAUDE.md・TODO.md）: 「盤の中心から各隅までの距離を 1.1 倍にした四角（各辺の外に約 5%）」になり、2 通りには読めなくなった。
+  docstring の「widened by MARGIN from its centre」は手を入れていないが、`MARGIN = 0.1` とすぐ下の式から読めるので、このままでよい
+- 4（`docs/corner-methods.md`）は手を入れていない。重さが「検討」なので、そのままでも差し支えない
