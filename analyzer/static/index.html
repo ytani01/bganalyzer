@@ -67,11 +67,24 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
   <section id="corners" class="step" hidden>
     <p class="lead" id="corner-help"></p>
     <div class="canvas-wrap"><canvas id="photo-canvas"></canvas></div>
+    <div id="corner-opts">
+    <div class="row wrap">
+      <label><input type="checkbox" id="keep-corners"> 四隅を固定する</label>
+      <label><input type="checkbox" id="side-mode"> 横から撮った</label>
+    </div>
+    <!-- 横から撮った写真（TODO-120）: 手前の人から見て、どちらから撮ったか。初めてオンにしたときだけ聞き、端末に覚える -->
+    <div id="side-from-row" class="opt" hidden>
+      <span class="opt-label">撮った位置<small id="side-ask">手前の人から見て、どちらから撮りましたか</small></span>
+      <div class="seg" data-name="sideFrom">
+        <button data-value="right">右から</button><button data-value="left">左から</button>
+      </div>
+    </div>
+    </div>
     <!-- 回転: 押すたびに確定する（TODO-122）。画像の編集の最中は隠す -->
     <div id="turn-tools" class="row wrap">
+      <button id="edit-start" class="button small">画像を編集</button>
       <button id="edit-left" class="button small">左に 90°</button>
       <button id="edit-right" class="button small">右に 90°</button>
-      <button id="edit-start" class="button small">画像を編集</button>
     </div>
     <!-- 画像の編集（TODO-070）: 回転とトリミング。確定すると編集後の画像がそれ以降の写真になる -->
     <div id="edit-tools" hidden>
@@ -86,23 +99,10 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     </div>
     <div id="corner-tools">
     <div class="row wrap">
-      <button id="corner-reset" class="button small">やり直す</button>
+      <button id="corner-reset" class="button small">四隅をクリア</button>
       <button id="find-again" class="button small">再検出</button>
       <button id="claude-corners" class="button small" hidden>Claude で検出</button>
     </div>
-    <div class="row wrap">
-      <label><input type="checkbox" id="keep-corners"> 四隅を固定する</label>
-      <label><input type="checkbox" id="side-mode"> 横から撮った</label>
-    </div>
-    <!-- 横から撮った写真（TODO-120）: 手前の人から見て、どちらから撮ったか。初めてオンにしたときだけ聞き、端末に覚える -->
-    <div id="side-from-row" class="opt" hidden>
-      <span class="opt-label">撮った位置<small id="side-ask">手前の人から見て、どちらから撮りましたか</small></span>
-      <div class="seg" data-name="sideFrom">
-        <button data-value="right">右から</button><button data-value="left">左から</button>
-      </div>
-    </div>
-    <!-- 畳まずに出す（TODO-093） -->
-    <div class="row"><span id="claude-note" class="note" hidden>写真が Anthropic に送られます</span></div>
     <!-- 盤面の画面の「ゲーム」（#match）は、この画面を開いている間ここへ移す（TODO-093） -->
     <div id="corners-match"></div>
     </div>
