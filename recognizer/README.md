@@ -397,7 +397,7 @@ recognizer 0.16.0（TODO-028）で、三角形の色の領域を探す作り方�
 | photo-black-blue-oblique（TODO-079、0.30.0） | 小さく透明な緑のダイス 6-2（斜め撮影） | 6-2（6. の目から探すやり方で。0.29.3 までは読まない） |
 
 斜めから撮ったサンプルで正解にダイスのある 8 枚（photo-black-blue-oblique と `collected-*-oblique` 7 枚）のうち、
-0.30.0 で読めるのは photo-black-blue-oblique だけ（2026-10-20）。7 枚のうち 4 枚はどちらかの目が 1、cream-red と cream-red-black は
+0.30.0 で読めるのは photo-black-blue-oblique だけ（2026-10-20）。7 枚のうち 3 枚はどちらかの目が 1（1 の目は対が無く、目から探すやり方でも見つからない）、brown-cream の 5-5 は上の面と側面の目を一緒に数え、cream-red と cream-red-black は
 写真が粗くダイスの目が見えない、green-red-white の 4-4 は片方の小さな白いダイスの目の光り方で 4 を 2 個の目と見る。どれも読まないままで、
 全サンプルで間違った目を入れたものは増えていない。
 
