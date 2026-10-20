@@ -70,7 +70,7 @@ JPEG 品質 0.92 で書き出した写真（PWA は長辺 2560px を超える写
 `check_accuracy.py` が `samples/*.truth.json` の全部（`samples/external` は除く）を読み、サンプルごとの結果を
 `accuracy_baseline.json` と比べる。正しいポイントの合計が減る・1 枚でも減る（0.13.1 までは 2 ポイント以上）・バーやホームの推定が外れるようになる・
 ダイスやキューブの読みが悪くなる（ok → 読めない → 誤り）と失敗する。GitHub Actions の `accuracy`（`.github/workflows/accuracy.yml`）が、
-recognizer・samples・依存を変える PR と main への push で走らせる。
+recognizer・samples・依存を変える PR（自動の取り込みが作る）と、main と `claude/**` への push で走らせる。
 
 - 0.14.0 から、どの CPU でも途中の値まで同じに読む（下の「CPU で変わらない読み取り」）ので、基準はどの機械で更新してもよい（Pi でも）。
   TODO-074 からは CPU による違いを確かめていない。Pi と GitHub Actions で結果が分かれたら、GitHub Actions の結果に合わせて基準を書き直す。
@@ -511,7 +511,7 @@ PI-032 で足した 2 枚（commons-lg-cube-dice と external の galaxy-cube2-n
 `PARAMS` の定数（駒の円の点数、山の傾き、色の許し幅、ダイスの目のコントラスト、キューブの真ん中の幅・数字の点数など 17 個）を
 1 つずつ 0.8・0.9・1.1・1.2 倍にして全部のサンプルを読み直し、`check_accuracy.py` と同じ項目（ポイント・バー・ホーム・ダイス・キューブ・キューブの数字）で
 今の設定と比べる。**ポイントが増え、どのサンプルのどの項目も悪くならない**ものだけを候補にし、最後に候補を全部一緒に変えた結果も出す。
-コードは変えない（採るなら定数を変える PR を作り、`check_accuracy.py --update` を同じ PR に入れる）。
+コードは変えない（採るなら定数を変える変更を作り、`check_accuracy.py --update` を同じ変更に入れる）。
 関数の既定値に使われている定数は、あとから変えても届かないので試さない（表にそう出る）。貼り込んだ `synth-cube-*` は、ポイントが元の写真と二重になるので使わない。
 
 ```bash

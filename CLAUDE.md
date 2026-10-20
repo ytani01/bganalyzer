@@ -50,13 +50,13 @@ uv run -q --no-project --with playwright python tools/live_view.py   # スマホ
 - `collected/` の読み違いのある組は、開発機（`BG_IMPORT` を設定したサーバー。誰でも送れる Pi では動かさない）で
   `recognizer/import_collected.py` が盤の外を黒く塗って `samples/collected-*` に入れ、PR をマージまで自動で進める（TODO-114）。
   塗るのは、盤の中心から各隅までの距離を 1.1 倍にした四角（各辺の外に約 5%）の外で、盤の周りは残る（TODO-179）。
-  **盤の上や盤の周りに写った手や物、直し忘れた正解はそのまま公開される**（2026-10-17 ユーザーが決めた）。周りを広く残す分、手や周りの物が写りやすい。見つけたら、写っていけないものを手で黒く塗りつぶすか、その組を消す PR を出す
+  **盤の上や盤の周りに写った手や物、直し忘れた正解はそのまま公開される**（2026-10-17 ユーザーが決めた）。周りを広く残す分、手や周りの物が写りやすい。見つけたら、写っていけないものを手で黒く塗りつぶすか、その組を消す変更を取り込む
 
 ## バージョン
 
 analyzer と recognizer は別々にバージョンを持つ（`analyzer/app.py` と `recognizer/board.py` の `__version__`）。
 API の `/version` と PWA のヘッダーに、両方とコミット ID が出る。
-**そのディレクトリのコードを変える PR で、その方を上げる**（直しは 0.1.0 → 0.1.1、機能の追加や変更は 0.1.0 → 0.2.0）。
+**そのディレクトリのコードを変える変更で、その方を上げる**（直しは 0.1.0 → 0.1.1、機能の追加や変更は 0.1.0 → 0.2.0）。
 analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同じにする（端末に古い app.js が残っているとヘッダーに出る）。
 ドキュメントやテストだけの変更では上げない。recognizer の測る道具（`evaluate.py`・`check_accuracy.py`・`check_corners.py`・`collected.py` の比べ方など）だけの変更でも上げない（アプリの読み取りの結果は変わらないため。2026-10-15 ユーザーが決めた）。`pyproject.toml` の version は使わない。
 
@@ -65,15 +65,15 @@ analyzer を上げるときは `analyzer/static/app.js` の `APP_VERSION` も同
 認識を変えたら `recognizer/evaluate.py` で `samples/*.truth.json` と比べ、
 `recognizer/README.md` の「精度」の表を更新する。
 GitHub Actions の `accuracy` は、サンプルごとの結果が `recognizer/accuracy_baseline.json` より悪くなると落ちる。
-良くなったとき・サンプルを足した／消したときは `uv run python recognizer/check_accuracy.py --update` で基準を書き直して同じ PR に入れる。
+良くなったとき・サンプルを足した／消したときは `uv run python recognizer/check_accuracy.py --update` で基準を書き直して同じ変更に入れる。
 
 CPU による読みの違いは気にしない（TODO-074）。今の読み取りは整数と `recognizer/exact.py` で計算していて、どの機械でも同じに読むので、
 基準はどの機械（Pi でも）で更新してよい。これからの変更で float の処理を使ってもよい。
 そのせいで Pi と GitHub Actions で結果が分かれたら、GitHub Actions の結果に合わせて基準を書き直す。
 
-## マージ後に確かめること
+## 取り込み後に確かめること
 
-マージ後に動いているアプリでしか確かめられないことは、Raspberry Pi ではなく**ローカルホスト（開発機）で確かめ**、
+取り込み後に動いているアプリでしか確かめられないことは、Raspberry Pi ではなく**ローカルホスト（開発機）で確かめ**、
 **TODO.md のその項目に書く**（`- [ ] ローカル:` / `- [ ] スマホ:` の行。項目はその確認まで済んでから決着させる）。
 開発機にも Pi と同じ `bganalyzer.service` を入れてある。
 2026-10-17 に docs/PI_CHECKS.md の決まりをやめた（決着した PI-001〜PI-050 は `archives/pi/` に残す）。
@@ -107,25 +107,33 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 - **同じマシンで並べて作業するときは、セッションごとに worktree を分ける**（2026-10-19 ユーザーが決めた）。
   `claude -w <名前>` で起動し（`.claude/worktrees/<名前>/` に別のブランチの作業ツリーができる）、`claude agents` で見渡す。
   トップの作業ツリー（`~/work/bganalyzer`）は main のままにしておく。ローカルホストの `bganalyzer.service` と post-merge の再起動はここを見ているので、
-  マージ後の更新と `- [ ] ローカル:` の確認は、ここで `git pull` してから行う
+  取り込み後の更新と `- [ ] ローカル:` の確認は、ここで `git pull` してから行う
 - **main（利用者と話すセッション）は利用者との対話に専念する**（2026-10-19 ユーザーが決めた）。
   main が自分でやるのは、調べる（要点を短く読む程度）・利用者に聞く・担当に頼む・担当の報告を読むことだけ。
-  TODO の項目を立てる・決着させる、コードや文書の変更、コミット・PR・マージ、マージ後のローカルの確認は、すべて担当（teammate）にさせる。
+  TODO の項目を立てる・決着させる、コードや文書の変更、コミット・main への取り込み、取り込み後のローカルの確認は、すべて担当（teammate）にさせる。
   teammate は Agent ツールに `name` を付けて起動し、`isolation` は付けない（付けると teammate にならない）。bganalyzer だけで有効にしている（`.claude/settings.local.json`。リポジトリには入らない。TODO-154）。
-  teammate は main と同じ作業ツリー（main をトップで開いていればトップ）で起動するので、**作業の最初に自分で `git fetch` のあと `git worktree add .claude/worktrees/<名前> -b claude/<作業内容> origin/main` を作り、その中で編集・コミット・PR まで行う**。トップは main のままにする。
-  **PR をマージしたら（やめたときも）、作った本人がトップに戻って
-  `git worktree remove .claude/worktrees/<名前>` と `git branch -D claude/<作業内容>` で消す。**
-  確認の担当がその worktree で測るときは、確認が済むまで残し、マージのあとに消す。
-  マージは `gh pr merge --delete-branch` で行い、GitHub のブランチも残さない（2026-10-20 ユーザーが決めた）
+  teammate は main と同じ作業ツリー（main をトップで開いていればトップ）で起動するので、**作業の最初に自分で `git fetch` のあと `git worktree add .claude/worktrees/<名前> -b claude/<作業内容> origin/main` を作り、その中で編集・コミットし、下の「変更は PR なしで main に取り込む」まで行う**。トップは main のままにする。
+  **main に取り込んだら（やめたときも）、作った本人がトップに戻って
+  `git worktree remove .claude/worktrees/<名前>` と `git branch -D claude/<作業内容>` で消し、
+  origin のブランチも `git push origin --delete claude/<作業内容>` で消す**（2026-10-20 ユーザーが決めた）。
+  確認の担当がその worktree で測るときは、確認が済むまで残し、取り込みのあとに消す
   **担当から完了の知らせが届いたら、main はその担当にまだ頼むことがあるかを見て、無ければその場で `TaskStop` で止める。**
-  項目の決着に限らず、項目を立てるだけを頼んだ担当も同じ。同じ項目で確かめ直しを頼む見込みがある確認・レビューの担当と、マージと worktree の片付けが残っている実装の担当は残してよい（2026-10-20 ユーザーが決めた）
+  項目の決着に限らず、項目を立てるだけを頼んだ担当も同じ。同じ項目で確かめ直しを頼む見込みがある確認・レビューの担当と、取り込みと worktree の片付けが残っている実装の担当は残してよい（2026-10-20 ユーザーが決めた）
   同じファイルを複数の担当に同時に編集させない。
   tmux で開いた teammate には SendMessage が無いことがあるので、main に確認を頼むときは、作業を止めて返事（終わったときの通知）で伝える。
   確認・レビューを別の担当に分ける決まり（`~/.claude/CLAUDE.md`）はそのまま。ローカルの確認は、担当がトップの作業ツリー（main のまま）で `git pull` だけ行ってから確かめる
-- **PR は小さく、ブランチ名に作業内容を入れる**（例: `claude/recognizer-oblique`）
-- **マージ後に確かめる必要がある変更は、その PR の中で TODO.md のその項目に `- [ ] ローカル:` の行を足す**
+- **変更は PR なしで main に取り込む**（2026-10-20 ユーザーが決めた。TODO-180）。変更は小さく、ブランチ名に作業内容を入れる（例: `claude/recognizer-oblique`）。担当は次の順で進める。
+  1. ブランチ `claude/<作業内容>` を origin に push する。push で GitHub Actions が走る
+  2. `gh run watch` で結果を待つ（短い間隔で状態を叩き続けない）。落ちたら直して push し直す。落ちたものは main に入れない
+  3. 通ったら `git fetch` のあと、main が進んでいれば `git rebase origin/main` して push し直し、CI をやり直す
+  4. トップの作業ツリーで `git merge --ff-only claude/<作業内容>` して `git push origin main` する。ff-only にならなければ 3. に戻る
+  5. worktree・ローカルのブランチ・origin のブランチを消す（上の「main に取り込んだら」）
+
+  push と main への取り込みは担当が行う（許可済み）。PR は作らない。例外は、`recognizer/import_collected.py` が読み違いの組を `samples/` に入れる自動の PR だけ（今のまま）
+- **取り込み後に確かめる必要がある変更は、その変更の中で TODO.md のその項目に `- [ ] ローカル:` の行を足す**
   arm64（Pi）で `uv sync --frozen` が通るかは確かめない（2026-10-17 ユーザーが決めた。GitHub Actions も arm64 では流さない）
-- **マージの直前に最新の main を取り込み、GitHub Actions の `test` が通ってからマージする（`accuracy`・`ruff` が走った PR はそれも。
-  `ruff` は .py などを変える PR で走る。文書だけの PR では `test` は走らないので要らない）。** 落ちていたらマージしない。
+- **取り込む前に、ブランチの GitHub Actions の `test` が通っていることを確かめる（`accuracy`・`ruff` が走ったときはそれも。
+  `ruff` は .py などを変えたとき、`accuracy` は recognizer・samples・依存を変えたときに走る）。** `test` と `ruff` は `claude/**` への push で毎回走る（文書だけの変更でも）。
+  落ちていたら取り込まない。
   テスト全体は手元で流さない（CI と重なる。`.claude/hooks/no-local-pytest.py` が止める）。
   相手の変更とぶつかったら、勝手に直さずユーザーに報告する

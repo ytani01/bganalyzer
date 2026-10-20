@@ -2,9 +2,11 @@ name: test
 
 on:
   push:
-    branches: [main]
+    # claude/** は担当のブランチ。PR なしで main に取り込む前に確かめる（TODO-180）
+    branches: [main, 'claude/**']
   pull_request:
-    # 文書だけの PR では走らせない（TODO-064）。main への push では毎回走る
+    # 文書だけの PR では走らせない（TODO-064）。main と claude/** への push では毎回走る。
+    # PR は自動の取り込み（recognizer/import_collected.py）が作る
     paths-ignore: ['**.md', 'docs/**', 'archives/**']
 
 jobs:

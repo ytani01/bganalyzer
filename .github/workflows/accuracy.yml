@@ -7,7 +7,8 @@ on:
     # recognizer/README.md などの文書だけでは走らせない（TODO-064）
     paths: [pyproject.toml, uv.lock, recognizer/**, '!recognizer/**.md', samples/**, .github/workflows/accuracy.yml]
   push:
-    branches: [main]
+    # claude/** は担当のブランチ。PR なしで main に取り込む前に確かめる（TODO-180）
+    branches: [main, 'claude/**']
     paths: [pyproject.toml, uv.lock, recognizer/**, samples/**, .github/workflows/accuracy.yml]
   workflow_dispatch:
 

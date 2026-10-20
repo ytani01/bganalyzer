@@ -2,9 +2,11 @@ name: ruff
 
 on:
   push:
-    branches: [main]
+    # claude/** は担当のブランチ。PR なしで main に取り込む前に確かめる（TODO-180）
+    branches: [main, 'claude/**']
   pull_request:
-    # Python と ruff の設定を変えた PR だけ走らせる（TODO-168）
+    # Python と ruff の設定を変えた PR だけ走らせる（TODO-168）。
+    # PR は自動の取り込み（recognizer/import_collected.py）が作る
     paths: ['**.py', 'pyproject.toml', 'uv.lock', '.github/workflows/ruff.yml']
 
 jobs:

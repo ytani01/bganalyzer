@@ -29,14 +29,14 @@ Claude のプロジェクトのメモ（MEMORY）は、そのプロジェクト�
      位置ごと判定と断面の読み方をユーザーの盤の写真で測り直すことは、TODO-030 に残っている。
   4. TODO-025 のキューブの数字は、ユーザーの盤でキューブを 2・4・8・16 にした写真が届くまで待つ。
   5. TODO-027 は 2026-10-14 に決着した（recognizer 0.11.0、PI-022）。TODO-028 は 2026-10-14 にユーザーが再開を指示し、四隅の推定を作り直した（recognizer 0.10.0。3.6% 以内 7 → 14 枚）。TODO-028 も決着した。
-- **運用:** ユーザーとは日本語。自動マージ（最新 main を取り込み、CLAUDE.md の「共同開発」のマージの条件（test・accuracy・ruff）を満たし、
-  差分を見直して問題がなければ自分でマージし、一言報告）。マージ後に確かめることは同じ PR で TODO.md のその項目に `- [ ] ローカル:` の行で足し、
+- **運用:** ユーザーとは日本語。自動の取り込み（ブランチを push して CI を通し、最新 main に rebase し、CLAUDE.md の「共同開発」の条件（test・accuracy・ruff）を満たし、
+  差分を見直して問題がなければ自分で ff-only で main に取り込み、一言報告。PR は作らない。2026-10-20 から）。取り込み後に確かめることは同じ変更で TODO.md のその項目に `- [ ] ローカル:` の行で足し、
   ユーザーに「ローカルホストの Claude に『pull して TODO.md のローカルの確認をして』と頼んで」と伝える。版の上げ方は CLAUDE.md の「バージョン」。
 
 ## 1. GitHub で招待する（ユーザーがやる）
 
 ytani01/bganalyzer の Settings → Collaborators → Add people で相手のアカウントを招待する（Write 権限）。
-相手が招待を承認すると、ブランチの push と PR のマージができるようになる。
+相手が招待を承認すると、ブランチの push と main への取り込み（PR なし）ができるようになる。
 
 ## 2. 相手側でプロジェクトを作る（共同開発者がやる）
 
@@ -56,10 +56,10 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
 - ユーザーとのやりとりは日本語で行う。
 - リポジトリ ytani01/bganalyzer は別アカウントの Claude プロジェクトと共同で開発している。
   作業する前に main を pull し、リポジトリ直下の CLAUDE.md（特に「共同開発」）と docs/HANDOVER.md に従う。
-- 自動マージ: スレッドが作った PR は、マージ直前に最新 main を取り込み、
-  CLAUDE.md の「共同開発」のマージの条件（test・accuracy・ruff）を満たし、差分を見直して問題がなければ、ユーザーの確認を待たずにそのスレッド自身が
-  マージする。マージしたことは一言報告する。テスト失敗・未検証の重要事項・判断が必要な点・
-  相手の変更とのぶつかりがある場合はマージせず報告する。
+- 自動の取り込み（2026-10-20 から PR は作らない。共同開発の相手も同じやり方）: スレッドが作ったブランチ `claude/<作業内容>` は、origin に push して CI を通し、
+  取り込む直前に最新 main へ rebase し、CLAUDE.md の「共同開発」の条件（test・accuracy・ruff）を満たし、差分を見直して問題がなければ、ユーザーの確認を待たずにそのスレッド自身が
+  `git merge --ff-only` で main に取り込んで push する。取り込んだことは一言報告する。取り込んだあと origin の `claude/*` ブランチは消す。
+  テスト失敗・未検証の重要事項・判断が必要な点・相手の変更とのぶつかりがある場合は取り込まず報告する。
 - 方針や進み具合が変わったら、プロジェクトのメモだけでなく docs/HANDOVER.md か TODO.md にも書いてコミットする。
 ```
 
@@ -105,13 +105,13 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
   TODO-017 で途中局面・斜め・盤上のダイスの写真 3 枚、TODO-024 で自由な盤面図 3 枚（途中局面・バーの駒）と低解像度の写真 1 枚を足した。
   同じ撮影者・同じ初期配置の Tavli 7 枚は消さない（ユーザーの決定）。
   著作権のある盤面図（USBGF）は URL と正解だけを `samples/external/` に置き、画像は入れない（TODO-011）。
-- **マージ後の確認（TODO-023、2026-10-13）:** マージ後に動いているアプリでしか確かめられないことは
+- **取り込み後の確認（TODO-023、2026-10-13）:** 取り込み後に動いているアプリでしか確かめられないことは
   TODO.md のその項目に `- [ ] ローカル:` の行で足す。2026-10-17 から Pi ではなくローカルホスト（開発機）で、git pull のあとに確かめて結果を書き込む（CLAUDE.md）。
   2026-10-17 までは docs/PI_CHECKS.md で別に管理していた（TODO-026。決着した 50 件は `archives/pi/`）。
-- **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が PR（文書だけの PR は除く。TODO-064）と main への push で `uv run pytest analyzer` を実行する。
-  `accuracy`（`.github/workflows/accuracy.yml`、TODO-035）は recognizer・samples・依存を変える PR で、認識の精度が
+- **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が main と `claude/**` への push（毎回）と、PR（自動の取り込みが作る。文書だけの PR は除く。TODO-064）で `uv run pytest analyzer` を実行する（`claude/**` への push は TODO-180）。
+  `accuracy`（`.github/workflows/accuracy.yml`、TODO-035）は recognizer・samples・依存を変える push と PR で、認識の精度が
   `recognizer/accuracy_baseline.json` より下がっていないかを確かめる。
-  `ruff`（`.github/workflows/ruff.yml`、TODO-168）は .py・`pyproject.toml`・`uv.lock` を変える PR と main への push で `uv run ruff check` と `uv run ruff format --check` を実行する。
+  `ruff`（`.github/workflows/ruff.yml`、TODO-168）は main と `claude/**` への push と、.py・`pyproject.toml`・`uv.lock` を変える PR で `uv run ruff check` と `uv run ruff format --check` を実行する。
 
 - **ファイルの分け直し（2026-10-15、PR #174・#175・#178。動きは変えていない）:**
   analyzer は gnubg の呼び出しを `engine.py`、`POST /samples` を `samples.py`、リクエストの型を `models.py` に分けた。
@@ -128,5 +128,5 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
 
 - 新しい作業は TODO.md に項目を足してから始める。TODO.md の項目に担当は書かない（2026-10-15 ユーザーが決めた）。
 - 同じファイルを両方で大きく変えそうなときは、先に TODO.md かこのファイルで分担を決める。
-- マージの直前に最新の main を取り込み、ローカルのテストと CI の両方が通ってからマージする。
+- 取り込みの直前に最新の main へ rebase し、ブランチの CI が通ってから ff-only で main に取り込む。
 - 決まったこと・わかったことは、自分のプロジェクトのメモだけでなくリポジトリにも書く。
