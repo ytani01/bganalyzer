@@ -27,18 +27,22 @@
 
 **無駄を省く工夫:** `tune.py` は写真がまとまってから 1 回だけ流す。`samples/` に入れた組は CI の accuracy に任せる
 
-## TODO-079. photo-black-blue-oblique のサイコロ（緑の透明なもの）が読めない
+## TODO-079. 斜めから撮った写真のサイコロを読む
 
 | | main | 担当 |
 |---|---|---|
-| 見込み | Opus 5.5 / effort high | main（測定・実装）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
+| 見込み | Opus 5.5 / effort high | main（対話）/ 実装: teammate（Opus 5.5）+ reviewer（Opus 5.5 / high）+ verifier（Haiku 5.5 / medium） |
 
-`samples/photo-black-blue-oblique.jpg`（TODO-076）の 6・2 のサイコロを読めない。小さく透明な緑のサイコロで、バーの近くの駒の脇にある。
+`samples/photo-black-blue-oblique.jpg`（TODO-076）の 6・2 のサイコロ（小さく透明な緑）を読めないことから始めた。
+切り分けの結果、斜め撮影でサイコロの側面まで写り、形の検出（`dice._bodies`）で落ちる。目の検出と目の並びの判定は、形さえ渡せば読む。
+正解にサイコロのある斜め撮影のサンプル 8 枚はすべて読めていない。2026-10-20 利用者が案 B（目の並びからサイコロを探す。今のやり方で 2 個そろわないときだけ使う）を選んだ。
 
-- [ ] どこで崩れるかを切り分ける
-- [ ] 直すかどうかを決める（このサイコロだけの事情なら対応しないで閉じてもよい）
+- [x] どこで崩れるかを切り分ける
+- [x] 目の並びからサイコロを探す処理を足す（今のやり方で 2 個そろわないときだけ）
+- [x] 壊すと落ちるリグレッションテストを足す（photo-black-blue-oblique の 6・2）
+- [x] 精度の基準と `recognizer/README.md` の表を更新する
 
-**無駄を省く工夫:** 切り分けは photo-black-blue-oblique だけで行う
+**無駄を省く工夫:** 試すのは斜め撮影でサイコロのある 8 枚だけ。全サンプルは最後の `check_accuracy.py --update` の 1 回だけ
 
 ## TODO-121. 横から撮った写真のモードの精度を上げる
 

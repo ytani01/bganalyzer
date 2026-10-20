@@ -77,7 +77,7 @@
  "commons-tavli-red-white": {"points": 24, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "commons-travel-case": {"points": 17, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "commons-wooden-dice": {"points": 13, "bar": true, "home": false, "dice": "not read", "cube": "ok"},
- "photo-black-blue-oblique": {"points": 23, "bar": true, "home": true, "dice": "not read", "cube": "ok"},
+ "photo-black-blue-oblique": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "photo-blue-red-top": {"points": 22, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "photo-carved-brown-top": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "photo-green-felt-top": {"points": 23, "bar": true, "home": true, "dice": "not read", "cube": "ok"},

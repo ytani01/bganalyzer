@@ -7,10 +7,13 @@ Works on the board seen from straight above (as in board.py, at the photo's reso
   4. A die is found again and again at different levels; a place read often and alike is sure.
 The result is only given when exactly two sure dice lie in the fields, alike in colour and size
 (one die, dice on the bar, and a second pair of dice leave it unread).
+When that leaves the dice unread, they are looked for again from the pips alone (in an oblique
+photo a die's sides add to its top face and no square shows; TODO-079).
 """
 
 from __future__ import annotations
 
+import itertools
 import math
 
 import cv2
@@ -137,6 +140,115 @@ def _pips(gray, body, dark: bool, f: float = 0.5):
     return _spots(spot, s, x0, y0, roi, mask, dark)
 
 
+def _pip_found(gray, pitch, k, lay, circles):
+    """Readings of dice found from their pips alone, for dice that show as no square (seen from
+    the side in an oblique photo, the sides add to the top face; a clear die's sides are as
+    bright as its top). Like _found's readings: one per place and cut (TODO-079).
+
+    Every face has its centre on a pip (1, 3, 5) or halfway between two pips (2, 4, 6): squares
+    there, turned along the pair and sized from its spread, are tried. pitch: canonical."""
+    P = pitch * k
+    smin, smax = SIDE_MIN * P, SIDE_MAX * P
+    # not on the bar
+    x0, x1 = int((lay.a - 0.1 * pitch) * k), int((lay.a + lay.bar + 0.1 * pitch) * k)
+    found = []
+    # small dice have their pips only a few pixels apart: against a small neighbourhood too
+    for dark, size in itertools.product((False, True), (0.1, 0.25)):
+        ker = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(P * size) | 1,) * 2)
+        hat = cv2.morphologyEx(
+            gray, cv2.MORPH_BLACKHAT if dark else cv2.MORPH_TOPHAT, ker
+        )
+        hat[:, max(x0, 0) : max(x1, 0)] = 0
+        # pips close together on a light face run into one at a low cut: a die is read at
+        # several cuts, a chance pattern at few
+        for cut in range(2 * PIP_CONTRAST, 200, PIP_CONTRAST // 2):
+            n, _, st, cen = cv2.connectedComponentsWithStats(
+                (hat > cut).astype(np.uint8)
+            )
+            a, w, h = (
+                st[:, cv2.CC_STAT_AREA],
+                st[:, cv2.CC_STAT_WIDTH],
+                st[:, cv2.CC_STAT_HEIGHT],
+            )
+            ok = (
+                (a >= 0.004 * smin * smin)
+                & (a <= 0.06 * smax * smax)
+                & (np.maximum(w, h) <= 2.0 * np.minimum(w, h))
+                & (a >= 0.45 * w * h)
+            )
+            ok[0] = False
+            p, ar = cen[ok], a[ok].astype(np.float64)
+            dist = np.sqrt(((p[:, None] - p[None]) ** 2).sum(2))
+            # pips of one face: the same size, no further apart than a big die's corners
+            pair = (dist >= 0.1 * smin) & (dist <= 0.85 * smax)
+            pair &= np.maximum(ar[:, None], ar[None]) <= 2.5 * np.minimum(
+                ar[:, None], ar[None]
+            )
+            around = [np.flatnonzero(r <= 1.2 * smax) for r in dist]
+            here = []
+            for i, j in zip(*np.nonzero(np.triu(pair))):
+                dx, dy = p[j] - p[i]
+                d = dist[i, j]
+                ang = math.degrees(math.atan2(dy, dx))
+                # halfway: two corners across (2..6) or the middle pair of a six; at a pip:
+                # a neighbour on the diagonal (3, 5)
+                for c, s, t in (
+                    ((p[i] + p[j]) / 2, d / 0.85, ang - 45),
+                    ((p[i] + p[j]) / 2, d / 0.6, ang),
+                    (p[i], d / 0.42, ang - 45),
+                    (p[j], d / 0.42, ang - 45),
+                ):
+                    # a pip is a fair share of the face (not two specks on a big square)
+                    lo, hi = sorted((ar[i], ar[j]))
+                    if (
+                        not smin <= s <= smax
+                        or not 0.02 * s * s <= lo <= hi <= 0.08 * s * s
+                    ):
+                        continue
+                    cs, sn = math.cos(math.radians(t)), math.sin(math.radians(t))
+                    q = p[around[i]] - c
+                    u, v = q[:, 0] * cs + q[:, 1] * sn, -q[:, 0] * sn + q[:, 1] * cs
+                    m = around[i][(np.abs(u) < 0.5 * s) & (np.abs(v) < 0.5 * s)]
+                    body = dict(x=float(c[0]), y=float(c[1]), side=s, ang=t)
+                    val = _face_value([(*p[o], ar[o]) for o in m], body)
+                    if val is None or _on_checker(body, val, circles, k):
+                        continue
+                    box = cv2.boxPoints(((body["x"], body["y"]), (s, s), t))
+                    if box.min() < 0 or (box.max(0) >= gray.shape[::-1]).any():
+                        continue
+                    body["hull"] = np.int32(np.round(box)).reshape(-1, 1, 2)
+                    # and the pips found inside the square as in a body read the same face
+                    # (not two spots far apart on the board)
+                    if not any(
+                        _face_value(find(gray, body, dark, 0.5), body) == val
+                        for find in (_pips, _pips_level)
+                    ):
+                        continue
+                    here.append(body | dict(value=val, dark_pips=dark))
+            # one reading per place at this cut: the face with the most pips (two pips of a
+            # six also sit like a small two)
+            here.sort(key=lambda b: (-b["value"], -b["side"]))
+            kept = []
+            for b in here:
+                if all(
+                    exact.hypot(b["x"] - o["x"], b["y"] - o["y"]) >= 0.6 * o["side"]
+                    for o in kept
+                ):
+                    kept.append(b)
+            found += kept
+    return found
+
+
+def _on_checker(b, v, circles, k):
+    """A checker's dimple reads as a one (with a bit of a triangle next to it making a square)
+    and a pattern on a checker (an engraved flower) can look like a small die."""
+    return any(
+        v == 1 or b["side"] / k < 1.6 * c[2]
+        for c in circles
+        if exact.hypot(b["x"] / k - c[0], b["y"] / k - c[1]) < 0.5 * c[2]
+    )
+
+
 # pip layouts in face units (-1..1), in a frame aligned with the die
 _LAYOUT = {
     1: [(0, 0)],
@@ -215,8 +327,38 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
     ground = exact.warp(img, exact.mul3(np.diag([k, k, 1.0]), exact.inv3(H)), size)
     gray = cv2.cvtColor(ground, cv2.COLOR_BGR2GRAY)
     lab = cv2.cvtColor(ground, cv2.COLOR_BGR2Lab)
+    found = _found(gray, _bodies(gray, pitch * k), circles, k)
+    dice, values, out = _read(gray, lab, found, k, lay, pitch)
+    if values is None:
+        # dice seen from the side (an oblique photo) are no square: found from their pips;
+        # used only when they make the two dice (TODO-079)
+        # (a clear die takes some colour from what lies under it and from the light: the
+        # squares placed from the pips take a less even sample, so the colours may differ more)
+        pip_found = _pip_found(gray, pitch, k, lay, circles)
+        more = _read(gray, lab, pip_found, k, lay, pitch, hue=25)
+        if more[1] is not None:
+            found, (dice, values, out) = pip_found, more
+    if debug is not None:
+        g = ground.copy()
+        for b in found:
+            cv2.drawContours(g, [b["hull"]], -1, (0, 255, 255), 1)
+        for d in dice:
+            cv2.putText(
+                g,
+                str(d["value"]) + ("" if d["sure"] else "?"),
+                (int(d["x"]), int(d["y"] - d["side"] * 0.7)),
+                0,
+                1.2,
+                (0, 0, 255),
+                3,
+            )
+        cv2.imwrite(debug, g)
+    return dict(values=values, dice=out)
+
+
+def _found(gray, bodies, circles, k):
+    """The readings of the bodies: one per way of finding the pips that reads a face."""
     found = []
-    bodies = _bodies(gray, pitch * k)
     for b in bodies:
         # dark pips on a light face, or light pips on a dark one; each way of finding the pips
         # is one reading (the readings of one place are counted below)
@@ -231,16 +373,16 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
             continue
         v = max({v for v, _ in reads}, key=[v for v, _ in reads].count)
         dark = reads[0][1]
-        # a checker's dimple reads as a one (with a bit of a triangle next to it making a square)
-        # and a pattern on a checker (an engraved flower) can look like a small die
-        near = [
-            c
-            for c in circles
-            if exact.hypot(b["x"] / k - c[0], b["y"] / k - c[1]) < 0.5 * c[2]
-        ]
-        if any(v == 1 or b["side"] / k < 1.6 * c[2] for c in near):
+        if _on_checker(b, v, circles, k):
             continue
         found += [b | dict(value=v, dark_pips=dark) for v, _ in reads]
+    return found
+
+
+def _read(gray, lab, found, k, lay, pitch, hue=15):
+    """The dice of some readings: (dice in ground pixels, values or None, dice for the result).
+
+    hue: how far apart the two dice's colours (Lab a, b) may be."""
     # a real die is found at several brightness levels, nearly always with the same number:
     # one die per place, sure when most readings there agree
     dice = []
@@ -281,21 +423,6 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
                 on_bar=bool(lay.a - 0.1 * pitch < x < lay.a + lay.bar + 0.1 * pitch),
             )
         )
-    if debug is not None:
-        g = ground.copy()
-        for b in found:
-            cv2.drawContours(g, [b["hull"]], -1, (0, 255, 255), 1)
-        for d in dice:
-            cv2.putText(
-                g,
-                str(d["value"]) + ("" if d["sure"] else "?"),
-                (int(d["x"]), int(d["y"] - d["side"] * 0.7)),
-                0,
-                1.2,
-                (0, 0, 255),
-                3,
-            )
-        cv2.imwrite(debug, g)
     values = None
     field = [(d, o) for d, o in zip(dice, out) if d["sure"] and not o["on_bar"]]
     if len(field) == 2:
@@ -303,8 +430,8 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
         if (
             a["dark_pips"] == b["dark_pips"]
             and max(a["side"], b["side"]) < 1.3 * min(a["side"], b["side"])
-            and exact.norm(a["lab"][1:] - b["lab"][1:]) < 15
+            and exact.norm(a["lab"][1:] - b["lab"][1:]) < hue
             and abs(a["lab"][0] - b["lab"][0]) < 60
         ):
             values = sorted([a["value"], b["value"]], reverse=True)
-    return dict(values=values, dice=out)
+    return dice, values, out
