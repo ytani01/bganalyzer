@@ -329,9 +329,12 @@ def read_dice(img, H, lay, pitch: float, circles=(), debug=None):
     lab = cv2.cvtColor(ground, cv2.COLOR_BGR2Lab)
     found = _found(gray, _bodies(gray, pitch * k), circles, k)
     dice, values, out = _read(gray, lab, found, k, lay, pitch)
-    if values is None:
+    field = sum(d["sure"] and not o["on_bar"] for d, o in zip(dice, out))
+    if values is None and field < 2:
         # dice seen from the side (an oblique photo) are no square: found from their pips;
-        # used only when they make the two dice (TODO-079)
+        # used only when they make the two dice (TODO-079). Not when two or more were found
+        # and not read (both players' dice on the board): the pips would miss a 1 and could
+        # pick one pair out of the two
         # (a clear die takes some colour from what lies under it and from the light: the
         # squares placed from the pips take a less even sample, so the colours may differ more)
         pip_found = _pip_found(gray, pitch, k, lay, circles)
