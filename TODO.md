@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-177、TODO-178。** これまでに 172 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-179`。**
+**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-177、TODO-178、TODO-179、TODO-180。** これまでに 172 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-181`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
 ---
@@ -113,6 +113,31 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 **何を決めるか:** `collected/` の元の写真が Pi にだけあり開発機に無い場合、どこで塗り直すか。**選択肢:** 元の写真を開発機へ持ってくる／Pi で塗り直す。**いつ聞くか:** 実装の前（まず `collected/` が開発機にあるかを見る）。
 
 **無駄を省く工夫:** 確かめるのは 2〜3 組の塗り直しの画像を目で見ることと、CI の `accuracy`。全サンプルを手元で測り直さない
+
+## TODO-180. worktree の変更を PR なしで main に取り込む
+
+| | main | 担当 |
+|---|---|---|
+| 見込み | Sonnet 5.5 / effort medium | implementer（Sonnet / medium）+ reviewer（Opus / medium）→ verifier（Sonnet / medium）。文言と CI の条件が変わるので reviewer を付ける。reviewer を先、verifier を後。verifier は、この項目自身の取り込みで、ブランチを push して CI が走るか・ff-only で取り込めるかを確かめる |
+
+worktree で編集したあと main に取り込むたびに PR を作るのをやめたい（2026-10-20 ユーザーの依頼）。
+参考は `../meltype-fcitx5-dev/CLAUDE.md` の「担当（teammate）」の節（worktree のブランチを main が `git merge --ff-only` で取り込み、PR は作らない）。
+
+決まったこと（2026-10-20 ユーザーが決めた）:
+
+- 担当はブランチ `claude/<作業内容>` を origin に push して CI を走らせ、通ったら main を最新にして ff-only で取り込み、main を push する。落ちたものは main に入れない。ff-only にならないときは rebase して CI をやり直す
+- main への push は担当が行う（bganalyzer では push・マージは許可済み）
+- `recognizer/import_collected.py` が読み違いの組を `samples/` に入れる自動の PR は今のまま
+- 仕掛かりの TODO-177（PR #525）は PR のまま終える
+
+- [ ] `.github/workflows/test.yml`・`ruff.yml`・`accuracy.yml` を `claude/**` への push でも走るようにする（今の paths の絞り込みは保つ）
+- [ ] CLAUDE.md の「共同開発」（PR・マージ・`gh pr merge --delete-branch`・マージ前の CI の記述）、docs/HANDOVER.md、そのほか PR を前提にした記述（`rg -n -e 'PR' -e 'gh pr' -e 'マージ' CLAUDE.md docs/ .claude/ README.md` で洗い出す。`archives/` は直さない）を新しいやり方に直す。取り込んだあとの origin の `claude/*` ブランチも消す
+- [ ] 共同開発の相手（別アカウントの Claude）にも同じやり方になることを docs/HANDOVER.md に書く
+- [ ] ローカル: 取り込み後に、トップの作業ツリーで `git pull` して main が最新になることを確かめる
+
+**何を決めるか:** CI の待ち方（`gh run watch` など）を CLAUDE.md に書くか。**選択肢:** 書く／書かない。**いつ聞くか:** 実装の中で出たとき。
+
+**無駄を省く工夫:** 文書と CI の条件だけの変更なので、確かめるのはこの項目自身の取り込み（push で CI が走る・ff-only で入る）の 1 回だけ。テスト全体は CI に任せる
 
 ## 完了済み
 
