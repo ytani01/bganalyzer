@@ -1,6 +1,6 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121、TODO-180。** これまでに 176 件を決着させた。
+**残っている項目: TODO-025、TODO-030、TODO-079、TODO-121。** これまでに 177 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-182`。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
@@ -57,32 +57,6 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 **何を決めるか:** 四隅の点数の付け方と駒の数え方。**選択肢:** 写真がたまってから試して出す。**いつ聞くか:** 試したあと。
 
 **無駄を省く工夫:** 測るのは横からのサンプルだけ（`evaluate.py`・`check_corners.py` は正解の `side` を見る）。TODO-120 の試しの道具（`archives/agents/TODO-120/measure_side.py`）を使い回す
-
-## TODO-180. worktree の変更を PR なしで main に取り込む
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Sonnet 5.5 / effort medium | implementer（Sonnet / medium）+ reviewer（Opus / medium）→ verifier（Sonnet / medium）。文言と CI の条件が変わるので reviewer を付ける。reviewer を先、verifier を後。verifier は、この項目自身の取り込みで、ブランチを push して CI が走るか・ff-only で取り込めるかを確かめる |
-
-worktree で編集したあと main に取り込むたびに PR を作るのをやめたい（2026-10-20 ユーザーの依頼）。
-参考は `../meltype-fcitx5-dev/CLAUDE.md` の「担当（teammate）」の節（worktree のブランチを main が `git merge --ff-only` で取り込み、PR は作らない）。
-
-決まったこと（2026-10-20 ユーザーが決めた）:
-
-- 担当はブランチ `claude/<作業内容>` を origin に push して CI を走らせ、通ったら main を最新にして ff-only で取り込み、main を push する。落ちたものは main に入れない。ff-only にならないときは rebase して CI をやり直す
-- main への push は担当が行う（bganalyzer では push・マージは許可済み）
-- `recognizer/import_collected.py` が読み違いの組を `samples/` に入れる自動の PR は今のまま
-- 仕掛かりの TODO-177（PR #525）は PR のまま終える
-- 「今の paths の絞り込みは保つ」は、文書だけの変更で `test`・`ruff` を走らせない意味（追加で決まったこと、2026-10-20 ユーザー）。push にも pull_request と同じ paths を付ける（main への push も同じ絞り込みになる）
-- `import_collected.py` のブランチ（`claude/collected-import-*`）は PR で走るので、push の側では除く
-- CI の待ち方を CLAUDE.md に書く。run ID は `gh run list` で調べ、`gh run watch <ID> --exit-status` で待つ。rebase のあとの push は `--force-with-lease`。push が拒否されたらトップを `origin/main` に戻す
-
-- [x] `.github/workflows/test.yml`・`ruff.yml`・`accuracy.yml` を `claude/**` への push でも走るようにする（今の paths の絞り込みは保つ）
-- [x] CLAUDE.md の「共同開発」（PR・マージ・`gh pr merge --delete-branch`・マージ前の CI の記述）、docs/HANDOVER.md、そのほか PR を前提にした記述（`rg -n -e 'PR' -e 'gh pr' -e 'マージ' CLAUDE.md docs/ .claude/ README.md` で洗い出す。`archives/` は直さない）を新しいやり方に直す。取り込んだあとの origin の `claude/*` ブランチも消す
-- [x] 共同開発の相手（別アカウントの Claude）にも同じやり方になることを docs/HANDOVER.md に書く
-- [ ] ローカル: 取り込み後に、トップの作業ツリーで `git pull` して main が最新になることを確かめる
-
-**無駄を省く工夫:** 文書と CI の条件だけの変更なので、確かめるのはこの項目自身の取り込み（push で CI が走る・ff-only で入る）の 1 回だけ。テスト全体は CI に任せる
 
 ## 完了済み
 
