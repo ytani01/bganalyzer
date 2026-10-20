@@ -9,7 +9,7 @@ first: the rest go in the next time. Skipped: a pair whose id is in samples/ alr
 before under another name, a photo that cannot be read. Nothing is added while a PR of an earlier time
 is open (its checks failed, it conflicts with main, or the service was restarted while waiting: someone has to
 look at it, and merge or close it).
-The photo is painted black outside the truth's corners (its size and the corners stay), and written
+The photo is painted black outside the truth's corners widened by 10% from the board's centre (its size and the corners stay), and written
 again without EXIF; of the truth, only the fields the samples have go in (anyone can send one), and the id.
 With BG_CLAUDE set, claude -p names the pair from the painted photo (what will be public anyway): its
 board and how it was taken (TODO-142). Without it, or when that fails, the pair is collected-<id>.
@@ -34,6 +34,7 @@ import cv2
 import numpy as np
 
 MAX = 10
+MARGIN = 0.1  # how much of the board is left around it, out from its centre (TODO-179)
 REPO = Path(__file__).resolve().parent.parent
 BRANCH = "claude/collected-import-"
 NAME = re.compile(
@@ -100,9 +101,11 @@ def pick(d, names, samples):
 
 
 def paint(img, corners):
-    """The photo with everything outside the board black."""
+    """The photo black outside the board widened by MARGIN from its centre (TODO-179); fillPoly stops at the photo's edges."""
+    c = np.array(corners, float)
+    c = c.mean(axis=0) + (c - c.mean(axis=0)) * (1 + MARGIN)
     mask = np.zeros(img.shape[:2], np.uint8)
-    cv2.fillPoly(mask, [np.round(np.array(corners)).astype(np.int32)], 255)
+    cv2.fillPoly(mask, [np.round(c).astype(np.int32)], 255)
     out = img.copy()
     out[mask == 0] = 0
     return out

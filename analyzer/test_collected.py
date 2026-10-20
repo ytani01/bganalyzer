@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import cv2
+import numpy as np
 import pytest
 
 import analysis  # noqa: F401  puts recognizer/ on sys.path
@@ -202,12 +203,25 @@ def test_import_paints_outside_the_board_and_keeps_only_the_fields_of_samples(
         and t["id"] == "aaa"
         and img.shape == orig.shape
     )
-    (x0, y0), (x2, y2) = t["corners_TL_TR_BR_BL"][0], t["corners_TL_TR_BR_BL"][2]
+    painted = import_collected.paint(orig, t["corners_TL_TR_BR_BL"])
+    assert (painted != orig).any() and (
+        img == painted
+    ).all()  # painted outside the widened board (a png: as it is)
+
+
+def test_paint_leaves_10_percent_around_the_board_and_stops_at_the_edges():
+    img = np.full((100, 200, 3), 255, np.uint8)
+    # a board of 100x50 at the centre (the margin 5 and 2.5 each side), and one past the photo's left edge
+    out = import_collected.paint(img, [(50, 25), (150, 25), (150, 75), (50, 75)])
+    assert (out[50, 46] == 255).all() and (out[50, 44] == 0).all()  # left: 50 - 5
+    assert (out[23, 100] == 255).all() and (out[21, 100] == 0).all()  # top: 25 - 2.5
+    assert (out[50, 154] == 255).all() and (out[50, 156] == 0).all()  # right: 150 + 5
+    out = import_collected.paint(img, [(-10, 0), (90, 0), (90, 100), (-10, 100)])
     assert (
-        img[: max(int(y0) - 3, 1)].max() == 0 and img[int(y2) + 3 :].max() == 0
-    )  # above and below the board
-    cy, cx = int((y0 + y2) / 2), int((x0 + x2) / 2)
-    assert (img[cy, cx] == orig[cy, cx]).all()  # inside, as it was
+        out.shape == img.shape
+        and (out[50, 0] == 255).all()
+        and (out[50, 96] == 0).all()
+    )
 
 
 # A stand-in for claude -p: answers with FAKE_NAME on the last line (the real one is never called here)
