@@ -21,3 +21,10 @@
 - 自動の取り込みのブランチ名が `claude/collected-import-*` なので、push と PR の両方で CI が走る（二重に走る。害は無いが時間は増える）。
 - 取り込み（`git merge --ff-only` のトップ）が、トップの post-merge のサービス再起動を起こす点は今までの `git pull` と同じ。
 - 「CI の待ち方（`gh run watch`）」は CLAUDE.md に書いた（2026-10-20 ユーザー決定）。
+
+## 追記（管理者の指摘の反映）
+
+- `test.yml`: push に pull_request と同じ `paths-ignore` を付けた。`ruff.yml`: push に pull_request と同じ `paths` を付けた。main への push も同じ絞り込みになる。コメントの「毎回走る」を削除。
+- 3 本とも push の branches に `'!claude/collected-import-**'` を足した（ブランチ名は `recognizer/import_collected.py:39` の `BRANCH = "claude/collected-import-"` に日時が続く形）。自動の取り込みは PR の側だけで走る。`yaml.safe_load` で読めることを確認（実際に除かれるかは verifier が確かめる）。
+- `CLAUDE.md` の「取り込む前に」と `docs/HANDOVER.md` の CI の説明を、新しい絞り込みに合わせた（文書だけの変更では何も走らないので、そのまま取り込んでよいと書いた）。
+- 上の「判断が要る点」のうち、paths の絞り込みと二重実行の 2 つは解消した。`.claude/hooks/no-local-pytest.py` は触らず、利用者の確認待ち。

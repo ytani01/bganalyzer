@@ -133,7 +133,8 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
 - **取り込み後に確かめる必要がある変更は、その変更の中で TODO.md のその項目に `- [ ] ローカル:` の行を足す**
   arm64（Pi）で `uv sync --frozen` が通るかは確かめない（2026-10-17 ユーザーが決めた。GitHub Actions も arm64 では流さない）
 - **取り込む前に、ブランチの GitHub Actions の `test` が通っていることを確かめる（`accuracy`・`ruff` が走ったときはそれも。
-  `ruff` は .py などを変えたとき、`accuracy` は recognizer・samples・依存を変えたときに走る）。** `test` と `ruff` は `claude/**` への push で毎回走る（文書だけの変更でも）。
+  `test` は文書だけの変更では走らない。`ruff` は .py などを変えたとき、`accuracy` は recognizer・samples・依存を変えたときに走る）。**
+  どれも push（`main` と `claude/**`）と PR で同じ絞り込みになる。何も走らない変更（文書だけ）は、そのまま取り込んでよい。
   落ちていたら取り込まない。
   テスト全体は手元で流さない（CI と重なる。`.claude/hooks/no-local-pytest.py` が止める）。
   相手の変更とぶつかったら、勝手に直さずユーザーに報告する

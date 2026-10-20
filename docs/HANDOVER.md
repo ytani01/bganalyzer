@@ -108,10 +108,11 @@ ytani01/bganalyzer の Settings → Collaborators → Add people で相手のア
 - **取り込み後の確認（TODO-023、2026-10-13）:** 取り込み後に動いているアプリでしか確かめられないことは
   TODO.md のその項目に `- [ ] ローカル:` の行で足す。2026-10-17 から Pi ではなくローカルホスト（開発機）で、git pull のあとに確かめて結果を書き込む（CLAUDE.md）。
   2026-10-17 までは docs/PI_CHECKS.md で別に管理していた（TODO-026。決着した 50 件は `archives/pi/`）。
-- **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が main と `claude/**` への push（毎回）と、PR（自動の取り込みが作る。文書だけの PR は除く。TODO-064）で `uv run pytest analyzer` を実行する（`claude/**` への push は TODO-180）。
+- **CI:** GitHub Actions の `test`（`.github/workflows/test.yml`）が main と `claude/**` への push と、PR（自動の取り込みが作る）で、文書だけの変更を除いて `uv run pytest analyzer` を実行する（TODO-064。`claude/**` への push は TODO-180）。
+  自動の取り込みのブランチ `claude/collected-import-*` は PR で走るので、push の側では除いてある。
   `accuracy`（`.github/workflows/accuracy.yml`、TODO-035）は recognizer・samples・依存を変える push と PR で、認識の精度が
   `recognizer/accuracy_baseline.json` より下がっていないかを確かめる。
-  `ruff`（`.github/workflows/ruff.yml`、TODO-168）は main と `claude/**` への push と、.py・`pyproject.toml`・`uv.lock` を変える PR で `uv run ruff check` と `uv run ruff format --check` を実行する。
+  `ruff`（`.github/workflows/ruff.yml`、TODO-168）は .py・`pyproject.toml`・`uv.lock` を変える push（main と `claude/**`）と PR で `uv run ruff check` と `uv run ruff format --check` を実行する。
 
 - **ファイルの分け直し（2026-10-15、PR #174・#175・#178。動きは変えていない）:**
   analyzer は gnubg の呼び出しを `engine.py`、`POST /samples` を `samples.py`、リクエストの型を `models.py` に分けた。

@@ -8,7 +8,8 @@ on:
     paths: [pyproject.toml, uv.lock, recognizer/**, '!recognizer/**.md', samples/**, .github/workflows/accuracy.yml]
   push:
     # claude/** は担当のブランチ。PR なしで main に取り込む前に確かめる（TODO-180）
-    branches: [main, 'claude/**']
+    # 自動の取り込み（recognizer/import_collected.py）のブランチは PR で走るので除く
+    branches: [main, 'claude/**', '!claude/collected-import-**']
     paths: [pyproject.toml, uv.lock, recognizer/**, samples/**, .github/workflows/accuracy.yml]
   workflow_dispatch:
 
