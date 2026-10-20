@@ -129,8 +129,14 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
       <div id="photo-wrap" class="board-wrap" hidden><svg id="photo-svg" viewBox="0 0 660 440"></svg></div>
       <div id="board-pin" class="board-pin">
         <!-- 白・黒の駒の数。盤面図の上にいつも出し、合わない側だけ色を付ける（TODO-088、TODO-125） -->
-        <div id="count-mark" class="count-mark" role="status" hidden></div>
-        <div class="board-wrap"><svg id="board-svg" viewBox="0 0 660 440"></svg></div>
+        <div class="board-wrap">
+          <!-- 盤面図の「ポイントマッチ」の行の上に重ねる。左に駒の数、右に初期配置（TODO-177） -->
+          <div class="match-row">
+            <div id="count-mark" class="count-mark" role="status" hidden></div>
+            <button id="reset-start" type="button" class="reset-start">初期配置</button>
+          </div>
+          <svg id="board-svg" viewBox="0 0 660 440"></svg>
+        </div>
         <div id="editor" class="editor">
           <div class="editor-row">
             <span id="editor-title" class="editor-title">タップした段まで置く（一番上なら 1 個減る）・番号で空に・長押しで色と数</span>
@@ -209,10 +215,6 @@ if (!location.pathname.endsWith("/") && !/\.\w+$/.test(location.pathname))
     <p class="note">3-ply はより正確ですが、10 倍以上時間がかかります。</p>
     </div>
 
-    <!-- 盤面の操作。見出しは付けず、ボタンを横に並べる（TODO-112。前は閉じた「その他の設定」の中） -->
-    <div class="row wrap">
-      <button id="reset-start" class="button small">初期配置</button>
-    </div>
     <!-- 読み取りの改善（TODO-112）。中のどちらも出ないときは隠れる -->
     <div id="improve" class="panel">
     <h2 class="panel-title">読み取りの改善</h2>

@@ -1,0 +1,504 @@
+{
+ "version_header": "a0.94.1 · r0.29.3 · 67a2616",
+ "version_api": {
+  "analyzer": "0.94.1",
+  "recognizer": "0.29.3",
+  "commit": "67a2616",
+  "samples": false,
+  "claude": false
+ },
+ "match_options": [
+  [
+   "0",
+   "アンリミテッド"
+  ],
+  [
+   "1",
+   "1 ポイント"
+  ],
+  [
+   "2",
+   "2 ポイント"
+  ],
+  [
+   "3",
+   "3 ポイント"
+  ],
+  [
+   "4",
+   "4 ポイント"
+  ],
+  [
+   "5",
+   "5 ポイント"
+  ],
+  [
+   "6",
+   "6 ポイント"
+  ],
+  [
+   "7",
+   "7 ポイント"
+  ],
+  [
+   "8",
+   "8 ポイント"
+  ],
+  [
+   "9",
+   "9 ポイント"
+  ],
+  [
+   "10",
+   "10 ポイント"
+  ],
+  [
+   "11",
+   "11 ポイント"
+  ],
+  [
+   "12",
+   "12 ポイント"
+  ],
+  [
+   "13",
+   "13 ポイント"
+  ],
+  [
+   "14",
+   "14 ポイント"
+  ],
+  [
+   "15",
+   "15 ポイント"
+  ],
+  [
+   "16",
+   "16 ポイント"
+  ],
+  [
+   "17",
+   "17 ポイント"
+  ],
+  [
+   "18",
+   "18 ポイント"
+  ],
+  [
+   "19",
+   "19 ポイント"
+  ],
+  [
+   "20",
+   "20 ポイント"
+  ],
+  [
+   "21",
+   "21 ポイント"
+  ],
+  [
+   "22",
+   "22 ポイント"
+  ],
+  [
+   "23",
+   "23 ポイント"
+  ],
+  [
+   "24",
+   "24 ポイント"
+  ],
+  [
+   "25",
+   "25 ポイント"
+  ]
+ ],
+ "unl-homeR": {
+  "vw": 390,
+  "scrollW": 390,
+  "svgW": 390,
+  "countMark": {
+   "x": 5.8,
+   "y": 101.5,
+   "r": 108.6,
+   "b": 119.5,
+   "w": 102.8,
+   "h": 18
+  },
+  "countMarkFS": "12px",
+  "countText": "白 15/15・黒 15/15",
+  "resetStart": {
+   "x": 324.8,
+   "y": 100.8,
+   "r": 384.2,
+   "b": 120.2,
+   "w": 59.3,
+   "h": 19.4
+  },
+  "resetFS": "12px",
+  "resetText": "初期配置",
+  "resetHidden": false,
+  "matchText": "アンリミテッド ▾",
+  "matchFS": "21px",
+  "matchRect": {
+   "x": 133.8,
+   "r": 228,
+   "y": 104.6,
+   "b": 118.6
+  },
+  "overlapCountMatch": false,
+  "overlapResetMatch": false,
+  "plies": [
+   {
+    "t": "2-ply",
+    "h": 28,
+    "fs": "12px"
+   },
+   {
+    "t": "3-ply",
+    "h": 28,
+    "fs": "12px"
+   }
+  ],
+  "squares": []
+ },
+ "unl-homeL": {
+  "vw": 390,
+  "scrollW": 390,
+  "svgW": 390,
+  "countMark": {
+   "x": 5.8,
+   "y": 101.5,
+   "r": 108.6,
+   "b": 119.5,
+   "w": 102.8,
+   "h": 18
+  },
+  "countMarkFS": "12px",
+  "countText": "白 15/15・黒 15/15",
+  "resetStart": {
+   "x": 324.8,
+   "y": 100.8,
+   "r": 384.2,
+   "b": 120.2,
+   "w": 59.3,
+   "h": 19.4
+  },
+  "resetFS": "12px",
+  "resetText": "初期配置",
+  "resetHidden": false,
+  "matchText": "アンリミテッド ▾",
+  "matchFS": "21px",
+  "matchRect": {
+   "x": 162.9,
+   "r": 257.2,
+   "y": 104.6,
+   "b": 118.6
+  },
+  "overlapCountMatch": false,
+  "overlapResetMatch": false,
+  "plies": [
+   {
+    "t": "2-ply",
+    "h": 28,
+    "fs": "12px"
+   },
+   {
+    "t": "3-ply",
+    "h": 28,
+    "fs": "12px"
+   }
+  ],
+  "squares": []
+ },
+ "11pt-homeR": {
+  "vw": 390,
+  "scrollW": 390,
+  "svgW": 390,
+  "countMark": {
+   "x": 5.8,
+   "y": 101.5,
+   "r": 108.6,
+   "b": 119.5,
+   "w": 102.8,
+   "h": 18
+  },
+  "countMarkFS": "12px",
+  "countText": "白 15/15・黒 15/15",
+  "resetStart": {
+   "x": 324.8,
+   "y": 100.8,
+   "r": 384.2,
+   "b": 120.2,
+   "w": 59.3,
+   "h": 19.4
+  },
+  "resetFS": "12px",
+  "resetText": "初期配置",
+  "resetHidden": false,
+  "matchText": "11pt ▾",
+  "matchFS": "21px",
+  "matchRect": {
+   "x": 192.9,
+   "r": 227.2,
+   "y": 104.6,
+   "b": 118.6
+  },
+  "overlapCountMatch": false,
+  "overlapResetMatch": false,
+  "plies": [
+   {
+    "t": "2-ply",
+    "h": 28,
+    "fs": "12px"
+   },
+   {
+    "t": "3-ply",
+    "h": 28,
+    "fs": "12px"
+   }
+  ],
+  "squares": []
+ },
+ "11pt-homeL": {
+  "vw": 390,
+  "scrollW": 390,
+  "svgW": 390,
+  "countMark": {
+   "x": 5.8,
+   "y": 101.5,
+   "r": 108.6,
+   "b": 119.5,
+   "w": 102.8,
+   "h": 18
+  },
+  "countMarkFS": "12px",
+  "countText": "白 15/15・黒 15/15",
+  "resetStart": {
+   "x": 324.8,
+   "y": 100.8,
+   "r": 384.2,
+   "b": 120.2,
+   "w": 59.3,
+   "h": 19.4
+  },
+  "resetFS": "12px",
+  "resetText": "初期配置",
+  "resetHidden": false,
+  "matchText": "11pt ▾",
+  "matchFS": "21px",
+  "matchRect": {
+   "x": 163.8,
+   "r": 198.1,
+   "y": 104.6,
+   "b": 118.6
+  },
+  "overlapCountMatch": false,
+  "overlapResetMatch": false,
+  "plies": [
+   {
+    "t": "2-ply",
+    "h": 28,
+    "fs": "12px"
+   },
+   {
+    "t": "3-ply",
+    "h": 28,
+    "fs": "12px"
+   }
+  ],
+  "squares": []
+ },
+ "11crawford-homeR": {
+  "vw": 390,
+  "scrollW": 390,
+  "svgW": 390,
+  "countMark": {
+   "x": 5.8,
+   "y": 101.5,
+   "r": 108.6,
+   "b": 119.5,
+   "w": 102.8,
+   "h": 18
+  },
+  "countMarkFS": "12px",
+  "countText": "白 15/15・黒 15/15",
+  "resetStart": {
+   "x": 324.8,
+   "y": 100.8,
+   "r": 384.2,
+   "b": 120.2,
+   "w": 59.3,
+   "h": 19.4
+  },
+  "resetFS": "12px",
+  "resetText": "初期配置",
+  "resetHidden": false,
+  "matchText": "11pt クロフォード ▾",
+  "matchFS": "21px",
+  "matchRect": {
+   "x": 126.2,
+   "r": 235.7,
+   "y": 104.6,
+   "b": 118.6
+  },
+  "overlapCountMatch": false,
+  "overlapResetMatch": false,
+  "plies": [
+   {
+    "t": "2-ply",
+    "h": 28,
+    "fs": "12px"
+   },
+   {
+    "t": "3-ply",
+    "h": 28,
+    "fs": "12px"
+   }
+  ],
+  "squares": []
+ },
+ "11crawford-homeL": {
+  "vw": 390,
+  "scrollW": 390,
+  "svgW": 390,
+  "countMark": {
+   "x": 5.8,
+   "y": 101.5,
+   "r": 108.6,
+   "b": 119.5,
+   "w": 102.8,
+   "h": 18
+  },
+  "countMarkFS": "12px",
+  "countText": "白 15/15・黒 15/15",
+  "resetStart": {
+   "x": 324.8,
+   "y": 100.8,
+   "r": 384.2,
+   "b": 120.2,
+   "w": 59.3,
+   "h": 19.4
+  },
+  "resetFS": "12px",
+  "resetText": "初期配置",
+  "resetHidden": false,
+  "matchText": "11pt クロフォード ▾",
+  "matchFS": "21px",
+  "matchRect": {
+   "x": 155.3,
+   "r": 264.8,
+   "y": 104.6,
+   "b": 118.6
+  },
+  "overlapCountMatch": false,
+  "overlapResetMatch": false,
+  "plies": [
+   {
+    "t": "2-ply",
+    "h": 28,
+    "fs": "12px"
+   },
+   {
+    "t": "3-ply",
+    "h": 28,
+    "fs": "12px"
+   }
+  ],
+  "squares": []
+ },
+ "after_reset": {
+  "vw": 390,
+  "scrollW": 390,
+  "svgW": 390,
+  "countMark": {
+   "x": 5.8,
+   "y": 101.5,
+   "r": 108.6,
+   "b": 119.5,
+   "w": 102.8,
+   "h": 18
+  },
+  "countMarkFS": "12px",
+  "countText": "白 15/15・黒 15/15",
+  "resetStart": {
+   "x": 324.8,
+   "y": 100.8,
+   "r": 384.2,
+   "b": 120.2,
+   "w": 59.3,
+   "h": 19.4
+  },
+  "resetFS": "12px",
+  "resetText": "初期配置",
+  "resetHidden": false,
+  "matchText": "11pt クロフォード ▾",
+  "matchFS": "21px",
+  "matchRect": {
+   "x": 155.3,
+   "r": 264.8,
+   "y": 104.6,
+   "b": 118.6
+  },
+  "overlapCountMatch": false,
+  "overlapResetMatch": false,
+  "plies": [
+   {
+    "t": "2-ply",
+    "h": 28,
+    "fs": "12px"
+   },
+   {
+    "t": "3-ply",
+    "h": 28,
+    "fs": "12px"
+   }
+  ],
+  "squares": []
+ },
+ "sheet_match": {
+  "hidden": false,
+  "border": "4px solid rgb(46, 90, 58)",
+  "shadow": "rgba(0, 0, 0, 0.733) 0px 8px 28px 0px",
+  "bg": "rgb(255, 255, 255)",
+  "rect": {
+   "x": 8,
+   "y": 126.640625,
+   "width": 374,
+   "height": 176,
+   "top": 126.640625,
+   "right": 382,
+   "bottom": 302.640625,
+   "left": 8
+  }
+ },
+ "sheet_cube": {
+  "hidden": false,
+  "border": "4px solid rgb(46, 90, 58)",
+  "borderColor": "rgb(46, 90, 58)",
+  "shadow": "rgba(0, 0, 0, 0.733) 0px 8px 28px 0px",
+  "bg": "rgb(255, 255, 255)"
+ },
+ "sheet_cube_bg": {
+  "topEl": "HEADER.",
+  "overlayFixed": [
+   "sheet-cube",
+   "actbar"
+  ],
+  "bodyBg": "rgb(244, 241, 234)"
+ },
+ "plies_after_3": [
+  {
+   "t": "2-ply",
+   "h": 28,
+   "fs": "12px"
+  },
+  {
+   "t": "3-ply",
+   "h": 28,
+   "fs": "12px"
+  }
+ ],
+ "wide_photo_error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"#photo-tools:not([hidden])\") to be visible\n",
+ "page_errors": []
+}

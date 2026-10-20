@@ -1,0 +1,45 @@
+{
+ "squares_start": [],
+ "start": {
+  "count": "白 15/15・黒 15/15",
+  "countFS": "12px",
+  "countR": 108.6,
+  "countY": [
+   101.5,
+   119.5
+  ],
+  "matchL": 133.8,
+  "matchR": 228,
+  "matchY": [
+   104.6,
+   118.6
+  ],
+  "resetL": 324.8,
+  "resetFS": "12px",
+  "scrollW": 390,
+  "hitNum": 24,
+  "trayRects": 61
+ },
+ "white_off15": {
+  "count": "⚠ 盤に駒がありません",
+  "countFS": "12px",
+  "countR": 127.9,
+  "countY": [
+   101.5,
+   119.5
+  ],
+  "matchL": 133.8,
+  "matchR": 228,
+  "matchY": [
+   104.6,
+   118.6
+  ],
+  "resetL": 324.8,
+  "resetFS": "12px",
+  "scrollW": 390,
+  "hitNum": 24,
+  "trayRects": 91
+ },
+ "squares_off": [],
+ "errors": []
+}
