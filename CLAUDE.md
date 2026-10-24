@@ -105,24 +105,25 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
   ルールはこの CLAUDE.md、作業は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
 - **作業の前に main を pull する。**
 - **同じマシンで並べて作業するときは、セッションごとに worktree を分ける**（2026-10-19 ユーザーが決めた）。
-  `claude -w <名前>` で起動し（`.claude/worktrees/<名前>/` に別のブランチの作業ツリーができる）、`claude agents` で見渡す。
-  トップの作業ツリー（`~/work/bganalyzer`）は main のままにしておく。ローカルホストの `bganalyzer.service` と post-merge の再起動はここを見ているので、
-  取り込み後の更新と `- [ ] ローカル:` の確認は、ここで `git pull` してから行う
-- **main（利用者と話すセッション）は利用者との対話に専念する**（2026-10-19 ユーザーが決めた）。
-  main が自分でやるのは、調べる（要点を短く読む程度）・利用者に聞く・担当に頼む・担当の報告を読むことだけ。
-  TODO の項目を立てる・決着させる、コードや文書の変更、コミット・main への取り込み、取り込み後のローカルの確認は、すべて担当（teammate）にさせる。
-  teammate は Agent ツールに `name` を付けて起動し、`isolation` は付けない（付けると teammate にならない）。bganalyzer だけで有効にしている（`.claude/settings.local.json`。リポジトリには入らない。TODO-154）。
-  teammate は main と同じ作業ツリー（main をトップで開いていればトップ）で起動するので、**作業の最初に自分で `git fetch` のあと `git worktree add .claude/worktrees/<名前> -b claude/<作業内容> origin/main` を作り、その中で編集・コミットし、下の「変更は PR なしで main に取り込む」まで行う**。トップは main のままにする。
-  **main に取り込んだら（やめたときも）、作った本人がトップに戻って
-  `git worktree remove .claude/worktrees/<名前>` と `git branch -D claude/<作業内容>` で消し、
-  origin のブランチも `git push origin --delete claude/<作業内容>` で消す**（2026-10-20 ユーザーが決めた）。
-  確認の担当がその worktree で測るときは、確認が済むまで残し、取り込みのあとに消す
-  **担当から完了の知らせが届いたら、main はその担当にまだ頼むことがあるかを見て、無ければその場で `TaskStop` で止める。**
-  項目の決着に限らず、項目を立てるだけを頼んだ担当も同じ。同じ項目で確かめ直しを頼む見込みがある確認・レビューの担当と、取り込みと worktree の片付けが残っている実装の担当は残してよい（2026-10-20 ユーザーが決めた）
-  同じファイルを複数の担当に同時に編集させない。
-  tmux で開いた teammate には SendMessage が無いことがあるので、main に確認を頼むときは、作業を止めて返事（終わったときの通知）で伝える。
-  確認・レビューを別の担当に分ける決まり（`~/.claude/CLAUDE.md`）はそのまま。ローカルの確認は、担当がトップの作業ツリー（main のまま）で `git pull` だけ行ってから確かめる
-- **変更は PR なしで main に取り込む**（2026-10-20 ユーザーが決めた。TODO-180）。変更は小さく、ブランチ名に作業内容を入れる（例: `claude/recognizer-oblique`）。担当は次の順で進める。
+  全体の既定は worktree を使わない（`~/.claude/CLAUDE.md` の「担当（teammate）」）が、bganalyzer は使う。
+  トップの作業ツリー（`~/work/bganalyzer`）を途中の状態にできないため: ローカルホストの `bganalyzer.service` と post-merge の再起動はここを見ている。
+  トップは main のままにし、取り込み後の更新と `- [ ] ローカル:` の確認は、ここで `git pull` してから行う。
+  セッションは `claude -w <名前>` で起動し（`.claude/worktrees/<名前>/` に別のブランチの作業ツリーができる）、`claude agents` で見渡す
+- **main（利用者と話すセッション）と担当（teammate）の分け方は `~/.claude/CLAUDE.md` に従う**
+  （main は調べる・聞く・頼む・報告を読む・項目を立てて決着させる（そのコミットも）。実装は担当。
+  文書・定義ファイルだけの項目と数行で済む項目は main が書いてよい。担当の起動・止め方・同じファイルを同時に編集させないことも全体の決まりのとおり）。
+  ここには bganalyzer だけの決まりを書く。
+  - teammate は bganalyzer だけで有効にしている（`.claude/settings.local.json`。リポジトリには入らない。TODO-154）
+  - main も担当も、トップでは編集・コミットしない。**作業の最初に `git fetch` のあと `git worktree add .claude/worktrees/<名前> -b claude/<作業内容> origin/main` を作り、
+    その中で編集・コミットし、下の「変更は PR なしで main に取り込む」まで行う**。担当は main と同じ作業ツリー（トップ）で起動するので、この worktree は担当が自分で作る
+  - **main に取り込んだら（やめたときも）、作った本人がトップに戻って
+    `git worktree remove .claude/worktrees/<名前>` と `git branch -D claude/<作業内容>` で消し、
+    origin のブランチも `git push origin --delete claude/<作業内容>` で消す**（2026-10-20 ユーザーが決めた）。
+    確認の担当がその worktree で測るときは、確認が済むまで残し、取り込みのあとに消す。
+    implementer は確認とレビューが済み、取り込みと片付けが終わるまで止めない
+  - 担当が作業している間は、main で TODO.md などのコミットを重ねない。重ねてしまったら、担当は取り込む前に 1 回だけ rebase する（下の 3.）
+  - ローカルの確認は、担当がトップの作業ツリー（main のまま）で `git pull` だけ行ってから確かめる
+- **変更は PR なしで main に取り込む**（2026-10-20 ユーザーが決めた。TODO-180）。変更は小さく、ブランチ名に作業内容を入れる（例: `claude/recognizer-oblique`）。作業した本人（担当か main）が次の順で進める。
   1. ブランチ `claude/<作業内容>` を origin に push する。push で GitHub Actions が走る
   2. 結果を待つ。まず `gh run list --branch claude/<作業内容> --commit $(git rev-parse HEAD) --json databaseId,workflowName` で run の ID を調べ
      （run は `test`・`ruff`・`accuracy` ごとに別。走らないものもある。push の直後は run がまだ無いことがあるので、
@@ -138,7 +139,7 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
      （トップは取り込む前から main と同じで、手元の変更は無いはず）
   5. worktree・ローカルのブランチ・origin のブランチを消す（上の「main に取り込んだら」）
 
-  push と main への取り込みは担当が行う（許可済み）。PR は作らない。例外は、`recognizer/import_collected.py` が読み違いの組を `samples/` に入れる自動の PR だけ（今のまま）
+  push と main への取り込みは作業した本人が行う（許可済み）。PR は作らない。例外は、`recognizer/import_collected.py` が読み違いの組を `samples/` に入れる自動の PR だけ（今のまま）
 - **取り込み後に確かめる必要がある変更は、その変更の中で TODO.md のその項目に `- [ ] ローカル:` の行を足す**
   arm64（Pi）で `uv sync --frozen` が通るかは確かめない（2026-10-17 ユーザーが決めた。GitHub Actions も arm64 では流さない）
 - **取り込む前に、ブランチの GitHub Actions の `test` が通っていることを確かめる（`accuracy`・`ruff` が走ったときはそれも。
