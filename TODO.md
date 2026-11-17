@@ -1,7 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-121、TODO-182、TODO-183。** これまでに 178 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**次の番号は `TODO-184`。**
+**残っている項目: TODO-025、TODO-030、TODO-121、TODO-182。** これまでに 179 件を完了させた。
+新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-184` から。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
 ---
@@ -56,19 +56,6 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 - [ ] `samples/collected-black-red-oblique-3.truth.json` の `bottom_colour` を 1 にし、`check_accuracy.py` で認識の精度が基準より下がらないことを確かめる（上がれば `--update` で基準を書き直す）
 
 **無駄を省く工夫:** 測るのはこの組だけ（`evaluate.py`）。全サンプルの精度は CI の accuracy に任せる
-
-## TODO-183. CLAUDE.md の参照先を、全体ルールの節の分け直しに合わせる
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Opus 5.5 / effort medium | main（数行の変更）+ reviewer（Sonnet 5.5 / low）+ verifier（Haiku 5.5 / low） |
-
-全体ルールの節「担当（teammate）」は「担当の編成」「担当の動かし方」に分かれた。ほかの変更は、このプロジェクトの決まりと食い違わない。
-
-- [ ] `CLAUDE.md` の「共同開発」で、全体の worktree の既定を指している「担当（teammate）」を「担当の動かし方」に直す
-- [ ] `.claude/global-rules-seen` を 152 にする（リポジトリには入っていない）
-
-**無駄を省く工夫:** 直すのは参照先だけ。全体ルールの中身は書き写さない
 
 ## 完了済み
 

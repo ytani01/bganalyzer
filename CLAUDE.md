@@ -105,7 +105,7 @@ CPU による読みの違いは気にしない（TODO-074）。今の読み取�
   ルールはこの CLAUDE.md、作業は `TODO.md`、進み具合と未決事項は `docs/HANDOVER.md`
 - **作業の前に main を pull する。**
 - **同じマシンで並べて作業するときは、セッションごとに worktree を分ける**（2026-10-19 ユーザーが決めた）。
-  全体の既定は worktree を使わない（`~/.claude/CLAUDE.md` の「担当（teammate）」）が、bganalyzer は使う。
+  全体の既定は worktree を使わない（`~/.claude/CLAUDE.md` の「担当の動かし方」）が、bganalyzer は使う。
   トップの作業ツリー（`~/work/bganalyzer`）を途中の状態にできないため: ローカルホストの `bganalyzer.service` と post-merge の再起動はここを見ている。
   トップは main のままにし、取り込み後の更新と `- [ ] ローカル:` の確認は、ここで `git pull` してから行う。
   セッションは `claude -w <名前>` で起動し（`.claude/worktrees/<名前>/` に別のブランチの作業ツリーができる）、`claude agents` で見渡す
