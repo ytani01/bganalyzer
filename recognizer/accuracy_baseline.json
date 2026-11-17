@@ -5,7 +5,7 @@
  "collected-app-grey-shot": {"points": 21, "bar": true, "home": true, "dice": "ok", "cube": "WRONG"},
  "collected-black-red-oblique": {"points": 21, "bar": true, "home": true, "dice": "not read", "cube": "ok"},
  "collected-black-red-oblique-2": {"points": 21, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
- "collected-black-red-oblique-3": {"points": 20, "bar": true, "home": false, "dice": "ok", "cube": "ok"},
+ "collected-black-red-oblique-3": {"points": 20, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "collected-blue-felt-oblique": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "collected-blue-red-top": {"points": 23, "bar": true, "home": true, "dice": "ok", "cube": "ok"},
  "collected-brown-cream-oblique": {"points": 13, "bar": true, "home": true, "dice": "not read", "cube": "ok"},

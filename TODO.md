@@ -1,12 +1,16 @@
 # TODO
 
-**残っている項目: TODO-025、TODO-030、TODO-121、TODO-182。** これまでに 179 件を完了させた。
+**残っている項目: TODO-025、TODO-030、TODO-121。** これまでに 180 件を完了させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-184` から。**
 項目には、何をするか・決めたこと・無駄を省く工夫だけを書く。経緯や測定値は README・archives に置く（2026-10-16 に縮めた。前の文面は git の履歴にある）。
 
 ---
 
 ## TODO-025. キューブ判断（ダブル／テイク／パス）
+
+| | main | 担当 |
+|---|---|---|
+| 見込み | Opus 5.5 / effort medium | main（写真を samples/ に入れる）+ verifier（Sonnet 5.5 / low）+ reviewer（Sonnet 5.5 / low） |
 
 決めたこと: アンリミテッド（ジャコビー・ルールあり、ビーバーなし）。ダイスがあればチェッカーの手、キューブが片側でダイスが無ければ「その側がダブルされた」。
 解析・PWA（analyzer 0.17.0）、キューブの場所（recognizer 0.6.1）、数字（0.21.0、`samples/synth-cube-*` で確かめた）は済み。
@@ -16,6 +20,10 @@
 **無駄を省く工夫:** 写真が届いたら、その写真だけを `evaluate.py` で測る（全サンプルは CI）
 
 ## TODO-030. ユーザーの盤の写真と直した盤面で、認識の精度を上げる
+
+| | main | 担当 |
+|---|---|---|
+| 見込み | Opus 5.5 / effort medium | main（判断）+ implementer（Opus 5.5 / medium）+ reviewer（Opus 5.5 / high）+ verifier（Sonnet 5.5 / medium） |
 
 決めたこと: `collected/` から `samples/` へは Pi の Claude が人の顔・第三者のものを隠して PR を作り、チェックが通ればマージする。
 書き出し（analyzer 0.24.0）・「Pi に残す」（0.25.0）・`recognizer/tune.py` は済み。
@@ -44,18 +52,6 @@ TODO-120 で、横から撮った写真のモード（`recognizer/side.py`）を
 **何を決めるか:** 四隅の点数の付け方と駒の数え方。**選択肢:** 写真がたまってから試して出す。**いつ聞くか:** 試したあと。
 
 **無駄を省く工夫:** 測るのは横からのサンプルだけ（`evaluate.py`・`check_corners.py` は正解の `side` を見る）。TODO-120 の試しの道具（`archives/agents/TODO-120/measure_side.py`）を使い回す
-
-## TODO-182. collected-black-red-oblique-3 の正解で、手前の駒の色（bottom_colour）を 1 に直す
-
-| | main | 担当 |
-|---|---|---|
-| 見込み | Opus 5.5 / effort medium | main（数行の変更）+ verifier（Sonnet 5.5 / low）+ reviewer（Sonnet 5.5 / low） |
-
-この写真の正解は、手前の駒の色（`bottom_colour`）が 0（暗い駒）のままで、写真と合っていない（写真の手前の駒は明るい駒で、1）。d708806 は盤面だけを直し、この値を直していない。調べたことは `archives/agents/TODO-182/main-findings.md`。
-
-- [ ] `samples/collected-black-red-oblique-3.truth.json` の `bottom_colour` を 1 にし、`check_accuracy.py` で認識の精度が基準より下がらないことを確かめる（上がれば `--update` で基準を書き直す）
-
-**無駄を省く工夫:** 測るのはこの組だけ（`evaluate.py`）。全サンプルの精度は CI の accuracy に任せる
 
 ## 完了済み
 
